@@ -25,10 +25,11 @@ pub struct Span {
 }
 
 pub trait Language {
-    type Kind: Into<MutationKind> + Copy;
+    type Kind: Into<MutationKind>;
 
     fn tree_sitter_language() -> tree_sitter::Language;
     fn mutation_kind_for_node(node_kind: &str) -> Option<Self::Kind>;
+    fn generate_substitutions(kind: &Self::Kind, span_text: &str) -> Vec<String>;
 }
 
 #[derive(Debug, PartialEq)]
@@ -54,43 +55,10 @@ pub fn generate_mutation_substitutions<'a, 'b, L: Language>(
     point: &'b MutationPoint<'a, L>,
 ) -> Vec<MutationSubstitution<'a, 'b, L>> {
     let span_text = &point.file.content[point.span.start..point.span.end];
-    let replacements = match point.kind.into() {
-        MutationKind::StatementBlock => vec!["{}".to_string()],
-        MutationKind::BinaryOp => binary_op_substitutions(span_text),
-    };
-    replacements
+    L::generate_substitutions(&point.kind, span_text)
         .into_iter()
         .map(|replacement| MutationSubstitution { point, replacement })
         .collect()
-}
-
-// (op, alternatives) — ordered longest-first to avoid substring matches
-const BINARY_OP_TABLE: &[(&str, &[&str])] = &[
-    ("===", &["!=="]),
-    ("!==", &["==="]),
-    ("&&",  &["||"]),
-    ("||",  &["&&"]),
-    ("<=",  &["<", ">=", ">"]),
-    (">=",  &[">", "<=", "<"]),
-    ("==",  &["!="]),
-    ("!=",  &["=="]),
-    ("+",   &["-", "*", "/"]),
-    ("-",   &["+", "*", "/"]),
-    ("*",   &["+", "-", "/"]),
-    ("/",   &["+", "-", "*"]),
-    ("<",   &[">", "<=", ">="]),
-    (">",   &["<", "<=", ">="]),
-];
-
-fn binary_op_substitutions(span_text: &str) -> Vec<String> {
-    for (op, alts) in BINARY_OP_TABLE {
-        if let Some(pos) = span_text.find(op) {
-            let lhs = &span_text[..pos];
-            let rhs = &span_text[pos + op.len()..];
-            return alts.iter().map(|alt| format!("{}{}{}", lhs, alt, rhs)).collect();
-        }
-    }
-    vec![]
 }
 
 // ── find_mutation_points ──────────────────────────────────────────────────────

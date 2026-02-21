@@ -1,8 +1,9 @@
 use crate::{Language, MutationKind};
+use super::common::binary_op_substitutions;
 
 pub struct JavaScript;
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, PartialEq)]
 pub enum JsMutationKind {
     StatementBlock,
     BinaryOp,
@@ -29,6 +30,13 @@ impl Language for JavaScript {
             "statement_block" => Some(JsMutationKind::StatementBlock),
             "binary_expression" => Some(JsMutationKind::BinaryOp),
             _ => None,
+        }
+    }
+
+    fn generate_substitutions(kind: &JsMutationKind, span_text: &str) -> Vec<String> {
+        match kind {
+            JsMutationKind::StatementBlock => vec!["{}".to_string()],
+            JsMutationKind::BinaryOp => binary_op_substitutions(span_text),
         }
     }
 }

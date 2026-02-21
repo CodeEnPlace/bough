@@ -1,8 +1,9 @@
 use crate::{Language, MutationKind};
+use super::common::binary_op_substitutions;
 
 pub struct TypeScript;
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, PartialEq)]
 pub enum TsMutationKind {
     StatementBlock,
     BinaryOp,
@@ -29,6 +30,13 @@ impl Language for TypeScript {
             "statement_block" => Some(TsMutationKind::StatementBlock),
             "binary_expression" => Some(TsMutationKind::BinaryOp),
             _ => None,
+        }
+    }
+
+    fn generate_substitutions(kind: &TsMutationKind, span_text: &str) -> Vec<String> {
+        match kind {
+            TsMutationKind::StatementBlock => vec!["{}".to_string()],
+            TsMutationKind::BinaryOp => binary_op_substitutions(span_text),
         }
     }
 }
