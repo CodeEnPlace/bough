@@ -164,6 +164,37 @@ fn pad(s: &str, width: usize) -> String {
     }
 }
 
+#[derive(Serialize)]
+pub struct ApplyRecord {
+    pub source_path: PathBuf,
+    pub source_hash: Hash,
+    pub mutated_hash: Hash,
+}
+
+impl RenderOutput for ApplyRecord {
+    fn render(&self, style: &Style, no_color: bool) {
+        match style {
+            Style::Json => {
+                println!("{}", serde_json::to_string(self).expect("failed to serialize"));
+            }
+            Style::Pretty => {
+                println!(
+                    "Applied mutation {} to {}",
+                    color("\x1b[33m", &self.mutated_hash.to_string(), no_color),
+                    color("\x1b[36m", &self.source_path.display().to_string(), no_color),
+                );
+            }
+            Style::Plain => {
+                println!(
+                    "Applied mutation {} to {}",
+                    self.mutated_hash,
+                    self.source_path.display(),
+                );
+            }
+        }
+    }
+}
+
 fn terminal_width() -> usize {
     terminal_size::terminal_size()
         .map(|(w, _)| w.0 as usize)

@@ -1,7 +1,7 @@
 mod feedback;
 
 use clap::{Parser, Subcommand, ValueEnum};
-use feedback::{MutationRecord, RenderOutput, Style};
+use feedback::{ApplyRecord, MutationRecord, RenderOutput, Style};
 use log::LevelFilter;
 use pollard_core::languages::javascript::JavaScript;
 use pollard_core::languages::typescript::TypeScript;
@@ -16,9 +16,6 @@ use std::path::{Path, PathBuf};
 struct Cli {
     #[arg(short, long, action = clap::ArgAction::Count, help = "Increase log verbosity (-v, -vv, -vvv)")]
     verbose: u8,
-
-    #[arg(short, long, help = "Suppress all log output")]
-    quiet: bool,
 
     #[arg(short, long)]
     language: LanguageArg,
@@ -73,9 +70,6 @@ enum MutateAction {
 }
 
 fn log_level(cli: &Cli) -> LevelFilter {
-    if cli.quiet {
-        return LevelFilter::Off;
-    }
     match cli.verbose {
         0 => LevelFilter::Warn,
         1 => LevelFilter::Info,
@@ -132,7 +126,12 @@ fn find_mutated_by_hash<'a, L: Language>(
     None
 }
 
-fn view(language: &LanguageArg, input: &Path, hash: &Hash, diff_style: feedback::DiffStyle) -> feedback::DiffRecord {
+fn view(
+    language: &LanguageArg,
+    input: &Path,
+    hash: &Hash,
+    diff_style: feedback::DiffStyle,
+) -> feedback::DiffRecord {
     let file = SourceFile::read(input).expect("failed to read input file");
     let mutated = match language {
         LanguageArg::Javascript => find_mutated_by_hash::<JavaScript>(&file, hash),
@@ -148,6 +147,26 @@ fn view(language: &LanguageArg, input: &Path, hash: &Hash, diff_style: feedback:
         new: mutated.content().to_string(),
         path: file.path().display().to_string(),
         diff_style,
+    }
+}
+
+fn apply(language: &LanguageArg, input: &Path, hash: &Hash) -> ApplyRecord {
+    let file = SourceFile::read(input).expect("failed to read input file");
+    let mutated = match language {
+        LanguageArg::Javascript => find_mutated_by_hash::<JavaScript>(&file, hash),
+        LanguageArg::Typescript => find_mutated_by_hash::<TypeScript>(&file, hash),
+    }
+    .unwrap_or_else(|| {
+        eprintln!("no mutation found with hash {hash}");
+        std::process::exit(1);
+    });
+
+    std::fs::write(input, mutated.content()).expect("failed to write mutated file");
+
+    ApplyRecord {
+        source_path: file.path().to_owned(),
+        source_hash: file.hash().clone(),
+        mutated_hash: mutated.hash().clone(),
     }
 }
 
@@ -170,7 +189,7 @@ fn main() {
                 view(&cli.language, input, hash, cli.diff.clone()).render(&cli.style, cli.no_color);
             }
             MutateAction::Apply { file: input, hash } => {
-                log::info!("applying mutation {hash} to {}", input.display());
+                apply(&cli.language, input, hash).render(&cli.style, cli.no_color);
             }
         },
     }
