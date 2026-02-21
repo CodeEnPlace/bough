@@ -285,6 +285,40 @@ impl RenderOutput for CleanupRecord {
     }
 }
 
+#[derive(Serialize)]
+pub struct CommandRecord {
+    pub step: String,
+    pub workspace: String,
+    pub command: String,
+    pub result: Result<String, String>,
+}
+
+impl RenderOutput for CommandRecord {
+    fn render(&self, style: &Style, no_color: bool) {
+        match style {
+            Style::Json => {
+                println!("{}", serde_json::to_string(self).expect("failed to serialize"));
+            }
+            Style::Pretty | Style::Plain => {
+                let (status, output) = match &self.result {
+                    Ok(stdout) => (
+                        if no_color { "OK".to_string() } else { color("\x1b[32m", "OK", false) },
+                        stdout,
+                    ),
+                    Err(stderr) => (
+                        if no_color { "FAIL".to_string() } else { color("\x1b[31m", "FAIL", false) },
+                        stderr,
+                    ),
+                };
+                println!("{} {} in {} [{}]", status, self.step, self.workspace, self.command);
+                if !output.is_empty() {
+                    print!("{output}");
+                }
+            }
+        }
+    }
+}
+
 fn terminal_width() -> usize {
     terminal_size::terminal_size()
         .map(|(w, _)| w.0 as usize)

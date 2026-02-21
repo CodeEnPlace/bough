@@ -16,6 +16,7 @@ pub struct Session {
     pub parallelism: usize,
     pub report_dir: PathBuf,
     pub ordering: Ordering,
+    pub sub_dir: PathBuf,
     pub files: String,
     pub ignore_mutants: Vec<String>,
     pub timeout_absolute: u64,
@@ -72,6 +73,9 @@ impl Session {
             parallelism: parallelism.unwrap(),
             report_dir: report_dir.unwrap(),
             ordering: ordering.unwrap(),
+            sub_dir: cli.sub_dir.clone()
+                .or(config.sub_dir.clone())
+                .unwrap_or_else(|| PathBuf::from(".")),
             files: files.unwrap(),
             timeout_absolute: timeout_absolute.unwrap(),
             timeout_relative: timeout_relative.unwrap(),

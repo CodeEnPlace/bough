@@ -5,6 +5,7 @@ parallelism = 1
 report_dir = "/tmp/pollard-report"
 ordering = "random"
 files = "examples/vitest/src/**/*.js"
+sub_dir = "examples/vitest"
 
 [timeout]
 absolute = 30

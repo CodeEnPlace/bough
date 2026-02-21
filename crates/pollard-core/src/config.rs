@@ -43,6 +43,7 @@ pub struct Config {
     pub parallelism: Option<usize>,
     pub report_dir: Option<PathBuf>,
     pub ordering: Option<Ordering>,
+    pub sub_dir: Option<PathBuf>,
     pub files: Option<String>,
     #[serde(default)]
     pub ignore_mutants: Vec<String>,

@@ -54,6 +54,9 @@ struct Cli {
     ordering: Option<Ordering>,
 
     #[arg(long, global = true)]
+    sub_dir: Option<PathBuf>,
+
+    #[arg(long, global = true)]
     files: Option<String>,
 
     #[arg(long, global = true)]
@@ -94,9 +97,18 @@ enum StepAction {
         #[arg(long)]
         hash: Hash,
     },
-    Install,
-    Build,
-    Test,
+    Install {
+        #[arg(short, long)]
+        workspace: String,
+    },
+    Build {
+        #[arg(short, long)]
+        workspace: String,
+    },
+    Test {
+        #[arg(short, long)]
+        workspace: String,
+    },
     Reset,
     Cleanup,
 }
@@ -453,16 +465,65 @@ fn step_apply(session: &Session, workspace_name: &str, hash: &Hash) -> StepResul
     (vec![], renders)
 }
 
-fn step_install(_session: &Session) -> StepResult {
-    (vec![], vec![])
+fn run_in_workspace(
+    session: &Session,
+    workspace_name: &str,
+    command: &Option<String>,
+    step_name: &str,
+) -> StepResult {
+    let cmd = match command {
+        Some(c) => c,
+        None => {
+            log::info!("no {step_name} command configured, skipping");
+            return (vec![], vec![]);
+        }
+    };
+
+    let manifest = read_workspace_manifest(session);
+    let ws = manifest.workspaces.iter().find(|ws| ws.name == workspace_name).unwrap_or_else(|| {
+        eprintln!("workspace {workspace_name} not found in manifest");
+        std::process::exit(1);
+    });
+
+    log::info!("running {step_name} in {}: {cmd}", ws.path.display());
+
+    let output = std::process::Command::new("sh")
+        .args(["-c", cmd])
+        .current_dir(ws.path.join(&session.sub_dir))
+        .output()
+        .unwrap_or_else(|e| {
+            eprintln!("failed to run {step_name}: {e}");
+            std::process::exit(1);
+        });
+
+    let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+    let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+    let result = if output.status.success() {
+        Ok(stdout)
+    } else {
+        Err(stderr)
+    };
+
+    let renders: Vec<Box<dyn RenderOutput>> = vec![Box::new(feedback::CommandRecord {
+        step: step_name.to_string(),
+        workspace: workspace_name.to_string(),
+        command: cmd.to_string(),
+        result,
+    })];
+
+    (vec![], renders)
 }
 
-fn step_build(_session: &Session) -> StepResult {
-    (vec![], vec![])
+fn step_install(session: &Session, workspace: &str) -> StepResult {
+    run_in_workspace(session, workspace, &session.commands.install, "install")
 }
 
-fn step_test(_session: &Session) -> StepResult {
-    (vec![], vec![])
+fn step_build(session: &Session, workspace: &str) -> StepResult {
+    run_in_workspace(session, workspace, &session.commands.build, "build")
+}
+
+fn step_test(session: &Session, workspace: &str) -> StepResult {
+    run_in_workspace(session, workspace, &Some(session.commands.test.clone()), "test")
 }
 
 fn step_reset(_session: &Session) -> StepResult {
@@ -579,9 +640,9 @@ fn main() {
                 StepAction::Plan => step_plan(&session),
                 StepAction::Create => step_create(&session),
                 StepAction::Apply { workspace, hash } => step_apply(&session, workspace, hash),
-                StepAction::Install => step_install(&session),
-                StepAction::Build => step_build(&session),
-                StepAction::Test => step_test(&session),
+                StepAction::Install { workspace } => step_install(&session, workspace),
+                StepAction::Build { workspace } => step_build(&session, workspace),
+                StepAction::Test { workspace } => step_test(&session, workspace),
                 StepAction::Reset => step_reset(&session),
                 StepAction::Cleanup => step_cleanup(&session),
             };
