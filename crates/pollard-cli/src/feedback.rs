@@ -35,7 +35,8 @@ impl RenderOutput for MutationRecord {
             }
             Style::Plain => {
                 println!(
-                    "{:?} {}:{}-{}:{} {} -> {}",
+                    "{} {:?} {}:{}-{}:{} {} -> {}",
+                    self.mutated_hash,
                     self.kind,
                     self.start_line + 1,
                     self.start_char + 1,
@@ -47,7 +48,8 @@ impl RenderOutput for MutationRecord {
             }
             Style::Pretty => {
                 println!(
-                    "\x1b[1m{:?}\x1b[0m \x1b[36m{}:{}-{}:{}\x1b[0m \x1b[31m{}\x1b[0m -> \x1b[32m{}\x1b[0m",
+                    "\x1b[33m{}\x1b[0m \x1b[1m{:?}\x1b[0m \x1b[36m{}:{}-{}:{}\x1b[0m \x1b[31m{}\x1b[0m -> \x1b[32m{}\x1b[0m",
+                    self.mutated_hash,
                     self.kind,
                     self.start_line + 1,
                     self.start_char + 1,

@@ -9,7 +9,7 @@ use pollard_core::{
     Hash, Language, MutatedFile, MutationKind, SourceFile, find_mutation_points,
     generate_mutation_substitutions,
 };
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Parser)]
 #[command(name = "pollard", about = "Cross-language mutation testing")]
@@ -23,7 +23,7 @@ struct Cli {
     #[arg(short, long)]
     language: LanguageArg,
 
-    #[arg(short, long, default_value = "plain")]
+    #[arg(short, long, default_value = "plain", global = true)]
     style: Style,
 
     #[command(subcommand)]
@@ -103,7 +103,7 @@ where
     records
 }
 
-fn generate(language: &LanguageArg, input: &PathBuf) -> Vec<MutationRecord> {
+fn generate(language: &LanguageArg, input: &Path) -> Vec<MutationRecord> {
     let file = SourceFile::read(input).expect("failed to read input file");
     match language {
         LanguageArg::Javascript => generate_for_language::<JavaScript>(&file),
@@ -114,7 +114,7 @@ fn generate(language: &LanguageArg, input: &PathBuf) -> Vec<MutationRecord> {
 fn find_mutated_by_hash<'a, L: Language>(file: &'a SourceFile, target: &Hash) -> Option<MutatedFile<'a>> {
     let points = find_mutation_points::<L>(file);
     for point in &points {
-        for (_, mutated) in generate_mutation_substitutions::<L>(&point) {
+        for (_, mutated) in generate_mutation_substitutions::<L>(point) {
             if mutated.hash() == target {
                 return Some(mutated);
             }
@@ -123,7 +123,7 @@ fn find_mutated_by_hash<'a, L: Language>(file: &'a SourceFile, target: &Hash) ->
     None
 }
 
-fn view(language: &LanguageArg, input: &PathBuf, hash: &Hash) {
+fn view(language: &LanguageArg, input: &Path, hash: &Hash) {
     let file = SourceFile::read(input).expect("failed to read input file");
     let mutated = match language {
         LanguageArg::Javascript => find_mutated_by_hash::<JavaScript>(&file, hash),
