@@ -1,9 +1,11 @@
+mod action;
 mod feedback;
 
-use clap::{Parser, Subcommand, ValueEnum};
+use action::Action;
+use clap::{Parser, Subcommand};
 use feedback::{ApplyRecord, MutationRecord, RenderOutput, Style};
 use log::LevelFilter;
-use pollard_core::config::Config;
+use pollard_core::config::{Config, LanguageId};
 use pollard_core::languages::javascript::JavaScript;
 use pollard_core::languages::typescript::TypeScript;
 use pollard_core::{
@@ -18,8 +20,8 @@ struct Cli {
     #[arg(short, long, global = true, action = clap::ArgAction::Count, help = "Increase log verbosity (-v, -vv, -vvv)")]
     verbose: u8,
 
-    #[arg(short, long)]
-    language: LanguageArg,
+    #[arg(short, long, global = true)]
+    language: Option<LanguageId>,
 
     #[arg(short, long, default_value = "plain", global = true)]
     style: Style,
@@ -30,16 +32,14 @@ struct Cli {
     #[arg(long, env = "NO_COLOR", hide = true, default_value_t = false, global = true)]
     no_color: bool,
 
+    #[arg(long, global = true)]
+    config: Option<PathBuf>,
+
+    #[arg(long, global = true, default_value_t = false)]
+    force_on_dirty_repo: bool,
+
     #[command(subcommand)]
     command: Command,
-}
-
-#[derive(Clone, ValueEnum)]
-enum LanguageArg {
-    #[value(alias = "js")]
-    Javascript,
-    #[value(alias = "ts")]
-    Typescript,
 }
 
 #[derive(Subcommand)]
@@ -121,14 +121,14 @@ fn expand_glob(pattern: &str) -> Vec<PathBuf> {
         .collect()
 }
 
-fn generate(language: &LanguageArg, pattern: &str) -> Vec<MutationRecord> {
+fn generate(language: &LanguageId, pattern: &str) -> Vec<MutationRecord> {
     let paths = expand_glob(pattern);
     let mut records = Vec::new();
     for path in &paths {
         let file = SourceFile::read(path).expect("failed to read input file");
         let mut file_records = match language {
-            LanguageArg::Javascript => generate_for_language::<JavaScript>(&file),
-            LanguageArg::Typescript => generate_for_language::<TypeScript>(&file),
+            LanguageId::Javascript => generate_for_language::<JavaScript>(&file),
+            LanguageId::Typescript => generate_for_language::<TypeScript>(&file),
         };
         records.append(&mut file_records);
     }
@@ -151,15 +151,15 @@ fn find_mutated_by_hash<'a, L: Language>(
 }
 
 fn view(
-    language: &LanguageArg,
+    language: &LanguageId,
     input: &Path,
     hash: &Hash,
     diff_style: feedback::DiffStyle,
 ) -> feedback::DiffRecord {
     let file = SourceFile::read(input).expect("failed to read input file");
     let mutated = match language {
-        LanguageArg::Javascript => find_mutated_by_hash::<JavaScript>(&file, hash),
-        LanguageArg::Typescript => find_mutated_by_hash::<TypeScript>(&file, hash),
+        LanguageId::Javascript => find_mutated_by_hash::<JavaScript>(&file, hash),
+        LanguageId::Typescript => find_mutated_by_hash::<TypeScript>(&file, hash),
     }
     .unwrap_or_else(|| {
         eprintln!("no mutation found with hash {hash}");
@@ -174,25 +174,32 @@ fn view(
     }
 }
 
-fn apply(language: &LanguageArg, input: &Path, hash: &Hash) -> ApplyRecord {
+fn apply(language: &LanguageId, input: &Path, hash: &Hash) -> (Vec<Action>, ApplyRecord) {
     let file = SourceFile::read(input).expect("failed to read input file");
     let mutated = match language {
-        LanguageArg::Javascript => find_mutated_by_hash::<JavaScript>(&file, hash),
-        LanguageArg::Typescript => find_mutated_by_hash::<TypeScript>(&file, hash),
+        LanguageId::Javascript => find_mutated_by_hash::<JavaScript>(&file, hash),
+        LanguageId::Typescript => find_mutated_by_hash::<TypeScript>(&file, hash),
     }
     .unwrap_or_else(|| {
         eprintln!("no mutation found with hash {hash}");
         std::process::exit(1);
     });
 
-    std::fs::write(input, mutated.content()).expect("failed to write mutated file");
+    let actions = vec![Action::WriteFile {
+        path: input.to_owned(),
+        content: mutated.content().to_string(),
+    }];
 
-    ApplyRecord {
+    let record = ApplyRecord {
         source_path: file.path().to_owned(),
         source_hash: file.hash().clone(),
         mutated_hash: mutated.hash().clone(),
-    }
+    };
+
+    (actions, record)
 }
+
+
 
 fn main() {
     let cli = Cli::parse();
@@ -203,7 +210,11 @@ fn main() {
         .init();
 
     let cwd = std::env::current_dir().expect("failed to get current directory");
-    let (config_path, config) = match Config::discover(&cwd) {
+    let discovered = match &cli.config {
+        Some(path) => Some((path.clone(), Config::read(path))),
+        None => Config::discover(&cwd),
+    };
+    let (config_path, config) = match discovered {
         Some((path, Ok(config))) => {
             log::info!("loaded config from {}", path.display());
             log::debug!("config: {}", serde_json::to_string(&config).expect("failed to serialize config"));
@@ -218,21 +229,43 @@ fn main() {
             std::process::exit(1);
         }
     };
-    let _ = (&config_path, &config);
+    let _ = &config_path;
 
-    match &cli.command {
+    let language = cli.language.or(config.language).unwrap_or_else(|| {
+        eprintln!("no language specified (use -l/--language or set language in config)");
+        std::process::exit(1);
+    });
+
+    let (actions, renders): (Vec<Action>, Vec<Box<dyn RenderOutput>>) = match &cli.command {
         Command::Mutate { action } => match action {
             MutateAction::Generate { file: pattern } => {
-                for record in generate(&cli.language, pattern) {
-                    record.render(&cli.style, cli.no_color);
-                }
+                let renders: Vec<Box<dyn RenderOutput>> = generate(&language, pattern)
+                    .into_iter()
+                    .map(|r| Box::new(r) as Box<dyn RenderOutput>)
+                    .collect();
+                (vec![], renders)
             }
             MutateAction::View { file: input, hash } => {
-                view(&cli.language, input, hash, cli.diff.clone()).render(&cli.style, cli.no_color);
+                let record = view(&language, input, hash, cli.diff.clone());
+                (vec![], vec![Box::new(record)])
             }
             MutateAction::Apply { file: input, hash } => {
-                apply(&cli.language, input, hash).render(&cli.style, cli.no_color);
+                let (actions, record) = apply(&language, input, hash);
+                (actions, vec![Box::new(record)])
             }
         },
+    };
+
+    if !actions.is_empty() && !cli.force_on_dirty_repo && action::repo_is_dirty() {
+        eprintln!("repo has uncommitted changes, use --force-on-dirty-repo to proceed");
+        std::process::exit(1);
+    }
+
+    for action in actions {
+        action.apply().expect("failed to apply action");
+    }
+
+    for render in &renders {
+        render.render(&cli.style, cli.no_color);
     }
 }

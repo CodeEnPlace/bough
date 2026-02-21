@@ -1,9 +1,20 @@
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, clap::ValueEnum)]
+#[serde(rename_all = "lowercase")]
+pub enum LanguageId {
+    #[serde(alias = "js")]
+    #[value(alias = "js")]
+    Javascript,
+    #[serde(alias = "ts")]
+    #[value(alias = "ts")]
+    Typescript,
+}
+
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct Config {
-    pub language: Option<String>,
+    pub language: Option<LanguageId>,
 }
 
 #[derive(Debug)]

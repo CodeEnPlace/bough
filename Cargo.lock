@@ -336,6 +336,7 @@ dependencies = [
 name = "pollard-core"
 version = "0.0.0"
 dependencies = [
+ "clap",
  "serde",
  "serde_json",
  "sha2",
