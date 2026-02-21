@@ -227,7 +227,7 @@ impl RenderOutput for PlanRecord {
 #[derive(Serialize)]
 pub struct CreateRecord {
     pub workspaces: Vec<String>,
-    pub path: PathBuf,
+    pub manifest: PathBuf,
 }
 
 impl RenderOutput for CreateRecord {
@@ -238,19 +238,48 @@ impl RenderOutput for CreateRecord {
             }
             Style::Pretty => {
                 println!(
-                    "Created {} workspaces in {}",
+                    "Created {} workspaces, manifest: {}",
                     color("\x1b[33m", &self.workspaces.len().to_string(), no_color),
-                    color("\x1b[36m", &self.path.display().to_string(), no_color),
+                    color("\x1b[36m", &self.manifest.display().to_string(), no_color),
                 );
                 for ws in &self.workspaces {
                     println!("  {}", color("\x1b[33m", ws, no_color));
                 }
             }
             Style::Plain => {
-                println!("Created {} workspaces in {}", self.workspaces.len(), self.path.display());
+                println!("Created {} workspaces, manifest: {}", self.workspaces.len(), self.manifest.display());
                 for ws in &self.workspaces {
                     println!("  {ws}");
                 }
+            }
+        }
+    }
+}
+
+#[derive(Serialize)]
+pub struct CleanupRecord {
+    pub workspace_count: usize,
+    pub manifest_count: usize,
+}
+
+impl RenderOutput for CleanupRecord {
+    fn render(&self, style: &Style, no_color: bool) {
+        match style {
+            Style::Json => {
+                println!("{}", serde_json::to_string(self).expect("failed to serialize"));
+            }
+            Style::Pretty => {
+                println!(
+                    "Cleaned up {} workspaces from {} manifests",
+                    color("\x1b[33m", &self.workspace_count.to_string(), no_color),
+                    color("\x1b[36m", &self.manifest_count.to_string(), no_color),
+                );
+            }
+            Style::Plain => {
+                println!(
+                    "Cleaned up {} workspaces from {} manifests",
+                    self.workspace_count, self.manifest_count,
+                );
             }
         }
     }

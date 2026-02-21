@@ -249,6 +249,10 @@ fn apply(language: &LanguageId, input: &Path, hash: &Hash) -> (Vec<Action>, Appl
 
 type StepResult = (Vec<Action>, Vec<Box<dyn RenderOutput>>);
 
+fn content_id(content: &str) -> String {
+    pollard_core::Hash::of(content).to_string()
+}
+
 fn plan_entries_for_language<L: Language>(file: &SourceFile) -> Vec<PlanEntry>
 where
     L::Kind: Copy + Into<MutationKind>,
@@ -293,7 +297,7 @@ fn generate_plan(language: &LanguageId, pattern: &str) -> Plan {
 fn step_plan(session: &Session) -> StepResult {
     let plan = generate_plan(&session.language, &session.files);
     let content = serde_json::to_string_pretty(&plan).expect("failed to serialize plan");
-    let plan_path = session.working_dir.join(format!("{}.mutants.plan.json", pollard_core::Hash::of(&content)));
+    let plan_path = session.working_dir.join(format!("{}.mutants.plan.json", content_id(&content)));
 
     log::info!("generated {} mutations", plan.entries.len());
 
@@ -323,7 +327,7 @@ fn step_create(session: &Session) -> StepResult {
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
         .as_nanos();
-    let batch_id = &pollard_core::Hash::of(&nanos.to_string()).to_string()[..8];
+    let batch_id = &content_id(&nanos.to_string())[..8];
 
     let workspaces: Vec<pollard_core::plan::Workspace> = (0..session.parallelism)
         .map(|i| {
@@ -338,10 +342,12 @@ fn step_create(session: &Session) -> StepResult {
     };
     let manifest_content =
         serde_json::to_string_pretty(&manifest).expect("failed to serialize manifest");
-    let manifest_path = session.working_dir.join("workspaces.json");
+    let manifest_path = session
+        .working_dir
+        .join(format!("{}.workspaces.json", content_id(&manifest_content)));
 
     let mut actions = vec![Action::WriteFile {
-        path: manifest_path,
+        path: manifest_path.clone(),
         content: manifest_content,
     }];
 
@@ -354,7 +360,7 @@ fn step_create(session: &Session) -> StepResult {
 
     let renders: Vec<Box<dyn RenderOutput>> = vec![Box::new(feedback::CreateRecord {
         workspaces: workspaces.iter().map(|ws| ws.name.clone()).collect(),
-        path: session.working_dir.clone(),
+        manifest: manifest_path,
     })];
 
     (actions, renders)
@@ -380,8 +386,40 @@ fn step_reset(_session: &Session) -> StepResult {
     (vec![], vec![])
 }
 
-fn step_cleanup(_session: &Session) -> StepResult {
-    (vec![], vec![])
+fn step_cleanup(session: &Session) -> StepResult {
+    let pattern = session.working_dir.join("*.workspaces.json");
+    let manifest_paths = expand_glob(&pattern.display().to_string());
+
+    let mut actions: Vec<Action> = Vec::new();
+    let mut workspace_count = 0;
+
+    for manifest_path in &manifest_paths {
+        let content = std::fs::read_to_string(manifest_path)
+            .unwrap_or_else(|e| {
+                eprintln!("failed to read {}: {e}", manifest_path.display());
+                std::process::exit(1);
+            });
+        let manifest: pollard_core::plan::WorkspaceManifest = serde_json::from_str(&content)
+            .unwrap_or_else(|e| {
+                eprintln!("failed to parse {}: {e}", manifest_path.display());
+                std::process::exit(1);
+            });
+
+        for ws in &manifest.workspaces {
+            actions.push(Action::ForgetJjWorkspace { name: ws.name.clone() });
+            actions.push(Action::RemoveDir { path: ws.path.clone() });
+            workspace_count += 1;
+        }
+
+        actions.push(Action::RemoveFile { path: manifest_path.clone() });
+    }
+
+    let renders: Vec<Box<dyn RenderOutput>> = vec![Box::new(feedback::CleanupRecord {
+        workspace_count,
+        manifest_count: manifest_paths.len(),
+    })];
+
+    (actions, renders)
 }
 
 fn main() {

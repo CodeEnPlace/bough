@@ -3,6 +3,9 @@ use std::path::PathBuf;
 pub enum Action {
     WriteFile { path: PathBuf, content: String },
     CreateJjWorkspace { name: String, path: PathBuf },
+    ForgetJjWorkspace { name: String },
+    RemoveDir { path: PathBuf },
+    RemoveFile { path: PathBuf },
 }
 
 impl Action {
@@ -28,6 +31,29 @@ impl Action {
                 } else {
                     Ok(())
                 }
+            }
+            Action::ForgetJjWorkspace { name } => {
+                log::info!("forgetting jj workspace {name}");
+                let output = std::process::Command::new("jj")
+                    .args(["workspace", "forget", &name])
+                    .output()?;
+                if !output.status.success() {
+                    let stderr = String::from_utf8_lossy(&output.stderr);
+                    Err(std::io::Error::new(
+                        std::io::ErrorKind::Other,
+                        format!("jj workspace forget failed: {stderr}"),
+                    ))
+                } else {
+                    Ok(())
+                }
+            }
+            Action::RemoveDir { path } => {
+                log::info!("removing dir {}", path.display());
+                std::fs::remove_dir_all(&path)
+            }
+            Action::RemoveFile { path } => {
+                log::info!("removing file {}", path.display());
+                std::fs::remove_file(&path)
             }
         }
     }
