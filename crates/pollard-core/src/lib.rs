@@ -1,9 +1,14 @@
 pub mod languages;
 
+use serde::de::{self, Deserializer, MapAccess, Visitor};
+use serde::ser::{SerializeStruct, Serializer};
+use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use std::fmt;
 use std::path::{Path, PathBuf};
 use tree_sitter::Parser;
 
+#[derive(Serialize, Deserialize)]
 pub struct Hash([u8; 32]);
 
 impl Hash {
@@ -23,6 +28,53 @@ pub struct MutatedFile<'a> {
     content: String,
     hash: Hash,
 }
+
+impl Serialize for SourceFile {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let mut state = serializer.serialize_struct("SourceFile", 2)?;
+        state.serialize_field("path", &self.path)?;
+        state.serialize_field("hash", &self.hash)?;
+        state.end()
+    }
+}
+
+impl<'de> Deserialize<'de> for SourceFile {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        struct SourceFileVisitor;
+
+        impl<'de> Visitor<'de> for SourceFileVisitor {
+            type Value = SourceFile;
+
+            fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                f.write_str("a SourceFile with path and hash")
+            }
+
+            fn visit_map<A: MapAccess<'de>>(self, mut map: A) -> Result<SourceFile, A::Error> {
+                let mut path: Option<PathBuf> = None;
+                let mut hash: Option<Hash> = None;
+
+                while let Some(key) = map.next_key::<&str>()? {
+                    match key {
+                        "path" => path = Some(map.next_value()?),
+                        "hash" => hash = Some(map.next_value()?),
+                        _ => { let _ = map.next_value::<de::IgnoredAny>()?; }
+                    }
+                }
+
+                let path = path.ok_or_else(|| de::Error::missing_field("path"))?;
+                let hash = hash.ok_or_else(|| de::Error::missing_field("hash"))?;
+                let content = std::fs::read_to_string(&path)
+                    .map_err(|e| de::Error::custom(format!("failed to read {}: {e}", path.display())))?;
+
+                Ok(SourceFile { path, content, hash })
+            }
+        }
+
+        deserializer.deserialize_struct("SourceFile", &["path", "hash"], SourceFileVisitor)
+    }
+}
+
+
 
 impl SourceFile {
     pub fn read(path: &Path) -> std::io::Result<Self> {
@@ -75,13 +127,13 @@ impl<'a> MutatedFile<'a> {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct Span {
     pub start: usize,
     pub end: usize,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum BinaryOpKind {
     Add,
     Sub,
@@ -110,7 +162,7 @@ pub trait Language {
     fn generate_substitutions<'a>(kind: &Self::Kind, file: &'a SourceFile, span: &Span) -> Vec<MutatedFile<'a>>;
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub enum MutationKind {
     StatementBlock,
     BinaryOp(BinaryOpKind),

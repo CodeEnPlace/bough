@@ -1,8 +1,9 @@
 use crate::{BinaryOpKind, Language, MutatedFile, MutationKind, SourceFile, Span};
+use serde::{Deserialize, Serialize};
 
 pub struct JavaScript;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub enum JsMutationKind {
     StatementBlock,
     BinaryOp(BinaryOpKind),

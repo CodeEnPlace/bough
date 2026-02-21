@@ -1,8 +1,9 @@
 use crate::{BinaryOpKind, Language, MutatedFile, MutationKind, SourceFile, Span};
+use serde::{Deserialize, Serialize};
 
 pub struct TypeScript;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub enum TsMutationKind {
     StatementBlock,
     BinaryOp(BinaryOpKind),
