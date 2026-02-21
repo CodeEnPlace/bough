@@ -66,7 +66,7 @@ fn log_level(cli: &Cli) -> LevelFilter {
 struct MutationRecord<'a> {
     mutated_file: &'a MutatedFile<'a>,
     kind: MutationKind,
-    span: Span,
+    span: &'a Span<'a>,
     replacement: &'a str,
 }
 
@@ -80,7 +80,7 @@ where
             let record = MutationRecord {
                 mutated_file: mutated,
                 kind: point.kind.into(),
-                span: point.span.clone(),
+                span: &point.span,
                 replacement,
             };
             println!("{}", serde_json::to_string(&record).expect("failed to serialize"));

@@ -8,6 +8,7 @@ use std::fmt;
 use std::path::{Path, PathBuf};
 use tree_sitter::Parser;
 
+#[derive(Debug)]
 pub struct Hash([u8; 32]);
 
 impl Serialize for Hash {
@@ -37,10 +38,17 @@ impl Hash {
     }
 }
 
+#[derive(Debug)]
 pub struct SourceFile {
     path: PathBuf,
     content: String,
     hash: Hash,
+}
+
+impl PartialEq for SourceFile {
+    fn eq(&self, other: &Self) -> bool {
+        self.path == other.path && self.hash.0 == other.hash.0
+    }
 }
 
 pub struct MutatedFile<'a> {
@@ -86,24 +94,29 @@ impl<'de> Deserialize<'de> for SourceFile {
                     match key {
                         "path" => path = Some(map.next_value()?),
                         "hash" => hash = Some(map.next_value()?),
-                        _ => { let _ = map.next_value::<de::IgnoredAny>()?; }
+                        _ => {
+                            let _ = map.next_value::<de::IgnoredAny>()?;
+                        }
                     }
                 }
 
                 let path = path.ok_or_else(|| de::Error::missing_field("path"))?;
                 let hash = hash.ok_or_else(|| de::Error::missing_field("hash"))?;
-                let content = std::fs::read_to_string(&path)
-                    .map_err(|e| de::Error::custom(format!("failed to read {}: {e}", path.display())))?;
+                let content = std::fs::read_to_string(&path).map_err(|e| {
+                    de::Error::custom(format!("failed to read {}: {e}", path.display()))
+                })?;
 
-                Ok(SourceFile { path, content, hash })
+                Ok(SourceFile {
+                    path,
+                    content,
+                    hash,
+                })
             }
         }
 
         deserializer.deserialize_struct("SourceFile", &["path", "hash"], SourceFileVisitor)
     }
 }
-
-
 
 impl SourceFile {
     pub fn read(path: &Path) -> std::io::Result<Self> {
@@ -130,9 +143,9 @@ impl SourceFile {
 
     pub fn with_replacement(&self, span: &Span, replacement: &str) -> MutatedFile<'_> {
         let mut content = String::with_capacity(self.content.len());
-        content.push_str(&self.content[..span.start]);
+        content.push_str(&self.content[..span.start.byte]);
         content.push_str(replacement);
-        content.push_str(&self.content[span.end..]);
+        content.push_str(&self.content[span.end.byte..]);
         let hash = Hash::of(&content);
         MutatedFile {
             source_file: self,
@@ -156,10 +169,40 @@ impl<'a> MutatedFile<'a> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct Span {
-    pub start: usize,
-    pub end: usize,
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct Point<'a> {
+    src: &'a SourceFile,
+    pub line: usize,
+    pub char: usize,
+    pub byte: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct Span<'a> {
+    src: &'a SourceFile,
+    pub start: Point<'a>,
+    pub end: Point<'a>,
+}
+
+impl<'a> Point<'a> {
+    pub fn from_ts(file: &'a SourceFile, ts: tree_sitter::Point, byte: usize) -> Self {
+        Self {
+            src: file,
+            line: ts.row,
+            char: ts.column,
+            byte,
+        }
+    }
+}
+
+impl<'a> Span<'a> {
+    pub fn from_node(file: &'a SourceFile, node: tree_sitter::Node<'_>) -> Self {
+        Self {
+            src: file,
+            start: Point::from_ts(file, node.start_position(), node.start_byte()),
+            end: Point::from_ts(file, node.end_position(), node.end_byte()),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -184,11 +227,15 @@ pub trait Language {
     type Kind: Into<MutationKind>;
 
     fn tree_sitter_language() -> tree_sitter::Language;
-    fn mutation_kind_for_node(
+    fn mutation_kind_for_node<'a>(
         node: tree_sitter::Node<'_>,
-        source: &[u8],
-    ) -> Option<(Self::Kind, Span)>;
-    fn generate_substitutions<'a>(kind: &Self::Kind, file: &'a SourceFile, span: &Span) -> Vec<(String, MutatedFile<'a>)>;
+        file: &'a SourceFile,
+    ) -> Option<(Self::Kind, Span<'a>)>;
+    fn generate_substitutions<'a>(
+        kind: &Self::Kind,
+        file: &'a SourceFile,
+        span: &Span<'a>,
+    ) -> Vec<(String, MutatedFile<'a>)>;
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
@@ -199,7 +246,7 @@ pub enum MutationKind {
 
 pub struct MutationPoint<'a, L: Language> {
     pub file: &'a SourceFile,
-    pub span: Span,
+    pub span: Span<'a>,
     pub kind: L::Kind,
 }
 
@@ -224,14 +271,13 @@ pub fn find_mutation_points<'a, L: Language>(file: &'a SourceFile) -> Vec<Mutati
         .parse(file.content(), None)
         .expect("failed to parse source");
 
-    let source = file.content().as_bytes();
     let mut points = Vec::new();
     let mut cursor = tree.walk();
 
     loop {
         let node = cursor.node();
 
-        if let Some((kind, span)) = L::mutation_kind_for_node(node, source) {
+        if let Some((kind, span)) = L::mutation_kind_for_node(node, file) {
             points.push(MutationPoint { file, span, kind });
         }
 

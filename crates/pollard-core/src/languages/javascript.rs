@@ -25,10 +25,11 @@ impl Language for JavaScript {
         tree_sitter_javascript::LANGUAGE.into()
     }
 
-    fn mutation_kind_for_node(node: tree_sitter::Node<'_>, source: &[u8]) -> Option<(JsMutationKind, Span)> {
+    fn mutation_kind_for_node<'a>(node: tree_sitter::Node<'_>, file: &'a SourceFile) -> Option<(JsMutationKind, Span<'a>)> {
+        let source = file.content().as_bytes();
         match node.kind() {
             "statement_block" => {
-                let span = Span { start: node.start_byte(), end: node.end_byte() };
+                let span = Span::from_node(file, node);
                 Some((JsMutationKind::StatementBlock, span))
             }
             "binary_expression" => {
@@ -50,14 +51,14 @@ impl Language for JavaScript {
                     ">="  => BinaryOpKind::Gte,
                     _     => return None,
                 };
-                let span = Span { start: op_node.start_byte(), end: op_node.end_byte() };
+                let span = Span::from_node(file, op_node);
                 Some((JsMutationKind::BinaryOp(op), span))
             }
             _ => None,
         }
     }
 
-    fn generate_substitutions<'a>(kind: &JsMutationKind, file: &'a SourceFile, span: &Span) -> Vec<(String, MutatedFile<'a>)> {
+    fn generate_substitutions<'a>(kind: &JsMutationKind, file: &'a SourceFile, span: &Span<'a>) -> Vec<(String, MutatedFile<'a>)> {
         use BinaryOpKind::*;
         let replacements: &[&str] = match kind {
             JsMutationKind::StatementBlock => &["{}"],
@@ -83,7 +84,7 @@ impl Language for JavaScript {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{BinaryOpKind, SourceFile, Span, find_mutation_points};
+    use crate::{BinaryOpKind, SourceFile, find_mutation_points};
     use std::path::PathBuf;
 
     fn file(content: &str) -> SourceFile {
@@ -97,7 +98,8 @@ mod tests {
         let f = file("function foo() { return 1; }");
         let points = find_mutation_points::<JavaScript>(&f);
         assert_eq!(points.len(), 1);
-        assert_eq!(points[0].span, Span { start: 15, end: 28 });
+        assert_eq!(points[0].span.start.byte, 15);
+        assert_eq!(points[0].span.end.byte, 28);
         assert_eq!(points[0].kind, JsMutationKind::StatementBlock);
     }
 

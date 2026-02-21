@@ -25,10 +25,11 @@ impl Language for TypeScript {
         tree_sitter_typescript::LANGUAGE_TYPESCRIPT.into()
     }
 
-    fn mutation_kind_for_node(node: tree_sitter::Node<'_>, source: &[u8]) -> Option<(TsMutationKind, Span)> {
+    fn mutation_kind_for_node<'a>(node: tree_sitter::Node<'_>, file: &'a SourceFile) -> Option<(TsMutationKind, Span<'a>)> {
+        let source = file.content().as_bytes();
         match node.kind() {
             "statement_block" => {
-                let span = Span { start: node.start_byte(), end: node.end_byte() };
+                let span = Span::from_node(file, node);
                 Some((TsMutationKind::StatementBlock, span))
             }
             "binary_expression" => {
@@ -50,14 +51,14 @@ impl Language for TypeScript {
                     ">="  => BinaryOpKind::Gte,
                     _     => return None,
                 };
-                let span = Span { start: op_node.start_byte(), end: op_node.end_byte() };
+                let span = Span::from_node(file, op_node);
                 Some((TsMutationKind::BinaryOp(op), span))
             }
             _ => None,
         }
     }
 
-    fn generate_substitutions<'a>(kind: &TsMutationKind, file: &'a SourceFile, span: &Span) -> Vec<(String, MutatedFile<'a>)> {
+    fn generate_substitutions<'a>(kind: &TsMutationKind, file: &'a SourceFile, span: &Span<'a>) -> Vec<(String, MutatedFile<'a>)> {
         use BinaryOpKind::*;
         let replacements: &[&str] = match kind {
             TsMutationKind::StatementBlock => &["{}"],
