@@ -109,7 +109,12 @@ enum StepAction {
         #[arg(short, long)]
         workspace: String,
     },
-    Reset,
+    Reset {
+        #[arg(short, long)]
+        workspace: String,
+        #[arg(short, long)]
+        rev: String,
+    },
     Cleanup,
 }
 
@@ -526,8 +531,43 @@ fn step_test(session: &Session, workspace: &str) -> StepResult {
     run_in_workspace(session, workspace, &Some(session.commands.test.clone()), "test")
 }
 
-fn step_reset(_session: &Session) -> StepResult {
-    (vec![], vec![])
+fn step_reset(session: &Session, workspace_name: &str, rev: &str) -> StepResult {
+    match session.vcs {
+        Vcs::Jj => {}
+        other => {
+            eprintln!("step reset not yet implemented for {other:?}");
+            std::process::exit(1);
+        }
+    }
+
+    let manifest = read_workspace_manifest(session);
+    let ws = manifest.workspaces.iter().find(|ws| ws.name == workspace_name).unwrap_or_else(|| {
+        eprintln!("workspace {workspace_name} not found in manifest");
+        std::process::exit(1);
+    });
+
+    log::info!("resetting workspace {} to {rev}", ws.name);
+    let output = std::process::Command::new("jj")
+        .args(["edit", rev])
+        .current_dir(&ws.path)
+        .output()
+        .unwrap_or_else(|e| {
+            eprintln!("failed to run jj edit: {e}");
+            std::process::exit(1);
+        });
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        eprintln!("jj edit failed for workspace {}: {stderr}", ws.name);
+        std::process::exit(1);
+    }
+
+    let renders: Vec<Box<dyn RenderOutput>> = vec![Box::new(feedback::ResetRecord {
+        workspace: workspace_name.to_string(),
+        rev: rev.to_string(),
+    })];
+
+    (vec![], renders)
 }
 
 fn step_cleanup(session: &Session) -> StepResult {
@@ -643,7 +683,7 @@ fn main() {
                 StepAction::Install { workspace } => step_install(&session, workspace),
                 StepAction::Build { workspace } => step_build(&session, workspace),
                 StepAction::Test { workspace } => step_test(&session, workspace),
-                StepAction::Reset => step_reset(&session),
+                StepAction::Reset { workspace, rev } => step_reset(&session, workspace, rev),
                 StepAction::Cleanup => step_cleanup(&session),
             };
 

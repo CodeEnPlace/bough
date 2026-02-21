@@ -319,6 +319,32 @@ impl RenderOutput for CommandRecord {
     }
 }
 
+#[derive(Serialize)]
+pub struct ResetRecord {
+    pub workspace: String,
+    pub rev: String,
+}
+
+impl RenderOutput for ResetRecord {
+    fn render(&self, style: &Style, no_color: bool) {
+        match style {
+            Style::Json => {
+                println!("{}", serde_json::to_string(self).expect("failed to serialize"));
+            }
+            Style::Pretty => {
+                println!(
+                    "Reset {} to {}",
+                    color("\x1b[33m", &self.workspace, no_color),
+                    color("\x1b[36m", &self.rev, no_color),
+                );
+            }
+            Style::Plain => {
+                println!("Reset {} to {}", self.workspace, self.rev);
+            }
+        }
+    }
+}
+
 fn terminal_width() -> usize {
     terminal_size::terminal_size()
         .map(|(w, _)| w.0 as usize)
