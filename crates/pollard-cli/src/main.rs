@@ -1,4 +1,4 @@
-use clap::Parser;
+use clap::{Parser, Subcommand};
 use log::LevelFilter;
 
 #[derive(Parser)]
@@ -10,12 +10,12 @@ struct Cli {
     #[arg(short, long, help = "Suppress all log output")]
     quiet: bool,
 
-    #[arg(long, default_value = "test", help = "Run until this step (inclusive)")]
-    run_until: Steps,
+    #[command(subcommand)]
+    command: Command,
 }
 
-#[derive(clap::ValueEnum, Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
-enum Steps {
+#[derive(Subcommand)]
+enum Command {
     Clone,
     Setup,
     Find,
@@ -44,22 +44,12 @@ fn main() {
         .parse_default_env()
         .init();
 
-    log::info!("pollard starting");
-
-    log::info!("step: clone");
-    if cli.run_until == Steps::Clone { return; }
-
-    log::info!("step: setup");
-    if cli.run_until == Steps::Setup { return; }
-
-    log::info!("step: find");
-    if cli.run_until == Steps::Find { return; }
-
-    log::info!("step: mutate");
-    if cli.run_until == Steps::Mutate { return; }
-
-    log::info!("step: build");
-    if cli.run_until == Steps::Build { return; }
-
-    log::info!("step: test");
+    match cli.command {
+        Command::Clone => {}
+        Command::Setup => {}
+        Command::Find => {}
+        Command::Mutate => {}
+        Command::Build => {}
+        Command::Test => {}
+    }
 }

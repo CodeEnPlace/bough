@@ -1,4 +1,4 @@
-use crate::{BinaryOpKind, Language, MutationKind};
+use crate::{BinaryOpKind, Language, MutatedFile, MutationKind, SourceFile, Span};
 
 pub struct JavaScript;
 
@@ -24,31 +24,58 @@ impl Language for JavaScript {
         tree_sitter_javascript::LANGUAGE.into()
     }
 
-    fn mutation_kind_for_node(node: tree_sitter::Node<'_>, source: &[u8]) -> Option<JsMutationKind> {
+    fn mutation_kind_for_node(node: tree_sitter::Node<'_>, source: &[u8]) -> Option<(JsMutationKind, Span)> {
         match node.kind() {
-            "statement_block" => Some(JsMutationKind::StatementBlock),
+            "statement_block" => {
+                let span = Span { start: node.start_byte(), end: node.end_byte() };
+                Some((JsMutationKind::StatementBlock, span))
+            }
             "binary_expression" => {
-                let op_str = node.child(1)?.utf8_text(source).ok()?;
-                Some(JsMutationKind::BinaryOp(BinaryOpKind::from_str(op_str)?))
+                let op_node = node.child(1)?;
+                let op = match op_node.utf8_text(source).ok()? {
+                    "+"   => BinaryOpKind::Add,
+                    "-"   => BinaryOpKind::Sub,
+                    "*"   => BinaryOpKind::Mul,
+                    "/"   => BinaryOpKind::Div,
+                    "&&"  => BinaryOpKind::And,
+                    "||"  => BinaryOpKind::Or,
+                    "===" => BinaryOpKind::StrictEq,
+                    "!==" => BinaryOpKind::StrictNeq,
+                    "=="  => BinaryOpKind::Eq,
+                    "!="  => BinaryOpKind::Neq,
+                    "<"   => BinaryOpKind::Lt,
+                    "<="  => BinaryOpKind::Lte,
+                    ">"   => BinaryOpKind::Gt,
+                    ">="  => BinaryOpKind::Gte,
+                    _     => return None,
+                };
+                let span = Span { start: op_node.start_byte(), end: op_node.end_byte() };
+                Some((JsMutationKind::BinaryOp(op), span))
             }
             _ => None,
         }
     }
 
-    fn generate_substitutions(kind: &JsMutationKind, span_text: &str) -> Vec<String> {
-        match kind {
-            JsMutationKind::StatementBlock => vec!["{}".to_string()],
-            JsMutationKind::BinaryOp(op) => {
-                let op_str = op.as_str();
-                let pos = match span_text.find(op_str) {
-                    Some(p) => p,
-                    None => return vec![],
-                };
-                let lhs = &span_text[..pos];
-                let rhs = &span_text[pos + op_str.len()..];
-                op.alternatives().iter().map(|alt| format!("{}{}{}", lhs, alt.as_str(), rhs)).collect()
-            }
-        }
+    fn generate_substitutions<'a>(kind: &JsMutationKind, file: &'a SourceFile, span: &Span) -> Vec<MutatedFile<'a>> {
+        use BinaryOpKind::*;
+        let replacements: &[&str] = match kind {
+            JsMutationKind::StatementBlock => &["{}"],
+            JsMutationKind::BinaryOp(Add)       => &["-", "*", "/"],
+            JsMutationKind::BinaryOp(Sub)       => &["+", "*", "/"],
+            JsMutationKind::BinaryOp(Mul)       => &["+", "-", "/"],
+            JsMutationKind::BinaryOp(Div)       => &["+", "-", "*"],
+            JsMutationKind::BinaryOp(And)       => &["||"],
+            JsMutationKind::BinaryOp(Or)        => &["&&"],
+            JsMutationKind::BinaryOp(StrictEq)  => &["!=="],
+            JsMutationKind::BinaryOp(StrictNeq) => &["==="],
+            JsMutationKind::BinaryOp(Eq)        => &["!="],
+            JsMutationKind::BinaryOp(Neq)       => &["=="],
+            JsMutationKind::BinaryOp(Lt)        => &[">", "<=", ">="],
+            JsMutationKind::BinaryOp(Lte)       => &["<", ">", ">="],
+            JsMutationKind::BinaryOp(Gt)        => &["<", "<=", ">="],
+            JsMutationKind::BinaryOp(Gte)       => &[">", "<", "<="],
+        };
+        replacements.iter().map(|r| file.with_replacement(span, r)).collect()
     }
 }
 
@@ -59,7 +86,9 @@ mod tests {
     use std::path::PathBuf;
 
     fn file(content: &str) -> SourceFile {
-        SourceFile { path: PathBuf::from("test.js"), content: content.to_string() }
+        let content = content.to_string();
+        let hash = crate::Hash::of(&content);
+        SourceFile { path: PathBuf::from("test.js"), content, hash }
     }
 
     #[test]
