@@ -3,6 +3,7 @@ pub mod languages;
 use std::path::{Path, PathBuf};
 use tree_sitter::Parser;
 
+
 pub struct SourceFile {
     pub path: PathBuf,
     pub content: String,
@@ -18,25 +19,109 @@ impl SourceFile {
     }
 }
 
+
 #[derive(Debug, PartialEq)]
 pub struct Span {
     pub start: usize,
     pub end: usize,
 }
 
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum BinaryOpKind {
+    Add,
+    Sub,
+    Mul,
+    Div,
+    And,
+    Or,
+    StrictEq,
+    StrictNeq,
+    Eq,
+    Neq,
+    Lt,
+    Lte,
+    Gt,
+    Gte,
+}
+
+impl BinaryOpKind {
+    pub fn from_str(s: &str) -> Option<Self> {
+        match s {
+            "+" => Some(Self::Add),
+            "-" => Some(Self::Sub),
+            "*" => Some(Self::Mul),
+            "/" => Some(Self::Div),
+            "&&" => Some(Self::And),
+            "||" => Some(Self::Or),
+            "===" => Some(Self::StrictEq),
+            "!==" => Some(Self::StrictNeq),
+            "==" => Some(Self::Eq),
+            "!=" => Some(Self::Neq),
+            "<" => Some(Self::Lt),
+            "<=" => Some(Self::Lte),
+            ">" => Some(Self::Gt),
+            ">=" => Some(Self::Gte),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Add => "+",
+            Self::Sub => "-",
+            Self::Mul => "*",
+            Self::Div => "/",
+            Self::And => "&&",
+            Self::Or => "||",
+            Self::StrictEq => "===",
+            Self::StrictNeq => "!==",
+            Self::Eq => "==",
+            Self::Neq => "!=",
+            Self::Lt => "<",
+            Self::Lte => "<=",
+            Self::Gt => ">",
+            Self::Gte => ">=",
+        }
+    }
+
+    pub fn alternatives(self) -> &'static [BinaryOpKind] {
+        use BinaryOpKind::*;
+        match self {
+            Add => &[Sub, Mul, Div],
+            Sub => &[Add, Mul, Div],
+            Mul => &[Add, Sub, Div],
+            Div => &[Add, Sub, Mul],
+            And => &[Or],
+            Or => &[And],
+            StrictEq => &[StrictNeq],
+            StrictNeq => &[StrictEq],
+            Eq => &[Neq],
+            Neq => &[Eq],
+            Lt => &[Gt, Lte, Gte],
+            Lte => &[Lt, Gt, Gte],
+            Gt => &[Lt, Lte, Gte],
+            Gte => &[Gt, Lt, Lte],
+        }
+    }
+}
+
+
 pub trait Language {
     type Kind: Into<MutationKind>;
 
     fn tree_sitter_language() -> tree_sitter::Language;
-    fn mutation_kind_for_node(node_kind: &str) -> Option<Self::Kind>;
+    fn mutation_kind_for_node(node: tree_sitter::Node<'_>, source: &[u8]) -> Option<Self::Kind>;
     fn generate_substitutions(kind: &Self::Kind, span_text: &str) -> Vec<String>;
 }
+
 
 #[derive(Debug, PartialEq)]
 pub enum MutationKind {
     StatementBlock,
-    BinaryOp,
+    BinaryOp(BinaryOpKind),
 }
+
 
 pub struct MutationPoint<'a, L: Language> {
     pub file: &'a SourceFile,
@@ -44,7 +129,6 @@ pub struct MutationPoint<'a, L: Language> {
     pub kind: L::Kind,
 }
 
-// ── MutationSubstitution ──────────────────────────────────────────────────────
 
 pub struct MutationSubstitution<'a, 'b, L: Language> {
     pub point: &'b MutationPoint<'a, L>,
@@ -61,7 +145,6 @@ pub fn generate_mutation_substitutions<'a, 'b, L: Language>(
         .collect()
 }
 
-// ── find_mutation_points ──────────────────────────────────────────────────────
 
 pub fn find_mutation_points<'a, L: Language>(file: &'a SourceFile) -> Vec<MutationPoint<'a, L>> {
     let mut parser = Parser::new();
@@ -73,13 +156,14 @@ pub fn find_mutation_points<'a, L: Language>(file: &'a SourceFile) -> Vec<Mutati
         .parse(&file.content, None)
         .expect("failed to parse source");
 
+    let source = file.content.as_bytes();
     let mut points = Vec::new();
     let mut cursor = tree.walk();
 
     loop {
         let node = cursor.node();
 
-        if let Some(kind) = L::mutation_kind_for_node(node.kind()) {
+        if let Some(kind) = L::mutation_kind_for_node(node, source) {
             points.push(MutationPoint {
                 file,
                 span: Span {
@@ -101,6 +185,7 @@ pub fn find_mutation_points<'a, L: Language>(file: &'a SourceFile) -> Vec<Mutati
     }
 }
 
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -108,7 +193,10 @@ mod tests {
     use std::path::PathBuf;
 
     fn file(content: &str) -> SourceFile {
-        SourceFile { path: PathBuf::from("test.js"), content: content.to_string() }
+        SourceFile {
+            path: PathBuf::from("test.js"),
+            content: content.to_string(),
+        }
     }
 
     #[test]

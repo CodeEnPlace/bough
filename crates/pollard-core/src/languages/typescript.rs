@@ -1,19 +1,18 @@
-use crate::{Language, MutationKind};
-use super::common::binary_op_substitutions;
+use crate::{BinaryOpKind, Language, MutationKind};
 
 pub struct TypeScript;
 
 #[derive(Debug, PartialEq)]
 pub enum TsMutationKind {
     StatementBlock,
-    BinaryOp,
+    BinaryOp(BinaryOpKind),
 }
 
 impl From<TsMutationKind> for MutationKind {
     fn from(k: TsMutationKind) -> Self {
         match k {
             TsMutationKind::StatementBlock => MutationKind::StatementBlock,
-            TsMutationKind::BinaryOp => MutationKind::BinaryOp,
+            TsMutationKind::BinaryOp(op) => MutationKind::BinaryOp(op),
         }
     }
 }
@@ -25,10 +24,13 @@ impl Language for TypeScript {
         tree_sitter_typescript::LANGUAGE_TYPESCRIPT.into()
     }
 
-    fn mutation_kind_for_node(node_kind: &str) -> Option<TsMutationKind> {
-        match node_kind {
+    fn mutation_kind_for_node(node: tree_sitter::Node<'_>, source: &[u8]) -> Option<TsMutationKind> {
+        match node.kind() {
             "statement_block" => Some(TsMutationKind::StatementBlock),
-            "binary_expression" => Some(TsMutationKind::BinaryOp),
+            "binary_expression" => {
+                let op_str = node.child(1)?.utf8_text(source).ok()?;
+                Some(TsMutationKind::BinaryOp(BinaryOpKind::from_str(op_str)?))
+            }
             _ => None,
         }
     }
@@ -36,7 +38,16 @@ impl Language for TypeScript {
     fn generate_substitutions(kind: &TsMutationKind, span_text: &str) -> Vec<String> {
         match kind {
             TsMutationKind::StatementBlock => vec!["{}".to_string()],
-            TsMutationKind::BinaryOp => binary_op_substitutions(span_text),
+            TsMutationKind::BinaryOp(op) => {
+                let op_str = op.as_str();
+                let pos = match span_text.find(op_str) {
+                    Some(p) => p,
+                    None => return vec![],
+                };
+                let lhs = &span_text[..pos];
+                let rhs = &span_text[pos + op_str.len()..];
+                op.alternatives().iter().map(|alt| format!("{}{}{}", lhs, alt.as_str(), rhs)).collect()
+            }
         }
     }
 }
@@ -44,7 +55,7 @@ impl Language for TypeScript {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{SourceFile, find_mutation_points};
+    use crate::{BinaryOpKind, SourceFile, find_mutation_points};
     use std::path::PathBuf;
 
     fn file(content: &str) -> SourceFile {
@@ -77,7 +88,7 @@ mod tests {
         let f = file("const x: number = a + b;");
         let points = find_mutation_points::<TypeScript>(&f);
         assert_eq!(points.len(), 1);
-        assert_eq!(points[0].kind, TsMutationKind::BinaryOp);
+        assert_eq!(points[0].kind, TsMutationKind::BinaryOp(BinaryOpKind::Add));
     }
 
     #[test]
@@ -85,7 +96,7 @@ mod tests {
         let f = file("const x: number = a * b;");
         let points = find_mutation_points::<TypeScript>(&f);
         assert_eq!(points.len(), 1);
-        assert_eq!(points[0].kind, TsMutationKind::BinaryOp);
+        assert_eq!(points[0].kind, TsMutationKind::BinaryOp(BinaryOpKind::Mul));
     }
 
     #[test]
@@ -93,6 +104,6 @@ mod tests {
         let f = file("const x: boolean = a && b;");
         let points = find_mutation_points::<TypeScript>(&f);
         assert_eq!(points.len(), 1);
-        assert_eq!(points[0].kind, TsMutationKind::BinaryOp);
+        assert_eq!(points[0].kind, TsMutationKind::BinaryOp(BinaryOpKind::And));
     }
 }
