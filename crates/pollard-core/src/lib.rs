@@ -1,5 +1,6 @@
 pub mod config;
 pub mod languages;
+pub mod plan;
 
 use serde::de::{self, Deserializer, MapAccess, Visitor};
 use serde::ser::{SerializeStruct, Serializer};
@@ -272,7 +273,7 @@ pub trait Language {
     ) -> Vec<(String, MutatedFile<'a>)>;
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum MutationKind {
     StatementBlock,
     BinaryOp(BinaryOpKind),

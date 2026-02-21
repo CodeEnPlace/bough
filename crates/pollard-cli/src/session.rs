@@ -18,6 +18,8 @@ pub struct Session {
     pub ordering: Ordering,
     pub files: String,
     pub ignore_mutants: Vec<String>,
+    pub timeout_absolute: u64,
+    pub timeout_relative: f64,
     pub style: Style,
     pub diff: DiffStyle,
     pub no_color: bool,
@@ -53,6 +55,8 @@ impl Session {
         let report_dir = require!(missing, cli.report_dir.clone().or(config.report_dir.clone()), "report_dir", "use --report-dir or set in config");
         let ordering = require!(missing, cli.ordering.or(config.ordering), "ordering", "use --ordering or set in config");
         let files = require!(missing, cli.files.clone().or(config.files.clone()), "files", "use --files or set in config");
+        let timeout_absolute = require!(missing, cli.timeout_absolute.or(config.timeout.absolute), "timeout.absolute", "use --timeout-absolute or set in config");
+        let timeout_relative = require!(missing, cli.timeout_relative.or(config.timeout.relative), "timeout.relative", "use --timeout-relative or set in config");
 
         if !missing.is_empty() {
             return Err(format!(
@@ -69,6 +73,8 @@ impl Session {
             report_dir: report_dir.unwrap(),
             ordering: ordering.unwrap(),
             files: files.unwrap(),
+            timeout_absolute: timeout_absolute.unwrap(),
+            timeout_relative: timeout_relative.unwrap(),
             ignore_mutants: if cli.ignore_mutants.is_empty() {
                 config.ignore_mutants
             } else {

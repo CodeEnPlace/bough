@@ -7,6 +7,7 @@ use clap::{Parser, Subcommand};
 use feedback::{ApplyRecord, MutationRecord, RenderOutput, Style};
 use log::LevelFilter;
 use pollard_core::config::{Config, LanguageId, Ordering, Vcs};
+use pollard_core::plan::{Plan, PlanEntry};
 use session::Session;
 use pollard_core::languages::javascript::JavaScript;
 use pollard_core::languages::typescript::TypeScript;
@@ -58,6 +59,12 @@ struct Cli {
     #[arg(long, global = true)]
     ignore_mutants: Vec<String>,
 
+    #[arg(long, global = true)]
+    timeout_absolute: Option<u64>,
+
+    #[arg(long, global = true)]
+    timeout_relative: Option<f64>,
+
     #[arg(long, global = true, default_value_t = false)]
     force_on_dirty_repo: bool,
 
@@ -71,6 +78,22 @@ enum Command {
         #[command(subcommand)]
         action: MutateAction,
     },
+    Step {
+        #[command(subcommand)]
+        action: StepAction,
+    },
+}
+
+#[derive(Debug, Subcommand)]
+enum StepAction {
+    Plan,
+    Create,
+    Apply,
+    Install,
+    Build,
+    Test,
+    Reset,
+    Cleanup,
 }
 
 #[derive(Debug, Subcommand)]
@@ -224,6 +247,97 @@ fn apply(language: &LanguageId, input: &Path, hash: &Hash) -> (Vec<Action>, Appl
 
 
 
+type StepResult = (Vec<Action>, Vec<Box<dyn RenderOutput>>);
+
+fn plan_entries_for_language<L: Language>(file: &SourceFile) -> Vec<PlanEntry>
+where
+    L::Kind: Copy + Into<MutationKind>,
+{
+    let points = find_mutation_points::<L>(file);
+    let mut entries = Vec::new();
+    for point in &points {
+        for (replacement, mutated) in generate_mutation_substitutions::<L>(point) {
+            entries.push(PlanEntry {
+                source_path: file.path().to_owned(),
+                source_hash: file.hash().clone(),
+                mutated_hash: mutated.hash().clone(),
+                kind: point.kind.into(),
+                start_line: point.span.start.line,
+                start_char: point.span.start.char,
+                end_line: point.span.end.line,
+                end_char: point.span.end.char,
+                start_byte: point.span.start.byte,
+                end_byte: point.span.end.byte,
+                original: file.content()[point.span.start.byte..point.span.end.byte].to_string(),
+                replacement,
+            });
+        }
+    }
+    entries
+}
+
+fn generate_plan(language: &LanguageId, pattern: &str) -> Plan {
+    let paths = expand_glob(pattern);
+    let mut entries = Vec::new();
+    for path in &paths {
+        let file = SourceFile::read(path).expect("failed to read input file");
+        let mut file_entries = match language {
+            LanguageId::Javascript => plan_entries_for_language::<JavaScript>(&file),
+            LanguageId::Typescript => plan_entries_for_language::<TypeScript>(&file),
+        };
+        entries.append(&mut file_entries);
+    }
+    Plan { entries }
+}
+
+fn step_plan(session: &Session) -> StepResult {
+    let plan = generate_plan(&session.language, &session.files);
+    let plan_path = session.working_dir.join("plan.json");
+    let content = serde_json::to_string_pretty(&plan).expect("failed to serialize plan");
+
+    log::info!("generated {} mutations", plan.entries.len());
+
+    let actions = vec![Action::WriteFile {
+        path: plan_path.clone(),
+        content,
+    }];
+
+    let renders: Vec<Box<dyn RenderOutput>> = vec![Box::new(feedback::PlanRecord {
+        path: plan_path,
+        count: plan.entries.len(),
+    })];
+
+    (actions, renders)
+}
+
+fn step_create(_session: &Session) -> StepResult {
+    (vec![], vec![])
+}
+
+fn step_apply(_session: &Session) -> StepResult {
+    (vec![], vec![])
+}
+
+fn step_install(_session: &Session) -> StepResult {
+    (vec![], vec![])
+}
+
+fn step_build(_session: &Session) -> StepResult {
+    (vec![], vec![])
+}
+
+fn step_test(_session: &Session) -> StepResult {
+    (vec![], vec![])
+}
+
+fn step_reset(_session: &Session) -> StepResult {
+    (vec![], vec![])
+}
+
+fn step_cleanup(_session: &Session) -> StepResult {
+    (vec![], vec![])
+}
+
 fn main() {
     let cli = Cli::parse();
 
@@ -260,36 +374,63 @@ fn main() {
     });
     log::info!("session: {}", serde_json::to_string(&session).expect("failed to serialize session"));
 
-    let (actions, renders): (Vec<Action>, Vec<Box<dyn RenderOutput>>) = match &cli.command {
-        Command::Mutate { action } => match action {
-            MutateAction::Generate { file: pattern } => {
-                let renders: Vec<Box<dyn RenderOutput>> = generate(&session.language, pattern)
-                    .into_iter()
-                    .map(|r| Box::new(r) as Box<dyn RenderOutput>)
-                    .collect();
-                (vec![], renders)
-            }
-            MutateAction::View { file: input, hash } => {
-                let record = view(&session.language, input, hash, session.diff.clone());
-                (vec![], vec![Box::new(record)])
-            }
-            MutateAction::Apply { file: input, hash } => {
-                let (actions, record) = apply(&session.language, input, hash);
-                (actions, vec![Box::new(record)])
-            }
-        },
-    };
+    match &cli.command {
+        Command::Mutate { action } => {
+            let (actions, renders): (Vec<Action>, Vec<Box<dyn RenderOutput>>) = match action {
+                MutateAction::Generate { file: pattern } => {
+                    let renders: Vec<Box<dyn RenderOutput>> = generate(&session.language, pattern)
+                        .into_iter()
+                        .map(|r| Box::new(r) as Box<dyn RenderOutput>)
+                        .collect();
+                    (vec![], renders)
+                }
+                MutateAction::View { file: input, hash } => {
+                    let record = view(&session.language, input, hash, session.diff.clone());
+                    (vec![], vec![Box::new(record)])
+                }
+                MutateAction::Apply { file: input, hash } => {
+                    let (actions, record) = apply(&session.language, input, hash);
+                    (actions, vec![Box::new(record)])
+                }
+            };
 
-    if !actions.is_empty() && !session.force_on_dirty_repo && action::repo_is_dirty() {
-        eprintln!("repo has uncommitted changes, use --force-on-dirty-repo to proceed");
-        std::process::exit(1);
-    }
+            if !actions.is_empty() && !session.force_on_dirty_repo && action::repo_is_dirty() {
+                eprintln!("repo has uncommitted changes, use --force-on-dirty-repo to proceed");
+                std::process::exit(1);
+            }
 
-    for action in actions {
-        action.apply().expect("failed to apply action");
-    }
+            for action in actions {
+                action.apply().expect("failed to apply action");
+            }
 
-    for render in &renders {
-        render.render(&session.style, session.no_color);
+            for render in &renders {
+                render.render(&session.style, session.no_color);
+            }
+        }
+        Command::Step { action } => {
+            let (actions, renders): (Vec<Action>, Vec<Box<dyn RenderOutput>>) = match action {
+                StepAction::Plan => step_plan(&session),
+                StepAction::Create => step_create(&session),
+                StepAction::Apply => step_apply(&session),
+                StepAction::Install => step_install(&session),
+                StepAction::Build => step_build(&session),
+                StepAction::Test => step_test(&session),
+                StepAction::Reset => step_reset(&session),
+                StepAction::Cleanup => step_cleanup(&session),
+            };
+
+            if !actions.is_empty() && !session.force_on_dirty_repo && action::repo_is_dirty() {
+                eprintln!("repo has uncommitted changes, use --force-on-dirty-repo to proceed");
+                std::process::exit(1);
+            }
+
+            for action in actions {
+                action.apply().expect("failed to apply action");
+            }
+
+            for render in &renders {
+                render.render(&session.style, session.no_color);
+            }
+        }
     }
 }

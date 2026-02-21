@@ -6,6 +6,10 @@ report_dir = "/tmp/pollard-report"
 ordering = "random"
 files = "examples/vitest/src/**/*.js"
 
+[timeout]
+absolute = 30
+relative = 1.5
+
 [commands]
 install = "npm install"
 test = "npx vitest run"

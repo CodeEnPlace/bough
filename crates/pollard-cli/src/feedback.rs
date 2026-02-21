@@ -198,6 +198,32 @@ impl RenderOutput for ApplyRecord {
     }
 }
 
+#[derive(Serialize)]
+pub struct PlanRecord {
+    pub path: PathBuf,
+    pub count: usize,
+}
+
+impl RenderOutput for PlanRecord {
+    fn render(&self, style: &Style, no_color: bool) {
+        match style {
+            Style::Json => {
+                println!("{}", serde_json::to_string(self).expect("failed to serialize"));
+            }
+            Style::Pretty => {
+                println!(
+                    "Wrote {} mutations to {}",
+                    color("\x1b[33m", &self.count.to_string(), no_color),
+                    color("\x1b[36m", &self.path.display().to_string(), no_color),
+                );
+            }
+            Style::Plain => {
+                println!("Wrote {} mutations to {}", self.count, self.path.display());
+            }
+        }
+    }
+}
+
 fn terminal_width() -> usize {
     terminal_size::terminal_size()
         .map(|(w, _)| w.0 as usize)

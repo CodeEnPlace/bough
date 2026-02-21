@@ -48,7 +48,15 @@ pub struct Config {
     #[serde(default)]
     pub ignore_mutants: Vec<String>,
     #[serde(default)]
+    pub timeout: Timeout,
+    #[serde(default)]
     pub commands: Commands,
+}
+
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+pub struct Timeout {
+    pub absolute: Option<u64>,
+    pub relative: Option<f64>,
 }
 
 #[derive(Debug)]
