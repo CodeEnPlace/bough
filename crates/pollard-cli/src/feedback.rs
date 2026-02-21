@@ -43,8 +43,9 @@ impl RenderOutput for MutationRecord {
             }
             Style::Plain | Style::Pretty if no_color => {
                 println!(
-                    "{} {:?} {}:{}-{}:{} {} -> {}",
+                    "{} {} {:?} {}:{}-{}:{}\n{}\n{}\n",
                     self.mutated_hash,
+                    self.source_path.display(),
                     self.kind,
                     self.start_line + 1,
                     self.start_char + 1,
@@ -56,8 +57,9 @@ impl RenderOutput for MutationRecord {
             }
             Style::Plain => {
                 println!(
-                    "{} {:?} {}:{}-{}:{} {} -> {}",
+                    "{} {} {:?} {}:{}-{}:{}\n{}\n{}\n",
                     self.mutated_hash,
+                    self.source_path.display(),
                     self.kind,
                     self.start_line + 1,
                     self.start_char + 1,
@@ -69,8 +71,9 @@ impl RenderOutput for MutationRecord {
             }
             Style::Pretty => {
                 println!(
-                    "\x1b[33m{}\x1b[0m \x1b[1m{:?}\x1b[0m \x1b[36m{}:{}-{}:{}\x1b[0m \x1b[31m{}\x1b[0m -> \x1b[32m{}\x1b[0m",
+                    "\x1b[33m{}\x1b[0m {} \x1b[1m{:?}\x1b[0m \x1b[36m{}:{}-{}:{}\x1b[0m\n\x1b[31m{}\x1b[0m\n\x1b[32m{}\x1b[0m\n",
                     self.mutated_hash,
+                    self.source_path.display(),
                     self.kind,
                     self.start_line + 1,
                     self.start_char + 1,

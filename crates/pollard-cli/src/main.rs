@@ -53,7 +53,7 @@ enum Command {
 enum MutateAction {
     Generate {
         #[arg(short, long)]
-        file: PathBuf,
+        file: String,
     },
     View {
         #[arg(short, long)]
@@ -103,12 +103,35 @@ where
     records
 }
 
-fn generate(language: &LanguageArg, input: &Path) -> Vec<MutationRecord> {
-    let file = SourceFile::read(input).expect("failed to read input file");
-    match language {
-        LanguageArg::Javascript => generate_for_language::<JavaScript>(&file),
-        LanguageArg::Typescript => generate_for_language::<TypeScript>(&file),
+fn expand_glob(pattern: &str) -> Vec<PathBuf> {
+    glob::glob(pattern)
+        .unwrap_or_else(|e| {
+            eprintln!("invalid glob pattern: {e}");
+            std::process::exit(1);
+        })
+        .filter_map(|entry| match entry {
+            Ok(path) if path.is_file() => Some(path),
+            Ok(_) => None,
+            Err(e) => {
+                eprintln!("glob error: {e}");
+                None
+            }
+        })
+        .collect()
+}
+
+fn generate(language: &LanguageArg, pattern: &str) -> Vec<MutationRecord> {
+    let paths = expand_glob(pattern);
+    let mut records = Vec::new();
+    for path in &paths {
+        let file = SourceFile::read(path).expect("failed to read input file");
+        let mut file_records = match language {
+            LanguageArg::Javascript => generate_for_language::<JavaScript>(&file),
+            LanguageArg::Typescript => generate_for_language::<TypeScript>(&file),
+        };
+        records.append(&mut file_records);
     }
+    records
 }
 
 fn find_mutated_by_hash<'a, L: Language>(
@@ -180,8 +203,8 @@ fn main() {
 
     match &cli.command {
         Command::Mutate { action } => match action {
-            MutateAction::Generate { file: input } => {
-                for record in generate(&cli.language, input) {
+            MutateAction::Generate { file: pattern } => {
+                for record in generate(&cli.language, pattern) {
                     record.render(&cli.style, cli.no_color);
                 }
             }
