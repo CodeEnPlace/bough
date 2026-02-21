@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 pub struct JavaScript;
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum JsMutationKind {
     StatementBlock,
     BinaryOp(BinaryOpKind),
@@ -57,7 +57,7 @@ impl Language for JavaScript {
         }
     }
 
-    fn generate_substitutions<'a>(kind: &JsMutationKind, file: &'a SourceFile, span: &Span) -> Vec<MutatedFile<'a>> {
+    fn generate_substitutions<'a>(kind: &JsMutationKind, file: &'a SourceFile, span: &Span) -> Vec<(String, MutatedFile<'a>)> {
         use BinaryOpKind::*;
         let replacements: &[&str] = match kind {
             JsMutationKind::StatementBlock => &["{}"],
@@ -76,7 +76,7 @@ impl Language for JavaScript {
             JsMutationKind::BinaryOp(Gt)        => &["<", "<=", ">="],
             JsMutationKind::BinaryOp(Gte)       => &[">", "<", "<="],
         };
-        replacements.iter().map(|r| file.with_replacement(span, r)).collect()
+        replacements.iter().map(|r| (r.to_string(), file.with_replacement(span, r))).collect()
     }
 }
 

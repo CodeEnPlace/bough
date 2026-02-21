@@ -8,8 +8,28 @@ use std::fmt;
 use std::path::{Path, PathBuf};
 use tree_sitter::Parser;
 
-#[derive(Serialize, Deserialize)]
 pub struct Hash([u8; 32]);
+
+impl Serialize for Hash {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let hex: String = self.0.iter().map(|b| format!("{b:02x}")).collect();
+        serializer.serialize_str(&hex)
+    }
+}
+
+impl<'de> Deserialize<'de> for Hash {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let hex = <&str>::deserialize(deserializer)?;
+        let bytes: Vec<u8> = (0..hex.len())
+            .step_by(2)
+            .map(|i| u8::from_str_radix(&hex[i..i + 2], 16).map_err(de::Error::custom))
+            .collect::<Result<_, _>>()?;
+        let arr: [u8; 32] = bytes
+            .try_into()
+            .map_err(|_| de::Error::custom("expected 64 hex chars"))?;
+        Ok(Self(arr))
+    }
+}
 
 impl Hash {
     fn of(content: &str) -> Self {
@@ -27,6 +47,15 @@ pub struct MutatedFile<'a> {
     source_file: &'a SourceFile,
     content: String,
     hash: Hash,
+}
+
+impl Serialize for MutatedFile<'_> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let mut state = serializer.serialize_struct("MutatedFile", 2)?;
+        state.serialize_field("source_file", &self.source_file)?;
+        state.serialize_field("hash", &self.hash)?;
+        state.end()
+    }
 }
 
 impl Serialize for SourceFile {
@@ -127,7 +156,7 @@ impl<'a> MutatedFile<'a> {
     }
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Span {
     pub start: usize,
     pub end: usize,
@@ -159,7 +188,7 @@ pub trait Language {
         node: tree_sitter::Node<'_>,
         source: &[u8],
     ) -> Option<(Self::Kind, Span)>;
-    fn generate_substitutions<'a>(kind: &Self::Kind, file: &'a SourceFile, span: &Span) -> Vec<MutatedFile<'a>>;
+    fn generate_substitutions<'a>(kind: &Self::Kind, file: &'a SourceFile, span: &Span) -> Vec<(String, MutatedFile<'a>)>;
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
@@ -181,7 +210,7 @@ pub struct MutationSubstitution<'a, 'b, L: Language> {
 
 pub fn generate_mutation_substitutions<'a, L: Language>(
     point: &MutationPoint<'a, L>,
-) -> Vec<MutatedFile<'a>> {
+) -> Vec<(String, MutatedFile<'a>)> {
     L::generate_substitutions(&point.kind, point.file, &point.span)
 }
 
@@ -239,7 +268,8 @@ mod tests {
         let points = find_mutation_points::<JavaScript>(&f);
         let subs = generate_mutation_substitutions(&points[0]);
         assert_eq!(subs.len(), 1);
-        assert_eq!(subs[0].content(), "function foo() {}");
+        assert_eq!(subs[0].0, "{}");
+        assert_eq!(subs[0].1.content(), "function foo() {}");
     }
 
     #[test]
@@ -247,10 +277,10 @@ mod tests {
         let f = file("const x = a + b;");
         let points = find_mutation_points::<JavaScript>(&f);
         let subs = generate_mutation_substitutions(&points[0]);
-        let contents: Vec<_> = subs.iter().map(|s| s.content()).collect();
-        assert!(contents.contains(&"const x = a - b;"));
-        assert!(contents.contains(&"const x = a * b;"));
-        assert!(contents.contains(&"const x = a / b;"));
+        let replacements: Vec<_> = subs.iter().map(|s| s.0.as_str()).collect();
+        assert!(replacements.contains(&"-"));
+        assert!(replacements.contains(&"*"));
+        assert!(replacements.contains(&"/"));
     }
 
     #[test]
@@ -258,10 +288,10 @@ mod tests {
         let f = file("const x = a * b;");
         let points = find_mutation_points::<JavaScript>(&f);
         let subs = generate_mutation_substitutions(&points[0]);
-        let contents: Vec<_> = subs.iter().map(|s| s.content()).collect();
-        assert!(contents.contains(&"const x = a + b;"));
-        assert!(contents.contains(&"const x = a - b;"));
-        assert!(contents.contains(&"const x = a / b;"));
+        let replacements: Vec<_> = subs.iter().map(|s| s.0.as_str()).collect();
+        assert!(replacements.contains(&"+"));
+        assert!(replacements.contains(&"-"));
+        assert!(replacements.contains(&"/"));
     }
 
     #[test]
@@ -269,8 +299,8 @@ mod tests {
         let f = file("const x = a && b;");
         let points = find_mutation_points::<JavaScript>(&f);
         let subs = generate_mutation_substitutions(&points[0]);
-        let contents: Vec<_> = subs.iter().map(|s| s.content()).collect();
-        assert!(contents.contains(&"const x = a || b;"));
+        let replacements: Vec<_> = subs.iter().map(|s| s.0.as_str()).collect();
+        assert!(replacements.contains(&"||"));
     }
 
     #[test]
@@ -278,6 +308,6 @@ mod tests {
         let f = file("const x = a + b;");
         let points = find_mutation_points::<JavaScript>(&f);
         let subs = generate_mutation_substitutions(&points[0]);
-        assert!(std::ptr::eq(subs[0].source_file(), &f));
+        assert!(std::ptr::eq(subs[0].1.source_file(), &f));
     }
 }

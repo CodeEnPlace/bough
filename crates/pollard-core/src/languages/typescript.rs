@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 pub struct TypeScript;
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum TsMutationKind {
     StatementBlock,
     BinaryOp(BinaryOpKind),
@@ -57,7 +57,7 @@ impl Language for TypeScript {
         }
     }
 
-    fn generate_substitutions<'a>(kind: &TsMutationKind, file: &'a SourceFile, span: &Span) -> Vec<MutatedFile<'a>> {
+    fn generate_substitutions<'a>(kind: &TsMutationKind, file: &'a SourceFile, span: &Span) -> Vec<(String, MutatedFile<'a>)> {
         use BinaryOpKind::*;
         let replacements: &[&str] = match kind {
             TsMutationKind::StatementBlock => &["{}"],
@@ -76,7 +76,7 @@ impl Language for TypeScript {
             TsMutationKind::BinaryOp(Gt)        => &["<", "<=", ">="],
             TsMutationKind::BinaryOp(Gte)       => &[">", "<", "<="],
         };
-        replacements.iter().map(|r| file.with_replacement(span, r)).collect()
+        replacements.iter().map(|r| (r.to_string(), file.with_replacement(span, r))).collect()
     }
 }
 

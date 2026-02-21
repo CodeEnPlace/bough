@@ -295,6 +295,9 @@ dependencies = [
  "clap",
  "env_logger",
  "log",
+ "pollard-core",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
