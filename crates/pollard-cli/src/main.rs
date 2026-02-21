@@ -7,14 +7,14 @@ use clap::{Parser, Subcommand};
 use feedback::{ApplyRecord, MutationRecord, RenderOutput, Style};
 use log::LevelFilter;
 use pollard_core::config::{Config, LanguageId, Ordering, Vcs};
-use pollard_core::plan::{Plan, PlanEntry};
-use session::Session;
 use pollard_core::languages::javascript::JavaScript;
 use pollard_core::languages::typescript::TypeScript;
+use pollard_core::plan::{Plan, PlanEntry};
 use pollard_core::{
     Hash, Language, MutatedFile, MutationKind, SourceFile, find_mutation_points,
     generate_mutation_substitutions,
 };
+use session::Session;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Parser)]
@@ -32,7 +32,13 @@ struct Cli {
     #[arg(long, default_value = "unified", global = true)]
     diff: feedback::DiffStyle,
 
-    #[arg(long, env = "NO_COLOR", hide = true, default_value_t = false, global = true)]
+    #[arg(
+        long,
+        env = "NO_COLOR",
+        hide = true,
+        default_value_t = false,
+        global = true
+    )]
     no_color: bool,
 
     #[arg(long, global = true)]
@@ -95,7 +101,7 @@ enum StepAction {
         #[arg(short, long)]
         workspace: String,
         #[arg(long)]
-        hash: Hash,
+        mutant: Hash,
     },
     Install {
         #[arg(short, long)]
@@ -128,13 +134,13 @@ enum MutateAction {
         #[arg(short, long)]
         file: PathBuf,
         #[arg(long)]
-        hash: Hash,
+        mutant: Hash,
     },
     Apply {
         #[arg(short, long)]
         file: PathBuf,
         #[arg(long)]
-        hash: Hash,
+        mutant: Hash,
     },
 }
 
@@ -267,8 +273,6 @@ fn apply(language: &LanguageId, input: &Path, hash: &Hash) -> (Vec<Action>, Appl
     (actions, record)
 }
 
-
-
 type StepResult = (Vec<Action>, Vec<Box<dyn RenderOutput>>);
 
 fn content_id(content: &str) -> String {
@@ -319,7 +323,9 @@ fn generate_plan(language: &LanguageId, pattern: &str) -> Plan {
 fn step_plan(session: &Session) -> StepResult {
     let plan = generate_plan(&session.language, &session.files);
     let content = serde_json::to_string_pretty(&plan).expect("failed to serialize plan");
-    let plan_path = session.working_dir.join(format!("{}.mutants.plan.json", content_id(&content)));
+    let plan_path = session
+        .working_dir
+        .join(format!("{}.mutants.plan.json", content_id(&content)));
 
     log::info!("generated {} mutations", plan.entries.len());
 
@@ -409,7 +415,10 @@ fn read_workspace_manifest(session: &Session) -> pollard_core::plan::WorkspaceMa
     let pattern = session.working_dir.join("*.workspaces.json");
     let paths = expand_glob(&pattern.display().to_string());
     let manifest_path = paths.first().unwrap_or_else(|| {
-        eprintln!("no workspace manifest found in {}", session.working_dir.display());
+        eprintln!(
+            "no workspace manifest found in {}",
+            session.working_dir.display()
+        );
         std::process::exit(1);
     });
     let content = std::fs::read_to_string(manifest_path).unwrap_or_else(|e| {
@@ -426,15 +435,23 @@ fn step_apply(session: &Session, workspace_name: &str, hash: &Hash) -> StepResul
     let plan = read_plan(session);
     let manifest = read_workspace_manifest(session);
 
-    let ws = manifest.workspaces.iter().find(|ws| ws.name == workspace_name).unwrap_or_else(|| {
-        eprintln!("workspace {workspace_name} not found in manifest");
-        std::process::exit(1);
-    });
+    let ws = manifest
+        .workspaces
+        .iter()
+        .find(|ws| ws.name == workspace_name)
+        .unwrap_or_else(|| {
+            eprintln!("workspace {workspace_name} not found in manifest");
+            std::process::exit(1);
+        });
 
-    let entry = plan.entries.iter().find(|e| &e.mutated_hash == hash).unwrap_or_else(|| {
-        eprintln!("mutation {hash} not found in plan");
-        std::process::exit(1);
-    });
+    let entry = plan
+        .entries
+        .iter()
+        .find(|e| &e.mutated_hash == hash)
+        .unwrap_or_else(|| {
+            eprintln!("mutation {hash} not found in plan");
+            std::process::exit(1);
+        });
 
     let file_in_workspace = ws.path.join(&entry.source_path);
     let source_content = std::fs::read_to_string(&file_in_workspace).unwrap_or_else(|e| {
@@ -446,7 +463,9 @@ fn step_apply(session: &Session, workspace_name: &str, hash: &Hash) -> StepResul
     if source_hash != entry.source_hash {
         eprintln!(
             "source hash mismatch for {}: expected {}, got {}",
-            entry.source_path.display(), entry.source_hash, source_hash,
+            entry.source_path.display(),
+            entry.source_hash,
+            source_hash,
         );
         std::process::exit(1);
     }
@@ -485,10 +504,14 @@ fn run_in_workspace(
     };
 
     let manifest = read_workspace_manifest(session);
-    let ws = manifest.workspaces.iter().find(|ws| ws.name == workspace_name).unwrap_or_else(|| {
-        eprintln!("workspace {workspace_name} not found in manifest");
-        std::process::exit(1);
-    });
+    let ws = manifest
+        .workspaces
+        .iter()
+        .find(|ws| ws.name == workspace_name)
+        .unwrap_or_else(|| {
+            eprintln!("workspace {workspace_name} not found in manifest");
+            std::process::exit(1);
+        });
 
     log::info!("running {step_name} in {}: {cmd}", ws.path.display());
 
@@ -528,7 +551,12 @@ fn step_build(session: &Session, workspace: &str) -> StepResult {
 }
 
 fn step_test(session: &Session, workspace: &str) -> StepResult {
-    run_in_workspace(session, workspace, &Some(session.commands.test.clone()), "test")
+    run_in_workspace(
+        session,
+        workspace,
+        &Some(session.commands.test.clone()),
+        "test",
+    )
 }
 
 fn step_reset(session: &Session, workspace_name: &str, rev: &str) -> StepResult {
@@ -541,10 +569,14 @@ fn step_reset(session: &Session, workspace_name: &str, rev: &str) -> StepResult 
     }
 
     let manifest = read_workspace_manifest(session);
-    let ws = manifest.workspaces.iter().find(|ws| ws.name == workspace_name).unwrap_or_else(|| {
-        eprintln!("workspace {workspace_name} not found in manifest");
-        std::process::exit(1);
-    });
+    let ws = manifest
+        .workspaces
+        .iter()
+        .find(|ws| ws.name == workspace_name)
+        .unwrap_or_else(|| {
+            eprintln!("workspace {workspace_name} not found in manifest");
+            std::process::exit(1);
+        });
 
     log::info!("resetting workspace {} to {rev}", ws.name);
     let output = std::process::Command::new("jj")
@@ -578,11 +610,10 @@ fn step_cleanup(session: &Session) -> StepResult {
     let mut workspace_count = 0;
 
     for manifest_path in &manifest_paths {
-        let content = std::fs::read_to_string(manifest_path)
-            .unwrap_or_else(|e| {
-                eprintln!("failed to read {}: {e}", manifest_path.display());
-                std::process::exit(1);
-            });
+        let content = std::fs::read_to_string(manifest_path).unwrap_or_else(|e| {
+            eprintln!("failed to read {}: {e}", manifest_path.display());
+            std::process::exit(1);
+        });
         let manifest: pollard_core::plan::WorkspaceManifest = serde_json::from_str(&content)
             .unwrap_or_else(|e| {
                 eprintln!("failed to parse {}: {e}", manifest_path.display());
@@ -590,12 +621,18 @@ fn step_cleanup(session: &Session) -> StepResult {
             });
 
         for ws in &manifest.workspaces {
-            actions.push(Action::ForgetJjWorkspace { name: ws.name.clone() });
-            actions.push(Action::RemoveDir { path: ws.path.clone() });
+            actions.push(Action::ForgetJjWorkspace {
+                name: ws.name.clone(),
+            });
+            actions.push(Action::RemoveDir {
+                path: ws.path.clone(),
+            });
             workspace_count += 1;
         }
 
-        actions.push(Action::RemoveFile { path: manifest_path.clone() });
+        actions.push(Action::RemoveFile {
+            path: manifest_path.clone(),
+        });
     }
 
     let renders: Vec<Box<dyn RenderOutput>> = vec![Box::new(feedback::CleanupRecord {
@@ -634,13 +671,19 @@ fn main() {
         }
     };
     log::debug!("cli: {cli:?}");
-    log::debug!("config: {}", serde_json::to_string(&config).expect("failed to serialize config"));
+    log::debug!(
+        "config: {}",
+        serde_json::to_string(&config).expect("failed to serialize config")
+    );
 
     let session = Session::from_cli_and_config(&cli, config, config_path).unwrap_or_else(|e| {
         eprintln!("{e}");
         std::process::exit(1);
     });
-    log::info!("session: {}", serde_json::to_string(&session).expect("failed to serialize session"));
+    log::info!(
+        "session: {}",
+        serde_json::to_string(&session).expect("failed to serialize session")
+    );
 
     match &cli.command {
         Command::Mutate { action } => {
@@ -652,11 +695,17 @@ fn main() {
                         .collect();
                     (vec![], renders)
                 }
-                MutateAction::View { file: input, hash } => {
+                MutateAction::View {
+                    file: input,
+                    mutant: hash,
+                } => {
                     let record = view(&session.language, input, hash, session.diff.clone());
                     (vec![], vec![Box::new(record)])
                 }
-                MutateAction::Apply { file: input, hash } => {
+                MutateAction::Apply {
+                    file: input,
+                    mutant: hash,
+                } => {
                     let (actions, record) = apply(&session.language, input, hash);
                     (actions, vec![Box::new(record)])
                 }
@@ -679,7 +728,10 @@ fn main() {
             let (actions, renders): (Vec<Action>, Vec<Box<dyn RenderOutput>>) = match action {
                 StepAction::Plan => step_plan(&session),
                 StepAction::Create => step_create(&session),
-                StepAction::Apply { workspace, hash } => step_apply(&session, workspace, hash),
+                StepAction::Apply {
+                    workspace,
+                    mutant: hash,
+                } => step_apply(&session, workspace, hash),
                 StepAction::Install { workspace } => step_install(&session, workspace),
                 StepAction::Build { workspace } => step_build(&session, workspace),
                 StepAction::Test { workspace } => step_test(&session, workspace),
