@@ -26,6 +26,12 @@ struct Cli {
     #[arg(short, long, default_value = "plain", global = true)]
     style: Style,
 
+    #[arg(long, default_value = "unified", global = true)]
+    diff: feedback::DiffStyle,
+
+    #[arg(long, env = "NO_COLOR", hide = true, default_value_t = false)]
+    no_color: bool,
+
     #[command(subcommand)]
     command: Command,
 }
@@ -50,17 +56,17 @@ enum Command {
 enum MutateAction {
     Generate {
         #[arg(short, long)]
-        input: PathBuf,
+        file: PathBuf,
     },
     View {
         #[arg(short, long)]
-        input: PathBuf,
+        file: PathBuf,
         #[arg(long)]
         hash: Hash,
     },
     Apply {
         #[arg(short, long)]
-        input: PathBuf,
+        file: PathBuf,
         #[arg(long)]
         hash: Hash,
     },
@@ -111,7 +117,10 @@ fn generate(language: &LanguageArg, input: &Path) -> Vec<MutationRecord> {
     }
 }
 
-fn find_mutated_by_hash<'a, L: Language>(file: &'a SourceFile, target: &Hash) -> Option<MutatedFile<'a>> {
+fn find_mutated_by_hash<'a, L: Language>(
+    file: &'a SourceFile,
+    target: &Hash,
+) -> Option<MutatedFile<'a>> {
     let points = find_mutation_points::<L>(file);
     for point in &points {
         for (_, mutated) in generate_mutation_substitutions::<L>(point) {
@@ -123,7 +132,7 @@ fn find_mutated_by_hash<'a, L: Language>(file: &'a SourceFile, target: &Hash) ->
     None
 }
 
-fn view(language: &LanguageArg, input: &Path, hash: &Hash) {
+fn view(language: &LanguageArg, input: &Path, hash: &Hash, diff_style: feedback::DiffStyle) -> feedback::DiffRecord {
     let file = SourceFile::read(input).expect("failed to read input file");
     let mutated = match language {
         LanguageArg::Javascript => find_mutated_by_hash::<JavaScript>(&file, hash),
@@ -134,16 +143,12 @@ fn view(language: &LanguageArg, input: &Path, hash: &Hash) {
         std::process::exit(1);
     });
 
-    let diff = similar::TextDiff::from_lines(file.content(), mutated.content());
-    print!(
-        "{}",
-        diff.unified_diff()
-            .context_radius(3)
-            .header(
-                &file.path().display().to_string(),
-                &format!("{} (mutated)", file.path().display()),
-            )
-    );
+    feedback::DiffRecord {
+        old: file.content().to_string(),
+        new: mutated.content().to_string(),
+        path: file.path().display().to_string(),
+        diff_style,
+    }
 }
 
 fn main() {
@@ -156,15 +161,15 @@ fn main() {
 
     match &cli.command {
         Command::Mutate { action } => match action {
-            MutateAction::Generate { input } => {
+            MutateAction::Generate { file: input } => {
                 for record in generate(&cli.language, input) {
-                    record.render(&cli.style);
+                    record.render(&cli.style, cli.no_color);
                 }
             }
-            MutateAction::View { input, hash } => {
-                view(&cli.language, input, hash);
+            MutateAction::View { file: input, hash } => {
+                view(&cli.language, input, hash, cli.diff.clone()).render(&cli.style, cli.no_color);
             }
-            MutateAction::Apply { input, hash } => {
+            MutateAction::Apply { file: input, hash } => {
                 log::info!("applying mutation {hash} to {}", input.display());
             }
         },
