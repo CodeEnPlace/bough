@@ -1,3 +1,4 @@
+pub mod config;
 pub mod languages;
 
 use serde::de::{self, Deserializer, MapAccess, Visitor};

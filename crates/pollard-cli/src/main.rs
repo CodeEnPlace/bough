@@ -3,6 +3,7 @@ mod feedback;
 use clap::{Parser, Subcommand, ValueEnum};
 use feedback::{ApplyRecord, MutationRecord, RenderOutput, Style};
 use log::LevelFilter;
+use pollard_core::config::Config;
 use pollard_core::languages::javascript::JavaScript;
 use pollard_core::languages::typescript::TypeScript;
 use pollard_core::{
@@ -14,7 +15,7 @@ use std::path::{Path, PathBuf};
 #[derive(Parser)]
 #[command(name = "pollard", about = "Cross-language mutation testing")]
 struct Cli {
-    #[arg(short, long, action = clap::ArgAction::Count, help = "Increase log verbosity (-v, -vv, -vvv)")]
+    #[arg(short, long, global = true, action = clap::ArgAction::Count, help = "Increase log verbosity (-v, -vv, -vvv)")]
     verbose: u8,
 
     #[arg(short, long)]
@@ -26,7 +27,7 @@ struct Cli {
     #[arg(long, default_value = "unified", global = true)]
     diff: feedback::DiffStyle,
 
-    #[arg(long, env = "NO_COLOR", hide = true, default_value_t = false)]
+    #[arg(long, env = "NO_COLOR", hide = true, default_value_t = false, global = true)]
     no_color: bool,
 
     #[command(subcommand)]
@@ -197,9 +198,27 @@ fn main() {
     let cli = Cli::parse();
 
     env_logger::Builder::new()
-        .filter_level(log_level(&cli))
         .parse_default_env()
+        .filter_level(log_level(&cli))
         .init();
+
+    let cwd = std::env::current_dir().expect("failed to get current directory");
+    let (config_path, config) = match Config::discover(&cwd) {
+        Some((path, Ok(config))) => {
+            log::info!("loaded config from {}", path.display());
+            log::debug!("config: {}", serde_json::to_string(&config).expect("failed to serialize config"));
+            (path, config)
+        }
+        Some((path, Err(e))) => {
+            eprintln!("error in {}: {e}", path.display());
+            std::process::exit(1);
+        }
+        None => {
+            eprintln!("no config file found (searched from {})", cwd.display());
+            std::process::exit(1);
+        }
+    };
+    let _ = (&config_path, &config);
 
     match &cli.command {
         Command::Mutate { action } => match action {
