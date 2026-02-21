@@ -88,7 +88,12 @@ enum Command {
 enum StepAction {
     Plan,
     Create,
-    Apply,
+    Apply {
+        #[arg(short, long)]
+        workspace: String,
+        #[arg(long)]
+        hash: Hash,
+    },
     Install,
     Build,
     Test,
@@ -366,8 +371,86 @@ fn step_create(session: &Session) -> StepResult {
     (actions, renders)
 }
 
-fn step_apply(_session: &Session) -> StepResult {
-    (vec![], vec![])
+fn read_plan(session: &Session) -> pollard_core::plan::Plan {
+    let pattern = session.working_dir.join("*.mutants.plan.json");
+    let paths = expand_glob(&pattern.display().to_string());
+    let plan_path = paths.first().unwrap_or_else(|| {
+        eprintln!("no plan file found in {}", session.working_dir.display());
+        std::process::exit(1);
+    });
+    let content = std::fs::read_to_string(plan_path).unwrap_or_else(|e| {
+        eprintln!("failed to read plan: {e}");
+        std::process::exit(1);
+    });
+    serde_json::from_str(&content).unwrap_or_else(|e| {
+        eprintln!("failed to parse plan: {e}");
+        std::process::exit(1);
+    })
+}
+
+fn read_workspace_manifest(session: &Session) -> pollard_core::plan::WorkspaceManifest {
+    let pattern = session.working_dir.join("*.workspaces.json");
+    let paths = expand_glob(&pattern.display().to_string());
+    let manifest_path = paths.first().unwrap_or_else(|| {
+        eprintln!("no workspace manifest found in {}", session.working_dir.display());
+        std::process::exit(1);
+    });
+    let content = std::fs::read_to_string(manifest_path).unwrap_or_else(|e| {
+        eprintln!("failed to read workspace manifest: {e}");
+        std::process::exit(1);
+    });
+    serde_json::from_str(&content).unwrap_or_else(|e| {
+        eprintln!("failed to parse workspace manifest: {e}");
+        std::process::exit(1);
+    })
+}
+
+fn step_apply(session: &Session, workspace_name: &str, hash: &Hash) -> StepResult {
+    let plan = read_plan(session);
+    let manifest = read_workspace_manifest(session);
+
+    let ws = manifest.workspaces.iter().find(|ws| ws.name == workspace_name).unwrap_or_else(|| {
+        eprintln!("workspace {workspace_name} not found in manifest");
+        std::process::exit(1);
+    });
+
+    let entry = plan.entries.iter().find(|e| &e.mutated_hash == hash).unwrap_or_else(|| {
+        eprintln!("mutation {hash} not found in plan");
+        std::process::exit(1);
+    });
+
+    let file_in_workspace = ws.path.join(&entry.source_path);
+    let source_content = std::fs::read_to_string(&file_in_workspace).unwrap_or_else(|e| {
+        eprintln!("failed to read {}: {e}", file_in_workspace.display());
+        std::process::exit(1);
+    });
+
+    let source_hash = pollard_core::Hash::of(&source_content);
+    if source_hash != entry.source_hash {
+        eprintln!(
+            "source hash mismatch for {}: expected {}, got {}",
+            entry.source_path.display(), entry.source_hash, source_hash,
+        );
+        std::process::exit(1);
+    }
+
+    let mut mutated = String::with_capacity(source_content.len());
+    mutated.push_str(&source_content[..entry.start_byte]);
+    mutated.push_str(&entry.replacement);
+    mutated.push_str(&source_content[entry.end_byte..]);
+
+    std::fs::write(&file_in_workspace, &mutated).unwrap_or_else(|e| {
+        eprintln!("failed to write {}: {e}", file_in_workspace.display());
+        std::process::exit(1);
+    });
+
+    let renders: Vec<Box<dyn RenderOutput>> = vec![Box::new(ApplyRecord {
+        source_path: file_in_workspace,
+        source_hash: entry.source_hash.clone(),
+        mutated_hash: entry.mutated_hash.clone(),
+    })];
+
+    (vec![], renders)
 }
 
 fn step_install(_session: &Session) -> StepResult {
@@ -495,7 +578,7 @@ fn main() {
             let (actions, renders): (Vec<Action>, Vec<Box<dyn RenderOutput>>) = match action {
                 StepAction::Plan => step_plan(&session),
                 StepAction::Create => step_create(&session),
-                StepAction::Apply => step_apply(&session),
+                StepAction::Apply { workspace, hash } => step_apply(&session, workspace, hash),
                 StepAction::Install => step_install(&session),
                 StepAction::Build => step_build(&session),
                 StepAction::Test => step_test(&session),

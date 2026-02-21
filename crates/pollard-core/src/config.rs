@@ -29,7 +29,6 @@ pub enum Ordering {
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct Commands {
-    pub setup: Option<String>,
     pub install: Option<String>,
     pub build: Option<String>,
     pub test: String,
