@@ -8,8 +8,8 @@ use std::fmt;
 use std::path::{Path, PathBuf};
 use tree_sitter::Parser;
 
-#[derive(Debug)]
-pub struct Hash([u8; 32]);
+#[derive(Debug, Clone)]
+pub struct Hash([u8; 16]);
 
 impl Serialize for Hash {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
@@ -25,16 +25,49 @@ impl<'de> Deserialize<'de> for Hash {
             .step_by(2)
             .map(|i| u8::from_str_radix(&hex[i..i + 2], 16).map_err(de::Error::custom))
             .collect::<Result<_, _>>()?;
-        let arr: [u8; 32] = bytes
+        let arr: [u8; 16] = bytes
             .try_into()
-            .map_err(|_| de::Error::custom("expected 64 hex chars"))?;
+            .map_err(|_| de::Error::custom("expected 32 hex chars"))?;
+        Ok(Self(arr))
+    }
+}
+
+impl PartialEq for Hash {
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
+    }
+}
+
+impl fmt::Display for Hash {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for b in &self.0 {
+            write!(f, "{b:02x}")?;
+        }
+        Ok(())
+    }
+}
+
+impl std::str::FromStr for Hash {
+    type Err = String;
+
+    fn from_str(hex: &str) -> Result<Self, Self::Err> {
+        let bytes: Vec<u8> = (0..hex.len())
+            .step_by(2)
+            .map(|i| u8::from_str_radix(&hex[i..i + 2], 16).map_err(|e| e.to_string()))
+            .collect::<Result<_, _>>()?;
+        let arr: [u8; 16] = bytes
+            .try_into()
+            .map_err(|_| "expected 32 hex chars".to_string())?;
         Ok(Self(arr))
     }
 }
 
 impl Hash {
     fn of(content: &str) -> Self {
-        Self(Sha256::digest(content.as_bytes()).into())
+        let full: [u8; 32] = Sha256::digest(content.as_bytes()).into();
+        let mut truncated = [0u8; 16];
+        truncated.copy_from_slice(&full[..16]);
+        Self(truncated)
     }
 }
 

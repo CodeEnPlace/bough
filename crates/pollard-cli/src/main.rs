@@ -1,9 +1,14 @@
+mod feedback;
+
 use clap::{Parser, Subcommand, ValueEnum};
+use feedback::{MutationRecord, RenderOutput, Style};
 use log::LevelFilter;
 use pollard_core::languages::javascript::JavaScript;
 use pollard_core::languages::typescript::TypeScript;
-use pollard_core::{Language, MutatedFile, MutationKind, SourceFile, Span, find_mutation_points, generate_mutation_substitutions};
-use serde::Serialize;
+use pollard_core::{
+    Hash, Language, MutatedFile, MutationKind, SourceFile, find_mutation_points,
+    generate_mutation_substitutions,
+};
 use std::path::PathBuf;
 
 #[derive(Parser)]
@@ -17,6 +22,9 @@ struct Cli {
 
     #[arg(short, long)]
     language: LanguageArg,
+
+    #[arg(short, long, default_value = "plain")]
+    style: Style,
 
     #[command(subcommand)]
     command: Command,
@@ -44,9 +52,17 @@ enum MutateAction {
         #[arg(short, long)]
         input: PathBuf,
     },
+    View {
+        #[arg(short, long)]
+        input: PathBuf,
+        #[arg(long)]
+        hash: Hash,
+    },
     Apply {
         #[arg(short, long)]
         input: PathBuf,
+        #[arg(long)]
+        hash: Hash,
     },
 }
 
@@ -62,38 +78,72 @@ fn log_level(cli: &Cli) -> LevelFilter {
     }
 }
 
-#[derive(Serialize)]
-struct MutationRecord<'a> {
-    mutated_file: &'a MutatedFile<'a>,
-    kind: MutationKind,
-    span: &'a Span<'a>,
-    replacement: &'a str,
-}
-
-fn generate_for_language<L: Language>(file: &SourceFile)
+fn generate_for_language<L: Language>(file: &SourceFile) -> Vec<MutationRecord>
 where
     L::Kind: Copy + Into<MutationKind>,
 {
     let points = find_mutation_points::<L>(file);
+    let mut records = Vec::new();
     for point in &points {
-        for (replacement, mutated) in &generate_mutation_substitutions::<L>(point) {
-            let record = MutationRecord {
-                mutated_file: mutated,
+        for (replacement, mutated) in generate_mutation_substitutions::<L>(point) {
+            records.push(MutationRecord {
+                source_path: file.path().to_owned(),
+                source_hash: file.hash().clone(),
+                mutated_hash: mutated.hash().clone(),
                 kind: point.kind.into(),
-                span: &point.span,
+                start_line: point.span.start.line,
+                start_char: point.span.start.char,
+                end_line: point.span.end.line,
+                end_char: point.span.end.char,
+                original: file.content()[point.span.start.byte..point.span.end.byte].to_string(),
                 replacement,
-            };
-            println!("{}", serde_json::to_string(&record).expect("failed to serialize"));
+            });
         }
     }
+    records
 }
 
-fn generate(language: &LanguageArg, input: &PathBuf) {
+fn generate(language: &LanguageArg, input: &PathBuf) -> Vec<MutationRecord> {
     let file = SourceFile::read(input).expect("failed to read input file");
     match language {
         LanguageArg::Javascript => generate_for_language::<JavaScript>(&file),
         LanguageArg::Typescript => generate_for_language::<TypeScript>(&file),
     }
+}
+
+fn find_mutated_by_hash<'a, L: Language>(file: &'a SourceFile, target: &Hash) -> Option<MutatedFile<'a>> {
+    let points = find_mutation_points::<L>(file);
+    for point in &points {
+        for (_, mutated) in generate_mutation_substitutions::<L>(&point) {
+            if mutated.hash() == target {
+                return Some(mutated);
+            }
+        }
+    }
+    None
+}
+
+fn view(language: &LanguageArg, input: &PathBuf, hash: &Hash) {
+    let file = SourceFile::read(input).expect("failed to read input file");
+    let mutated = match language {
+        LanguageArg::Javascript => find_mutated_by_hash::<JavaScript>(&file, hash),
+        LanguageArg::Typescript => find_mutated_by_hash::<TypeScript>(&file, hash),
+    }
+    .unwrap_or_else(|| {
+        eprintln!("no mutation found with hash {hash}");
+        std::process::exit(1);
+    });
+
+    let diff = similar::TextDiff::from_lines(file.content(), mutated.content());
+    print!(
+        "{}",
+        diff.unified_diff()
+            .context_radius(3)
+            .header(
+                &file.path().display().to_string(),
+                &format!("{} (mutated)", file.path().display()),
+            )
+    );
 }
 
 fn main() {
@@ -107,10 +157,15 @@ fn main() {
     match &cli.command {
         Command::Mutate { action } => match action {
             MutateAction::Generate { input } => {
-                generate(&cli.language, &input);
+                for record in generate(&cli.language, input) {
+                    record.render(&cli.style);
+                }
             }
-            MutateAction::Apply { input } => {
-                log::info!("applying mutation from {}", input.display());
+            MutateAction::View { input, hash } => {
+                view(&cli.language, input, hash);
+            }
+            MutateAction::Apply { input, hash } => {
+                log::info!("applying mutation {hash} to {}", input.display());
             }
         },
     }
