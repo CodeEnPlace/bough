@@ -1,0 +1,10 @@
+[package]
+name = "pollard-lib"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+
+[lib]
+crate-type = ["cdylib", "rlib"]
