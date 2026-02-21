@@ -12,9 +12,43 @@ pub enum LanguageId {
     Typescript,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, clap::ValueEnum)]
+#[serde(rename_all = "lowercase")]
+pub enum Vcs {
+    Git,
+    Jj,
+    Mercurial,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, clap::ValueEnum)]
+#[serde(rename_all = "lowercase")]
+pub enum Ordering {
+    Random,
+    Alphabetical,
+}
+
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+pub struct Commands {
+    pub setup: Option<String>,
+    pub install: Option<String>,
+    pub build: Option<String>,
+    pub test: String,
+    pub cleanup: Option<String>,
+}
+
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct Config {
     pub language: Option<LanguageId>,
+    pub vcs: Option<Vcs>,
+    pub working_dir: Option<PathBuf>,
+    pub parallelism: Option<usize>,
+    pub report_dir: Option<PathBuf>,
+    pub ordering: Option<Ordering>,
+    pub files: Option<String>,
+    #[serde(default)]
+    pub ignore_mutants: Vec<String>,
+    #[serde(default)]
+    pub commands: Commands,
 }
 
 #[derive(Debug)]

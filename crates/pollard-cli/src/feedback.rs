@@ -4,13 +4,13 @@ use similar::{ChangeTag, TextDiff};
 use std::fmt::Write;
 use std::path::PathBuf;
 
-#[derive(Clone, clap::ValueEnum)]
+#[derive(Debug, Clone, Serialize, clap::ValueEnum)]
 pub enum DiffStyle {
     Unified,
     SideBySide,
 }
 
-#[derive(Clone, clap::ValueEnum)]
+#[derive(Debug, Clone, Serialize, clap::ValueEnum)]
 pub enum Style {
     Plain,
     Pretty,

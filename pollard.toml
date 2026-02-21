@@ -1,1 +1,11 @@
 language = "js"
+vcs = "jj"
+working_dir = "/tmp/pollard-work"
+parallelism = 1
+report_dir = "/tmp/pollard-report"
+ordering = "random"
+files = "examples/vitest/src/**/*.js"
+
+[commands]
+install = "npm install"
+test = "npx vitest run"

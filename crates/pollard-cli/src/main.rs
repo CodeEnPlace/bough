@@ -1,11 +1,13 @@
 mod action;
 mod feedback;
+mod session;
 
 use action::Action;
 use clap::{Parser, Subcommand};
 use feedback::{ApplyRecord, MutationRecord, RenderOutput, Style};
 use log::LevelFilter;
-use pollard_core::config::{Config, LanguageId};
+use pollard_core::config::{Config, LanguageId, Ordering, Vcs};
+use session::Session;
 use pollard_core::languages::javascript::JavaScript;
 use pollard_core::languages::typescript::TypeScript;
 use pollard_core::{
@@ -14,7 +16,7 @@ use pollard_core::{
 };
 use std::path::{Path, PathBuf};
 
-#[derive(Parser)]
+#[derive(Debug, Parser)]
 #[command(name = "pollard", about = "Cross-language mutation testing")]
 struct Cli {
     #[arg(short, long, global = true, action = clap::ArgAction::Count, help = "Increase log verbosity (-v, -vv, -vvv)")]
@@ -35,6 +37,27 @@ struct Cli {
     #[arg(long, global = true)]
     config: Option<PathBuf>,
 
+    #[arg(long, global = true)]
+    vcs: Option<Vcs>,
+
+    #[arg(long, global = true)]
+    working_dir: Option<PathBuf>,
+
+    #[arg(long, global = true)]
+    parallelism: Option<usize>,
+
+    #[arg(long, global = true)]
+    report_dir: Option<PathBuf>,
+
+    #[arg(long, global = true)]
+    ordering: Option<Ordering>,
+
+    #[arg(long, global = true)]
+    files: Option<String>,
+
+    #[arg(long, global = true)]
+    ignore_mutants: Vec<String>,
+
     #[arg(long, global = true, default_value_t = false)]
     force_on_dirty_repo: bool,
 
@@ -42,7 +65,7 @@ struct Cli {
     command: Command,
 }
 
-#[derive(Subcommand)]
+#[derive(Debug, Subcommand)]
 enum Command {
     Mutate {
         #[command(subcommand)]
@@ -50,7 +73,7 @@ enum Command {
     },
 }
 
-#[derive(Subcommand)]
+#[derive(Debug, Subcommand)]
 enum MutateAction {
     Generate {
         #[arg(short, long)]
@@ -217,7 +240,6 @@ fn main() {
     let (config_path, config) = match discovered {
         Some((path, Ok(config))) => {
             log::info!("loaded config from {}", path.display());
-            log::debug!("config: {}", serde_json::to_string(&config).expect("failed to serialize config"));
             (path, config)
         }
         Some((path, Err(e))) => {
@@ -229,34 +251,36 @@ fn main() {
             std::process::exit(1);
         }
     };
-    let _ = &config_path;
+    log::debug!("cli: {cli:?}");
+    log::debug!("config: {}", serde_json::to_string(&config).expect("failed to serialize config"));
 
-    let language = cli.language.or(config.language).unwrap_or_else(|| {
-        eprintln!("no language specified (use -l/--language or set language in config)");
+    let session = Session::from_cli_and_config(&cli, config, config_path).unwrap_or_else(|e| {
+        eprintln!("{e}");
         std::process::exit(1);
     });
+    log::info!("session: {}", serde_json::to_string(&session).expect("failed to serialize session"));
 
     let (actions, renders): (Vec<Action>, Vec<Box<dyn RenderOutput>>) = match &cli.command {
         Command::Mutate { action } => match action {
             MutateAction::Generate { file: pattern } => {
-                let renders: Vec<Box<dyn RenderOutput>> = generate(&language, pattern)
+                let renders: Vec<Box<dyn RenderOutput>> = generate(&session.language, pattern)
                     .into_iter()
                     .map(|r| Box::new(r) as Box<dyn RenderOutput>)
                     .collect();
                 (vec![], renders)
             }
             MutateAction::View { file: input, hash } => {
-                let record = view(&language, input, hash, cli.diff.clone());
+                let record = view(&session.language, input, hash, session.diff.clone());
                 (vec![], vec![Box::new(record)])
             }
             MutateAction::Apply { file: input, hash } => {
-                let (actions, record) = apply(&language, input, hash);
+                let (actions, record) = apply(&session.language, input, hash);
                 (actions, vec![Box::new(record)])
             }
         },
     };
 
-    if !actions.is_empty() && !cli.force_on_dirty_repo && action::repo_is_dirty() {
+    if !actions.is_empty() && !session.force_on_dirty_repo && action::repo_is_dirty() {
         eprintln!("repo has uncommitted changes, use --force-on-dirty-repo to proceed");
         std::process::exit(1);
     }
@@ -266,6 +290,6 @@ fn main() {
     }
 
     for render in &renders {
-        render.render(&cli.style, cli.no_color);
+        render.render(&session.style, session.no_color);
     }
 }
