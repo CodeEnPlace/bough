@@ -2,15 +2,17 @@ use crate::{Language, MutationKind};
 
 pub struct TypeScript;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TsMutationKind {
     StatementBlock,
+    BinaryOp,
 }
 
 impl From<TsMutationKind> for MutationKind {
     fn from(k: TsMutationKind) -> Self {
         match k {
             TsMutationKind::StatementBlock => MutationKind::StatementBlock,
+            TsMutationKind::BinaryOp => MutationKind::BinaryOp,
         }
     }
 }
@@ -25,6 +27,7 @@ impl Language for TypeScript {
     fn mutation_kind_for_node(node_kind: &str) -> Option<TsMutationKind> {
         match node_kind {
             "statement_block" => Some(TsMutationKind::StatementBlock),
+            "binary_expression" => Some(TsMutationKind::BinaryOp),
             _ => None,
         }
     }
@@ -59,5 +62,29 @@ mod tests {
     fn kind_converts_to_unified() {
         let unified: MutationKind = TsMutationKind::StatementBlock.into();
         assert_eq!(unified, MutationKind::StatementBlock);
+    }
+
+    #[test]
+    fn finds_addition() {
+        let f = file("const x: number = a + b;");
+        let points = find_mutation_points::<TypeScript>(&f);
+        assert_eq!(points.len(), 1);
+        assert_eq!(points[0].kind, TsMutationKind::BinaryOp);
+    }
+
+    #[test]
+    fn finds_multiplication() {
+        let f = file("const x: number = a * b;");
+        let points = find_mutation_points::<TypeScript>(&f);
+        assert_eq!(points.len(), 1);
+        assert_eq!(points[0].kind, TsMutationKind::BinaryOp);
+    }
+
+    #[test]
+    fn finds_logical_and() {
+        let f = file("const x: boolean = a && b;");
+        let points = find_mutation_points::<TypeScript>(&f);
+        assert_eq!(points.len(), 1);
+        assert_eq!(points[0].kind, TsMutationKind::BinaryOp);
     }
 }

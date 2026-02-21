@@ -2,15 +2,17 @@ use crate::{Language, MutationKind};
 
 pub struct JavaScript;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum JsMutationKind {
     StatementBlock,
+    BinaryOp,
 }
 
 impl From<JsMutationKind> for MutationKind {
     fn from(k: JsMutationKind) -> Self {
         match k {
             JsMutationKind::StatementBlock => MutationKind::StatementBlock,
+            JsMutationKind::BinaryOp => MutationKind::BinaryOp,
         }
     }
 }
@@ -25,6 +27,7 @@ impl Language for JavaScript {
     fn mutation_kind_for_node(node_kind: &str) -> Option<JsMutationKind> {
         match node_kind {
             "statement_block" => Some(JsMutationKind::StatementBlock),
+            "binary_expression" => Some(JsMutationKind::BinaryOp),
             _ => None,
         }
     }
@@ -60,5 +63,29 @@ mod tests {
     fn kind_converts_to_unified() {
         let unified: MutationKind = JsMutationKind::StatementBlock.into();
         assert_eq!(unified, MutationKind::StatementBlock);
+    }
+
+    #[test]
+    fn finds_addition() {
+        let f = file("const x = a + b;");
+        let points = find_mutation_points::<JavaScript>(&f);
+        assert_eq!(points.len(), 1);
+        assert_eq!(points[0].kind, JsMutationKind::BinaryOp);
+    }
+
+    #[test]
+    fn finds_multiplication() {
+        let f = file("const x = a * b;");
+        let points = find_mutation_points::<JavaScript>(&f);
+        assert_eq!(points.len(), 1);
+        assert_eq!(points[0].kind, JsMutationKind::BinaryOp);
+    }
+
+    #[test]
+    fn finds_logical_and() {
+        let f = file("const x = a && b;");
+        let points = find_mutation_points::<JavaScript>(&f);
+        assert_eq!(points.len(), 1);
+        assert_eq!(points[0].kind, JsMutationKind::BinaryOp);
     }
 }

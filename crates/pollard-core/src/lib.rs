@@ -25,7 +25,7 @@ pub struct Span {
 }
 
 pub trait Language {
-    type Kind: Into<MutationKind>;
+    type Kind: Into<MutationKind> + Copy;
 
     fn tree_sitter_language() -> tree_sitter::Language;
     fn mutation_kind_for_node(node_kind: &str) -> Option<Self::Kind>;
@@ -34,6 +34,7 @@ pub trait Language {
 #[derive(Debug, PartialEq)]
 pub enum MutationKind {
     StatementBlock,
+    BinaryOp,
 }
 
 pub struct MutationPoint<'a, L: Language> {
@@ -41,6 +42,58 @@ pub struct MutationPoint<'a, L: Language> {
     pub span: Span,
     pub kind: L::Kind,
 }
+
+// ── MutationSubstitution ──────────────────────────────────────────────────────
+
+pub struct MutationSubstitution<'a, 'b, L: Language> {
+    pub point: &'b MutationPoint<'a, L>,
+    pub replacement: String,
+}
+
+pub fn generate_mutation_substitutions<'a, 'b, L: Language>(
+    point: &'b MutationPoint<'a, L>,
+) -> Vec<MutationSubstitution<'a, 'b, L>> {
+    let span_text = &point.file.content[point.span.start..point.span.end];
+    let replacements = match point.kind.into() {
+        MutationKind::StatementBlock => vec!["{}".to_string()],
+        MutationKind::BinaryOp => binary_op_substitutions(span_text),
+    };
+    replacements
+        .into_iter()
+        .map(|replacement| MutationSubstitution { point, replacement })
+        .collect()
+}
+
+// (op, alternatives) — ordered longest-first to avoid substring matches
+const BINARY_OP_TABLE: &[(&str, &[&str])] = &[
+    ("===", &["!=="]),
+    ("!==", &["==="]),
+    ("&&",  &["||"]),
+    ("||",  &["&&"]),
+    ("<=",  &["<", ">=", ">"]),
+    (">=",  &[">", "<=", "<"]),
+    ("==",  &["!="]),
+    ("!=",  &["=="]),
+    ("+",   &["-", "*", "/"]),
+    ("-",   &["+", "*", "/"]),
+    ("*",   &["+", "-", "/"]),
+    ("/",   &["+", "-", "*"]),
+    ("<",   &[">", "<=", ">="]),
+    (">",   &["<", "<=", ">="]),
+];
+
+fn binary_op_substitutions(span_text: &str) -> Vec<String> {
+    for (op, alts) in BINARY_OP_TABLE {
+        if let Some(pos) = span_text.find(op) {
+            let lhs = &span_text[..pos];
+            let rhs = &span_text[pos + op.len()..];
+            return alts.iter().map(|alt| format!("{}{}{}", lhs, alt, rhs)).collect();
+        }
+    }
+    vec![]
+}
+
+// ── find_mutation_points ──────────────────────────────────────────────────────
 
 pub fn find_mutation_points<'a, L: Language>(file: &'a SourceFile) -> Vec<MutationPoint<'a, L>> {
     let mut parser = Parser::new();
@@ -77,5 +130,64 @@ pub fn find_mutation_points<'a, L: Language>(file: &'a SourceFile) -> Vec<Mutati
                 return points;
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::languages::javascript::JavaScript;
+    use std::path::PathBuf;
+
+    fn file(content: &str) -> SourceFile {
+        SourceFile { path: PathBuf::from("test.js"), content: content.to_string() }
+    }
+
+    #[test]
+    fn statement_block_substitution_is_empty_block() {
+        let f = file("function foo() { return 1; }");
+        let points = find_mutation_points::<JavaScript>(&f);
+        let subs = generate_mutation_substitutions(&points[0]);
+        assert_eq!(subs.len(), 1);
+        assert_eq!(subs[0].replacement, "{}");
+    }
+
+    #[test]
+    fn addition_substitutions() {
+        let f = file("const x = a + b;");
+        let points = find_mutation_points::<JavaScript>(&f);
+        let subs = generate_mutation_substitutions(&points[0]);
+        let replacements: Vec<_> = subs.iter().map(|s| s.replacement.as_str()).collect();
+        assert!(replacements.contains(&"a - b"));
+        assert!(replacements.contains(&"a * b"));
+        assert!(replacements.contains(&"a / b"));
+    }
+
+    #[test]
+    fn multiplication_substitutions() {
+        let f = file("const x = a * b;");
+        let points = find_mutation_points::<JavaScript>(&f);
+        let subs = generate_mutation_substitutions(&points[0]);
+        let replacements: Vec<_> = subs.iter().map(|s| s.replacement.as_str()).collect();
+        assert!(replacements.contains(&"a + b"));
+        assert!(replacements.contains(&"a - b"));
+        assert!(replacements.contains(&"a / b"));
+    }
+
+    #[test]
+    fn logical_and_substitutions() {
+        let f = file("const x = a && b;");
+        let points = find_mutation_points::<JavaScript>(&f);
+        let subs = generate_mutation_substitutions(&points[0]);
+        let replacements: Vec<_> = subs.iter().map(|s| s.replacement.as_str()).collect();
+        assert!(replacements.contains(&"a || b"));
+    }
+
+    #[test]
+    fn substitution_holds_ref_to_point() {
+        let f = file("const x = a + b;");
+        let points = find_mutation_points::<JavaScript>(&f);
+        let subs = generate_mutation_substitutions(&points[0]);
+        assert!(std::ptr::eq(subs[0].point, &points[0]));
     }
 }
