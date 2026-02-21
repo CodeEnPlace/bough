@@ -7,7 +7,12 @@ pub enum Action {
 impl Action {
     pub fn apply(self) -> std::io::Result<()> {
         match self {
-            Action::WriteFile { path, content } => std::fs::write(&path, content),
+            Action::WriteFile { path, content } => {
+                if let Some(parent) = path.parent() {
+                    std::fs::create_dir_all(parent)?;
+                }
+                std::fs::write(&path, content)
+            }
         }
     }
 }
