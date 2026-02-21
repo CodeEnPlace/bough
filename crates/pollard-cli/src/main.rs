@@ -292,8 +292,8 @@ fn generate_plan(language: &LanguageId, pattern: &str) -> Plan {
 
 fn step_plan(session: &Session) -> StepResult {
     let plan = generate_plan(&session.language, &session.files);
-    let plan_path = session.working_dir.join("plan.json");
     let content = serde_json::to_string_pretty(&plan).expect("failed to serialize plan");
+    let plan_path = session.working_dir.join(format!("{}.mutants.plan.json", pollard_core::Hash::of(&content)));
 
     log::info!("generated {} mutations", plan.entries.len());
 
@@ -310,8 +310,54 @@ fn step_plan(session: &Session) -> StepResult {
     (actions, renders)
 }
 
-fn step_create(_session: &Session) -> StepResult {
-    (vec![], vec![])
+fn step_create(session: &Session) -> StepResult {
+    match session.vcs {
+        Vcs::Jj => {}
+        other => {
+            eprintln!("step create not yet implemented for {other:?}");
+            std::process::exit(1);
+        }
+    }
+
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+    let batch_id = &pollard_core::Hash::of(&nanos.to_string()).to_string()[..8];
+
+    let workspaces: Vec<pollard_core::plan::Workspace> = (0..session.parallelism)
+        .map(|i| {
+            let name = format!("pollard-{batch_id}-{i}");
+            let path = session.working_dir.join(&name);
+            pollard_core::plan::Workspace { name, path }
+        })
+        .collect();
+
+    let manifest = pollard_core::plan::WorkspaceManifest {
+        workspaces: workspaces.clone(),
+    };
+    let manifest_content =
+        serde_json::to_string_pretty(&manifest).expect("failed to serialize manifest");
+    let manifest_path = session.working_dir.join("workspaces.json");
+
+    let mut actions = vec![Action::WriteFile {
+        path: manifest_path,
+        content: manifest_content,
+    }];
+
+    for ws in &workspaces {
+        actions.push(Action::CreateJjWorkspace {
+            name: ws.name.clone(),
+            path: ws.path.clone(),
+        });
+    }
+
+    let renders: Vec<Box<dyn RenderOutput>> = vec![Box::new(feedback::CreateRecord {
+        workspaces: workspaces.iter().map(|ws| ws.name.clone()).collect(),
+        path: session.working_dir.clone(),
+    })];
+
+    (actions, renders)
 }
 
 fn step_apply(_session: &Session) -> StepResult {

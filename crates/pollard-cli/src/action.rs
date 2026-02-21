@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 pub enum Action {
     WriteFile { path: PathBuf, content: String },
+    CreateJjWorkspace { name: String, path: PathBuf },
 }
 
 impl Action {
@@ -12,6 +13,21 @@ impl Action {
                     std::fs::create_dir_all(parent)?;
                 }
                 std::fs::write(&path, content)
+            }
+            Action::CreateJjWorkspace { name, path } => {
+                log::info!("creating jj workspace {name} at {}", path.display());
+                let output = std::process::Command::new("jj")
+                    .args(["workspace", "add", "--name", &name, &path.display().to_string()])
+                    .output()?;
+                if !output.status.success() {
+                    let stderr = String::from_utf8_lossy(&output.stderr);
+                    Err(std::io::Error::new(
+                        std::io::ErrorKind::Other,
+                        format!("jj workspace add failed: {stderr}"),
+                    ))
+                } else {
+                    Ok(())
+                }
             }
         }
     }

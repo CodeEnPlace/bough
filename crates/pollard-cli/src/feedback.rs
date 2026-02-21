@@ -224,6 +224,38 @@ impl RenderOutput for PlanRecord {
     }
 }
 
+#[derive(Serialize)]
+pub struct CreateRecord {
+    pub workspaces: Vec<String>,
+    pub path: PathBuf,
+}
+
+impl RenderOutput for CreateRecord {
+    fn render(&self, style: &Style, no_color: bool) {
+        match style {
+            Style::Json => {
+                println!("{}", serde_json::to_string(self).expect("failed to serialize"));
+            }
+            Style::Pretty => {
+                println!(
+                    "Created {} workspaces in {}",
+                    color("\x1b[33m", &self.workspaces.len().to_string(), no_color),
+                    color("\x1b[36m", &self.path.display().to_string(), no_color),
+                );
+                for ws in &self.workspaces {
+                    println!("  {}", color("\x1b[33m", ws, no_color));
+                }
+            }
+            Style::Plain => {
+                println!("Created {} workspaces in {}", self.workspaces.len(), self.path.display());
+                for ws in &self.workspaces {
+                    println!("  {ws}");
+                }
+            }
+        }
+    }
+}
+
 fn terminal_width() -> usize {
     terminal_size::terminal_size()
         .map(|(w, _)| w.0 as usize)

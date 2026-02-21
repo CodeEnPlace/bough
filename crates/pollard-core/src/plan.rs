@@ -4,6 +4,17 @@ use std::path::PathBuf;
 use crate::{Hash, MutationKind};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Workspace {
+    pub name: String,
+    pub path: PathBuf,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WorkspaceManifest {
+    pub workspaces: Vec<Workspace>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PlanEntry {
     pub source_path: PathBuf,
     pub source_hash: Hash,

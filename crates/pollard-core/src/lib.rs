@@ -65,7 +65,7 @@ impl std::str::FromStr for Hash {
 }
 
 impl Hash {
-    fn of(content: &str) -> Self {
+    pub fn of(content: &str) -> Self {
         let full: [u8; 32] = Sha256::digest(content.as_bytes()).into();
         let mut truncated = [0u8; 16];
         truncated.copy_from_slice(&full[..16]);
