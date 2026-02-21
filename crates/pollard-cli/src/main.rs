@@ -9,6 +9,19 @@ struct Cli {
 
     #[arg(short, long, help = "Suppress all log output")]
     quiet: bool,
+
+    #[arg(long, default_value = "test", help = "Run until this step (inclusive)")]
+    run_until: Steps,
+}
+
+#[derive(clap::ValueEnum, Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
+enum Steps {
+    Clone,
+    Setup,
+    Find,
+    Mutate,
+    Build,
+    Test,
 }
 
 fn log_level(cli: &Cli) -> LevelFilter {
@@ -32,6 +45,21 @@ fn main() {
         .init();
 
     log::info!("pollard starting");
-    log::debug!("debug logging enabled");
-    log::trace!("trace logging enabled");
+
+    log::info!("step: clone");
+    if cli.run_until == Steps::Clone { return; }
+
+    log::info!("step: setup");
+    if cli.run_until == Steps::Setup { return; }
+
+    log::info!("step: find");
+    if cli.run_until == Steps::Find { return; }
+
+    log::info!("step: mutate");
+    if cli.run_until == Steps::Mutate { return; }
+
+    log::info!("step: build");
+    if cli.run_until == Steps::Build { return; }
+
+    log::info!("step: test");
 }
