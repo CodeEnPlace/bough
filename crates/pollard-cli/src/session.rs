@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use pollard_core::config::{Commands, Config, LanguageId, Ordering, Vcs};
 use serde::Serialize;
 
-use crate::feedback::{DiffStyle, Style};
+use crate::io::{DiffStyle, Style};
 use crate::Cli;
 
 // All fields are resolved and non-optional. No defaults are applied here;

@@ -1,0 +1,104 @@
+use crate::io::{Action, Report, Style};
+use crate::session::Session;
+use crate::steps::{color, content_id, expand_glob};
+use pollard_core::config::LanguageId;
+use pollard_core::languages::javascript::JavaScript;
+use pollard_core::languages::typescript::TypeScript;
+use pollard_core::plan::{Plan, PlanEntry};
+use pollard_core::{
+    Language, MutationKind, SourceFile, find_mutation_points, generate_mutation_substitutions,
+};
+use serde::Serialize;
+use std::path::PathBuf;
+
+fn plan_entries_for_language<L: Language>(file: &SourceFile) -> Vec<PlanEntry>
+where
+    L::Kind: Copy + Into<MutationKind>,
+{
+    let points = find_mutation_points::<L>(file);
+    let mut entries = Vec::new();
+    for point in &points {
+        for (replacement, mutated) in generate_mutation_substitutions::<L>(point) {
+            entries.push(PlanEntry {
+                source_path: file.path().to_owned(),
+                source_hash: file.hash().clone(),
+                mutated_hash: mutated.hash().clone(),
+                kind: point.kind.into(),
+                start_line: point.span.start.line,
+                start_char: point.span.start.char,
+                end_line: point.span.end.line,
+                end_char: point.span.end.char,
+                start_byte: point.span.start.byte,
+                end_byte: point.span.end.byte,
+                original: file.content()[point.span.start.byte..point.span.end.byte].to_string(),
+                replacement,
+            });
+        }
+    }
+    entries
+}
+
+fn generate_plan(language: &LanguageId, pattern: &str) -> Plan {
+    let paths = expand_glob(pattern);
+    let mut entries = Vec::new();
+    for path in &paths {
+        let file = SourceFile::read(path).expect("failed to read input file");
+        let mut file_entries = match language {
+            LanguageId::Javascript => plan_entries_for_language::<JavaScript>(&file),
+            LanguageId::Typescript => plan_entries_for_language::<TypeScript>(&file),
+        };
+        entries.append(&mut file_entries);
+    }
+    Plan { entries }
+}
+
+pub fn run(session: &Session) -> (Vec<Action>, PlanReport) {
+    let plan = generate_plan(&session.language, &session.files);
+    let content = serde_json::to_string_pretty(&plan).expect("failed to serialize plan");
+    let plan_path = session
+        .working_dir
+        .join(format!("{}.mutants.plan.json", content_id(&content)));
+
+    log::info!("generated {} mutations", plan.entries.len());
+
+    let actions = vec![Action::WriteFile {
+        path: plan_path.clone(),
+        content,
+    }];
+
+    let report = PlanReport {
+        path: plan_path,
+        count: plan.entries.len(),
+    };
+
+    (actions, report)
+}
+
+#[derive(Serialize)]
+pub struct PlanReport {
+    pub path: PathBuf,
+    pub count: usize,
+}
+
+impl Report for PlanReport {
+    fn render(&self, style: &Style, no_color: bool, _depth: u8) {
+        match style {
+            Style::Json => {
+                println!(
+                    "{}",
+                    serde_json::to_string(self).expect("failed to serialize")
+                );
+            }
+            Style::Pretty => {
+                println!(
+                    "Wrote {} mutations to {}",
+                    color("\x1b[33m", &self.count.to_string(), no_color),
+                    color("\x1b[36m", &self.path.display().to_string(), no_color),
+                );
+            }
+            Style::Plain | Style::Markdown => {
+                println!("Wrote {} mutations to {}", self.count, self.path.display());
+            }
+        }
+    }
+}
