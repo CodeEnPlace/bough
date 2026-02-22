@@ -7,7 +7,7 @@ pub mod reset_workspace;
 pub mod setup_workspace;
 pub mod test_workspace;
 
-use crate::io::{Report, Style, hashed_path};
+use crate::io::{Render, Report, Style, hashed_path};
 use pollard_session::Session;
 use pollard_core::plan::{Plan, WorkspaceManifest};
 use serde::Serialize;
@@ -140,16 +140,7 @@ pub struct CommandReport {
     pub result: Result<String, String>,
 }
 
-impl Report for CommandReport {
-    fn get_dir(&self, session: &pollard_session::Session) -> PathBuf {
-        session.report_dir.join("step").join(&self.step)
-    }
-
-    fn make_path(&self, session: &pollard_session::Session) -> PathBuf {
-        let content = serde_json::to_string(self).expect("failed to serialize");
-        hashed_path(&self.get_dir(session), &content, "command")
-    }
-
+impl Render for CommandReport {
     fn render(&self, style: &Style, no_color: bool, _depth: u8) {
         match style {
             Style::Json => {
@@ -187,4 +178,16 @@ impl Report for CommandReport {
             }
         }
     }
+}
+
+impl Report for CommandReport {
+    fn get_dir(&self, session: &pollard_session::Session) -> PathBuf {
+        session.report_dir.join("step").join(&self.step)
+    }
+
+    fn make_path(&self, session: &pollard_session::Session) -> PathBuf {
+        let content = serde_json::to_string(self).expect("failed to serialize");
+        hashed_path(&self.get_dir(session), &content, "command")
+    }
+
 }

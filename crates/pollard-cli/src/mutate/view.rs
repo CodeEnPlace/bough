@@ -1,4 +1,4 @@
-use crate::io::{Action, DiffStyle, Report, Style, hashed_path};
+use crate::io::{Action, DiffStyle, Render, Report, Style, hashed_path};
 use std::path::PathBuf;
 use crate::mutate::find_mutated;
 use pollard_core::config::LanguageId;
@@ -33,6 +33,17 @@ pub struct ViewReport {
     pub diff_style: DiffStyle,
 }
 
+impl Render for ViewReport {
+    fn render(&self, _style: &Style, no_color: bool, _depth: u8) {
+        match self.diff_style {
+            DiffStyle::Unified => render_unified(&self.old, &self.new, &self.path, no_color),
+            DiffStyle::SideBySide => {
+                render_side_by_side(&self.old, &self.new, &self.path, no_color)
+            }
+        }
+    }
+}
+
 impl Report for ViewReport {
     fn get_dir(&self, session: &pollard_session::Session) -> PathBuf {
         session.report_dir.join("mutate").join("view")
@@ -43,14 +54,6 @@ impl Report for ViewReport {
         hashed_path(&self.get_dir(session), &content, "diff")
     }
 
-    fn render(&self, _style: &Style, no_color: bool, _depth: u8) {
-        match self.diff_style {
-            DiffStyle::Unified => render_unified(&self.old, &self.new, &self.path, no_color),
-            DiffStyle::SideBySide => {
-                render_side_by_side(&self.old, &self.new, &self.path, no_color)
-            }
-        }
-    }
 }
 
 fn color(code: &str, text: &str, no_color: bool) -> String {

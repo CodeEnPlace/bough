@@ -1,4 +1,4 @@
-use crate::io::{Action, Report, Style, hashed_path};
+use crate::io::{Action, Render, Report, Style, hashed_path};
 use crate::mutate::find_mutated;
 use pollard_core::config::LanguageId;
 use pollard_core::{Hash, SourceFile};
@@ -42,16 +42,7 @@ pub struct ApplyReport {
     pub mutated_hash: Hash,
 }
 
-impl Report for ApplyReport {
-    fn get_dir(&self, session: &pollard_session::Session) -> PathBuf {
-        session.report_dir.join("mutate").join("apply")
-    }
-
-    fn make_path(&self, session: &pollard_session::Session) -> PathBuf {
-        let content = serde_json::to_string(self).expect("failed to serialize");
-        hashed_path(&self.get_dir(session), &content, "applied")
-    }
-
+impl Render for ApplyReport {
     fn render(&self, style: &Style, no_color: bool, _depth: u8) {
         match style {
             Style::Json => {
@@ -80,4 +71,16 @@ impl Report for ApplyReport {
             }
         }
     }
+}
+
+impl Report for ApplyReport {
+    fn get_dir(&self, session: &pollard_session::Session) -> PathBuf {
+        session.report_dir.join("mutate").join("apply")
+    }
+
+    fn make_path(&self, session: &pollard_session::Session) -> PathBuf {
+        let content = serde_json::to_string(self).expect("failed to serialize");
+        hashed_path(&self.get_dir(session), &content, "applied")
+    }
+
 }

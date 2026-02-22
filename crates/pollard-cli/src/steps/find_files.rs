@@ -1,4 +1,4 @@
-use crate::io::{Action, Report, Style, hashed_path};
+use crate::io::{Action, Render, Report, Style, hashed_path};
 use pollard_session::Session;
 use crate::steps::expand_glob;
 use serde::Serialize;
@@ -21,16 +21,7 @@ pub struct FindFilesReport {
     pub files: Vec<PathBuf>,
 }
 
-impl Report for FindFilesReport {
-    fn get_dir(&self, session: &pollard_session::Session) -> PathBuf {
-        session.report_dir.join("step").join("find-files")
-    }
-
-    fn make_path(&self, session: &pollard_session::Session) -> PathBuf {
-        let content = serde_json::to_string(self).expect("failed to serialize");
-        hashed_path(&self.get_dir(session), &content, "files")
-    }
-
+impl Render for FindFilesReport {
     fn render(&self, style: &Style, no_color: bool, _depth: u8) {
         match style {
             Style::Json => {
@@ -57,4 +48,16 @@ impl Report for FindFilesReport {
             }
         }
     }
+}
+
+impl Report for FindFilesReport {
+    fn get_dir(&self, session: &pollard_session::Session) -> PathBuf {
+        session.report_dir.join("step").join("find-files")
+    }
+
+    fn make_path(&self, session: &pollard_session::Session) -> PathBuf {
+        let content = serde_json::to_string(self).expect("failed to serialize");
+        hashed_path(&self.get_dir(session), &content, "files")
+    }
+
 }
