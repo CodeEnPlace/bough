@@ -70,13 +70,13 @@ impl Report for ResetWorkspaceReport {
             }
             Style::Pretty => {
                 println!(
-                    "Reset {} to {}",
+                    "Will reset {} to {}",
                     color("\x1b[33m", &self.workspace, no_color),
                     color("\x1b[36m", &self.rev, no_color),
                 );
             }
             Style::Plain | Style::Markdown => {
-                println!("Reset {} to {}", self.workspace, self.rev);
+                println!("Will reset {} to {}", self.workspace, self.rev);
             }
         }
     }

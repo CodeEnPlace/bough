@@ -62,7 +62,7 @@ impl Report for ApplyReport {
             }
             Style::Pretty => {
                 println!(
-                    "Applied mutation {} to {}",
+                    "Will apply mutation {} to {}",
                     color("\x1b[33m", &self.mutated_hash.to_string(), no_color),
                     color(
                         "\x1b[36m",
@@ -73,7 +73,7 @@ impl Report for ApplyReport {
             }
             Style::Plain | Style::Markdown => {
                 println!(
-                    "Applied mutation {} to {}",
+                    "Will apply mutation {} to {}",
                     self.mutated_hash,
                     self.source_path.display(),
                 );

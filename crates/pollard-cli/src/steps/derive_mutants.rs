@@ -97,14 +97,14 @@ impl Report for DeriveMutantsReport {
             }
             Style::Pretty => {
                 println!(
-                    "Derived {} mutations, wrote to {}",
+                    "Derived {} mutations, will write to {}",
                     color("\x1b[33m", &self.count.to_string(), no_color),
                     color("\x1b[36m", &self.path.display().to_string(), no_color),
                 );
             }
             Style::Plain | Style::Markdown => {
                 println!(
-                    "Derived {} mutations, wrote to {}",
+                    "Derived {} mutations, will write to {}",
                     self.count,
                     self.path.display()
                 );

@@ -71,14 +71,14 @@ impl Report for CleanupReport {
             }
             Style::Pretty => {
                 println!(
-                    "Cleaned up {} workspaces from {} manifests",
+                    "Will clean up {} workspaces from {} manifests",
                     color("\x1b[33m", &self.workspace_count.to_string(), no_color),
                     color("\x1b[36m", &self.manifest_count.to_string(), no_color),
                 );
             }
             Style::Plain | Style::Markdown => {
                 println!(
-                    "Cleaned up {} workspaces from {} manifests",
+                    "Will clean up {} workspaces from {} manifests",
                     self.workspace_count, self.manifest_count,
                 );
             }

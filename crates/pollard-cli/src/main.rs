@@ -44,17 +44,7 @@ enum StepAction {
     FindFiles,
     DeriveMutants,
     CreateWorkspaces,
-    ApplyMutantToWorkspace {
-        #[arg(short, long)]
-        workspace: String,
-        #[arg(long)]
-        mutant: Hash,
-    },
     SetupWorkspace {
-        #[arg(short, long)]
-        workspace: String,
-    },
-    TestWorkspace {
         #[arg(short, long)]
         workspace: String,
     },
@@ -63,6 +53,16 @@ enum StepAction {
         workspace: String,
         #[arg(short, long)]
         rev: String,
+    },
+    ApplyMutantToWorkspace {
+        #[arg(short, long)]
+        workspace: String,
+        #[arg(long)]
+        mutant: Hash,
+    },
+    TestWorkspace {
+        #[arg(short, long)]
+        workspace: String,
     },
     Cleanup,
 }
@@ -146,7 +146,12 @@ fn main() {
     let cli = Cli::parse();
 
     if let Command::Completions { shell } = &cli.command {
-        clap_complete::generate(*shell, &mut Cli::command(), "pollard", &mut std::io::stdout());
+        clap_complete::generate(
+            *shell,
+            &mut Cli::command(),
+            "pollard",
+            &mut std::io::stdout(),
+        );
         return;
     }
 
