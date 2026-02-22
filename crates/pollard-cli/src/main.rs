@@ -1,10 +1,10 @@
-mod action;
 mod feedback;
+mod io;
 mod session;
 
-use action::Action;
 use clap::{Parser, Subcommand};
 use feedback::{ApplyRecord, MutationRecord, RenderOutput, Style};
+use io::Action;
 use log::LevelFilter;
 use pollard_core::config::{Config, LanguageId, Ordering, Vcs};
 use pollard_core::languages::javascript::JavaScript;

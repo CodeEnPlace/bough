@@ -4,23 +4,6 @@ use similar::{ChangeTag, TextDiff};
 use std::fmt::Write;
 use std::path::PathBuf;
 
-#[derive(Debug, Clone, Serialize, clap::ValueEnum)]
-pub enum DiffStyle {
-    Unified,
-    SideBySide,
-}
-
-#[derive(Debug, Clone, Serialize, clap::ValueEnum)]
-pub enum Style {
-    Plain,
-    Pretty,
-    Json,
-}
-
-pub trait RenderOutput {
-    fn render(&self, style: &Style, no_color: bool);
-}
-
 #[derive(Serialize)]
 pub struct MutationRecord {
     pub source_path: PathBuf,
@@ -39,7 +22,10 @@ impl RenderOutput for MutationRecord {
     fn render(&self, style: &Style, no_color: bool) {
         match style {
             Style::Json => {
-                println!("{}", serde_json::to_string(self).expect("failed to serialize"));
+                println!(
+                    "{}",
+                    serde_json::to_string(self).expect("failed to serialize")
+                );
             }
             Style::Plain | Style::Pretty if no_color => {
                 println!(
@@ -98,7 +84,9 @@ impl RenderOutput for DiffRecord {
     fn render(&self, _style: &Style, no_color: bool) {
         match self.diff_style {
             DiffStyle::Unified => render_unified(&self.old, &self.new, &self.path, no_color),
-            DiffStyle::SideBySide => render_side_by_side(&self.old, &self.new, &self.path, no_color),
+            DiffStyle::SideBySide => {
+                render_side_by_side(&self.old, &self.new, &self.path, no_color)
+            }
         }
     }
 }
@@ -114,7 +102,10 @@ fn color(code: &str, text: &str, no_color: bool) -> String {
 fn render_unified(old: &str, new: &str, path: &str, no_color: bool) {
     let diff = TextDiff::from_lines(old, new);
     println!("{}", color("\x1b[1m", &format!("--- {path}"), no_color));
-    println!("{}", color("\x1b[1m", &format!("+++ {path} (mutated)"), no_color));
+    println!(
+        "{}",
+        color("\x1b[1m", &format!("+++ {path} (mutated)"), no_color)
+    );
     for hunk in diff.unified_diff().context_radius(3).iter_hunks() {
         let mut buf = String::new();
         write!(&mut buf, "{hunk}").unwrap();
@@ -178,13 +169,20 @@ impl RenderOutput for ApplyRecord {
     fn render(&self, style: &Style, no_color: bool) {
         match style {
             Style::Json => {
-                println!("{}", serde_json::to_string(self).expect("failed to serialize"));
+                println!(
+                    "{}",
+                    serde_json::to_string(self).expect("failed to serialize")
+                );
             }
             Style::Pretty => {
                 println!(
                     "Applied mutation {} to {}",
                     color("\x1b[33m", &self.mutated_hash.to_string(), no_color),
-                    color("\x1b[36m", &self.source_path.display().to_string(), no_color),
+                    color(
+                        "\x1b[36m",
+                        &self.source_path.display().to_string(),
+                        no_color
+                    ),
                 );
             }
             Style::Plain => {
@@ -208,7 +206,10 @@ impl RenderOutput for PlanRecord {
     fn render(&self, style: &Style, no_color: bool) {
         match style {
             Style::Json => {
-                println!("{}", serde_json::to_string(self).expect("failed to serialize"));
+                println!(
+                    "{}",
+                    serde_json::to_string(self).expect("failed to serialize")
+                );
             }
             Style::Pretty => {
                 println!(
@@ -234,7 +235,10 @@ impl RenderOutput for CreateRecord {
     fn render(&self, style: &Style, no_color: bool) {
         match style {
             Style::Json => {
-                println!("{}", serde_json::to_string(self).expect("failed to serialize"));
+                println!(
+                    "{}",
+                    serde_json::to_string(self).expect("failed to serialize")
+                );
             }
             Style::Pretty => {
                 println!(
@@ -247,7 +251,11 @@ impl RenderOutput for CreateRecord {
                 }
             }
             Style::Plain => {
-                println!("Created {} workspaces, manifest: {}", self.workspaces.len(), self.manifest.display());
+                println!(
+                    "Created {} workspaces, manifest: {}",
+                    self.workspaces.len(),
+                    self.manifest.display()
+                );
                 for ws in &self.workspaces {
                     println!("  {ws}");
                 }
@@ -266,7 +274,10 @@ impl RenderOutput for CleanupRecord {
     fn render(&self, style: &Style, no_color: bool) {
         match style {
             Style::Json => {
-                println!("{}", serde_json::to_string(self).expect("failed to serialize"));
+                println!(
+                    "{}",
+                    serde_json::to_string(self).expect("failed to serialize")
+                );
             }
             Style::Pretty => {
                 println!(
@@ -297,20 +308,34 @@ impl RenderOutput for CommandRecord {
     fn render(&self, style: &Style, no_color: bool) {
         match style {
             Style::Json => {
-                println!("{}", serde_json::to_string(self).expect("failed to serialize"));
+                println!(
+                    "{}",
+                    serde_json::to_string(self).expect("failed to serialize")
+                );
             }
             Style::Pretty | Style::Plain => {
                 let (status, output) = match &self.result {
                     Ok(stdout) => (
-                        if no_color { "OK".to_string() } else { color("\x1b[32m", "OK", false) },
+                        if no_color {
+                            "OK".to_string()
+                        } else {
+                            color("\x1b[32m", "OK", false)
+                        },
                         stdout,
                     ),
                     Err(stderr) => (
-                        if no_color { "FAIL".to_string() } else { color("\x1b[31m", "FAIL", false) },
+                        if no_color {
+                            "FAIL".to_string()
+                        } else {
+                            color("\x1b[31m", "FAIL", false)
+                        },
                         stderr,
                     ),
                 };
-                println!("{} {} in {} [{}]", status, self.step, self.workspace, self.command);
+                println!(
+                    "{} {} in {} [{}]",
+                    status, self.step, self.workspace, self.command
+                );
                 if !output.is_empty() {
                     print!("{output}");
                 }
@@ -329,7 +354,10 @@ impl RenderOutput for ResetRecord {
     fn render(&self, style: &Style, no_color: bool) {
         match style {
             Style::Json => {
-                println!("{}", serde_json::to_string(self).expect("failed to serialize"));
+                println!(
+                    "{}",
+                    serde_json::to_string(self).expect("failed to serialize")
+                );
             }
             Style::Pretty => {
                 println!(

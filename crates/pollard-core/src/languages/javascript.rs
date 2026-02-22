@@ -25,7 +25,10 @@ impl Language for JavaScript {
         tree_sitter_javascript::LANGUAGE.into()
     }
 
-    fn mutation_kind_for_node<'a>(node: tree_sitter::Node<'_>, file: &'a SourceFile) -> Option<(JsMutationKind, Span<'a>)> {
+    fn mutation_kind_for_node<'a>(
+        node: tree_sitter::Node<'_>,
+        file: &'a SourceFile,
+    ) -> Option<(JsMutationKind, Span<'a>)> {
         let source = file.content().as_bytes();
         match node.kind() {
             "statement_block" => {
@@ -35,21 +38,21 @@ impl Language for JavaScript {
             "binary_expression" => {
                 let op_node = node.child(1)?;
                 let op = match op_node.utf8_text(source).ok()? {
-                    "+"   => BinaryOpKind::Add,
-                    "-"   => BinaryOpKind::Sub,
-                    "*"   => BinaryOpKind::Mul,
-                    "/"   => BinaryOpKind::Div,
-                    "&&"  => BinaryOpKind::And,
-                    "||"  => BinaryOpKind::Or,
+                    "+" => BinaryOpKind::Add,
+                    "-" => BinaryOpKind::Sub,
+                    "*" => BinaryOpKind::Mul,
+                    "/" => BinaryOpKind::Div,
+                    "&&" => BinaryOpKind::And,
+                    "||" => BinaryOpKind::Or,
                     "===" => BinaryOpKind::StrictEq,
                     "!==" => BinaryOpKind::StrictNeq,
-                    "=="  => BinaryOpKind::Eq,
-                    "!="  => BinaryOpKind::Neq,
-                    "<"   => BinaryOpKind::Lt,
-                    "<="  => BinaryOpKind::Lte,
-                    ">"   => BinaryOpKind::Gt,
-                    ">="  => BinaryOpKind::Gte,
-                    _     => return None,
+                    "==" => BinaryOpKind::Eq,
+                    "!=" => BinaryOpKind::Neq,
+                    "<" => BinaryOpKind::Lt,
+                    "<=" => BinaryOpKind::Lte,
+                    ">" => BinaryOpKind::Gt,
+                    ">=" => BinaryOpKind::Gte,
+                    _ => return None,
                 };
                 let span = Span::from_node(file, op_node);
                 Some((JsMutationKind::BinaryOp(op), span))
@@ -58,26 +61,33 @@ impl Language for JavaScript {
         }
     }
 
-    fn generate_substitutions<'a>(kind: &JsMutationKind, file: &'a SourceFile, span: &Span<'a>) -> Vec<(String, MutatedFile<'a>)> {
+    fn generate_substitutions<'a>(
+        kind: &JsMutationKind,
+        file: &'a SourceFile,
+        span: &Span<'a>,
+    ) -> Vec<(String, MutatedFile<'a>)> {
         use BinaryOpKind::*;
         let replacements: &[&str] = match kind {
             JsMutationKind::StatementBlock => &["{}"],
-            JsMutationKind::BinaryOp(Add)       => &["-", "*", "/"],
-            JsMutationKind::BinaryOp(Sub)       => &["+", "*", "/"],
-            JsMutationKind::BinaryOp(Mul)       => &["+", "-", "/"],
-            JsMutationKind::BinaryOp(Div)       => &["+", "-", "*"],
-            JsMutationKind::BinaryOp(And)       => &["||"],
-            JsMutationKind::BinaryOp(Or)        => &["&&"],
-            JsMutationKind::BinaryOp(StrictEq)  => &["!=="],
+            JsMutationKind::BinaryOp(Add) => &["-", "*", "/"],
+            JsMutationKind::BinaryOp(Sub) => &["+", "*", "/"],
+            JsMutationKind::BinaryOp(Mul) => &["+", "-", "/"],
+            JsMutationKind::BinaryOp(Div) => &["+", "-", "*"],
+            JsMutationKind::BinaryOp(And) => &["||"],
+            JsMutationKind::BinaryOp(Or) => &["&&"],
+            JsMutationKind::BinaryOp(StrictEq) => &["!=="],
             JsMutationKind::BinaryOp(StrictNeq) => &["==="],
-            JsMutationKind::BinaryOp(Eq)        => &["!="],
-            JsMutationKind::BinaryOp(Neq)       => &["=="],
-            JsMutationKind::BinaryOp(Lt)        => &[">", "<=", ">="],
-            JsMutationKind::BinaryOp(Lte)       => &["<", ">", ">="],
-            JsMutationKind::BinaryOp(Gt)        => &["<", "<=", ">="],
-            JsMutationKind::BinaryOp(Gte)       => &[">", "<", "<="],
+            JsMutationKind::BinaryOp(Eq) => &["!="],
+            JsMutationKind::BinaryOp(Neq) => &["=="],
+            JsMutationKind::BinaryOp(Lt) => &[">", "<=", ">="],
+            JsMutationKind::BinaryOp(Lte) => &["<", ">", ">="],
+            JsMutationKind::BinaryOp(Gt) => &["<", "<=", ">="],
+            JsMutationKind::BinaryOp(Gte) => &[">", "<", "<="],
         };
-        replacements.iter().map(|r| (r.to_string(), file.with_replacement(span, r))).collect()
+        replacements
+            .iter()
+            .map(|r| (r.to_string(), file.with_replacement(span, r)))
+            .collect()
     }
 }
 
@@ -90,7 +100,11 @@ mod tests {
     fn file(content: &str) -> SourceFile {
         let content = content.to_string();
         let hash = crate::Hash::of(&content);
-        SourceFile { path: PathBuf::from("test.js"), content, hash }
+        SourceFile {
+            path: PathBuf::from("test.js"),
+            content,
+            hash,
+        }
     }
 
     #[test]
