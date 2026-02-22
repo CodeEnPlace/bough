@@ -1,17 +1,8 @@
 use serde::Serialize;
 use std::path::PathBuf;
 
-pub use pollard_session::{DiffStyle, Session, Style};
-
-pub trait Report {
-    fn render(&self, style: &Style, no_color: bool, depth: u8);
-    fn get_dir(&self, session: &Session) -> PathBuf;
-    fn make_path(&self, session: &Session) -> PathBuf;
-}
-
-pub fn hashed_path(dir: &PathBuf, content: &str, label: &str) -> PathBuf {
-    dir.join(format!("{}.{label}.json", pollard_core::Hash::of(content)))
-}
+pub use pollard_core::io::{DiffStyle, Render, Style, hashed_path};
+pub use pollard_session::{Report, Session};
 
 #[derive(Debug, Clone, Serialize)]
 pub enum Action {
@@ -79,16 +70,7 @@ fn color(code: &str, text: &str, no_color: bool) -> String {
     }
 }
 
-impl Report for Action {
-    fn get_dir(&self, session: &Session) -> PathBuf {
-        session.report_dir.join("action")
-    }
-
-    fn make_path(&self, session: &Session) -> PathBuf {
-        let content = serde_json::to_string(self).expect("failed to serialize");
-        hashed_path(&self.get_dir(session), &content, "action")
-    }
-
+impl Render for Action {
     fn render(&self, style: &Style, no_color: bool, _depth: u8) {
         match style {
             Style::Json => {
@@ -140,6 +122,17 @@ impl Report for Action {
     }
 }
 
+impl Report for Action {
+    fn get_dir(&self, session: &Session) -> PathBuf {
+        session.report_dir.join("action")
+    }
+
+    fn make_path(&self, session: &Session) -> PathBuf {
+        let content = serde_json::to_string(self).expect("failed to serialize");
+        hashed_path(&self.get_dir(session), &content, "action")
+    }
+}
+
 pub struct SessionReport {
     json: String,
     debug: String,
@@ -154,6 +147,15 @@ impl SessionReport {
     }
 }
 
+impl Render for SessionReport {
+    fn render(&self, style: &Style, _no_color: bool, _depth: u8) {
+        match style {
+            Style::Json => println!("{}", self.json),
+            _ => println!("{}", self.debug),
+        }
+    }
+}
+
 impl Report for SessionReport {
     fn get_dir(&self, session: &Session) -> PathBuf {
         session.report_dir.join("session")
@@ -161,12 +163,5 @@ impl Report for SessionReport {
 
     fn make_path(&self, session: &Session) -> PathBuf {
         hashed_path(&self.get_dir(session), &self.json, "session")
-    }
-
-    fn render(&self, style: &Style, _no_color: bool, _depth: u8) {
-        match style {
-            Style::Json => println!("{}", self.json),
-            _ => println!("{}", self.debug),
-        }
     }
 }

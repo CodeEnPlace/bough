@@ -4,7 +4,7 @@ mod steps;
 
 use clap::{CommandFactory, Parser, Subcommand};
 use clap_complete::Shell;
-use io::{Action, Report};
+use io::{Action, Render, Report};
 use pollard_core::Hash;
 use pollard_session::{PartialSession, Session, SessionSkipped, discover_config, read_config};
 use std::path::PathBuf;

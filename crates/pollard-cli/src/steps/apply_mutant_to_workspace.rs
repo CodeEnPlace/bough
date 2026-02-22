@@ -1,4 +1,4 @@
-use crate::io::{Action, Report, Style, hashed_path};
+use crate::io::{Action, Render, Report, Style, hashed_path};
 use pollard_session::Session;
 use crate::steps::{color, find_workspace, read_plan, read_workspace_manifest};
 use pollard_core::Hash;
@@ -66,19 +66,7 @@ pub struct ApplyMutantToWorkspaceReport {
     pub mutated_hash: Hash,
 }
 
-impl Report for ApplyMutantToWorkspaceReport {
-    fn get_dir(&self, session: &pollard_session::Session) -> PathBuf {
-        session
-            .report_dir
-            .join("step")
-            .join("apply-mutant-to-workspace")
-    }
-
-    fn make_path(&self, session: &pollard_session::Session) -> PathBuf {
-        let content = serde_json::to_string(self).expect("failed to serialize");
-        hashed_path(&self.get_dir(session), &content, "applied")
-    }
-
+impl Render for ApplyMutantToWorkspaceReport {
     fn render(&self, style: &Style, no_color: bool, _depth: u8) {
         match style {
             Style::Json => {
@@ -107,4 +95,19 @@ impl Report for ApplyMutantToWorkspaceReport {
             }
         }
     }
+}
+
+impl Report for ApplyMutantToWorkspaceReport {
+    fn get_dir(&self, session: &pollard_session::Session) -> PathBuf {
+        session
+            .report_dir
+            .join("step")
+            .join("apply-mutant-to-workspace")
+    }
+
+    fn make_path(&self, session: &pollard_session::Session) -> PathBuf {
+        let content = serde_json::to_string(self).expect("failed to serialize");
+        hashed_path(&self.get_dir(session), &content, "applied")
+    }
+
 }

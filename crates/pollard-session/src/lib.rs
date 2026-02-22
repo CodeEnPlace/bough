@@ -1,6 +1,7 @@
 mod config;
 
 pub use config::{discover_config, read_config, ConfigError, SEARCH_PATHS};
+pub use pollard_core::io::{DiffStyle, Render, Style, hashed_path};
 
 use pollard_core::config::{LanguageId, Ordering, Vcs};
 use pollard_session_derive::Settings;
@@ -26,20 +27,9 @@ impl Session {
     }
 }
 
-#[derive(Debug, Clone, Serialize, serde::Deserialize, clap::ValueEnum)]
-#[serde(rename_all = "lowercase")]
-pub enum Style {
-    Plain,
-    Pretty,
-    Json,
-    Markdown,
-}
-
-#[derive(Debug, Clone, Serialize, serde::Deserialize, clap::ValueEnum)]
-#[serde(rename_all = "kebab-case")]
-pub enum DiffStyle {
-    Unified,
-    SideBySide,
+pub trait Report: Render {
+    fn get_dir(&self, session: &Session) -> PathBuf;
+    fn make_path(&self, session: &Session) -> PathBuf;
 }
 
 #[derive(Debug, Clone, Serialize, Settings)]
