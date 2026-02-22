@@ -85,6 +85,12 @@ enum MutateAction {
         #[arg(long)]
         mutant: Hash,
     },
+    Describe {
+        #[arg(short, long)]
+        file: PathBuf,
+        #[arg(long)]
+        mutant: Hash,
+    },
 }
 
 fn render_and_apply(actions: Vec<Action>, reports: Vec<Box<dyn Report>>, session: &Session) {
@@ -189,6 +195,16 @@ fn main() {
                 },
         } => {
             let (actions, report) = mutate::apply::run(&session.language, input, hash);
+            (actions, vec![Box::new(report)])
+        }
+        Command::Mutate {
+            action:
+                MutateAction::Describe {
+                    file: input,
+                    mutant: hash,
+                },
+        } => {
+            let (actions, report) = mutate::describe::run(&session.language, input, hash);
             (actions, vec![Box::new(report)])
         }
         Command::Step {
