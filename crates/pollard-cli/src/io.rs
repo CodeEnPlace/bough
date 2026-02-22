@@ -17,6 +17,12 @@ pub enum Style {
 
 pub trait Report {
     fn render(&self, style: &Style, no_color: bool, depth: u8);
+    fn get_dir(&self, session: &crate::session::Session) -> PathBuf;
+    fn make_path(&self, session: &crate::session::Session) -> PathBuf;
+}
+
+pub fn hashed_path(dir: &PathBuf, content: &str, label: &str) -> PathBuf {
+    dir.join(format!("{}.{label}.json", pollard_core::Hash::of(content)))
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -94,6 +100,15 @@ fn color(code: &str, text: &str, no_color: bool) -> String {
 }
 
 impl Report for Action {
+    fn get_dir(&self, session: &crate::session::Session) -> PathBuf {
+        session.report_dir.join("action")
+    }
+
+    fn make_path(&self, session: &crate::session::Session) -> PathBuf {
+        let content = serde_json::to_string(self).expect("failed to serialize");
+        hashed_path(&self.get_dir(session), &content, "action")
+    }
+
     fn render(&self, style: &Style, no_color: bool, _depth: u8) {
         match style {
             Style::Json => {
@@ -145,10 +160,3 @@ impl Report for Action {
     }
 }
 
-pub fn repo_is_dirty() -> bool {
-    std::process::Command::new("git")
-        .args(["status", "--porcelain"])
-        .output()
-        .map(|out| !out.status.success() || !out.stdout.is_empty())
-        .unwrap_or(true)
-}

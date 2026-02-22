@@ -1,8 +1,9 @@
-use crate::io::{Action, Report, Style};
+use crate::io::{Action, Report, Style, hashed_path};
 use crate::session::Session;
 use crate::steps::{color, find_workspace, read_workspace_manifest};
 use pollard_core::config::Vcs;
 use serde::Serialize;
+use std::path::PathBuf;
 
 pub fn run(session: &Session, workspace_name: &str, rev: &str) -> (Vec<Action>, ResetReport) {
     match session.vcs {
@@ -47,6 +48,15 @@ pub struct ResetReport {
 }
 
 impl Report for ResetReport {
+    fn get_dir(&self, session: &crate::session::Session) -> PathBuf {
+        session.report_dir.join("step").join("reset")
+    }
+
+    fn make_path(&self, session: &crate::session::Session) -> PathBuf {
+        let content = serde_json::to_string(self).expect("failed to serialize");
+        hashed_path(&self.get_dir(session), &content, "reset")
+    }
+
     fn render(&self, style: &Style, no_color: bool, _depth: u8) {
         match style {
             Style::Json => {

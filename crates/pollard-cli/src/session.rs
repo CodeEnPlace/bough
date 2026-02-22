@@ -24,7 +24,7 @@ pub struct Session {
     pub style: Style,
     pub diff: DiffStyle,
     pub no_color: bool,
-    pub force_on_dirty_repo: bool,
+    pub exec: bool,
     pub config_path: PathBuf,
     pub commands: Commands,
 }
@@ -87,7 +87,7 @@ impl Session {
             style: cli.style.clone(),
             diff: cli.diff.clone(),
             no_color: cli.no_color,
-            force_on_dirty_repo: cli.force_on_dirty_repo,
+            exec: cli.exec,
             config_path,
             commands: config.commands,
         })
