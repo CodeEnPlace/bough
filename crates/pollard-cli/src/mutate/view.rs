@@ -34,11 +34,11 @@ pub struct ViewReport {
 }
 
 impl Report for ViewReport {
-    fn get_dir(&self, session: &crate::session::Session) -> PathBuf {
+    fn get_dir(&self, session: &pollard_session::Session) -> PathBuf {
         session.report_dir.join("mutate").join("view")
     }
 
-    fn make_path(&self, session: &crate::session::Session) -> PathBuf {
+    fn make_path(&self, session: &pollard_session::Session) -> PathBuf {
         let content = format!("{}:{}:{}", self.path, self.old, self.new);
         hashed_path(&self.get_dir(session), &content, "diff")
     }

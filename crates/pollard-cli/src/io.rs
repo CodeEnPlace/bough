@@ -1,24 +1,12 @@
 use serde::Serialize;
 use std::path::PathBuf;
 
-#[derive(Debug, Clone, Serialize, clap::ValueEnum)]
-pub enum DiffStyle {
-    Unified,
-    SideBySide,
-}
-
-#[derive(Debug, Clone, Serialize, clap::ValueEnum)]
-pub enum Style {
-    Plain,
-    Pretty,
-    Json,
-    Markdown,
-}
+pub use pollard_session::{DiffStyle, Session, Style};
 
 pub trait Report {
     fn render(&self, style: &Style, no_color: bool, depth: u8);
-    fn get_dir(&self, session: &crate::session::Session) -> PathBuf;
-    fn make_path(&self, session: &crate::session::Session) -> PathBuf;
+    fn get_dir(&self, session: &Session) -> PathBuf;
+    fn make_path(&self, session: &Session) -> PathBuf;
 }
 
 pub fn hashed_path(dir: &PathBuf, content: &str, label: &str) -> PathBuf {
@@ -92,11 +80,11 @@ fn color(code: &str, text: &str, no_color: bool) -> String {
 }
 
 impl Report for Action {
-    fn get_dir(&self, session: &crate::session::Session) -> PathBuf {
+    fn get_dir(&self, session: &Session) -> PathBuf {
         session.report_dir.join("action")
     }
 
-    fn make_path(&self, session: &crate::session::Session) -> PathBuf {
+    fn make_path(&self, session: &Session) -> PathBuf {
         let content = serde_json::to_string(self).expect("failed to serialize");
         hashed_path(&self.get_dir(session), &content, "action")
     }
@@ -152,3 +140,33 @@ impl Report for Action {
     }
 }
 
+pub struct SessionReport {
+    json: String,
+    debug: String,
+}
+
+impl SessionReport {
+    pub fn new(session: &Session) -> Self {
+        Self {
+            json: serde_json::to_string_pretty(session).expect("failed to serialize"),
+            debug: format!("{session:#?}"),
+        }
+    }
+}
+
+impl Report for SessionReport {
+    fn get_dir(&self, session: &Session) -> PathBuf {
+        session.report_dir.join("session")
+    }
+
+    fn make_path(&self, session: &Session) -> PathBuf {
+        hashed_path(&self.get_dir(session), &self.json, "session")
+    }
+
+    fn render(&self, style: &Style, _no_color: bool, _depth: u8) {
+        match style {
+            Style::Json => println!("{}", self.json),
+            _ => println!("{}", self.debug),
+        }
+    }
+}
