@@ -5,7 +5,26 @@ pub use config::{discover_config, read_config, ConfigError, SEARCH_PATHS};
 use pollard_core::config::{LanguageId, Ordering, Vcs};
 use pollard_session_derive::Settings;
 use serde::Serialize;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+
+fn absolutize(path: &Path) -> PathBuf {
+    if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        std::env::current_dir()
+            .expect("failed to get current directory")
+            .join(path)
+    }
+}
+
+impl Session {
+    pub fn normalize_paths(&mut self) {
+        self.working_dir = absolutize(&self.working_dir);
+        self.report_dir = absolutize(&self.report_dir);
+        self.sub_dir = absolutize(&self.sub_dir);
+        self.config_path = absolutize(&self.config_path);
+    }
+}
 
 #[derive(Debug, Clone, Serialize, serde::Deserialize, clap::ValueEnum)]
 #[serde(rename_all = "lowercase")]

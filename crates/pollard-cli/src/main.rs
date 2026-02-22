@@ -2,12 +2,11 @@ mod io;
 mod mutate;
 mod steps;
 
-use clap::{Parser, Subcommand};
+use clap::{CommandFactory, Parser, Subcommand};
+use clap_complete::Shell;
 use io::{Action, Report};
 use pollard_core::Hash;
-use pollard_session::{
-    PartialSession, Session, SessionSkipped, discover_config, read_config,
-};
+use pollard_session::{PartialSession, Session, SessionSkipped, discover_config, read_config};
 use std::path::PathBuf;
 
 #[derive(Debug, Parser)]
@@ -34,6 +33,10 @@ enum Command {
         action: StepAction,
     },
     DumpSession,
+    Completions {
+        #[arg(value_enum)]
+        shell: Shell,
+    },
 }
 
 #[derive(Debug, Subcommand)]
@@ -95,6 +98,9 @@ fn render_and_apply(actions: Vec<Action>, reports: Vec<Box<dyn Report>>, session
 
     if !session.exec {
         eprintln!("{} action(s) pending, pass --exec to apply", actions.len());
+        for action in actions {
+            action.render(&session.style, session.no_color, 0);
+        }
         return;
     }
 
@@ -124,20 +130,26 @@ fn build_session(cli: Cli) -> (Session, Command) {
 
     let merged = cli.settings.merge(config_partial);
 
-    let session = merged
-        .resolve(SessionSkipped {
-            config_path,
-        })
+    let mut session = merged
+        .resolve(SessionSkipped { config_path })
         .unwrap_or_else(|e| {
             eprintln!("{e}");
             std::process::exit(1);
         });
+
+    session.normalize_paths();
 
     (session, cli.command)
 }
 
 fn main() {
     let cli = Cli::parse();
+
+    if let Command::Completions { shell } = &cli.command {
+        clap_complete::generate(*shell, &mut Cli::command(), "pollard", &mut std::io::stdout());
+        return;
+    }
+
     let (session, command) = build_session(cli);
 
     let (actions, reports): (Vec<Action>, Vec<Box<dyn Report>>) = match &command {
@@ -244,6 +256,7 @@ fn main() {
             let report = io::SessionReport::new(&session);
             (vec![], vec![Box::new(report)])
         }
+        Command::Completions { .. } => unreachable!(),
     };
 
     render_and_apply(actions, reports, &session);
