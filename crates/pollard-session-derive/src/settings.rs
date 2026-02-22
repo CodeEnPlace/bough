@@ -10,6 +10,7 @@ struct FieldInfo {
     ty: Type,
     is_option: bool,
     is_vec: bool,
+    is_bool: bool,
     skip: bool,
     cli_only: bool,
     flatten: bool,
@@ -32,6 +33,15 @@ fn extract_inner_type(ty: &Type) -> Option<&Type> {
     None
 }
 
+fn is_bare_type(ty: &Type, name: &str) -> bool {
+    if let Type::Path(type_path) = ty {
+        if let Some(seg) = type_path.path.segments.last() {
+            return seg.ident == name && seg.arguments.is_none();
+        }
+    }
+    false
+}
+
 fn is_type_wrapper(ty: &Type, name: &str) -> bool {
     if let Type::Path(type_path) = ty {
         if let Some(seg) = type_path.path.segments.last() {
@@ -46,6 +56,7 @@ fn parse_field(field: &Field) -> syn::Result<FieldInfo> {
     let ty = field.ty.clone();
     let is_option = is_type_wrapper(&ty, "Option");
     let is_vec = is_type_wrapper(&ty, "Vec");
+    let is_bool = is_bare_type(&ty, "bool");
 
     let mut skip = false;
     let mut cli_only = false;
@@ -94,6 +105,7 @@ fn parse_field(field: &Field) -> syn::Result<FieldInfo> {
         ty,
         is_option,
         is_vec,
+        is_bool,
         skip,
         cli_only,
         flatten,
@@ -187,6 +199,19 @@ fn gen_partial_fields(fields: &[FieldInfo]) -> Vec<TokenStream> {
                     #serde_skip
                     pub #ident: Vec<#inner>,
                 }
+            } else if f.is_bool {
+                let serde_skip = if f.cli_only {
+                    quote! { #[serde(skip)] }
+                } else {
+                    quote! { #[serde(default)] }
+                };
+                let env_attr = f.env.as_ref().map(|e| quote! { env = #e, });
+                let hide_env = f.env.as_ref().map(|_| quote! { hide_env = true, });
+                quote! {
+                    #[arg(long = #long_name, global = true, action = clap::ArgAction::SetTrue, #env_attr #hide_env)]
+                    #serde_skip
+                    pub #ident: bool,
+                }
             } else {
                 let ty = if f.is_option {
                     let inner = extract_inner_type(&f.ty).unwrap();
@@ -231,6 +256,8 @@ fn gen_merge_fields(fields: &[FieldInfo]) -> Vec<TokenStream> {
                         self.#ident
                     },
                 }
+            } else if f.is_bool {
+                quote! { #ident: self.#ident || fallback.#ident, }
             } else {
                 quote! { #ident: self.#ident.or(fallback.#ident), }
             }
@@ -245,7 +272,7 @@ fn gen_resolve_fields(fields: &[FieldInfo], struct_name: &syn::Ident) -> TokenSt
     // Phase 1: check required fields, collect missing
     let check_stmts: Vec<TokenStream> = fields
         .iter()
-        .filter(|f| !f.skip && !f.flatten && !f.is_vec && !f.is_option && f.default_expr.is_none())
+        .filter(|f| !f.skip && !f.flatten && !f.is_vec && !f.is_option && !f.is_bool && f.default_expr.is_none())
         .map(|f| {
             let field_name = f.ident.to_string();
             let ident = &f.ident;
@@ -273,6 +300,10 @@ fn gen_resolve_fields(fields: &[FieldInfo], struct_name: &syn::Ident) -> TokenSt
                     return quote! { #ident: self.#ident.resolve(/* skipped */)?, };
                 }
                 return quote! { #ident: self.#ident.resolve_no_skip()?, };
+            }
+
+            if f.is_bool {
+                return quote! { #ident: self.#ident, };
             }
 
             if f.is_vec {

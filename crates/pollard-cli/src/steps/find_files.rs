@@ -41,7 +41,7 @@ impl Report for FindFilesReport {
             }
             Style::Pretty => {
                 println!(
-                    "Found {} files matching {}",
+                    "{} files match {}",
                     crate::steps::color("\x1b[33m", &self.files.len().to_string(), no_color),
                     crate::steps::color("\x1b[36m", &self.pattern, no_color),
                 );
@@ -50,7 +50,7 @@ impl Report for FindFilesReport {
                 }
             }
             Style::Plain | Style::Markdown => {
-                println!("Found {} files matching {}", self.files.len(), self.pattern);
+                println!("{} files match {}", self.files.len(), self.pattern);
                 for f in &self.files {
                     println!("  {}", f.display());
                 }

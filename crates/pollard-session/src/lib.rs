@@ -80,9 +80,9 @@ pub struct Session {
     pub style: Style,
     #[setting(default = "DiffStyle::Unified")]
     pub diff: DiffStyle,
-    #[setting(env = "NO_COLOR", default = "false")]
+    #[setting(env = "NO_COLOR")]
     pub no_color: bool,
-    #[setting(cli_only, default = "false")]
+    #[setting(cli_only)]
     pub exec: bool,
     #[setting(skip)]
     pub config_path: PathBuf,

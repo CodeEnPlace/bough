@@ -83,7 +83,7 @@ impl Report for CreateWorkspacesReport {
             }
             Style::Pretty => {
                 println!(
-                    "Created {} workspaces, manifest: {}",
+                    "Will create {} workspaces, manifest: {}",
                     color("\x1b[33m", &self.workspaces.len().to_string(), no_color),
                     color("\x1b[36m", &self.manifest.display().to_string(), no_color),
                 );
@@ -93,7 +93,7 @@ impl Report for CreateWorkspacesReport {
             }
             Style::Plain | Style::Markdown => {
                 println!(
-                    "Created {} workspaces, manifest: {}",
+                    "Will create {} workspaces, manifest: {}",
                     self.workspaces.len(),
                     self.manifest.display()
                 );
