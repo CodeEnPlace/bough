@@ -5,7 +5,11 @@ use pollard_core::Hash;
 use serde::Serialize;
 use std::path::PathBuf;
 
-pub fn run(session: &Session, workspace_name: &str, hash: &Hash) -> (Vec<Action>, ApplyReport) {
+pub fn run(
+    session: &Session,
+    workspace_name: &str,
+    hash: &Hash,
+) -> (Vec<Action>, ApplyMutantToWorkspaceReport) {
     let plan = read_plan(session);
     let manifest = read_workspace_manifest(session);
     let ws = find_workspace(&manifest, workspace_name);
@@ -46,7 +50,7 @@ pub fn run(session: &Session, workspace_name: &str, hash: &Hash) -> (Vec<Action>
         std::process::exit(1);
     });
 
-    let report = ApplyReport {
+    let report = ApplyMutantToWorkspaceReport {
         source_path: file_in_workspace,
         source_hash: entry.source_hash.clone(),
         mutated_hash: entry.mutated_hash.clone(),
@@ -56,15 +60,18 @@ pub fn run(session: &Session, workspace_name: &str, hash: &Hash) -> (Vec<Action>
 }
 
 #[derive(Serialize)]
-pub struct ApplyReport {
+pub struct ApplyMutantToWorkspaceReport {
     pub source_path: PathBuf,
     pub source_hash: Hash,
     pub mutated_hash: Hash,
 }
 
-impl Report for ApplyReport {
+impl Report for ApplyMutantToWorkspaceReport {
     fn get_dir(&self, session: &crate::session::Session) -> PathBuf {
-        session.report_dir.join("step").join("apply")
+        session
+            .report_dir
+            .join("step")
+            .join("apply-mutant-to-workspace")
     }
 
     fn make_path(&self, session: &crate::session::Session) -> PathBuf {

@@ -1,11 +1,11 @@
-pub mod apply;
-pub mod build;
+pub mod apply_mutant_to_workspace;
 pub mod cleanup;
-pub mod create;
-pub mod install;
-pub mod plan;
-pub mod reset;
-pub mod test;
+pub mod create_workspaces;
+pub mod derive_mutants;
+pub mod find_files;
+pub mod reset_workspace;
+pub mod setup_workspace;
+pub mod test_workspace;
 
 use crate::io::{Report, Style, hashed_path};
 use crate::session::Session;
@@ -93,16 +93,11 @@ fn run_in_workspace(
 ) -> Option<CommandReport> {
     let cmd = match command {
         Some(c) => c,
-        None => {
-            log::info!("no {step_name} command configured, skipping");
-            return None;
-        }
+        None => return None,
     };
 
     let manifest = read_workspace_manifest(session);
     let ws = find_workspace(&manifest, workspace_name);
-
-    log::info!("running {step_name} in {}: {cmd}", ws.path.display());
 
     let output = std::process::Command::new("sh")
         .args(["-c", cmd])

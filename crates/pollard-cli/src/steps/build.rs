@@ -1,8 +1,0 @@
-use crate::io::Action;
-use crate::session::Session;
-use crate::steps::{run_in_workspace, CommandReport};
-
-pub fn run(session: &Session, workspace: &str) -> (Vec<Action>, Option<CommandReport>) {
-    let report = run_in_workspace(session, workspace, &session.commands.build, "build");
-    (vec![], report)
-}
