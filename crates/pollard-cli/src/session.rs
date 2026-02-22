@@ -3,12 +3,43 @@ use std::path::PathBuf;
 use pollard_core::config::{Commands, Config, LanguageId, Ordering, Vcs};
 use serde::Serialize;
 
-use crate::io::{DiffStyle, Style};
+use crate::io::{DiffStyle, Report, Style, hashed_path};
 use crate::Cli;
+
+pub struct SessionReport {
+    json: String,
+    debug: String,
+}
+
+impl SessionReport {
+    pub fn new(session: &Session) -> Self {
+        Self {
+            json: serde_json::to_string_pretty(session).expect("failed to serialize"),
+            debug: format!("{session:#?}"),
+        }
+    }
+}
+
+impl Report for SessionReport {
+    fn get_dir(&self, session: &Session) -> PathBuf {
+        session.report_dir.join("session")
+    }
+
+    fn make_path(&self, session: &Session) -> PathBuf {
+        hashed_path(&self.get_dir(session), &self.json, "session")
+    }
+
+    fn render(&self, style: &Style, _no_color: bool, _depth: u8) {
+        match style {
+            Style::Json => println!("{}", self.json),
+            _ => println!("{}", self.debug),
+        }
+    }
+}
 
 // All fields are resolved and non-optional. No defaults are applied here;
 // every value must be provided by CLI args or config. No Option types allowed.
-#[derive(Serialize)]
+#[derive(Debug, Serialize)]
 pub struct Session {
     pub language: LanguageId,
     pub vcs: Vcs,

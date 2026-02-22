@@ -81,6 +81,7 @@ enum Command {
         #[command(subcommand)]
         action: StepAction,
     },
+    DumpSession,
 }
 
 #[derive(Debug, Subcommand)]
@@ -274,6 +275,10 @@ fn main() {
         } => {
             let (actions, report) = steps::cleanup::run(&session);
             (actions, vec![Box::new(report)])
+        }
+        Command::DumpSession => {
+            let report = session::SessionReport::new(&session);
+            (vec![], vec![Box::new(report)])
         }
     };
 
