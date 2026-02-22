@@ -20,6 +20,7 @@ commands = ["npm clean"]
 pwd = "./examples/vitest"
 timeout.absolute = 30
 timeout.relative = 3
+env = { NODE_ENV = "production" }
 commands = [
   "npx run build",
   "npx run test",
@@ -30,7 +31,7 @@ commands = [
 files.include = ["**/*.js", "**/*.jsx"]
 files.exclude = ["**/*__mocks__*"]
 mutants.skip = [
-  { lisp = "((fn 'describe') @ignore)", },
+  { lisp = "((fn 'describe') @ignore)" } ,
   { kind = { "BinaryOp" = "Add" } }
 ]
 
@@ -38,13 +39,13 @@ mutants.skip = [
 #must be tree-sitter id
 files.include = ["**/*.rs"]
 mutants.skip = [
-  { lisp = "((fn 'describe') @ignore)", },
+  { lisp = "((fn 'describe') @ignore)" } ,
   { kind = { "BinaryOp" = "Add" } }
 ]
 
 [cargo]
-[cargo.test]
 pwd = "./examples/cargo"
+[cargo.test]
 timeout.absolute = 30
 timeout.relative = 3
 commands = ["cargo test"]
@@ -54,7 +55,7 @@ commands = ["cargo test"]
 files.include = ["**/*.js", "**/*.jsx"]
 files.exclude = ["**/*__mocks__*"]
 mutants.skip = [
-  { lisp = "((fn 'describe') @ignore)", },
+  { lisp = "((fn 'describe') @ignore)" } ,
   { kind = { "BinaryOp" = "Add" } }
 ]
 
@@ -62,6 +63,6 @@ mutants.skip = [
 #must be tree-sitter id
 files.include = ["**/*.rs"]
 mutants.skip = [
-  { lisp = "((fn 'describe') @ignore)", },
+  { lisp = "((fn 'describe') @ignore)" } ,
   { kind = { "BinaryOp" = "Add" } }
 ]
