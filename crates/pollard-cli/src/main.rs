@@ -1,71 +1,23 @@
 mod io;
 mod mutate;
-mod session;
 mod steps;
 
 use clap::{Parser, Subcommand};
-use io::{Action, Report, Style};
+use io::{Action, Report};
 use pollard_core::Hash;
-use pollard_core::config::{Config, LanguageId, Ordering, Vcs};
-use session::Session;
+use pollard_session::{
+    PartialSession, Session, SessionSkipped, discover_config, read_config,
+};
 use std::path::PathBuf;
 
 #[derive(Debug, Parser)]
 #[command(name = "pollard", about = "Cross-language mutation testing")]
 struct Cli {
-    #[arg(short, long, global = true)]
-    language: Option<LanguageId>,
-
-    #[arg(short, long, default_value = "plain", global = true)]
-    style: Style,
-
-    #[arg(long, default_value = "unified", global = true)]
-    diff: io::DiffStyle,
-
-    #[arg(
-        long,
-        env = "NO_COLOR",
-        hide = true,
-        default_value_t = false,
-        global = true
-    )]
-    no_color: bool,
-
     #[arg(long, global = true)]
     config: Option<PathBuf>,
 
-    #[arg(long, global = true)]
-    vcs: Option<Vcs>,
-
-    #[arg(long, global = true)]
-    working_dir: Option<PathBuf>,
-
-    #[arg(long, global = true)]
-    parallelism: Option<usize>,
-
-    #[arg(long, global = true)]
-    report_dir: Option<PathBuf>,
-
-    #[arg(long, global = true)]
-    ordering: Option<Ordering>,
-
-    #[arg(long, global = true)]
-    sub_dir: Option<PathBuf>,
-
-    #[arg(long, global = true)]
-    files: Option<String>,
-
-    #[arg(long, global = true)]
-    ignore_mutants: Vec<String>,
-
-    #[arg(long, global = true)]
-    timeout_absolute: Option<u64>,
-
-    #[arg(long, global = true)]
-    timeout_relative: Option<f64>,
-
-    #[arg(long, global = true, default_value_t = false)]
-    exec: bool,
+    #[command(flatten)]
+    settings: PartialSession,
 
     #[command(subcommand)]
     command: Command,
@@ -152,16 +104,14 @@ fn render_and_apply(actions: Vec<Action>, reports: Vec<Box<dyn Report>>, session
     }
 }
 
-fn main() {
-    let cli = Cli::parse();
-
+fn build_session(cli: Cli) -> (Session, Command) {
     let cwd = std::env::current_dir().expect("failed to get current directory");
     let discovered = match &cli.config {
-        Some(path) => Some((path.clone(), Config::read(path))),
-        None => Config::discover(&cwd),
+        Some(path) => Some((path.clone(), read_config(path))),
+        None => discover_config(&cwd),
     };
-    let (config_path, config) = match discovered {
-        Some((path, Ok(config))) => (path, config),
+    let (config_path, config_partial) = match discovered {
+        Some((path, Ok(partial))) => (path, partial),
         Some((path, Err(e))) => {
             eprintln!("error in {}: {e}", path.display());
             std::process::exit(1);
@@ -171,12 +121,26 @@ fn main() {
             std::process::exit(1);
         }
     };
-    let session = Session::from_cli_and_config(&cli, config, config_path).unwrap_or_else(|e| {
-        eprintln!("{e}");
-        std::process::exit(1);
-    });
 
-    let (actions, reports): (Vec<Action>, Vec<Box<dyn Report>>) = match &cli.command {
+    let merged = cli.settings.merge(config_partial);
+
+    let session = merged
+        .resolve(SessionSkipped {
+            config_path,
+        })
+        .unwrap_or_else(|e| {
+            eprintln!("{e}");
+            std::process::exit(1);
+        });
+
+    (session, cli.command)
+}
+
+fn main() {
+    let cli = Cli::parse();
+    let (session, command) = build_session(cli);
+
+    let (actions, reports): (Vec<Action>, Vec<Box<dyn Report>>) = match &command {
         Command::Mutate {
             action: MutateAction::Generate { file: pattern },
         } => {
@@ -277,7 +241,7 @@ fn main() {
             (actions, vec![Box::new(report)])
         }
         Command::DumpSession => {
-            let report = session::SessionReport::new(&session);
+            let report = io::SessionReport::new(&session);
             (vec![], vec![Box::new(report)])
         }
     };

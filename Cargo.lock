@@ -270,11 +270,11 @@ dependencies = [
  "clap",
  "glob",
  "pollard-core",
+ "pollard-session",
  "serde",
  "serde_json",
  "similar",
  "terminal_size",
- "toml",
 ]
 
 [[package]]
@@ -285,7 +285,6 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
- "toml",
  "tree-sitter",
  "tree-sitter-javascript",
  "tree-sitter-typescript",
@@ -294,6 +293,27 @@ dependencies = [
 [[package]]
 name = "pollard-lib"
 version = "0.0.0"
+
+[[package]]
+name = "pollard-session"
+version = "0.0.0"
+dependencies = [
+ "clap",
+ "pollard-core",
+ "pollard-session-derive",
+ "serde",
+ "serde_json",
+ "toml",
+]
+
+[[package]]
+name = "pollard-session-derive"
+version = "0.0.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
 
 [[package]]
 name = "proc-macro2"

@@ -43,11 +43,11 @@ pub struct ApplyReport {
 }
 
 impl Report for ApplyReport {
-    fn get_dir(&self, session: &crate::session::Session) -> PathBuf {
+    fn get_dir(&self, session: &pollard_session::Session) -> PathBuf {
         session.report_dir.join("mutate").join("apply")
     }
 
-    fn make_path(&self, session: &crate::session::Session) -> PathBuf {
+    fn make_path(&self, session: &pollard_session::Session) -> PathBuf {
         let content = serde_json::to_string(self).expect("failed to serialize");
         hashed_path(&self.get_dir(session), &content, "applied")
     }

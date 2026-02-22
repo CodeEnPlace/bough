@@ -1,5 +1,5 @@
 use crate::io::{Action, Report, Style, hashed_path};
-use crate::session::Session;
+use pollard_session::Session;
 use crate::steps::{color, find_workspace, read_workspace_manifest};
 use pollard_core::config::Vcs;
 use serde::Serialize;
@@ -51,11 +51,11 @@ pub struct ResetWorkspaceReport {
 }
 
 impl Report for ResetWorkspaceReport {
-    fn get_dir(&self, session: &crate::session::Session) -> PathBuf {
+    fn get_dir(&self, session: &pollard_session::Session) -> PathBuf {
         session.report_dir.join("step").join("reset-workspace")
     }
 
-    fn make_path(&self, session: &crate::session::Session) -> PathBuf {
+    fn make_path(&self, session: &pollard_session::Session) -> PathBuf {
         let content = serde_json::to_string(self).expect("failed to serialize");
         hashed_path(&self.get_dir(session), &content, "reset")
     }
