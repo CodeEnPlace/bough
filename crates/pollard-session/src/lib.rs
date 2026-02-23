@@ -3,10 +3,23 @@ mod config;
 pub use config::{discover_config, read_config, ConfigError, SEARCH_PATHS};
 pub use pollard_core::io::{DiffStyle, Render, Style, color, hashed_path};
 
-use pollard_core::config::{LanguageId, Ordering, Vcs};
+use pollard_core::config::{LanguageId, Ordering, Vcs, VcsKind};
 use pollard_session_derive::Settings;
 use serde::Serialize;
 use std::path::{Path, PathBuf};
+
+fn compose_vcs(kind: VcsKind, target: Option<String>) -> Vcs {
+    match kind {
+        VcsKind::None => Vcs::None,
+        VcsKind::Git => Vcs::Git {
+            commit: target.unwrap_or_else(|| "HEAD".to_string()),
+        },
+        VcsKind::Jj => Vcs::Jj {
+            rev: target.unwrap_or_else(|| "@".to_string()),
+        },
+        VcsKind::Mercurial => Vcs::Mercurial,
+    }
+}
 
 fn default_run_id() -> String {
     let seed = format!(
@@ -67,6 +80,10 @@ pub struct Timeout {
 #[derive(Debug, Serialize, Settings)]
 pub struct Session {
     pub language: LanguageId,
+    #[setting(compose(
+        fields(kind: VcsKind, target: Option<String>),
+        via = "compose_vcs"
+    ))]
     pub vcs: Vcs,
     pub working_dir: PathBuf,
     pub parallelism: usize,

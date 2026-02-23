@@ -13,10 +13,18 @@ pub enum LanguageId {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, clap::ValueEnum)]
 #[serde(rename_all = "lowercase")]
-pub enum Vcs {
+pub enum VcsKind {
     None,
     Git,
     Jj,
+    Mercurial,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub enum Vcs {
+    None,
+    Git { commit: String },
+    Jj { rev: String },
     Mercurial,
 }
 

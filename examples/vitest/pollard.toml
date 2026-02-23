@@ -1,5 +1,5 @@
 language = "js"
-vcs = "jj"
+vcs_kind = "jj"
 working_dir = "/tmp/pollard-work"
 parallelism = 1
 report_dir = "/tmp/pollard-report"

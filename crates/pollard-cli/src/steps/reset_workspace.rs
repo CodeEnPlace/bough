@@ -10,8 +10,8 @@ pub fn run(
     workspace_name: &str,
     rev: &str,
 ) -> (Vec<Action>, ResetWorkspaceReport) {
-    match session.vcs {
-        Vcs::Jj => {}
+    match &session.vcs {
+        Vcs::Jj { .. } => {}
         other => {
             eprintln!("reset-workspace not yet implemented for {other:?}");
             std::process::exit(1);
