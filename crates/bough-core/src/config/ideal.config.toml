@@ -4,7 +4,7 @@ ordering = "random"
 
 [dirs]
 working = "/tmp/bough/work"
-reports = "/tmp/bough/report"
+state = "/tmp/bough/state"
 logs = "/tmp/bough/logs"
 
 [vitest]

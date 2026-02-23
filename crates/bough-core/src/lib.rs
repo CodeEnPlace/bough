@@ -2,6 +2,13 @@ pub mod config;
 pub mod io;
 pub mod languages;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub enum Outcome {
+    Missed,
+    Caught,
+}
+
 use serde::de::{self, Deserializer, MapAccess, Visitor};
 use serde::ser::{SerializeStruct, Serializer};
 use serde::{Deserialize, Serialize};
