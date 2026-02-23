@@ -69,7 +69,7 @@ struct Cli {
     timeout_relative: Option<f64>,
 
     #[arg(long, global = true, default_value_t = false)]
-    force_on_dirty_repo: bool,
+    exec: bool,
 
     #[command(subcommand)]
     command: Command,
@@ -148,17 +148,21 @@ fn log_level(cli: &Cli) -> LevelFilter {
 }
 
 fn render_and_apply(actions: Vec<Action>, reports: Vec<Box<dyn Report>>, session: &Session) {
-    if !actions.is_empty() && !session.force_on_dirty_repo && io::repo_is_dirty() {
-        eprintln!("repo has uncommitted changes, use --force-on-dirty-repo to proceed");
-        std::process::exit(1);
+    for report in &reports {
+        report.render(&session.style, session.no_color, 0);
+    }
+
+    if actions.is_empty() {
+        return;
+    }
+
+    if !session.exec {
+        eprintln!("{} action(s) pending, pass --exec to apply", actions.len());
+        return;
     }
 
     for action in actions {
         action.apply().expect("failed to apply action");
-    }
-
-    for report in &reports {
-        report.render(&session.style, session.no_color, 0);
     }
 }
 
@@ -204,94 +208,108 @@ fn main() {
         serde_json::to_string(&session).expect("failed to serialize session")
     );
 
-    match &cli.command {
-        Command::Mutate { action } => {
-            let (actions, reports): (Vec<Action>, Vec<Box<dyn Report>>) = match action {
-                MutateAction::Generate { file: pattern } => {
-                    let (actions, reports) = mutate::generate::run(&session.language, pattern);
-                    let reports: Vec<Box<dyn Report>> = reports
-                        .into_iter()
-                        .map(|r| Box::new(r) as Box<dyn Report>)
-                        .collect();
-                    (actions, reports)
-                }
-                MutateAction::View {
-                    file: input,
-                    mutant: hash,
-                } => {
-                    let (actions, report) =
-                        mutate::view::run(&session.language, input, hash, session.diff.clone());
-                    (actions, vec![Box::new(report)])
-                }
-                MutateAction::Apply {
-                    file: input,
-                    mutant: hash,
-                } => {
-                    let (actions, report) = mutate::apply::run(&session.language, input, hash);
-                    (actions, vec![Box::new(report)])
-                }
-            };
-
-            render_and_apply(actions, reports, &session);
+    let (actions, reports): (Vec<Action>, Vec<Box<dyn Report>>) = match &cli.command {
+        Command::Mutate {
+            action: MutateAction::Generate { file: pattern },
+        } => {
+            let (actions, reports) = mutate::generate::run(&session.language, pattern);
+            (
+                actions,
+                reports
+                    .into_iter()
+                    .map(|r| Box::new(r) as Box<dyn Report>)
+                    .collect(),
+            )
         }
-        Command::Step { action } => {
-            let (actions, reports): (Vec<Action>, Vec<Box<dyn Report>>) = match action {
-                StepAction::Plan => {
-                    let (actions, report) = steps::plan::run(&session);
-                    (actions, vec![Box::new(report)])
-                }
-                StepAction::Create => {
-                    let (actions, report) = steps::create::run(&session);
-                    (actions, vec![Box::new(report)])
-                }
-                StepAction::Apply {
-                    workspace,
-                    mutant: hash,
-                } => {
-                    let (actions, report) = steps::apply::run(&session, workspace, hash);
-                    (actions, vec![Box::new(report)])
-                }
-                StepAction::Install { workspace } => {
-                    let (actions, report) = steps::install::run(&session, workspace);
-                    (
-                        actions,
-                        report
-                            .into_iter()
-                            .map(|r| Box::new(r) as Box<dyn Report>)
-                            .collect(),
-                    )
-                }
-                StepAction::Build { workspace } => {
-                    let (actions, report) = steps::build::run(&session, workspace);
-                    (
-                        actions,
-                        report
-                            .into_iter()
-                            .map(|r| Box::new(r) as Box<dyn Report>)
-                            .collect(),
-                    )
-                }
-                StepAction::Test { workspace } => {
-                    let (actions, report) = steps::test::run(&session, workspace);
-                    (
-                        actions,
-                        report
-                            .into_iter()
-                            .map(|r| Box::new(r) as Box<dyn Report>)
-                            .collect(),
-                    )
-                }
-                StepAction::Reset { workspace, rev } => {
-                    let (actions, report) = steps::reset::run(&session, workspace, rev);
-                    (actions, vec![Box::new(report)])
-                }
-                StepAction::Cleanup => {
-                    let (actions, report) = steps::cleanup::run(&session);
-                    (actions, vec![Box::new(report)])
-                }
-            };
-
-            render_and_apply(actions, reports, &session);
+        Command::Mutate {
+            action: MutateAction::View {
+                file: input,
+                mutant: hash,
+            },
+        } => {
+            let (actions, report) =
+                mutate::view::run(&session.language, input, hash, session.diff.clone());
+            (actions, vec![Box::new(report)])
         }
-    }
+        Command::Mutate {
+            action: MutateAction::Apply {
+                file: input,
+                mutant: hash,
+            },
+        } => {
+            let (actions, report) = mutate::apply::run(&session.language, input, hash);
+            (actions, vec![Box::new(report)])
+        }
+        Command::Step {
+            action: StepAction::Plan,
+        } => {
+            let (actions, report) = steps::plan::run(&session);
+            (actions, vec![Box::new(report)])
+        }
+        Command::Step {
+            action: StepAction::Create,
+        } => {
+            let (actions, report) = steps::create::run(&session);
+            (actions, vec![Box::new(report)])
+        }
+        Command::Step {
+            action: StepAction::Apply {
+                workspace,
+                mutant: hash,
+            },
+        } => {
+            let (actions, report) = steps::apply::run(&session, workspace, hash);
+            (actions, vec![Box::new(report)])
+        }
+        Command::Step {
+            action: StepAction::Install { workspace },
+        } => {
+            let (actions, report) = steps::install::run(&session, workspace);
+            (
+                actions,
+                report
+                    .into_iter()
+                    .map(|r| Box::new(r) as Box<dyn Report>)
+                    .collect(),
+            )
+        }
+        Command::Step {
+            action: StepAction::Build { workspace },
+        } => {
+            let (actions, report) = steps::build::run(&session, workspace);
+            (
+                actions,
+                report
+                    .into_iter()
+                    .map(|r| Box::new(r) as Box<dyn Report>)
+                    .collect(),
+            )
+        }
+        Command::Step {
+            action: StepAction::Test { workspace },
+        } => {
+            let (actions, report) = steps::test::run(&session, workspace);
+            (
+                actions,
+                report
+                    .into_iter()
+                    .map(|r| Box::new(r) as Box<dyn Report>)
+                    .collect(),
+            )
+        }
+        Command::Step {
+            action: StepAction::Reset { workspace, rev },
+        } => {
+            let (actions, report) = steps::reset::run(&session, workspace, rev);
+            (actions, vec![Box::new(report)])
+        }
+        Command::Step {
+            action: StepAction::Cleanup,
+        } => {
+            let (actions, report) = steps::cleanup::run(&session);
+            (actions, vec![Box::new(report)])
+        }
+    };
+
+    render_and_apply(actions, reports, &session);
 }

@@ -1,4 +1,4 @@
-use crate::io::{Action, Report, Style};
+use crate::io::{Action, Report, Style, hashed_path};
 use crate::session::Session;
 use crate::steps::{color, content_id, expand_glob};
 use pollard_core::config::LanguageId;
@@ -81,6 +81,15 @@ pub struct PlanReport {
 }
 
 impl Report for PlanReport {
+    fn get_dir(&self, session: &crate::session::Session) -> PathBuf {
+        session.report_dir.join("step").join("plan")
+    }
+
+    fn make_path(&self, session: &crate::session::Session) -> PathBuf {
+        let content = serde_json::to_string(self).expect("failed to serialize");
+        hashed_path(&self.get_dir(session), &content, "plan")
+    }
+
     fn render(&self, style: &Style, no_color: bool, _depth: u8) {
         match style {
             Style::Json => {
