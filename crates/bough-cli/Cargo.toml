@@ -8,6 +8,5 @@ license.workspace = true
 clap = { version = "4", features = ["derive", "env"] }
 clap_complete = "4"
 bough-core = { path = "../bough-core" }
-bough-session = { path = "../bough-session" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
