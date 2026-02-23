@@ -19,15 +19,41 @@ pub enum DiffStyle {
 }
 
 pub trait Render {
-    fn render(&self, style: &Style, no_color: bool, depth: u8);
+    fn render_json(&self) -> String;
+    fn render_pretty(&self, depth: u8) -> String;
+    fn render_markdown(&self, depth: u8) -> String;
+
+    fn render(&self, style: &Style, no_color: bool, depth: u8) {
+        let output = match style {
+            Style::Json => self.render_json(),
+            Style::Markdown => self.render_markdown(depth),
+            Style::Pretty if no_color => strip_ansi(&self.render_pretty(depth)),
+            Style::Pretty => self.render_pretty(depth),
+            Style::Plain => strip_ansi(&self.render_pretty(depth)),
+        };
+        print!("{output}");
+    }
 }
 
-pub fn color(code: &str, text: &str, no_color: bool) -> String {
-    if no_color {
-        text.to_string()
-    } else {
-        format!("{code}{text}\x1b[0m")
+pub fn color(code: &str, text: &str) -> String {
+    format!("{code}{text}\x1b[0m")
+}
+
+pub fn strip_ansi(s: &str) -> String {
+    let mut result = String::with_capacity(s.len());
+    let mut chars = s.chars();
+    while let Some(c) = chars.next() {
+        if c == '\x1b' {
+            for c in chars.by_ref() {
+                if c == 'm' {
+                    break;
+                }
+            }
+        } else {
+            result.push(c);
+        }
     }
+    result
 }
 
 pub fn hashed_path(dir: &PathBuf, content: &str, label: &str) -> PathBuf {

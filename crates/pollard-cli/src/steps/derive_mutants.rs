@@ -1,6 +1,5 @@
-use crate::io::{Action, Render, Report, Style, hashed_path};
+use crate::io::{Action, Render, Report, color, hashed_path};
 use pollard_session::Session;
-use crate::io::color;
 use crate::steps::content_id;
 use pollard_core::config::LanguageId;
 use pollard_core::languages::javascript::JavaScript;
@@ -79,23 +78,20 @@ pub struct DeriveMutantsReport {
 }
 
 impl Render for DeriveMutantsReport {
-    fn render(&self, style: &Style, no_color: bool, _depth: u8) {
-        let no_color = no_color || matches!(style, Style::Plain);
-        match style {
-            Style::Json => {
-                println!(
-                    "{}",
-                    serde_json::to_string(self).expect("failed to serialize")
-                );
-            }
-            Style::Plain | Style::Pretty | Style::Markdown => {
-                println!(
-                    "Derived {} mutations, will write to {}",
-                    color("\x1b[33m", &self.count.to_string(), no_color),
-                    color("\x1b[36m", &self.path.display().to_string(), no_color),
-                );
-            }
-        }
+    fn render_json(&self) -> String {
+        serde_json::to_string(self).expect("failed to serialize")
+    }
+
+    fn render_pretty(&self, _depth: u8) -> String {
+        format!(
+            "Derived {} mutations, will write to {}\n",
+            color("\x1b[33m", &self.count.to_string()),
+            color("\x1b[36m", &self.path.display().to_string()),
+        )
+    }
+
+    fn render_markdown(&self, depth: u8) -> String {
+        self.render_pretty(depth)
     }
 }
 

@@ -64,46 +64,36 @@ impl Action {
 
 
 impl Render for Action {
-    fn render(&self, style: &Style, no_color: bool, _depth: u8) {
-        let no_color = no_color || matches!(style, Style::Plain);
-        match style {
-            Style::Json => {
-                println!(
-                    "{}",
-                    serde_json::to_string(self).expect("failed to serialize")
-                );
+    fn render_json(&self) -> String {
+        serde_json::to_string(self).expect("failed to serialize")
+    }
+
+    fn render_pretty(&self, _depth: u8) -> String {
+        match self {
+            Action::WriteFile { path, .. } => {
+                format!("write {}\n", color("\x1b[36m", &path.display().to_string()))
             }
-            Style::Plain | Style::Pretty | Style::Markdown => match self {
-                Action::WriteFile { path, .. } => {
-                    println!(
-                        "write {}",
-                        color("\x1b[36m", &path.display().to_string(), no_color)
-                    );
-                }
-                Action::CreateJjWorkspace { name, path } => {
-                    println!(
-                        "jj workspace add {} at {}",
-                        color("\x1b[33m", name, no_color),
-                        color("\x1b[36m", &path.display().to_string(), no_color),
-                    );
-                }
-                Action::ForgetJjWorkspace { name } => {
-                    println!("jj workspace forget {}", color("\x1b[33m", name, no_color));
-                }
-                Action::RemoveDir { path } => {
-                    println!(
-                        "rm -r {}",
-                        color("\x1b[36m", &path.display().to_string(), no_color)
-                    );
-                }
-                Action::RemoveFile { path } => {
-                    println!(
-                        "rm {}",
-                        color("\x1b[36m", &path.display().to_string(), no_color)
-                    );
-                }
-            },
+            Action::CreateJjWorkspace { name, path } => {
+                format!(
+                    "jj workspace add {} at {}\n",
+                    color("\x1b[33m", name),
+                    color("\x1b[36m", &path.display().to_string()),
+                )
+            }
+            Action::ForgetJjWorkspace { name } => {
+                format!("jj workspace forget {}\n", color("\x1b[33m", name))
+            }
+            Action::RemoveDir { path } => {
+                format!("rm -r {}\n", color("\x1b[36m", &path.display().to_string()))
+            }
+            Action::RemoveFile { path } => {
+                format!("rm {}\n", color("\x1b[36m", &path.display().to_string()))
+            }
         }
+    }
+
+    fn render_markdown(&self, depth: u8) -> String {
+        self.render_pretty(depth)
     }
 }
 
@@ -133,11 +123,16 @@ impl SessionReport {
 }
 
 impl Render for SessionReport {
-    fn render(&self, style: &Style, _no_color: bool, _depth: u8) {
-        match style {
-            Style::Json => println!("{}", self.json),
-            _ => println!("{}", self.debug),
-        }
+    fn render_json(&self) -> String {
+        self.json.clone()
+    }
+
+    fn render_pretty(&self, _depth: u8) -> String {
+        format!("{}\n", self.debug)
+    }
+
+    fn render_markdown(&self, _depth: u8) -> String {
+        format!("```\n{}\n```\n", self.debug)
     }
 }
 

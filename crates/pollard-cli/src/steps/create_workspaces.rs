@@ -1,6 +1,5 @@
-use crate::io::{Action, Render, Report, Style, hashed_path};
+use crate::io::{Action, Render, Report, color, hashed_path};
 use pollard_session::Session;
-use crate::io::color;
 use crate::steps::content_id;
 use pollard_core::config::Vcs;
 use serde::Serialize;
@@ -65,26 +64,24 @@ pub struct CreateWorkspacesReport {
 }
 
 impl Render for CreateWorkspacesReport {
-    fn render(&self, style: &Style, no_color: bool, _depth: u8) {
-        let no_color = no_color || matches!(style, Style::Plain);
-        match style {
-            Style::Json => {
-                println!(
-                    "{}",
-                    serde_json::to_string(self).expect("failed to serialize")
-                );
-            }
-            Style::Plain | Style::Pretty | Style::Markdown => {
-                println!(
-                    "Will create {} workspaces, manifest: {}",
-                    color("\x1b[33m", &self.workspaces.len().to_string(), no_color),
-                    color("\x1b[36m", &self.manifest.display().to_string(), no_color),
-                );
-                for ws in &self.workspaces {
-                    println!("  {}", color("\x1b[33m", ws, no_color));
-                }
-            }
+    fn render_json(&self) -> String {
+        serde_json::to_string(self).expect("failed to serialize")
+    }
+
+    fn render_pretty(&self, _depth: u8) -> String {
+        let mut out = format!(
+            "Will create {} workspaces, manifest: {}\n",
+            color("\x1b[33m", &self.workspaces.len().to_string()),
+            color("\x1b[36m", &self.manifest.display().to_string()),
+        );
+        for ws in &self.workspaces {
+            out.push_str(&format!("  {}\n", color("\x1b[33m", ws)));
         }
+        out
+    }
+
+    fn render_markdown(&self, depth: u8) -> String {
+        self.render_pretty(depth)
     }
 }
 
