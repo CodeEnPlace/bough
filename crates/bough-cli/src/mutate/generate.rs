@@ -1,5 +1,5 @@
 use crate::io::{Action, Render, Report, color, hashed_path};
-use crate::steps::expand_glob;
+use super::expand_glob;
 use bough_core::config::LanguageId;
 use bough_core::languages::javascript::JavaScript;
 use bough_core::languages::typescript::TypeScript;

@@ -4,6 +4,24 @@ pub mod generate;
 pub mod view;
 
 use bough_core::config::LanguageId;
+use std::path::PathBuf as StdPathBuf;
+
+pub fn expand_glob(pattern: &str) -> Vec<StdPathBuf> {
+    glob::glob(pattern)
+        .unwrap_or_else(|e| {
+            eprintln!("invalid glob pattern: {e}");
+            std::process::exit(1);
+        })
+        .filter_map(|entry| match entry {
+            Ok(path) if path.is_file() => Some(path),
+            Ok(_) => None,
+            Err(e) => {
+                eprintln!("glob error: {e}");
+                None
+            }
+        })
+        .collect()
+}
 use bough_core::languages::javascript::JavaScript;
 use bough_core::languages::typescript::TypeScript;
 use bough_core::{
