@@ -1,4 +1,4 @@
-use crate::io::{Action, Render, Report, Style, hashed_path};
+use crate::io::{Action, Render, Report, color, hashed_path};
 use pollard_session::Session;
 use crate::steps::expand_glob;
 use serde::Serialize;
@@ -22,26 +22,24 @@ pub struct FindFilesReport {
 }
 
 impl Render for FindFilesReport {
-    fn render(&self, style: &Style, no_color: bool, _depth: u8) {
-        let no_color = no_color || matches!(style, Style::Plain);
-        match style {
-            Style::Json => {
-                println!(
-                    "{}",
-                    serde_json::to_string(self).expect("failed to serialize")
-                );
-            }
-            Style::Plain | Style::Pretty | Style::Markdown => {
-                println!(
-                    "{} files match {}",
-                    crate::io::color("\x1b[33m", &self.files.len().to_string(), no_color),
-                    crate::io::color("\x1b[36m", &self.pattern, no_color),
-                );
-                for f in &self.files {
-                    println!("  {}", f.display());
-                }
-            }
+    fn render_json(&self) -> String {
+        serde_json::to_string(self).expect("failed to serialize")
+    }
+
+    fn render_pretty(&self, _depth: u8) -> String {
+        let mut out = format!(
+            "{} files match {}\n",
+            color("\x1b[33m", &self.files.len().to_string()),
+            color("\x1b[36m", &self.pattern),
+        );
+        for f in &self.files {
+            out.push_str(&format!("  {}\n", f.display()));
         }
+        out
+    }
+
+    fn render_markdown(&self, depth: u8) -> String {
+        self.render_pretty(depth)
     }
 }
 

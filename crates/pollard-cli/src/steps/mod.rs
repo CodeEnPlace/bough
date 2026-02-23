@@ -7,7 +7,7 @@ pub mod reset_workspace;
 pub mod setup_workspace;
 pub mod test_workspace;
 
-use crate::io::{Render, Report, Style, hashed_path};
+use crate::io::{Render, Report, hashed_path};
 use pollard_session::Session;
 use pollard_core::plan::{Plan, WorkspaceManifest};
 use serde::Serialize;
@@ -135,29 +135,27 @@ pub struct CommandReport {
 }
 
 impl Render for CommandReport {
-    fn render(&self, style: &Style, no_color: bool, _depth: u8) {
-        let no_color = no_color || matches!(style, Style::Plain);
-        match style {
-            Style::Json => {
-                println!(
-                    "{}",
-                    serde_json::to_string(self).expect("failed to serialize")
-                );
-            }
-            Style::Plain | Style::Pretty | Style::Markdown => {
-                let (status, output) = match &self.result {
-                    Ok(stdout) => (color("\x1b[32m", "OK", no_color), stdout),
-                    Err(stderr) => (color("\x1b[31m", "FAIL", no_color), stderr),
-                };
-                println!(
-                    "{} {} in {} [{}]",
-                    status, self.step, self.workspace, self.command
-                );
-                if !output.is_empty() {
-                    print!("{output}");
-                }
-            }
+    fn render_json(&self) -> String {
+        serde_json::to_string(self).expect("failed to serialize")
+    }
+
+    fn render_pretty(&self, _depth: u8) -> String {
+        let (status, output) = match &self.result {
+            Ok(stdout) => (color("\x1b[32m", "OK"), stdout.as_str()),
+            Err(stderr) => (color("\x1b[31m", "FAIL"), stderr.as_str()),
+        };
+        let mut out = format!(
+            "{} {} in {} [{}]\n",
+            status, self.step, self.workspace, self.command
+        );
+        if !output.is_empty() {
+            out.push_str(output);
         }
+        out
+    }
+
+    fn render_markdown(&self, depth: u8) -> String {
+        self.render_pretty(depth)
     }
 }
 

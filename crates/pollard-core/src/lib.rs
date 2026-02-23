@@ -292,54 +292,61 @@ pub struct MutationSubstitution<'a, 'b, L: Language> {
     pub replacement: String,
 }
 
-impl io::Render for BinaryOpKind {
-    fn render(&self, style: &io::Style, _no_color: bool, _depth: u8) {
-        match style {
-            io::Style::Json => {
-                println!(
-                    "{}",
-                    serde_json::to_string(self).expect("failed to serialize")
-                );
-            }
-            _ => {
-                let label = match self {
-                    BinaryOpKind::Add => "+",
-                    BinaryOpKind::Sub => "-",
-                    BinaryOpKind::Mul => "*",
-                    BinaryOpKind::Div => "/",
-                    BinaryOpKind::And => "&&",
-                    BinaryOpKind::Or => "||",
-                    BinaryOpKind::StrictEq => "===",
-                    BinaryOpKind::StrictNeq => "!==",
-                    BinaryOpKind::Eq => "==",
-                    BinaryOpKind::Neq => "!=",
-                    BinaryOpKind::Lt => "<",
-                    BinaryOpKind::Lte => "<=",
-                    BinaryOpKind::Gt => ">",
-                    BinaryOpKind::Gte => ">=",
-                };
-                print!("{label}");
-            }
+impl BinaryOpKind {
+    pub fn label(&self) -> &'static str {
+        match self {
+            BinaryOpKind::Add => "+",
+            BinaryOpKind::Sub => "-",
+            BinaryOpKind::Mul => "*",
+            BinaryOpKind::Div => "/",
+            BinaryOpKind::And => "&&",
+            BinaryOpKind::Or => "||",
+            BinaryOpKind::StrictEq => "===",
+            BinaryOpKind::StrictNeq => "!==",
+            BinaryOpKind::Eq => "==",
+            BinaryOpKind::Neq => "!=",
+            BinaryOpKind::Lt => "<",
+            BinaryOpKind::Lte => "<=",
+            BinaryOpKind::Gt => ">",
+            BinaryOpKind::Gte => ">=",
         }
     }
 }
 
+impl io::Render for BinaryOpKind {
+    fn render_json(&self) -> String {
+        serde_json::to_string(self).expect("failed to serialize")
+    }
+
+    fn render_pretty(&self, _depth: u8) -> String {
+        self.label().to_string()
+    }
+
+    fn render_markdown(&self, _depth: u8) -> String {
+        self.label().to_string()
+    }
+}
+
 impl io::Render for MutationKind {
-    fn render(&self, style: &io::Style, no_color: bool, depth: u8) {
-        match style {
-            io::Style::Json => {
-                println!(
-                    "{}",
-                    serde_json::to_string(self).expect("failed to serialize")
-                );
+    fn render_json(&self) -> String {
+        serde_json::to_string(self).expect("failed to serialize")
+    }
+
+    fn render_pretty(&self, depth: u8) -> String {
+        match self {
+            MutationKind::StatementBlock => "empty statement block".to_string(),
+            MutationKind::BinaryOp(op) => {
+                format!("binary operator {}", op.render_pretty(depth))
             }
-            _ => match self {
-                MutationKind::StatementBlock => print!("empty statement block"),
-                MutationKind::BinaryOp(op) => {
-                    print!("binary operator ");
-                    op.render(style, no_color, depth);
-                }
-            },
+        }
+    }
+
+    fn render_markdown(&self, depth: u8) -> String {
+        match self {
+            MutationKind::StatementBlock => "empty statement block".to_string(),
+            MutationKind::BinaryOp(op) => {
+                format!("binary operator {}", op.render_markdown(depth))
+            }
         }
     }
 }
@@ -348,10 +355,31 @@ impl<L: Language> io::Render for MutationSubstitution<'_, '_, L>
 where
     L::Kind: Clone + Into<MutationKind>,
 {
-    fn render(&self, style: &io::Style, no_color: bool, depth: u8) {
+    fn render_json(&self) -> String {
         let point = self.point;
-        let original =
-            &point.file.content()[point.span.start.byte..point.span.end.byte];
+        let original = &point.file.content()[point.span.start.byte..point.span.end.byte];
+        let kind: MutationKind = point.kind.clone().into();
+        let path = point.file.path().display().to_string();
+        let loc = format!(
+            "{}:{}-{}:{}",
+            point.span.start.line + 1,
+            point.span.start.char + 1,
+            point.span.end.line + 1,
+            point.span.end.char + 1,
+        );
+        serde_json::to_string(&serde_json::json!({
+            "path": path,
+            "location": loc,
+            "kind": kind,
+            "original": original,
+            "replacement": self.replacement,
+        }))
+        .expect("failed to serialize")
+    }
+
+    fn render_pretty(&self, depth: u8) -> String {
+        let point = self.point;
+        let original = &point.file.content()[point.span.start.byte..point.span.end.byte];
         let kind: MutationKind = point.kind.clone().into();
         let path = point.file.path().display();
         let loc = format!(
@@ -361,45 +389,39 @@ where
             point.span.end.line + 1,
             point.span.end.char + 1,
         );
+        format!(
+            "{} at {}\n{}\n{}\n",
+            io::color("\x1b[1m", &kind.render_pretty(depth + 1)),
+            io::color("\x1b[36m", &format!("{path}:{loc}")),
+            io::color("\x1b[31m", original),
+            io::color("\x1b[32m", &self.replacement),
+        )
+    }
 
-        match style {
-            io::Style::Json => {
-                println!(
-                    "{}",
-                    serde_json::to_string(&serde_json::json!({
-                        "path": path.to_string(),
-                        "location": loc,
-                        "kind": kind,
-                        "original": original,
-                        "replacement": self.replacement,
-                    }))
-                    .expect("failed to serialize")
-                );
-            }
-            io::Style::Markdown => {
-                let heading = "#".repeat((depth + 1).min(6) as usize);
-                println!("{heading} Mutation\n");
-                print!("**Kind:** ");
-                kind.render(style, no_color, depth + 1);
-                println!("\n");
-                println!("**File:** `{path}`\n");
-                println!("**Location:** {loc}\n");
-                let tag = L::code_tag();
-                println!("**Original:**\n```{tag}\n{original}\n```\n");
-                println!(
-                    "**Replacement:**\n```{tag}\n{}\n```",
-                    self.replacement
-                );
-            }
-            io::Style::Plain | io::Style::Pretty => {
-                let no_color = no_color || matches!(style, io::Style::Plain);
-                print!("{}", io::color("\x1b[1m", "", no_color));
-                kind.render(style, no_color, depth + 1);
-                println!(" at {}", io::color("\x1b[36m", &format!("{path}:{loc}"), no_color));
-                println!("{}", io::color("\x1b[31m", original, no_color));
-                println!("{}", io::color("\x1b[32m", &self.replacement, no_color));
-            }
-        }
+    fn render_markdown(&self, depth: u8) -> String {
+        let point = self.point;
+        let original = &point.file.content()[point.span.start.byte..point.span.end.byte];
+        let kind: MutationKind = point.kind.clone().into();
+        let path = point.file.path().display();
+        let loc = format!(
+            "{}:{}-{}:{}",
+            point.span.start.line + 1,
+            point.span.start.char + 1,
+            point.span.end.line + 1,
+            point.span.end.char + 1,
+        );
+        let heading = "#".repeat((depth + 1).min(6) as usize);
+        let tag = L::code_tag();
+        format!(
+            "{heading} Mutation\n\n\
+             **Kind:** {}\n\n\
+             **File:** `{path}`\n\n\
+             **Location:** {loc}\n\n\
+             **Original:**\n```{tag}\n{original}\n```\n\n\
+             **Replacement:**\n```{tag}\n{}\n```\n",
+            kind.render_markdown(depth + 1),
+            self.replacement,
+        )
     }
 }
 

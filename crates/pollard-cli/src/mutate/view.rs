@@ -1,11 +1,11 @@
-use crate::io::{Action, DiffStyle, Render, Report, Style, hashed_path};
-use std::path::PathBuf;
+use crate::io::{Action, DiffStyle, Render, Report, hashed_path};
 use crate::mutate::find_mutated;
 use pollard_core::config::LanguageId;
+use pollard_core::io::color;
 use pollard_core::{Hash, SourceFile};
 use similar::{ChangeTag, TextDiff};
 use std::fmt::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 pub fn run(
     language: &LanguageId,
@@ -34,13 +34,24 @@ pub struct ViewReport {
 }
 
 impl Render for ViewReport {
-    fn render(&self, _style: &Style, no_color: bool, _depth: u8) {
+    fn render_json(&self) -> String {
+        serde_json::to_string(&serde_json::json!({
+            "path": self.path,
+            "old": self.old,
+            "new": self.new,
+        }))
+        .expect("failed to serialize")
+    }
+
+    fn render_pretty(&self, _depth: u8) -> String {
         match self.diff_style {
-            DiffStyle::Unified => render_unified(&self.old, &self.new, &self.path, no_color),
-            DiffStyle::SideBySide => {
-                render_side_by_side(&self.old, &self.new, &self.path, no_color)
-            }
+            DiffStyle::Unified => format_unified(&self.old, &self.new, &self.path),
+            DiffStyle::SideBySide => format_side_by_side(&self.old, &self.new, &self.path),
         }
+    }
+
+    fn render_markdown(&self, depth: u8) -> String {
+        self.render_pretty(depth)
     }
 }
 
@@ -53,60 +64,66 @@ impl Report for ViewReport {
         let content = format!("{}:{}:{}", self.path, self.old, self.new);
         hashed_path(&self.get_dir(session), &content, "diff")
     }
-
 }
 
-use crate::io::color;
-
-fn render_unified(old: &str, new: &str, path: &str, no_color: bool) {
+fn format_unified(old: &str, new: &str, path: &str) -> String {
     let diff = TextDiff::from_lines(old, new);
-    println!("{}", color("\x1b[1m", &format!("--- {path}"), no_color));
-    println!(
-        "{}",
-        color("\x1b[1m", &format!("+++ {path} (mutated)"), no_color)
-    );
+    let mut out = String::new();
+    out.push_str(&color("\x1b[1m", &format!("--- {path}")));
+    out.push('\n');
+    out.push_str(&color("\x1b[1m", &format!("+++ {path} (mutated)")));
+    out.push('\n');
     for hunk in diff.unified_diff().context_radius(3).iter_hunks() {
         let mut buf = String::new();
         write!(&mut buf, "{hunk}").unwrap();
         for line in buf.lines() {
             if line.starts_with("@@") {
-                println!("{}", color("\x1b[36m", line, no_color));
+                out.push_str(&color("\x1b[36m", line));
             } else if line.starts_with('-') {
-                println!("{}", color("\x1b[31m", line, no_color));
+                out.push_str(&color("\x1b[31m", line));
             } else if line.starts_with('+') {
-                println!("{}", color("\x1b[32m", line, no_color));
+                out.push_str(&color("\x1b[32m", line));
             } else {
-                println!(" {line}");
+                out.push(' ');
+                out.push_str(line);
             }
+            out.push('\n');
         }
     }
+    out
 }
 
-fn render_side_by_side(old: &str, new: &str, path: &str, no_color: bool) {
+fn format_side_by_side(old: &str, new: &str, path: &str) -> String {
     let diff = TextDiff::from_lines(old, new);
     let width = terminal_width() / 2 - 3;
+    let mut out = String::new();
 
-    println!(
-        "{} │ {}",
-        color("\x1b[1m", &pad(path, width), no_color),
-        color("\x1b[1m", &format!("{path} (mutated)"), no_color),
-    );
-    println!("{}─┼─{}", "─".repeat(width), "─".repeat(width));
+    out.push_str(&format!(
+        "{} │ {}\n",
+        color("\x1b[1m", &pad(path, width)),
+        color("\x1b[1m", &format!("{path} (mutated)")),
+    ));
+    out.push_str(&format!("{}─┼─{}\n", "─".repeat(width), "─".repeat(width)));
 
     for change in diff.iter_all_changes() {
         let text = change.value().trim_end_matches('\n');
         match change.tag() {
             ChangeTag::Equal => {
-                println!("{} │ {}", pad(text, width), text);
+                out.push_str(&format!("{} │ {}\n", pad(text, width), text));
             }
             ChangeTag::Delete => {
-                println!("{} │", color("\x1b[31m", &pad(text, width), no_color));
+                out.push_str(&format!("{} │\n", color("\x1b[31m", &pad(text, width))));
             }
             ChangeTag::Insert => {
-                println!("{} │ {}", pad("", width), color("\x1b[32m", text, no_color));
+                out.push_str(&format!(
+                    "{} │ {}\n",
+                    pad("", width),
+                    color("\x1b[32m", text)
+                ));
             }
         }
     }
+    out
 }
 
 fn pad(s: &str, width: usize) -> String {
