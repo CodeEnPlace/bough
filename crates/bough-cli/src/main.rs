@@ -1,5 +1,4 @@
 mod config;
-mod io;
 
 use clap::{CommandFactory, Parser, Subcommand};
 use clap_complete::Shell;
