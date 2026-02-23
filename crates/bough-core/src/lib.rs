@@ -2,9 +2,10 @@ pub mod config;
 pub mod io;
 pub mod languages;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub enum Outcome {
+    #[default]
     Missed,
     Caught,
 }
