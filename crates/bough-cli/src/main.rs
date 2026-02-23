@@ -1,6 +1,5 @@
 mod io;
 mod mutate;
-mod steps;
 
 use clap::{CommandFactory, Parser, Subcommand};
 use clap_complete::Shell;
@@ -29,43 +28,11 @@ enum Command {
         #[command(subcommand)]
         action: MutateAction,
     },
-    Step {
-        #[command(subcommand)]
-        action: StepAction,
-    },
     DumpSession,
     Completions {
         #[arg(value_enum)]
         shell: Shell,
     },
-}
-
-#[derive(Debug, Subcommand)]
-enum StepAction {
-    FindFiles,
-    DeriveMutants,
-    CreateWorkspaces,
-    SetupWorkspace {
-        #[arg(short, long)]
-        workspace: String,
-    },
-    ResetWorkspace {
-        #[arg(short, long)]
-        workspace: String,
-        #[arg(short, long)]
-        rev: String,
-    },
-    ApplyMutantToWorkspace {
-        #[arg(short, long)]
-        workspace: String,
-        #[arg(long)]
-        mutant: Hash,
-    },
-    TestWorkspace {
-        #[arg(short, long)]
-        workspace: String,
-    },
-    Cleanup,
 }
 
 #[derive(Debug, Subcommand)]
@@ -210,72 +177,6 @@ fn main() {
                 },
         } => {
             let (actions, report) = mutate::describe::run(&session.language, input, hash);
-            (actions, vec![Box::new(report)])
-        }
-        Command::Step {
-            action: StepAction::FindFiles,
-        } => {
-            let (actions, report) = steps::find_files::run(&session);
-            (actions, vec![Box::new(report)])
-        }
-        Command::Step {
-            action: StepAction::DeriveMutants,
-        } => {
-            let find_report = steps::find_files::run(&session).1;
-            let (actions, report) = steps::derive_mutants::run(&session, &find_report.files);
-            (actions, vec![Box::new(report)])
-        }
-        Command::Step {
-            action: StepAction::CreateWorkspaces,
-        } => {
-            let (actions, report) = steps::create_workspaces::run(&session);
-            (actions, vec![Box::new(report)])
-        }
-        Command::Step {
-            action:
-                StepAction::ApplyMutantToWorkspace {
-                    workspace,
-                    mutant: hash,
-                },
-        } => {
-            let (actions, report) =
-                steps::apply_mutant_to_workspace::run(&session, workspace, hash);
-            (actions, vec![Box::new(report)])
-        }
-        Command::Step {
-            action: StepAction::SetupWorkspace { workspace },
-        } => {
-            let (actions, report) = steps::setup_workspace::run(&session, workspace);
-            (
-                actions,
-                report
-                    .into_iter()
-                    .map(|r| Box::new(r) as Box<dyn Report>)
-                    .collect(),
-            )
-        }
-        Command::Step {
-            action: StepAction::TestWorkspace { workspace },
-        } => {
-            let (actions, report) = steps::test_workspace::run(&session, workspace);
-            (
-                actions,
-                report
-                    .into_iter()
-                    .map(|r| Box::new(r) as Box<dyn Report>)
-                    .collect(),
-            )
-        }
-        Command::Step {
-            action: StepAction::ResetWorkspace { workspace, rev },
-        } => {
-            let (actions, report) = steps::reset_workspace::run(&session, workspace, rev);
-            (actions, vec![Box::new(report)])
-        }
-        Command::Step {
-            action: StepAction::Cleanup,
-        } => {
-            let (actions, report) = steps::cleanup::run(&session);
             (actions, vec![Box::new(report)])
         }
         Command::DumpSession => {
