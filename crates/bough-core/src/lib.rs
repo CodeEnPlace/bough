@@ -1,7 +1,6 @@
 pub mod config;
 pub mod io;
 pub mod languages;
-pub mod plan;
 
 use serde::de::{self, Deserializer, MapAccess, Visitor};
 use serde::ser::{SerializeStruct, Serializer};
