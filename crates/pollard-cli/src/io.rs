@@ -1,7 +1,7 @@
 use serde::Serialize;
 use std::path::PathBuf;
 
-pub use pollard_core::io::{DiffStyle, Render, Style, color, hashed_path};
+pub use pollard_core::io::{DiffStyle, Render, color, hashed_path};
 pub use pollard_session::{Report, Session};
 
 #[derive(Debug, Clone, Serialize)]
@@ -61,7 +61,6 @@ impl Action {
         }
     }
 }
-
 
 impl Render for Action {
     fn render_json(&self) -> String {

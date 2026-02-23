@@ -8,6 +8,18 @@ use pollard_session_derive::Settings;
 use serde::Serialize;
 use std::path::{Path, PathBuf};
 
+fn default_run_id() -> String {
+    let seed = format!(
+        "{}:{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("time went backwards")
+            .as_nanos(),
+    );
+    pollard_core::Hash::of(&seed).to_string()
+}
+
 fn absolutize(path: &Path) -> PathBuf {
     if path.is_absolute() {
         path.to_path_buf()
@@ -72,6 +84,8 @@ pub struct Session {
     pub diff: DiffStyle,
     #[setting(env = "NO_COLOR")]
     pub no_color: bool,
+    #[setting(cli_only, default = "default_run_id()")]
+    pub run_id: String,
     #[setting(cli_only)]
     pub exec: bool,
     #[setting(skip)]

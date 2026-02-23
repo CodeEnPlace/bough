@@ -14,6 +14,7 @@ pub enum LanguageId {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, clap::ValueEnum)]
 #[serde(rename_all = "lowercase")]
 pub enum Vcs {
+    None,
     Git,
     Jj,
     Mercurial,
@@ -24,4 +25,7 @@ pub enum Vcs {
 pub enum Ordering {
     Random,
     Alphabetical,
+    MissedFirst,
+    CaughtFirst,
+    NewestFirst,
 }
