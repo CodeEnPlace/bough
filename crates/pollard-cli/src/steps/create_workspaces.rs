@@ -5,11 +5,11 @@ use pollard_core::config::Vcs;
 use serde::Serialize;
 use std::path::PathBuf;
 
-pub fn run(session: &Session) -> (Vec<Action>, CreateReport) {
+pub fn run(session: &Session) -> (Vec<Action>, CreateWorkspacesReport) {
     match session.vcs {
         Vcs::Jj => {}
         other => {
-            eprintln!("step create not yet implemented for {other:?}");
+            eprintln!("create-workspaces not yet implemented for {other:?}");
             std::process::exit(1);
         }
     }
@@ -49,7 +49,7 @@ pub fn run(session: &Session) -> (Vec<Action>, CreateReport) {
         });
     }
 
-    let report = CreateReport {
+    let report = CreateWorkspacesReport {
         workspaces: workspaces.iter().map(|ws| ws.name.clone()).collect(),
         manifest: manifest_path,
     };
@@ -58,14 +58,14 @@ pub fn run(session: &Session) -> (Vec<Action>, CreateReport) {
 }
 
 #[derive(Serialize)]
-pub struct CreateReport {
+pub struct CreateWorkspacesReport {
     pub workspaces: Vec<String>,
     pub manifest: PathBuf,
 }
 
-impl Report for CreateReport {
+impl Report for CreateWorkspacesReport {
     fn get_dir(&self, session: &crate::session::Session) -> PathBuf {
-        session.report_dir.join("step").join("create")
+        session.report_dir.join("step").join("create-workspaces")
     }
 
     fn make_path(&self, session: &crate::session::Session) -> PathBuf {

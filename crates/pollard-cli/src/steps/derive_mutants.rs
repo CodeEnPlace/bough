@@ -1,6 +1,6 @@
 use crate::io::{Action, Report, Style, hashed_path};
 use crate::session::Session;
-use crate::steps::{color, content_id, expand_glob};
+use crate::steps::{color, content_id};
 use pollard_core::config::LanguageId;
 use pollard_core::languages::javascript::JavaScript;
 use pollard_core::languages::typescript::TypeScript;
@@ -38,10 +38,9 @@ where
     entries
 }
 
-fn generate_plan(language: &LanguageId, pattern: &str) -> Plan {
-    let paths = expand_glob(pattern);
+fn generate_plan(language: &LanguageId, files: &[PathBuf]) -> Plan {
     let mut entries = Vec::new();
-    for path in &paths {
+    for path in files {
         let file = SourceFile::read(path).expect("failed to read input file");
         let mut file_entries = match language {
             LanguageId::Javascript => plan_entries_for_language::<JavaScript>(&file),
@@ -52,21 +51,19 @@ fn generate_plan(language: &LanguageId, pattern: &str) -> Plan {
     Plan { entries }
 }
 
-pub fn run(session: &Session) -> (Vec<Action>, PlanReport) {
-    let plan = generate_plan(&session.language, &session.files);
+pub fn run(session: &Session, files: &[PathBuf]) -> (Vec<Action>, DeriveMutantsReport) {
+    let plan = generate_plan(&session.language, files);
     let content = serde_json::to_string_pretty(&plan).expect("failed to serialize plan");
     let plan_path = session
         .working_dir
         .join(format!("{}.mutants.plan.json", content_id(&content)));
-
-    log::info!("generated {} mutations", plan.entries.len());
 
     let actions = vec![Action::WriteFile {
         path: plan_path.clone(),
         content,
     }];
 
-    let report = PlanReport {
+    let report = DeriveMutantsReport {
         path: plan_path,
         count: plan.entries.len(),
     };
@@ -75,14 +72,14 @@ pub fn run(session: &Session) -> (Vec<Action>, PlanReport) {
 }
 
 #[derive(Serialize)]
-pub struct PlanReport {
+pub struct DeriveMutantsReport {
     pub path: PathBuf,
     pub count: usize,
 }
 
-impl Report for PlanReport {
+impl Report for DeriveMutantsReport {
     fn get_dir(&self, session: &crate::session::Session) -> PathBuf {
-        session.report_dir.join("step").join("plan")
+        session.report_dir.join("step").join("derive-mutants")
     }
 
     fn make_path(&self, session: &crate::session::Session) -> PathBuf {
@@ -100,13 +97,17 @@ impl Report for PlanReport {
             }
             Style::Pretty => {
                 println!(
-                    "Wrote {} mutations to {}",
+                    "Derived {} mutations, wrote to {}",
                     color("\x1b[33m", &self.count.to_string(), no_color),
                     color("\x1b[36m", &self.path.display().to_string(), no_color),
                 );
             }
             Style::Plain | Style::Markdown => {
-                println!("Wrote {} mutations to {}", self.count, self.path.display());
+                println!(
+                    "Derived {} mutations, wrote to {}",
+                    self.count,
+                    self.path.display()
+                );
             }
         }
     }

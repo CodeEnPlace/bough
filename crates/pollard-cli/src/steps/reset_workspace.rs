@@ -5,11 +5,15 @@ use pollard_core::config::Vcs;
 use serde::Serialize;
 use std::path::PathBuf;
 
-pub fn run(session: &Session, workspace_name: &str, rev: &str) -> (Vec<Action>, ResetReport) {
+pub fn run(
+    session: &Session,
+    workspace_name: &str,
+    rev: &str,
+) -> (Vec<Action>, ResetWorkspaceReport) {
     match session.vcs {
         Vcs::Jj => {}
         other => {
-            eprintln!("step reset not yet implemented for {other:?}");
+            eprintln!("reset-workspace not yet implemented for {other:?}");
             std::process::exit(1);
         }
     }
@@ -17,7 +21,6 @@ pub fn run(session: &Session, workspace_name: &str, rev: &str) -> (Vec<Action>, 
     let manifest = read_workspace_manifest(session);
     let ws = find_workspace(&manifest, workspace_name);
 
-    log::info!("resetting workspace {} to {rev}", ws.name);
     let output = std::process::Command::new("jj")
         .args(["edit", rev])
         .current_dir(&ws.path)
@@ -33,7 +36,7 @@ pub fn run(session: &Session, workspace_name: &str, rev: &str) -> (Vec<Action>, 
         std::process::exit(1);
     }
 
-    let report = ResetReport {
+    let report = ResetWorkspaceReport {
         workspace: workspace_name.to_string(),
         rev: rev.to_string(),
     };
@@ -42,14 +45,14 @@ pub fn run(session: &Session, workspace_name: &str, rev: &str) -> (Vec<Action>, 
 }
 
 #[derive(Serialize)]
-pub struct ResetReport {
+pub struct ResetWorkspaceReport {
     pub workspace: String,
     pub rev: String,
 }
 
-impl Report for ResetReport {
+impl Report for ResetWorkspaceReport {
     fn get_dir(&self, session: &crate::session::Session) -> PathBuf {
-        session.report_dir.join("step").join("reset")
+        session.report_dir.join("step").join("reset-workspace")
     }
 
     fn make_path(&self, session: &crate::session::Session) -> PathBuf {
