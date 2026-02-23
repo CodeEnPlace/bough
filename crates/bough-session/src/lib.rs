@@ -3,7 +3,7 @@ mod config;
 pub use config::{ConfigError, SEARCH_PATHS, discover_config, read_config};
 pub use bough_core::io::{DiffStyle, Render, Style, color, hashed_path};
 
-use bough_core::config::{LanguageId, Ordering, Vcs, VcsKind};
+use bough_core::config::{Ordering, Vcs, VcsKind};
 use bough_session_derive::Settings;
 use serde::Serialize;
 use std::path::{Path, PathBuf};
@@ -21,18 +21,6 @@ fn compose_vcs(kind: VcsKind, target: Option<String>) -> Vcs {
     }
 }
 
-fn default_run_id() -> String {
-    let seed = format!(
-        "{}:{}",
-        std::process::id(),
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .expect("time went backwards")
-            .as_nanos(),
-    );
-    bough_core::Hash::of(&seed).to_string()
-}
-
 fn absolutize(path: &Path) -> PathBuf {
     if path.is_absolute() {
         path.to_path_buf()
@@ -46,8 +34,7 @@ fn absolutize(path: &Path) -> PathBuf {
 impl Session {
     pub fn normalize_paths(&mut self) {
         self.directories.working = absolutize(&self.directories.working);
-        self.directories.report = absolutize(&self.directories.report);
-        self.directories.sub = absolutize(&self.directories.sub);
+        self.directories.state = absolutize(&self.directories.state);
         self.config_path = absolutize(&self.config_path);
     }
 }
@@ -81,17 +68,12 @@ pub struct Timeout {
 pub struct Directories {
     #[setting(long = "working-dir")]
     pub working: PathBuf,
-    #[setting(long = "report-dir")]
-    pub report: PathBuf,
     #[setting(long = "state-dir")]
     pub state: PathBuf,
-    #[setting(long = "sub-dir", default = "PathBuf::from(\".\")")]
-    pub sub: PathBuf,
 }
 
 #[derive(Debug, Serialize, Settings)]
 pub struct Session {
-    pub language: LanguageId,
     #[setting(compose(
         fields(kind: VcsKind, target: Option<String>),
         via = "compose_vcs"
@@ -111,8 +93,6 @@ pub struct Session {
     pub diff: DiffStyle,
     #[setting(env = "NO_COLOR")]
     pub no_color: bool,
-    #[setting(cli_only, default = "default_run_id()")]
-    pub run_id: String,
     #[setting(cli_only)]
     pub exec: bool,
     #[setting(skip)]

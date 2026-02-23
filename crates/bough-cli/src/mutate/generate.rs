@@ -96,7 +96,7 @@ impl Render for GenerateReport {
 
 impl Report for GenerateReport {
     fn get_dir(&self, session: &bough_session::Session) -> PathBuf {
-        session.directories.report.join("mutate").join("generate")
+        session.directories.state.join("mutate").join("generate")
     }
 
     fn make_path(&self, session: &bough_session::Session) -> PathBuf {

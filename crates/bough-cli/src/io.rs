@@ -98,7 +98,7 @@ impl Render for Action {
 
 impl Report for Action {
     fn get_dir(&self, session: &Session) -> PathBuf {
-        session.directories.report.join("action")
+        session.directories.state.join("action")
     }
 
     fn make_path(&self, session: &Session) -> PathBuf {
@@ -137,7 +137,7 @@ impl Render for SessionReport {
 
 impl Report for SessionReport {
     fn get_dir(&self, session: &Session) -> PathBuf {
-        session.directories.report.join("session")
+        session.directories.state.join("session")
     }
 
     fn make_path(&self, session: &Session) -> PathBuf {
