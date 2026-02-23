@@ -1,4 +1,4 @@
-use crate::io::{Action, Render, Report, color, hashed_path};
+use crate::io::{Action, Render, color};
 use super::expand_glob;
 use bough_core::config::LanguageId;
 use bough_core::languages::javascript::JavaScript;
@@ -92,16 +92,4 @@ impl Render for GenerateReport {
     fn render_markdown(&self, depth: u8) -> String {
         self.render_pretty(depth)
     }
-}
-
-impl Report for GenerateReport {
-    fn get_dir(&self, session: &bough_session::Session) -> PathBuf {
-        session.directories.state.join("mutate").join("generate")
-    }
-
-    fn make_path(&self, session: &bough_session::Session) -> PathBuf {
-        let content = serde_json::to_string(self).expect("failed to serialize");
-        hashed_path(&self.get_dir(session), &content, "mutations")
-    }
-
 }

@@ -1,4 +1,4 @@
-use crate::io::{Action, Render, Report, color, hashed_path};
+use crate::io::{Action, Render, color};
 use crate::mutate::find_description;
 use bough_core::config::LanguageId;
 use bough_core::{Hash, MutationKind, SourceFile};
@@ -84,16 +84,5 @@ impl Render for DescribeReport {
             self.original,
             self.replacement,
         )
-    }
-}
-
-impl Report for DescribeReport {
-    fn get_dir(&self, session: &bough_session::Session) -> PathBuf {
-        session.directories.state.join("mutate").join("describe")
-    }
-
-    fn make_path(&self, session: &bough_session::Session) -> PathBuf {
-        let content = serde_json::to_string(self).expect("failed to serialize");
-        hashed_path(&self.get_dir(session), &content, "describe")
     }
 }

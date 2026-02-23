@@ -1,8 +1,8 @@
 use serde::Serialize;
 use std::path::PathBuf;
 
-pub use bough_core::io::{DiffStyle, Render, color, hashed_path};
-pub use bough_session::{Report, Session};
+pub use bough_core::io::{DiffStyle, Render, color};
+pub use bough_session::Session;
 
 #[derive(Debug, Clone, Serialize)]
 pub enum Action {
@@ -96,17 +96,6 @@ impl Render for Action {
     }
 }
 
-impl Report for Action {
-    fn get_dir(&self, session: &Session) -> PathBuf {
-        session.directories.state.join("action")
-    }
-
-    fn make_path(&self, session: &Session) -> PathBuf {
-        let content = serde_json::to_string(self).expect("failed to serialize");
-        hashed_path(&self.get_dir(session), &content, "action")
-    }
-}
-
 pub struct SessionReport {
     json: String,
     debug: String,
@@ -132,15 +121,5 @@ impl Render for SessionReport {
 
     fn render_markdown(&self, _depth: u8) -> String {
         format!("```\n{}\n```\n", self.debug)
-    }
-}
-
-impl Report for SessionReport {
-    fn get_dir(&self, session: &Session) -> PathBuf {
-        session.directories.state.join("session")
-    }
-
-    fn make_path(&self, session: &Session) -> PathBuf {
-        hashed_path(&self.get_dir(session), &self.json, "session")
     }
 }

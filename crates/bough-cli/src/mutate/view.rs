@@ -1,11 +1,11 @@
-use crate::io::{Action, DiffStyle, Render, Report, hashed_path};
+use crate::io::{Action, DiffStyle, Render};
 use crate::mutate::find_mutated;
 use bough_core::config::LanguageId;
 use bough_core::io::color;
 use bough_core::{Hash, SourceFile};
 use similar::{ChangeTag, TextDiff};
 use std::fmt::Write;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 pub fn run(
     language: &LanguageId,
@@ -52,17 +52,6 @@ impl Render for ViewReport {
 
     fn render_markdown(&self, depth: u8) -> String {
         self.render_pretty(depth)
-    }
-}
-
-impl Report for ViewReport {
-    fn get_dir(&self, session: &bough_session::Session) -> PathBuf {
-        session.directories.state.join("mutate").join("view")
-    }
-
-    fn make_path(&self, session: &bough_session::Session) -> PathBuf {
-        let content = format!("{}:{}:{}", self.path, self.old, self.new);
-        hashed_path(&self.get_dir(session), &content, "diff")
     }
 }
 

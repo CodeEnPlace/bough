@@ -39,11 +39,6 @@ impl Session {
     }
 }
 
-pub trait Report: Render {
-    fn get_dir(&self, session: &Session) -> PathBuf;
-    fn make_path(&self, session: &Session) -> PathBuf;
-}
-
 #[derive(Debug, Clone, Serialize, Settings)]
 pub struct Commands {
     #[setting(long = "command-install")]

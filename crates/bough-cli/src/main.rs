@@ -3,7 +3,7 @@ mod mutate;
 
 use clap::{CommandFactory, Parser, Subcommand};
 use clap_complete::Shell;
-use io::{Action, Render, Report};
+use io::{Action, Render};
 use bough_core::Hash;
 use bough_core::config::LanguageId;
 use bough_session::{PartialSession, Session, SessionSkipped, discover_config, read_config};
@@ -64,7 +64,7 @@ enum MutateAction {
     },
 }
 
-fn render_and_apply(actions: Vec<Action>, reports: Vec<Box<dyn Report>>, session: &Session) {
+fn render_and_apply(actions: Vec<Action>, reports: Vec<Box<dyn Render>>, session: &Session) {
     for report in &reports {
         report.render(&session.style, session.no_color, 0);
     }
@@ -138,7 +138,7 @@ fn main() {
 
     let (session, command) = build_session(cli);
 
-    let (actions, reports): (Vec<Action>, Vec<Box<dyn Report>>) = match &command {
+    let (actions, reports): (Vec<Action>, Vec<Box<dyn Render>>) = match &command {
         Command::Mutate {
             language,
             action: MutateAction::Generate { file: pattern },
@@ -148,7 +148,7 @@ fn main() {
                 actions,
                 reports
                     .into_iter()
-                    .map(|r| Box::new(r) as Box<dyn Report>)
+                    .map(|r| Box::new(r) as Box<dyn Render>)
                     .collect(),
             )
         }
