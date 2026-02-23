@@ -80,7 +80,7 @@ pub struct Runner {
     pub treat_timeouts_as: Outcome,
     pub init: Option<Phase>,
     pub reset: Option<Phase>,
-    pub test: Option<Phase>,
+    pub test: Phase,
     pub mutate: HashMap<String, MutateLanguage>,
 }
 
@@ -156,11 +156,10 @@ mod tests {
         assert_eq!(init.pwd.as_deref(), Some("./examples/vitest"));
         assert_eq!(init.commands, vec!["npm install"]);
 
-        let test = vitest.test.as_ref().unwrap();
-        assert_eq!(test.timeout.absolute, Some(30));
-        assert_eq!(test.timeout.relative, Some(3));
-        assert_eq!(test.env["NODE_ENV"], "production");
-        assert_eq!(test.commands, vec!["npx run build", "npx run test"]);
+        assert_eq!(vitest.test.timeout.absolute, Some(30));
+        assert_eq!(vitest.test.timeout.relative, Some(3));
+        assert_eq!(vitest.test.env["NODE_ENV"], "production");
+        assert_eq!(vitest.test.commands, vec!["npx run build", "npx run test"]);
 
         let js_mutate = &vitest.mutate["js"];
         assert_eq!(js_mutate.files.include, vec!["**/*.js", "**/*.jsx"]);
@@ -169,8 +168,7 @@ mod tests {
 
         let cargo = &config.runners["cargo"];
         assert_eq!(cargo.pwd.as_deref(), Some("./examples/cargo"));
-        let cargo_test = cargo.test.as_ref().unwrap();
-        assert_eq!(cargo_test.commands, vec!["cargo test"]);
+        assert_eq!(cargo.test.commands, vec!["cargo test"]);
     }
 
     #[test]
@@ -188,11 +186,10 @@ mod tests {
         assert!(vitest.init.is_none());
         assert!(vitest.reset.is_none());
 
-        let test = vitest.test.as_ref().unwrap();
-        assert_eq!(test.commands, vec!["npx vitest run"]);
-        assert!(test.pwd.is_none());
-        assert!(test.env.is_empty());
-        assert_eq!(test.timeout, Timeout::default());
+        assert_eq!(vitest.test.commands, vec!["npx vitest run"]);
+        assert!(vitest.test.pwd.is_none());
+        assert!(vitest.test.env.is_empty());
+        assert_eq!(vitest.test.timeout, Timeout::default());
 
         let ts_mutate = &vitest.mutate["ts"];
         assert_eq!(ts_mutate.files.include, vec!["src/**/*.ts"]);
