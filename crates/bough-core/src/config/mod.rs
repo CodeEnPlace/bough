@@ -2,6 +2,19 @@ use crate::Outcome;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+fn default_parallelism() -> u32 {
+    1
+}
+fn default_working() -> String {
+    "/tmp/bough/work".into()
+}
+fn default_state() -> String {
+    "./bough/".into()
+}
+fn default_logs() -> String {
+    "/tmp/bough/logs".into()
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(tag = "kind", rename_all = "lowercase")]
 pub enum VcsConfig {
@@ -27,10 +40,11 @@ pub enum Ordering {
     NewestFirst,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Config {
     pub vcs: VcsConfig,
+    #[serde(default = "default_parallelism")]
     pub parallelism: u32,
     pub ordering: Ordering,
     pub dirs: Dirs,
@@ -38,32 +52,23 @@ pub struct Config {
     pub runners: HashMap<String, Runner>,
 }
 
-impl Default for Config {
-    fn default() -> Self {
-        Self {
-            vcs: VcsConfig::default(),
-            parallelism: 1,
-            ordering: Ordering::default(),
-            dirs: Dirs::default(),
-            runners: HashMap::new(),
-        }
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Dirs {
+    #[serde(default = "default_working")]
     pub working: String,
+    #[serde(default = "default_state")]
     pub state: String,
+    #[serde(default = "default_logs")]
     pub logs: String,
 }
 
 impl Default for Dirs {
     fn default() -> Self {
         Self {
-            working: "/tmp/bough/work".into(),
-            state: "./bough/state".into(),
-            logs: "/tmp/bough/logs".into(),
+            working: default_working(),
+            state: default_state(),
+            logs: default_logs(),
         }
     }
 }
@@ -79,24 +84,13 @@ pub struct Runner {
     pub mutate: HashMap<String, MutateLanguage>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Phase {
     pub pwd: Option<String>,
     pub timeout: Timeout,
     pub env: HashMap<String, String>,
     pub commands: Vec<String>,
-}
-
-impl Default for Phase {
-    fn default() -> Self {
-        Self {
-            pwd: None,
-            timeout: Timeout::default(),
-            env: HashMap::new(),
-            commands: Vec::new(),
-        }
-    }
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
