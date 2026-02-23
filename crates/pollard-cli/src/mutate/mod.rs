@@ -45,6 +45,7 @@ fn find_mutated<'a>(
 pub struct MutationDescription {
     pub path: PathBuf,
     pub kind: MutationKind,
+    pub code_tag: &'static str,
     pub start_line: usize,
     pub start_char: usize,
     pub end_line: usize,
@@ -68,6 +69,7 @@ where
                 return Some(MutationDescription {
                     path: file.path().to_owned(),
                     kind: point.kind.into(),
+                    code_tag: L::code_tag(),
                     start_line: point.span.start.line,
                     start_char: point.span.start.char,
                     end_line: point.span.end.line,

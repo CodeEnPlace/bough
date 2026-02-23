@@ -21,6 +21,10 @@ impl From<JsMutationKind> for MutationKind {
 impl Language for JavaScript {
     type Kind = JsMutationKind;
 
+    fn code_tag() -> &'static str {
+        "javascript"
+    }
+
     fn tree_sitter_language() -> tree_sitter::Language {
         tree_sitter_javascript::LANGUAGE.into()
     }

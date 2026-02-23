@@ -5,13 +5,7 @@ use pollard_core::{Hash, SourceFile};
 use serde::Serialize;
 use std::path::{Path, PathBuf};
 
-fn color(code: &str, text: &str, no_color: bool) -> String {
-    if no_color {
-        text.to_string()
-    } else {
-        format!("{code}{text}\x1b[0m")
-    }
-}
+use crate::io::color;
 
 pub fn run(
     language: &LanguageId,
@@ -44,6 +38,7 @@ pub struct ApplyReport {
 
 impl Render for ApplyReport {
     fn render(&self, style: &Style, no_color: bool, _depth: u8) {
+        let no_color = no_color || matches!(style, Style::Plain);
         match style {
             Style::Json => {
                 println!(
@@ -51,7 +46,7 @@ impl Render for ApplyReport {
                     serde_json::to_string(self).expect("failed to serialize")
                 );
             }
-            Style::Pretty => {
+            Style::Plain | Style::Pretty | Style::Markdown => {
                 println!(
                     "Will apply mutation {} to {}",
                     color("\x1b[33m", &self.mutated_hash.to_string(), no_color),
@@ -60,13 +55,6 @@ impl Render for ApplyReport {
                         &self.source_path.display().to_string(),
                         no_color
                     ),
-                );
-            }
-            Style::Plain | Style::Markdown => {
-                println!(
-                    "Will apply mutation {} to {}",
-                    self.mutated_hash,
-                    self.source_path.display(),
                 );
             }
         }

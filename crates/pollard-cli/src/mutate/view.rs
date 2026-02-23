@@ -56,13 +56,7 @@ impl Report for ViewReport {
 
 }
 
-fn color(code: &str, text: &str, no_color: bool) -> String {
-    if no_color {
-        text.to_string()
-    } else {
-        format!("{code}{text}\x1b[0m")
-    }
-}
+use crate::io::color;
 
 fn render_unified(old: &str, new: &str, path: &str, no_color: bool) {
     let diff = TextDiff::from_lines(old, new);

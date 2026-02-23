@@ -124,13 +124,7 @@ fn run_in_workspace(
     })
 }
 
-fn color(code: &str, text: &str, no_color: bool) -> String {
-    if no_color {
-        text.to_string()
-    } else {
-        format!("{code}{text}\x1b[0m")
-    }
-}
+use crate::io::color;
 
 #[derive(Serialize)]
 pub struct CommandReport {
@@ -142,6 +136,7 @@ pub struct CommandReport {
 
 impl Render for CommandReport {
     fn render(&self, style: &Style, no_color: bool, _depth: u8) {
+        let no_color = no_color || matches!(style, Style::Plain);
         match style {
             Style::Json => {
                 println!(
@@ -151,22 +146,8 @@ impl Render for CommandReport {
             }
             Style::Plain | Style::Pretty | Style::Markdown => {
                 let (status, output) = match &self.result {
-                    Ok(stdout) => (
-                        if no_color {
-                            "OK".to_string()
-                        } else {
-                            color("\x1b[32m", "OK", false)
-                        },
-                        stdout,
-                    ),
-                    Err(stderr) => (
-                        if no_color {
-                            "FAIL".to_string()
-                        } else {
-                            color("\x1b[31m", "FAIL", false)
-                        },
-                        stderr,
-                    ),
+                    Ok(stdout) => (color("\x1b[32m", "OK", no_color), stdout),
+                    Err(stderr) => (color("\x1b[31m", "FAIL", no_color), stderr),
                 };
                 println!(
                     "{} {} in {} [{}]",

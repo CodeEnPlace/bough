@@ -63,8 +63,11 @@ pub struct GenerateReport {
     pub replacement: String,
 }
 
+use crate::io::color;
+
 impl Render for GenerateReport {
-    fn render(&self, style: &Style, _no_color: bool, _depth: u8) {
+    fn render(&self, style: &Style, no_color: bool, _depth: u8) {
+        let no_color = no_color || matches!(style, Style::Plain);
         match style {
             Style::Json => {
                 println!(
@@ -72,32 +75,25 @@ impl Render for GenerateReport {
                     serde_json::to_string(self).expect("failed to serialize")
                 );
             }
-            Style::Pretty => {
+            Style::Plain | Style::Pretty | Style::Markdown => {
                 println!(
-                    "\x1b[33m{}\x1b[0m {} \x1b[1m{:?}\x1b[0m \x1b[36m{}:{}-{}:{}\x1b[0m\n\x1b[31m{}\x1b[0m\n\x1b[32m{}\x1b[0m\n",
-                    self.mutated_hash,
+                    "{} {} {} {}\n{}\n{}\n",
+                    color("\x1b[33m", &self.mutated_hash.to_string(), no_color),
                     self.source_path.display(),
-                    self.kind,
-                    self.start_line + 1,
-                    self.start_char + 1,
-                    self.end_line + 1,
-                    self.end_char + 1,
-                    self.original,
-                    self.replacement,
-                );
-            }
-            Style::Plain | Style::Markdown => {
-                println!(
-                    "{} {} {:?} {}:{}-{}:{}\n{}\n{}\n",
-                    self.mutated_hash,
-                    self.source_path.display(),
-                    self.kind,
-                    self.start_line + 1,
-                    self.start_char + 1,
-                    self.end_line + 1,
-                    self.end_char + 1,
-                    self.original,
-                    self.replacement,
+                    color("\x1b[1m", &format!("{:?}", self.kind), no_color),
+                    color(
+                        "\x1b[36m",
+                        &format!(
+                            "{}:{}-{}:{}",
+                            self.start_line + 1,
+                            self.start_char + 1,
+                            self.end_line + 1,
+                            self.end_char + 1,
+                        ),
+                        no_color,
+                    ),
+                    color("\x1b[31m", &self.original, no_color),
+                    color("\x1b[32m", &self.replacement, no_color),
                 );
             }
         }

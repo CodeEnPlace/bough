@@ -262,6 +262,7 @@ pub enum BinaryOpKind {
 pub trait Language {
     type Kind: Into<MutationKind>;
 
+    fn code_tag() -> &'static str;
     fn tree_sitter_language() -> tree_sitter::Language;
     fn mutation_kind_for_node<'a>(
         node: tree_sitter::Node<'_>,
@@ -383,24 +384,20 @@ where
                 println!("\n");
                 println!("**File:** `{path}`\n");
                 println!("**Location:** {loc}\n");
-                println!("**Original:**\n```\n{original}\n```\n");
+                let tag = L::code_tag();
+                println!("**Original:**\n```{tag}\n{original}\n```\n");
                 println!(
-                    "**Replacement:**\n```\n{}\n```",
+                    "**Replacement:**\n```{tag}\n{}\n```",
                     self.replacement
                 );
             }
-            io::Style::Pretty => {
-                print!("\x1b[1m");
+            io::Style::Plain | io::Style::Pretty => {
+                let no_color = no_color || matches!(style, io::Style::Plain);
+                print!("{}", io::color("\x1b[1m", "", no_color));
                 kind.render(style, no_color, depth + 1);
-                println!("\x1b[0m at \x1b[36m{path}:{loc}\x1b[0m");
-                println!("\x1b[31m{original}\x1b[0m");
-                println!("\x1b[32m{}\x1b[0m", self.replacement);
-            }
-            io::Style::Plain => {
-                kind.render(style, no_color, depth + 1);
-                println!(" at {path}:{loc}");
-                println!("{original}");
-                println!("{}", self.replacement);
+                println!(" at {}", io::color("\x1b[36m", &format!("{path}:{loc}"), no_color));
+                println!("{}", io::color("\x1b[31m", original, no_color));
+                println!("{}", io::color("\x1b[32m", &self.replacement, no_color));
             }
         }
     }
