@@ -1,4 +1,4 @@
-$ pollard run
+$ bough run
 found _ test ids
 found _ mutants
 skipping _ mutants that were caught by tests that still exist
@@ -7,7 +7,7 @@ running _ mutants that were previously missed
 	!ctrl-c
 recieved stop signal... removing workspaces
 
-$ pollard run # continues where the previous run left off, as all data was stored hashed to disk
+$ bough run # continues where the previous run left off, as all data was stored hashed to disk
 found _ test ids
 found _ mutants
 skipping _ mutants that were caught by tests that still exist
@@ -16,15 +16,15 @@ running _ mutants that were previously missed
 run all mutants, cleaning up and exiting
 
 # Can run through the above step by step, to debug and understand
-$ pollard step find-src-files
-$ pollard step find-mutants
-$ pollard step find-test-ids
-$ pollard step make-workspaces
-$ pollard step init-workspace
-$ pollard step reset-workspace
-$ pollard step apply-mutant-to-workspace
-$ pollard step test-workspace
-$ pollard step cleanup
+$ bough step find-src-files
+$ bough step find-mutants
+$ bough step find-test-ids
+$ bough step make-workspaces
+$ bough step init-workspace
+$ bough step reset-workspace
+$ bough step apply-mutant-to-workspace
+$ bough step test-workspace
+$ bough step cleanup
 
-$ pollard find-mutants best # locates mutants that it would be best to fix next
-$ pollard find-mutants highest-impact # Other sorting functions
+$ bough find-mutants best # locates mutants that it would be best to fix next
+$ bough find-mutants highest-impact # Other sorting functions

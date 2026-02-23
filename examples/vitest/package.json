@@ -1,5 +1,5 @@
 {
-  "name": "pollard-example-vitest",
+  "name": "bough-example-vitest",
   "private": true,
   "type": "module",
   "scripts": {
