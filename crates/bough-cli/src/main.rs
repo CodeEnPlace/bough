@@ -1,11 +1,8 @@
 mod io;
-mod mutate;
 
 use clap::{CommandFactory, Parser, Subcommand};
 use clap_complete::Shell;
-use io::{Action, Render};
-use bough_core::Hash;
-use bough_core::config::LanguageId;
+use io::Render;
 use bough_session::{PartialSession, Session, SessionSkipped, discover_config, read_config};
 use std::io::IsTerminal;
 use std::path::PathBuf;
@@ -25,12 +22,6 @@ struct Cli {
 
 #[derive(Debug, Subcommand)]
 enum Command {
-    Mutate {
-        #[arg(short, long)]
-        language: LanguageId,
-        #[command(subcommand)]
-        action: MutateAction,
-    },
     DumpSession,
     Completions {
         #[arg(value_enum)]
@@ -38,33 +29,7 @@ enum Command {
     },
 }
 
-#[derive(Debug, Subcommand)]
-enum MutateAction {
-    Generate {
-        #[arg(short, long)]
-        file: String,
-    },
-    View {
-        #[arg(short, long)]
-        file: PathBuf,
-        #[arg(long)]
-        mutant: Hash,
-    },
-    Apply {
-        #[arg(short, long)]
-        file: PathBuf,
-        #[arg(long)]
-        mutant: Hash,
-    },
-    Describe {
-        #[arg(short, long)]
-        file: PathBuf,
-        #[arg(long)]
-        mutant: Hash,
-    },
-}
-
-fn render_and_apply(actions: Vec<Action>, reports: Vec<Box<dyn Render>>, session: &Session) {
+fn render_and_apply(actions: Vec<io::Action>, reports: Vec<Box<dyn Render>>, session: &Session) {
     for report in &reports {
         report.render(&session.style, session.no_color, 0);
     }
@@ -138,54 +103,7 @@ fn main() {
 
     let (session, command) = build_session(cli);
 
-    let (actions, reports): (Vec<Action>, Vec<Box<dyn Render>>) = match &command {
-        Command::Mutate {
-            language,
-            action: MutateAction::Generate { file: pattern },
-        } => {
-            let (actions, reports) = mutate::generate::run(language, pattern);
-            (
-                actions,
-                reports
-                    .into_iter()
-                    .map(|r| Box::new(r) as Box<dyn Render>)
-                    .collect(),
-            )
-        }
-        Command::Mutate {
-            language,
-            action:
-                MutateAction::View {
-                    file: input,
-                    mutant: hash,
-                },
-        } => {
-            let (actions, report) =
-                mutate::view::run(language, input, hash, session.diff.clone());
-            (actions, vec![Box::new(report)])
-        }
-        Command::Mutate {
-            language,
-            action:
-                MutateAction::Apply {
-                    file: input,
-                    mutant: hash,
-                },
-        } => {
-            let (actions, report) = mutate::apply::run(language, input, hash);
-            (actions, vec![Box::new(report)])
-        }
-        Command::Mutate {
-            language,
-            action:
-                MutateAction::Describe {
-                    file: input,
-                    mutant: hash,
-                },
-        } => {
-            let (actions, report) = mutate::describe::run(language, input, hash);
-            (actions, vec![Box::new(report)])
-        }
+    let (actions, reports): (Vec<io::Action>, Vec<Box<dyn Render>>) = match &command {
         Command::DumpSession => {
             let report = io::SessionReport::new(&session);
             (vec![], vec![Box::new(report)])

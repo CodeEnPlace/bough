@@ -74,6 +74,7 @@ impl Hash {
     }
 }
 
+// we want to remove content from here so it's more easily serializable
 #[derive(Debug)]
 pub struct SourceFile {
     path: PathBuf,
