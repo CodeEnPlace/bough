@@ -3,9 +3,9 @@ parallelism = 1
 ordering = "random"
 
 [dirs]
-working = "/tmp/pollard/work"
-reports = "/tmp/pollard/report"
-logs = "/tmp/pollard/logs"
+working = "/tmp/bough/work"
+reports = "/tmp/bough/report"
+logs = "/tmp/bough/logs"
 
 [vitest]
 [vitest.init]

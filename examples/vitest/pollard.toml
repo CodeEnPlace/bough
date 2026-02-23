@@ -5,8 +5,8 @@ ordering = "random"
 files = "examples/vitest/src/**/*.js"
 
 [directories]
-working_dir = "/tmp/pollard-work"
-report_dir = "/tmp/pollard-report"
+working_dir = "/tmp/bough-work"
+report_dir = "/tmp/bough-report"
 sub_dir = "examples/vitest"
 
 [timeout]
