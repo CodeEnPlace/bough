@@ -1,0 +1,75 @@
+vcs = "jj"
+parallelism = 1
+ordering = "random"
+
+[dirs]
+working = "/tmp/pollard/work"
+reports = "/tmp/pollard/report"
+logs = "/tmp/pollard/logs"
+
+[vitest]
+
+# Things like pwd, env, and TreatAs config should be inherited UP.
+# when running vitest.test we should default them to values in vitest, then in root
+# allows project config with narrowing specificity
+
+treat_timeouts_as = "Missed" # or Caught
+
+[vitest.init]
+pwd = "./examples/vitest"
+commands = ["npm install"]
+
+[vitest.reset]
+pwd = "./examples/vitest"
+commands = ["npm clean"]
+
+[vitest.test]
+pwd = "./examples/vitest"
+timeout.absolute = 30
+timeout.relative = 3
+env = { NODE_ENV = "production" }
+commands = [
+  "npx run build",
+  "npx run test",
+]
+
+[vitest.mutate.js]
+#must be tree-sitter id
+files.include = ["**/*.js", "**/*.jsx"]
+files.exclude = ["**/*__mocks__*"]
+mutants.skip = [
+  { lisp = "((fn 'describe') @ignore)" } ,
+  { kind = { "BinaryOp" = "Add" } }
+]
+
+[vitest.mutate.rust]
+#must be tree-sitter id
+files.include = ["**/*.rs"]
+mutants.skip = [
+  { lisp = "((fn 'describe') @ignore)" } ,
+  { kind = { "BinaryOp" = "Add" } }
+]
+
+[cargo]
+pwd = "./examples/cargo"
+[cargo.test]
+timeout.absolute = 30
+timeout.relative = 3
+commands = ["cargo test"]
+
+[cargo.mutate.js]
+#must be tree-sitter id
+files.include = ["**/*.js", "**/*.jsx"]
+files.exclude = ["**/*__mocks__*"]
+mutants.skip = [
+  { lisp = "((fn 'describe') @ignore)" } ,
+  { kind = { "BinaryOp" = "Add" } }
+]
+
+[cargo.mutate.rust]
+#must be tree-sitter id
+files.include = ["**/*.rs"]
+mutants.skip = [
+  { lisp = "((fn 'describe') @ignore)" } ,
+  { kind = { "BinaryOp" = "Add" } }
+]

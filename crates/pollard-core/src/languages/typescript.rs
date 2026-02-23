@@ -21,6 +21,10 @@ impl From<TsMutationKind> for MutationKind {
 impl Language for TypeScript {
     type Kind = TsMutationKind;
 
+    fn code_tag() -> &'static str {
+        "typescript"
+    }
+
     fn tree_sitter_language() -> tree_sitter::Language {
         tree_sitter_typescript::LANGUAGE_TYPESCRIPT.into()
     }

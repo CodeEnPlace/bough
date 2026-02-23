@@ -1,6 +1,7 @@
 use crate::io::{Action, Render, Report, Style, hashed_path};
 use pollard_session::Session;
-use crate::steps::{color, find_workspace, read_plan, read_workspace_manifest};
+use crate::io::color;
+use crate::steps::{find_workspace, read_plan, read_workspace_manifest};
 use pollard_core::Hash;
 use serde::Serialize;
 use std::path::PathBuf;
@@ -68,6 +69,7 @@ pub struct ApplyMutantToWorkspaceReport {
 
 impl Render for ApplyMutantToWorkspaceReport {
     fn render(&self, style: &Style, no_color: bool, _depth: u8) {
+        let no_color = no_color || matches!(style, Style::Plain);
         match style {
             Style::Json => {
                 println!(
@@ -75,7 +77,7 @@ impl Render for ApplyMutantToWorkspaceReport {
                     serde_json::to_string(self).expect("failed to serialize")
                 );
             }
-            Style::Pretty => {
+            Style::Plain | Style::Pretty | Style::Markdown => {
                 println!(
                     "Will apply mutation {} to {}",
                     color("\x1b[33m", &self.mutated_hash.to_string(), no_color),
@@ -84,13 +86,6 @@ impl Render for ApplyMutantToWorkspaceReport {
                         &self.source_path.display().to_string(),
                         no_color
                     ),
-                );
-            }
-            Style::Plain | Style::Markdown => {
-                println!(
-                    "Will apply mutation {} to {}",
-                    self.mutated_hash,
-                    self.source_path.display(),
                 );
             }
         }

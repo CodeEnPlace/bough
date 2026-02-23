@@ -1,7 +1,7 @@
 use serde::Serialize;
 use std::path::PathBuf;
 
-pub use pollard_core::io::{DiffStyle, Render, Style, hashed_path};
+pub use pollard_core::io::{DiffStyle, Render, Style, color, hashed_path};
 pub use pollard_session::{Report, Session};
 
 #[derive(Debug, Clone, Serialize)]
@@ -62,16 +62,10 @@ impl Action {
     }
 }
 
-fn color(code: &str, text: &str, no_color: bool) -> String {
-    if no_color {
-        text.to_string()
-    } else {
-        format!("{code}{text}\x1b[0m")
-    }
-}
 
 impl Render for Action {
     fn render(&self, style: &Style, no_color: bool, _depth: u8) {
+        let no_color = no_color || matches!(style, Style::Plain);
         match style {
             Style::Json => {
                 println!(
@@ -79,7 +73,7 @@ impl Render for Action {
                     serde_json::to_string(self).expect("failed to serialize")
                 );
             }
-            Style::Pretty => match self {
+            Style::Plain | Style::Pretty | Style::Markdown => match self {
                 Action::WriteFile { path, .. } => {
                     println!(
                         "write {}",
@@ -108,15 +102,6 @@ impl Render for Action {
                         color("\x1b[36m", &path.display().to_string(), no_color)
                     );
                 }
-            },
-            Style::Plain | Style::Markdown => match self {
-                Action::WriteFile { path, .. } => println!("write {}", path.display()),
-                Action::CreateJjWorkspace { name, path } => {
-                    println!("jj workspace add {} at {}", name, path.display());
-                }
-                Action::ForgetJjWorkspace { name } => println!("jj workspace forget {}", name),
-                Action::RemoveDir { path } => println!("rm -r {}", path.display()),
-                Action::RemoveFile { path } => println!("rm {}", path.display()),
             },
         }
     }

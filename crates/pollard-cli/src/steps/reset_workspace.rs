@@ -1,6 +1,7 @@
 use crate::io::{Action, Render, Report, Style, hashed_path};
 use pollard_session::Session;
-use crate::steps::{color, find_workspace, read_workspace_manifest};
+use crate::io::color;
+use crate::steps::{find_workspace, read_workspace_manifest};
 use pollard_core::config::Vcs;
 use serde::Serialize;
 use std::path::PathBuf;
@@ -52,6 +53,7 @@ pub struct ResetWorkspaceReport {
 
 impl Render for ResetWorkspaceReport {
     fn render(&self, style: &Style, no_color: bool, _depth: u8) {
+        let no_color = no_color || matches!(style, Style::Plain);
         match style {
             Style::Json => {
                 println!(
@@ -59,15 +61,12 @@ impl Render for ResetWorkspaceReport {
                     serde_json::to_string(self).expect("failed to serialize")
                 );
             }
-            Style::Pretty => {
+            Style::Plain | Style::Pretty | Style::Markdown => {
                 println!(
                     "Will reset {} to {}",
                     color("\x1b[33m", &self.workspace, no_color),
                     color("\x1b[36m", &self.rev, no_color),
                 );
-            }
-            Style::Plain | Style::Markdown => {
-                println!("Will reset {} to {}", self.workspace, self.rev);
             }
         }
     }

@@ -1,6 +1,7 @@
 use crate::io::{Action, Render, Report, Style, hashed_path};
 use pollard_session::Session;
-use crate::steps::{color, content_id};
+use crate::io::color;
+use crate::steps::content_id;
 use pollard_core::config::Vcs;
 use serde::Serialize;
 use std::path::PathBuf;
@@ -65,6 +66,7 @@ pub struct CreateWorkspacesReport {
 
 impl Render for CreateWorkspacesReport {
     fn render(&self, style: &Style, no_color: bool, _depth: u8) {
+        let no_color = no_color || matches!(style, Style::Plain);
         match style {
             Style::Json => {
                 println!(
@@ -72,7 +74,7 @@ impl Render for CreateWorkspacesReport {
                     serde_json::to_string(self).expect("failed to serialize")
                 );
             }
-            Style::Pretty => {
+            Style::Plain | Style::Pretty | Style::Markdown => {
                 println!(
                     "Will create {} workspaces, manifest: {}",
                     color("\x1b[33m", &self.workspaces.len().to_string(), no_color),
@@ -80,16 +82,6 @@ impl Render for CreateWorkspacesReport {
                 );
                 for ws in &self.workspaces {
                     println!("  {}", color("\x1b[33m", ws, no_color));
-                }
-            }
-            Style::Plain | Style::Markdown => {
-                println!(
-                    "Will create {} workspaces, manifest: {}",
-                    self.workspaces.len(),
-                    self.manifest.display()
-                );
-                for ws in &self.workspaces {
-                    println!("  {ws}");
                 }
             }
         }

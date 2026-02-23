@@ -5,6 +5,8 @@ use pollard_core::{Hash, MutationKind, SourceFile};
 use serde::Serialize;
 use std::path::{Path, PathBuf};
 
+use crate::io::color;
+
 pub fn run(language: &LanguageId, input: &Path, hash: &Hash) -> (Vec<Action>, DescribeReport) {
     let file = SourceFile::read(input).expect("failed to read input file");
     let desc = find_description(language, &file, hash);
@@ -12,6 +14,7 @@ pub fn run(language: &LanguageId, input: &Path, hash: &Hash) -> (Vec<Action>, De
     let report = DescribeReport {
         path: desc.path,
         kind: desc.kind,
+        code_tag: desc.code_tag,
         start_line: desc.start_line,
         start_char: desc.start_char,
         end_line: desc.end_line,
@@ -28,6 +31,7 @@ pub fn run(language: &LanguageId, input: &Path, hash: &Hash) -> (Vec<Action>, De
 pub struct DescribeReport {
     pub path: PathBuf,
     pub kind: MutationKind,
+    pub code_tag: &'static str,
     pub mutated_hash: Hash,
     pub start_line: usize,
     pub start_char: usize,
@@ -69,21 +73,21 @@ impl Render for DescribeReport {
                 println!("\n");
                 println!("**File:** `{path}`\n");
                 println!("**Location:** {loc}\n");
-                println!("**Original:**\n```\n{}\n```\n", self.original);
-                println!("**Replacement:**\n```\n{}\n```", self.replacement);
+                let tag = self.code_tag;
+                println!("**Original:**\n```{tag}\n{}\n```\n", self.original);
+                println!("**Replacement:**\n```{tag}\n{}\n```", self.replacement);
             }
-            Style::Pretty => {
-                print!("\x1b[1m");
+            Style::Plain | Style::Pretty => {
+                let no_color = no_color || matches!(style, Style::Plain);
+                print!("{}", if no_color { "" } else { "\x1b[1m" });
                 self.kind.render(style, no_color, depth + 1);
-                println!("\x1b[0m at \x1b[36m{path}:{loc}\x1b[0m");
-                println!("\x1b[31m{}\x1b[0m", self.original);
-                println!("\x1b[32m{}\x1b[0m", self.replacement);
-            }
-            Style::Plain => {
-                self.kind.render(style, no_color, depth + 1);
-                println!(" at {path}:{loc}");
-                println!("{}", self.original);
-                println!("{}", self.replacement);
+                println!(
+                    "{} at {}",
+                    if no_color { "" } else { "\x1b[0m" },
+                    color("\x1b[36m", &format!("{path}:{loc}"), no_color),
+                );
+                println!("{}", color("\x1b[31m", &self.original, no_color));
+                println!("{}", color("\x1b[32m", &self.replacement, no_color));
             }
         }
     }

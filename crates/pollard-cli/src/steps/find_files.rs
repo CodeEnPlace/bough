@@ -23,6 +23,7 @@ pub struct FindFilesReport {
 
 impl Render for FindFilesReport {
     fn render(&self, style: &Style, no_color: bool, _depth: u8) {
+        let no_color = no_color || matches!(style, Style::Plain);
         match style {
             Style::Json => {
                 println!(
@@ -30,18 +31,12 @@ impl Render for FindFilesReport {
                     serde_json::to_string(self).expect("failed to serialize")
                 );
             }
-            Style::Pretty => {
+            Style::Plain | Style::Pretty | Style::Markdown => {
                 println!(
                     "{} files match {}",
-                    crate::steps::color("\x1b[33m", &self.files.len().to_string(), no_color),
-                    crate::steps::color("\x1b[36m", &self.pattern, no_color),
+                    crate::io::color("\x1b[33m", &self.files.len().to_string(), no_color),
+                    crate::io::color("\x1b[36m", &self.pattern, no_color),
                 );
-                for f in &self.files {
-                    println!("  {}", f.display());
-                }
-            }
-            Style::Plain | Style::Markdown => {
-                println!("{} files match {}", self.files.len(), self.pattern);
                 for f in &self.files {
                     println!("  {}", f.display());
                 }

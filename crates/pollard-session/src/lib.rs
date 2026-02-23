@@ -1,7 +1,7 @@
 mod config;
 
 pub use config::{discover_config, read_config, ConfigError, SEARCH_PATHS};
-pub use pollard_core::io::{DiffStyle, Render, Style, hashed_path};
+pub use pollard_core::io::{DiffStyle, Render, Style, color, hashed_path};
 
 use pollard_core::config::{LanguageId, Ordering, Vcs};
 use pollard_session_derive::Settings;
@@ -66,7 +66,7 @@ pub struct Session {
     pub ignore_mutants: Vec<String>,
     #[setting(flatten)]
     pub timeout: Timeout,
-    #[setting(default = "Style::Plain")]
+    #[setting(default = "Style::Pretty")]
     pub style: Style,
     #[setting(default = "DiffStyle::Unified")]
     pub diff: DiffStyle,

@@ -7,6 +7,7 @@ use clap_complete::Shell;
 use io::{Action, Render, Report};
 use pollard_core::Hash;
 use pollard_session::{PartialSession, Session, SessionSkipped, discover_config, read_config};
+use std::io::IsTerminal;
 use std::path::PathBuf;
 
 #[derive(Debug, Parser)]
@@ -144,6 +145,10 @@ fn build_session(cli: Cli) -> (Session, Command) {
         });
 
     session.normalize_paths();
+
+    if !std::io::stdout().is_terminal() {
+        session.no_color = true;
+    }
 
     (session, cli.command)
 }
