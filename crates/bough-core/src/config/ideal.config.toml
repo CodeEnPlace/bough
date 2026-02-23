@@ -1,6 +1,9 @@
-vcs = "jj"
 parallelism = 1
 ordering = "random"
+
+[vcs]
+kind = "jj"
+rev = "trunk()"
 
 [dirs]
 working = "/tmp/bough/work"
