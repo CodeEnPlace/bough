@@ -1,5 +1,6 @@
 use crate::Outcome;
 use serde::{Deserialize, Serialize};
+use serde_value::Value;
 use std::collections::HashMap;
 
 fn default_parallelism() -> u32 {
@@ -127,6 +128,30 @@ pub enum MutantSkip {
     Kind { kind: HashMap<String, String> },
 }
 
+fn deep_merge(base: Value, patch: Value) -> Value {
+    match (base, patch) {
+        (Value::Map(mut base_map), Value::Map(patch_map)) => {
+            for (k, v) in patch_map {
+                let merged = match base_map.remove(&k) {
+                    Some(existing) => deep_merge(existing, v),
+                    None => v,
+                };
+                base_map.insert(k, merged);
+            }
+            Value::Map(base_map)
+        }
+        (_, patch) => patch,
+    }
+}
+
+impl Config {
+    pub fn override_with(&mut self, patch: Value) {
+        let base = serde_value::to_value(self.clone()).expect("failed to serialize config");
+        let merged = deep_merge(base, patch);
+        *self = Config::deserialize(merged).expect("failed to deserialize merged config");
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -195,6 +220,64 @@ mod tests {
         assert_eq!(ts_mutate.files.include, vec!["src/**/*.ts"]);
         assert!(ts_mutate.files.exclude.is_empty());
         assert!(ts_mutate.mutants.skip.is_empty());
+    }
+
+    fn toml_to_value(s: &str) -> Value {
+        let tv: toml::Value = toml::from_str(s).unwrap();
+        serde_value::to_value(tv).unwrap()
+    }
+
+    #[test]
+    fn override_scalar() {
+        let mut config = Config::default();
+        config.override_with(toml_to_value("parallelism = 4"));
+        assert_eq!(config.parallelism, 4);
+    }
+
+    #[test]
+    fn override_nested_preserves_siblings() {
+        let mut config: Config =
+            toml::from_str(include_str!("ideal.config.toml")).unwrap();
+        config.override_with(toml_to_value(r#"
+            [dirs]
+            working = "/override"
+        "#));
+        assert_eq!(config.dirs.working, "/override");
+        assert_eq!(config.dirs.logs, "/tmp/bough/logs");
+    }
+
+    #[test]
+    fn override_vec_replaces() {
+        let mut config: Config =
+            toml::from_str(include_str!("minimal.config.toml")).unwrap();
+        config.override_with(toml_to_value(r#"
+            [vitest.test]
+            commands = ["npm test"]
+        "#));
+        assert_eq!(config.runners["vitest"].test.commands, vec!["npm test"]);
+    }
+
+    #[test]
+    fn override_map_adds() {
+        let mut config: Config =
+            toml::from_str(include_str!("minimal.config.toml")).unwrap();
+        config.override_with(toml_to_value(r#"
+            [vitest.test.env]
+            FOO = "bar"
+        "#));
+        assert_eq!(config.runners["vitest"].test.env["FOO"], "bar");
+    }
+
+    #[test]
+    fn override_deep_merge_runner() {
+        let mut config: Config =
+            toml::from_str(include_str!("ideal.config.toml")).unwrap();
+        config.override_with(toml_to_value(r#"
+            [vitest]
+            treat_timeouts_as = "Caught"
+        "#));
+        assert_eq!(config.runners["vitest"].treat_timeouts_as, Outcome::Caught);
+        assert!(config.runners["vitest"].init.is_some());
     }
 
     #[test]
