@@ -45,7 +45,7 @@ impl Render for FindFilesReport {
 
 impl Report for FindFilesReport {
     fn get_dir(&self, session: &pollard_session::Session) -> PathBuf {
-        session.report_dir.join("step").join("find-files")
+        session.directories.report.join("step").join("find-files")
     }
 
     fn make_path(&self, session: &pollard_session::Session) -> PathBuf {

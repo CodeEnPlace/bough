@@ -57,7 +57,7 @@ impl Render for ViewReport {
 
 impl Report for ViewReport {
     fn get_dir(&self, session: &pollard_session::Session) -> PathBuf {
-        session.report_dir.join("mutate").join("view")
+        session.directories.report.join("mutate").join("view")
     }
 
     fn make_path(&self, session: &pollard_session::Session) -> PathBuf {

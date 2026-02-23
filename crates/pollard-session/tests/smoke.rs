@@ -34,9 +34,12 @@ fn resolve_succeeds_with_all_fields() {
     let partial = PartialSession {
         language: Some(pollard_core::config::LanguageId::Javascript),
         vcs_kind: Some(pollard_core::config::VcsKind::Jj),
-        working_dir: Some(PathBuf::from("/tmp")),
+        directories: PartialDirectories {
+            working: Some(PathBuf::from("/tmp")),
+            report: Some(PathBuf::from("/tmp/reports")),
+            ..Default::default()
+        },
         parallelism: Some(1),
-        report_dir: Some(PathBuf::from("/tmp/reports")),
         ordering: Some(pollard_core::config::Ordering::Random),
         files: Some("src/**/*.js".to_string()),
         timeout: PartialTimeout {
@@ -54,7 +57,7 @@ fn resolve_succeeds_with_all_fields() {
     }).unwrap();
 
     assert_eq!(session.parallelism, 1);
-    assert_eq!(session.sub_dir, PathBuf::from("."));
+    assert_eq!(session.directories.sub, PathBuf::from("."));
     assert!(session.commands.install.is_none());
     assert_eq!(session.commands.test, "npm test");
     assert!(!session.exec);
@@ -66,11 +69,13 @@ fn deserialize_from_toml() {
     let toml_str = r#"
 language = "js"
 vcs_kind = "jj"
-working_dir = "/tmp"
 parallelism = 2
-report_dir = "/tmp/reports"
 ordering = "random"
 files = "src/**/*.js"
+
+[directories]
+working_dir = "/tmp"
+report_dir = "/tmp/reports"
 
 [timeout]
 absolute = 30

@@ -5,7 +5,7 @@ use serde::Serialize;
 use std::path::PathBuf;
 
 pub fn run(session: &Session) -> (Vec<Action>, CleanupReport) {
-    let pattern = session.working_dir.join("*.workspaces.json");
+    let pattern = session.directories.working.join("*.workspaces.json");
     let manifest_paths = expand_glob(&pattern.display().to_string());
 
     let mut actions: Vec<Action> = Vec::new();
@@ -71,7 +71,7 @@ impl Render for CleanupReport {
 
 impl Report for CleanupReport {
     fn get_dir(&self, session: &pollard_session::Session) -> PathBuf {
-        session.report_dir.join("step").join("cleanup")
+        session.directories.report.join("step").join("cleanup")
     }
 
     fn make_path(&self, session: &pollard_session::Session) -> PathBuf {
