@@ -1,11 +1,19 @@
+mod config;
 mod io;
 
 use clap::{CommandFactory, Parser, Subcommand};
 use clap_complete::Shell;
+use std::path::PathBuf;
 
 #[derive(Debug, Parser)]
 #[command(name = "bough", about = "Cross-language mutation testing")]
 struct Cli {
+    #[arg(long, global = true)]
+    config: Option<PathBuf>,
+
+    #[arg(long = "config-override", global = true)]
+    config_overrides: Vec<PathBuf>,
+
     #[command(subcommand)]
     command: Command,
 }
