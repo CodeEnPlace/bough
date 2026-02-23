@@ -1,7 +1,7 @@
 use serde::Serialize;
 use std::path::PathBuf;
 
-pub use bough_core::io::{DiffStyle, Render, color};
+pub use bough_core::io::{Render, color};
 pub use bough_session::Session;
 
 #[derive(Debug, Clone, Serialize)]
