@@ -2,17 +2,9 @@ use crate::Outcome;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, clap::ValueEnum)]
-#[serde(rename_all = "lowercase")]
-pub enum VcsKind {
-    None,
-    Git,
-    Jj,
-    Mercurial,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-pub enum Vcs {
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "lowercase")]
+pub enum VcsConfig {
     None,
     Git { commit: String },
     Jj { rev: String },
@@ -31,7 +23,7 @@ pub enum Ordering {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Config {
-    pub vcs: Option<VcsKind>,
+    pub vcs: Option<VcsConfig>,
     pub parallelism: Option<u32>,
     pub ordering: Option<Ordering>,
     pub dirs: Option<Dirs>,
@@ -106,7 +98,12 @@ mod tests {
         let toml_str = include_str!("ideal.config.toml");
         let config: Config = toml::from_str(toml_str).expect("failed to parse ideal config");
 
-        assert_eq!(config.vcs, Some(VcsKind::Jj));
+        assert_eq!(
+            config.vcs,
+            Some(VcsConfig::Jj {
+                rev: "trunk()".into()
+            })
+        );
         assert_eq!(config.parallelism, Some(1));
         assert_eq!(config.ordering, Some(Ordering::Random));
 
