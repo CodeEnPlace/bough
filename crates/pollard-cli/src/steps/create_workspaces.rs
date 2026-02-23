@@ -6,8 +6,8 @@ use serde::Serialize;
 use std::path::PathBuf;
 
 pub fn run(session: &Session) -> (Vec<Action>, CreateWorkspacesReport) {
-    match session.vcs {
-        Vcs::Jj => {}
+    match &session.vcs {
+        Vcs::Jj { .. } => {}
         other => {
             eprintln!("create-workspaces not yet implemented for {other:?}");
             std::process::exit(1);

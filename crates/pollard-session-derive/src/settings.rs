@@ -5,6 +5,16 @@ use syn::{
     parse2,
 };
 
+struct ComposeSubField {
+    name: syn::Ident,
+    ty: Type,
+}
+
+struct ComposeInfo {
+    sub_fields: Vec<ComposeSubField>,
+    via: syn::Path,
+}
+
 struct FieldInfo {
     ident: syn::Ident,
     ty: Type,
@@ -14,6 +24,7 @@ struct FieldInfo {
     skip: bool,
     cli_only: bool,
     flatten: bool,
+    compose: Option<ComposeInfo>,
     default_expr: Option<TokenStream>,
     env: Option<String>,
     long: Option<String>,
@@ -61,6 +72,7 @@ fn parse_field(field: &Field) -> syn::Result<FieldInfo> {
     let mut skip = false;
     let mut cli_only = false;
     let mut flatten = false;
+    let mut compose = None;
     let mut default_expr = None;
     let mut env = None;
     let mut long = None;
@@ -76,6 +88,45 @@ fn parse_field(field: &Field) -> syn::Result<FieldInfo> {
                 cli_only = true;
             } else if meta.path.is_ident("flatten") {
                 flatten = true;
+            } else if meta.path.is_ident("compose") {
+                let content;
+                syn::parenthesized!(content in meta.input);
+                let mut sub_fields = Vec::new();
+                let mut via = None;
+
+                while !content.is_empty() {
+                    let lookahead = content.lookahead1();
+                    if lookahead.peek(syn::Ident) {
+                        let key: syn::Ident = content.parse()?;
+                        if key == "fields" {
+                            let fields_content;
+                            syn::parenthesized!(fields_content in content);
+                            while !fields_content.is_empty() {
+                                let name: syn::Ident = fields_content.parse()?;
+                                let _: syn::Token![:] = fields_content.parse()?;
+                                let ty: Type = fields_content.parse()?;
+                                sub_fields.push(ComposeSubField { name, ty });
+                                if fields_content.peek(syn::Token![,]) {
+                                    let _: syn::Token![,] = fields_content.parse()?;
+                                }
+                            }
+                        } else if key == "via" {
+                            let _: syn::Token![=] = content.parse()?;
+                            let lit: Lit = content.parse()?;
+                            if let Lit::Str(s) = lit {
+                                via = Some(s.parse::<syn::Path>()?);
+                            }
+                        }
+                    }
+                    if content.peek(syn::Token![,]) {
+                        let _: syn::Token![,] = content.parse()?;
+                    }
+                }
+
+                compose = Some(ComposeInfo {
+                    sub_fields,
+                    via: via.expect("compose requires `via`"),
+                });
             } else if meta.path.is_ident("default") {
                 let value = meta.value()?;
                 let lit: Lit = value.parse()?;
@@ -109,6 +160,7 @@ fn parse_field(field: &Field) -> syn::Result<FieldInfo> {
         skip,
         cli_only,
         flatten,
+        compose,
         default_expr,
         env,
         long,
@@ -165,7 +217,30 @@ fn gen_partial_fields(fields: &[FieldInfo]) -> Vec<TokenStream> {
     fields
         .iter()
         .filter(|f| !f.skip)
-        .map(|f| {
+        .flat_map(|f| {
+            if let Some(compose) = &f.compose {
+                return compose.sub_fields.iter().map(|sf| {
+                    let parent = &f.ident;
+                    let prefixed = format_ident!("{}_{}", parent, sf.name);
+                    let long_name = prefixed.to_string().replace('_', "-");
+                    let ty = &sf.ty;
+                    let is_option = is_type_wrapper(ty, "Option");
+
+                    let partial_ty = if is_option {
+                        let inner = extract_inner_type(ty).unwrap();
+                        quote! { Option<#inner> }
+                    } else {
+                        quote! { Option<#ty> }
+                    };
+
+                    quote! {
+                        #[arg(long = #long_name, global = true)]
+                        #[serde(default)]
+                        pub #prefixed: #partial_ty,
+                    }
+                }).collect::<Vec<_>>();
+            }
+
             let ident = &f.ident;
             let long_name = f.long.clone().unwrap_or_else(|| {
                 ident.to_string().replace('_', "-")
@@ -181,11 +256,11 @@ fn gen_partial_fields(fields: &[FieldInfo]) -> Vec<TokenStream> {
                     quote! { #inner }
                 };
 
-                quote! {
+                vec![quote! {
                     #[command(flatten)]
                     #[serde(default)]
                     pub #ident: #partial_ty,
-                }
+                }]
             } else if f.is_vec {
                 let inner = extract_inner_type(&f.ty).unwrap_or(&f.ty);
                 let serde_skip = if f.cli_only {
@@ -194,11 +269,11 @@ fn gen_partial_fields(fields: &[FieldInfo]) -> Vec<TokenStream> {
                     quote! { #[serde(default)] }
                 };
                 let env_attr = f.env.as_ref().map(|e| quote! { env = #e, });
-                quote! {
+                vec![quote! {
                     #[arg(long = #long_name, global = true, #env_attr)]
                     #serde_skip
                     pub #ident: Vec<#inner>,
-                }
+                }]
             } else if f.is_bool {
                 let serde_skip = if f.cli_only {
                     quote! { #[serde(skip)] }
@@ -207,11 +282,11 @@ fn gen_partial_fields(fields: &[FieldInfo]) -> Vec<TokenStream> {
                 };
                 let env_attr = f.env.as_ref().map(|e| quote! { env = #e, });
                 let hide_env = f.env.as_ref().map(|_| quote! { hide_env = true, });
-                quote! {
+                vec![quote! {
                     #[arg(long = #long_name, global = true, action = clap::ArgAction::SetTrue, #env_attr #hide_env)]
                     #serde_skip
                     pub #ident: bool,
-                }
+                }]
             } else {
                 let ty = if f.is_option {
                     let inner = extract_inner_type(&f.ty).unwrap();
@@ -230,11 +305,11 @@ fn gen_partial_fields(fields: &[FieldInfo]) -> Vec<TokenStream> {
                 let env_attr = f.env.as_ref().map(|e| quote! { env = #e, });
                 let hide_env = f.env.as_ref().map(|_| quote! { hide_env = true, });
 
-                quote! {
+                vec![quote! {
                     #[arg(long = #long_name, global = true, #env_attr #hide_env)]
                     #serde_skip
                     pub #ident: #ty,
-                }
+                }]
             }
         })
         .collect()
@@ -244,22 +319,29 @@ fn gen_merge_fields(fields: &[FieldInfo]) -> Vec<TokenStream> {
     fields
         .iter()
         .filter(|f| !f.skip)
-        .map(|f| {
+        .flat_map(|f| {
+            if let Some(compose) = &f.compose {
+                return compose.sub_fields.iter().map(|sf| {
+                    let prefixed = format_ident!("{}_{}", f.ident, sf.name);
+                    quote! { #prefixed: self.#prefixed.or(fallback.#prefixed), }
+                }).collect::<Vec<_>>();
+            }
+
             let ident = &f.ident;
             if f.flatten {
-                quote! { #ident: self.#ident.merge(fallback.#ident), }
+                vec![quote! { #ident: self.#ident.merge(fallback.#ident), }]
             } else if f.is_vec {
-                quote! {
+                vec![quote! {
                     #ident: if self.#ident.is_empty() {
                         fallback.#ident
                     } else {
                         self.#ident
                     },
-                }
+                }]
             } else if f.is_bool {
-                quote! { #ident: self.#ident || fallback.#ident, }
+                vec![quote! { #ident: self.#ident || fallback.#ident, }]
             } else {
-                quote! { #ident: self.#ident.or(fallback.#ident), }
+                vec![quote! { #ident: self.#ident.or(fallback.#ident), }]
             }
         })
         .collect()
@@ -272,7 +354,7 @@ fn gen_resolve_fields(fields: &[FieldInfo], struct_name: &syn::Ident) -> TokenSt
     // Phase 1: check required fields, collect missing
     let check_stmts: Vec<TokenStream> = fields
         .iter()
-        .filter(|f| !f.skip && !f.flatten && !f.is_vec && !f.is_option && !f.is_bool && f.default_expr.is_none())
+        .filter(|f| !f.skip && !f.flatten && f.compose.is_none() && !f.is_vec && !f.is_option && !f.is_bool && f.default_expr.is_none())
         .map(|f| {
             let field_name = f.ident.to_string();
             let ident = &f.ident;
@@ -284,18 +366,54 @@ fn gen_resolve_fields(fields: &[FieldInfo], struct_name: &syn::Ident) -> TokenSt
         })
         .collect();
 
+    // Check required compose sub-fields
+    let compose_check_stmts: Vec<TokenStream> = fields
+        .iter()
+        .filter(|f| f.compose.is_some())
+        .flat_map(|f| {
+            let compose = f.compose.as_ref().unwrap();
+            compose.sub_fields.iter().filter(|sf| {
+                !is_type_wrapper(&sf.ty, "Option")
+            }).map(|sf| {
+                let prefixed = format_ident!("{}_{}", f.ident, sf.name);
+                let field_name = prefixed.to_string();
+                quote! {
+                    if self.#prefixed.is_none() {
+                        missing.push(#field_name);
+                    }
+                }
+            }).collect::<Vec<_>>()
+        })
+        .collect();
+
     // Phase 2: build the struct (only reached if no missing fields)
     let resolve_assignments: Vec<TokenStream> = fields
         .iter()
         .map(|f| {
             let ident = &f.ident;
 
+            if let Some(compose) = &f.compose {
+                let via = &compose.via;
+                let args: Vec<TokenStream> = compose.sub_fields.iter().map(|sf| {
+                    let prefixed = format_ident!("{}_{}", f.ident, sf.name);
+                    let is_option = is_type_wrapper(&sf.ty, "Option");
+                    if is_option {
+                        // Option<T> in partial is Option<T>, flatten outer
+                        quote! { self.#prefixed }
+                    } else {
+                        // T in partial is Option<T>, unwrap (already checked)
+                        quote! { self.#prefixed.unwrap() }
+                    }
+                }).collect();
+                return quote! { #ident: #via(#(#args),*), };
+            }
+
             if f.skip {
                 return quote! { #ident: skipped.#ident, };
             }
 
             if f.flatten {
-                let inner_has_skip = false; // sub-structs don't have skip fields in our usage
+                let inner_has_skip = false;
                 if inner_has_skip {
                     return quote! { #ident: self.#ident.resolve(/* skipped */)?, };
                 }
@@ -330,6 +448,7 @@ fn gen_resolve_fields(fields: &[FieldInfo], struct_name: &syn::Ident) -> TokenSt
             pub fn resolve(self, skipped: #skipped_name) -> Result<#struct_name, String> {
                 let mut missing: Vec<&str> = Vec::new();
                 #(#check_stmts)*
+                #(#compose_check_stmts)*
                 if !missing.is_empty() {
                     return Err(format!(
                         "missing required settings:\n  - {}",
@@ -347,6 +466,7 @@ fn gen_resolve_fields(fields: &[FieldInfo], struct_name: &syn::Ident) -> TokenSt
             pub fn resolve_no_skip(self) -> Result<#struct_name, String> {
                 let mut missing: Vec<&str> = Vec::new();
                 #(#check_stmts)*
+                #(#compose_check_stmts)*
                 if !missing.is_empty() {
                     return Err(format!(
                         "missing required settings:\n  - {}",

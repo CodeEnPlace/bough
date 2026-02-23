@@ -26,14 +26,14 @@ fn resolve_collects_missing() {
     assert!(result.is_err());
     let err = result.unwrap_err();
     assert!(err.contains("language"));
-    assert!(err.contains("vcs"));
+    assert!(err.contains("vcs_kind"));
 }
 
 #[test]
 fn resolve_succeeds_with_all_fields() {
     let partial = PartialSession {
         language: Some(pollard_core::config::LanguageId::Javascript),
-        vcs: Some(pollard_core::config::Vcs::Jj),
+        vcs_kind: Some(pollard_core::config::VcsKind::Jj),
         working_dir: Some(PathBuf::from("/tmp")),
         parallelism: Some(1),
         report_dir: Some(PathBuf::from("/tmp/reports")),
@@ -65,7 +65,7 @@ fn resolve_succeeds_with_all_fields() {
 fn deserialize_from_toml() {
     let toml_str = r#"
 language = "js"
-vcs = "jj"
+vcs_kind = "jj"
 working_dir = "/tmp"
 parallelism = 2
 report_dir = "/tmp/reports"
