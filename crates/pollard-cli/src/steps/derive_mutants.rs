@@ -55,7 +55,7 @@ pub fn run(session: &Session, files: &[PathBuf]) -> (Vec<Action>, DeriveMutantsR
     let plan = generate_plan(&session.language, files);
     let content = serde_json::to_string_pretty(&plan).expect("failed to serialize plan");
     let plan_path = session
-        .working_dir
+        .directories.working
         .join(format!("{}.mutants.plan.json", content_id(&content)));
 
     let actions = vec![Action::WriteFile {
@@ -97,7 +97,7 @@ impl Render for DeriveMutantsReport {
 
 impl Report for DeriveMutantsReport {
     fn get_dir(&self, session: &pollard_session::Session) -> PathBuf {
-        session.report_dir.join("step").join("derive-mutants")
+        session.directories.report.join("step").join("derive-mutants")
     }
 
     fn make_path(&self, session: &pollard_session::Session) -> PathBuf {

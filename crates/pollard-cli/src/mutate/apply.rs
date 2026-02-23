@@ -54,7 +54,7 @@ impl Render for ApplyReport {
 
 impl Report for ApplyReport {
     fn get_dir(&self, session: &pollard_session::Session) -> PathBuf {
-        session.report_dir.join("mutate").join("apply")
+        session.directories.report.join("mutate").join("apply")
     }
 
     fn make_path(&self, session: &pollard_session::Session) -> PathBuf {

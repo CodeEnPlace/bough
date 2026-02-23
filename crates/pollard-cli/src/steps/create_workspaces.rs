@@ -23,7 +23,7 @@ pub fn run(session: &Session) -> (Vec<Action>, CreateWorkspacesReport) {
     let workspaces: Vec<pollard_core::plan::Workspace> = (0..session.parallelism)
         .map(|i| {
             let name = format!("pollard-{batch_id}-{i}");
-            let path = session.working_dir.join(&name);
+            let path = session.directories.working.join(&name);
             pollard_core::plan::Workspace { name, path }
         })
         .collect();
@@ -34,7 +34,7 @@ pub fn run(session: &Session) -> (Vec<Action>, CreateWorkspacesReport) {
     let manifest_content =
         serde_json::to_string_pretty(&manifest).expect("failed to serialize manifest");
     let manifest_path = session
-        .working_dir
+        .directories.working
         .join(format!("{}.workspaces.json", content_id(&manifest_content)));
 
     let mut actions = vec![Action::WriteFile {
@@ -87,7 +87,7 @@ impl Render for CreateWorkspacesReport {
 
 impl Report for CreateWorkspacesReport {
     fn get_dir(&self, session: &pollard_session::Session) -> PathBuf {
-        session.report_dir.join("step").join("create-workspaces")
+        session.directories.report.join("step").join("create-workspaces")
     }
 
     fn make_path(&self, session: &pollard_session::Session) -> PathBuf {

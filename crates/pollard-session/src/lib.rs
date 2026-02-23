@@ -1,6 +1,6 @@
 mod config;
 
-pub use config::{discover_config, read_config, ConfigError, SEARCH_PATHS};
+pub use config::{ConfigError, SEARCH_PATHS, discover_config, read_config};
 pub use pollard_core::io::{DiffStyle, Render, Style, color, hashed_path};
 
 use pollard_core::config::{LanguageId, Ordering, Vcs, VcsKind};
@@ -45,9 +45,9 @@ fn absolutize(path: &Path) -> PathBuf {
 
 impl Session {
     pub fn normalize_paths(&mut self) {
-        self.working_dir = absolutize(&self.working_dir);
-        self.report_dir = absolutize(&self.report_dir);
-        self.sub_dir = absolutize(&self.sub_dir);
+        self.directories.working = absolutize(&self.directories.working);
+        self.directories.report = absolutize(&self.directories.report);
+        self.directories.sub = absolutize(&self.directories.sub);
         self.config_path = absolutize(&self.config_path);
     }
 }
@@ -78,6 +78,18 @@ pub struct Timeout {
 }
 
 #[derive(Debug, Serialize, Settings)]
+pub struct Directories {
+    #[setting(long = "working-dir")]
+    pub working: PathBuf,
+    #[setting(long = "report-dir")]
+    pub report: PathBuf,
+    #[setting(long = "state-dir")]
+    pub state: PathBuf,
+    #[setting(long = "sub-dir", default = "PathBuf::from(\".\")")]
+    pub sub: PathBuf,
+}
+
+#[derive(Debug, Serialize, Settings)]
 pub struct Session {
     pub language: LanguageId,
     #[setting(compose(
@@ -85,12 +97,10 @@ pub struct Session {
         via = "compose_vcs"
     ))]
     pub vcs: Vcs,
-    pub working_dir: PathBuf,
+    #[setting(flatten)]
+    pub directories: Directories,
     pub parallelism: usize,
-    pub report_dir: PathBuf,
     pub ordering: Ordering,
-    #[setting(default = "PathBuf::from(\".\")")]
-    pub sub_dir: PathBuf,
     pub files: String,
     pub ignore_mutants: Vec<String>,
     #[setting(flatten)]

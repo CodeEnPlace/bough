@@ -8,8 +8,8 @@ pub mod setup_workspace;
 pub mod test_workspace;
 
 use crate::io::{Render, Report, hashed_path};
-use pollard_session::Session;
 use pollard_core::plan::{Plan, WorkspaceManifest};
+use pollard_session::Session;
 use serde::Serialize;
 use std::path::PathBuf;
 
@@ -35,10 +35,13 @@ pub fn content_id(content: &str) -> String {
 }
 
 pub fn read_plan(session: &Session) -> Plan {
-    let pattern = session.working_dir.join("*.mutants.plan.json");
+    let pattern = session.directories.working.join("*.mutants.plan.json");
     let paths = expand_glob(&pattern.display().to_string());
     let plan_path = paths.first().unwrap_or_else(|| {
-        eprintln!("no plan file found in {}", session.working_dir.display());
+        eprintln!(
+            "no plan file found in {}",
+            session.directories.working.display()
+        );
         std::process::exit(1);
     });
     let content = std::fs::read_to_string(plan_path).unwrap_or_else(|e| {
@@ -52,12 +55,12 @@ pub fn read_plan(session: &Session) -> Plan {
 }
 
 pub fn read_workspace_manifest(session: &Session) -> WorkspaceManifest {
-    let pattern = session.working_dir.join("*.workspaces.json");
+    let pattern = session.directories.working.join("*.workspaces.json");
     let paths = expand_glob(&pattern.display().to_string());
     let manifest_path = paths.first().unwrap_or_else(|| {
         eprintln!(
             "no workspace manifest found in {}",
-            session.working_dir.display()
+            session.directories.working.display()
         );
         std::process::exit(1);
     });
@@ -101,7 +104,7 @@ fn run_in_workspace(
 
     let output = std::process::Command::new("sh")
         .args(["-c", cmd])
-        .current_dir(ws.path.join(&session.sub_dir))
+        .current_dir(ws.path.join(&session.directories.sub))
         .output()
         .unwrap_or_else(|e| {
             eprintln!("failed to run {step_name}: {e}");
@@ -161,12 +164,11 @@ impl Render for CommandReport {
 
 impl Report for CommandReport {
     fn get_dir(&self, session: &pollard_session::Session) -> PathBuf {
-        session.report_dir.join("step").join(&self.step)
+        session.directories.report.join("step").join(&self.step)
     }
 
     fn make_path(&self, session: &pollard_session::Session) -> PathBuf {
         let content = serde_json::to_string(self).expect("failed to serialize");
         hashed_path(&self.get_dir(session), &content, "command")
     }
-
 }

@@ -87,7 +87,7 @@ impl Render for ApplyMutantToWorkspaceReport {
 impl Report for ApplyMutantToWorkspaceReport {
     fn get_dir(&self, session: &pollard_session::Session) -> PathBuf {
         session
-            .report_dir
+            .directories.report
             .join("step")
             .join("apply-mutant-to-workspace")
     }

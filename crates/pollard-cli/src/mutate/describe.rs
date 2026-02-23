@@ -89,7 +89,7 @@ impl Render for DescribeReport {
 
 impl Report for DescribeReport {
     fn get_dir(&self, session: &pollard_session::Session) -> PathBuf {
-        session.report_dir.join("mutate").join("describe")
+        session.directories.report.join("mutate").join("describe")
     }
 
     fn make_path(&self, session: &pollard_session::Session) -> PathBuf {

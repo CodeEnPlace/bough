@@ -70,7 +70,7 @@ impl Render for ResetWorkspaceReport {
 
 impl Report for ResetWorkspaceReport {
     fn get_dir(&self, session: &pollard_session::Session) -> PathBuf {
-        session.report_dir.join("step").join("reset-workspace")
+        session.directories.report.join("step").join("reset-workspace")
     }
 
     fn make_path(&self, session: &pollard_session::Session) -> PathBuf {

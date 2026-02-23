@@ -1,10 +1,12 @@
 language = "js"
 vcs_kind = "jj"
-working_dir = "/tmp/pollard-work"
 parallelism = 1
-report_dir = "/tmp/pollard-report"
 ordering = "random"
 files = "examples/vitest/src/**/*.js"
+
+[directories]
+working_dir = "/tmp/pollard-work"
+report_dir = "/tmp/pollard-report"
 sub_dir = "examples/vitest"
 
 [timeout]
