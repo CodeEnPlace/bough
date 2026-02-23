@@ -2,7 +2,6 @@ use serde::Serialize;
 use std::path::PathBuf;
 
 pub use bough_core::io::{Render, color};
-pub use bough_session::Session;
 
 #[derive(Debug, Clone, Serialize)]
 pub enum Action {
@@ -93,33 +92,5 @@ impl Render for Action {
 
     fn render_markdown(&self, depth: u8) -> String {
         self.render_pretty(depth)
-    }
-}
-
-pub struct SessionReport {
-    json: String,
-    debug: String,
-}
-
-impl SessionReport {
-    pub fn new(session: &Session) -> Self {
-        Self {
-            json: serde_json::to_string_pretty(session).expect("failed to serialize"),
-            debug: format!("{session:#?}"),
-        }
-    }
-}
-
-impl Render for SessionReport {
-    fn render_json(&self) -> String {
-        self.json.clone()
-    }
-
-    fn render_pretty(&self, _depth: u8) -> String {
-        format!("{}\n", self.debug)
-    }
-
-    fn render_markdown(&self, _depth: u8) -> String {
-        format!("```\n{}\n```\n", self.debug)
     }
 }
