@@ -1,4 +1,5 @@
 use crate::Outcome;
+use crate::io::Render;
 use serde::{Deserialize, Serialize};
 use serde_value::Value;
 use std::collections::HashMap;
@@ -152,6 +153,20 @@ impl Config {
     }
 }
 
+impl Render for Config {
+    fn render_json(&self) -> String {
+        serde_json::to_string(self).expect("failed to serialize config")
+    }
+
+    fn render_pretty(&self, _depth: u8) -> String {
+        format!("{self:#?}")
+    }
+
+    fn render_markdown(&self, _depth: u8) -> String {
+        format!("```\n{self:#?}\n```")
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -236,46 +251,50 @@ mod tests {
 
     #[test]
     fn override_nested_preserves_siblings() {
-        let mut config: Config =
-            toml::from_str(include_str!("ideal.config.toml")).unwrap();
-        config.override_with(toml_to_value(r#"
+        let mut config: Config = toml::from_str(include_str!("ideal.config.toml")).unwrap();
+        config.override_with(toml_to_value(
+            r#"
             [dirs]
             working = "/override"
-        "#));
+        "#,
+        ));
         assert_eq!(config.dirs.working, "/override");
         assert_eq!(config.dirs.logs, "/tmp/bough/logs");
     }
 
     #[test]
     fn override_vec_replaces() {
-        let mut config: Config =
-            toml::from_str(include_str!("minimal.config.toml")).unwrap();
-        config.override_with(toml_to_value(r#"
+        let mut config: Config = toml::from_str(include_str!("minimal.config.toml")).unwrap();
+        config.override_with(toml_to_value(
+            r#"
             [vitest.test]
             commands = ["npm test"]
-        "#));
+        "#,
+        ));
         assert_eq!(config.runners["vitest"].test.commands, vec!["npm test"]);
     }
 
     #[test]
     fn override_map_adds() {
-        let mut config: Config =
-            toml::from_str(include_str!("minimal.config.toml")).unwrap();
-        config.override_with(toml_to_value(r#"
+        let mut config: Config = toml::from_str(include_str!("minimal.config.toml")).unwrap();
+        config.override_with(toml_to_value(
+            r#"
             [vitest.test.env]
             FOO = "bar"
-        "#));
+        "#,
+        ));
         assert_eq!(config.runners["vitest"].test.env["FOO"], "bar");
     }
 
     #[test]
     fn override_deep_merge_runner() {
-        let mut config: Config =
-            toml::from_str(include_str!("ideal.config.toml")).unwrap();
-        config.override_with(toml_to_value(r#"
+        let mut config: Config = toml::from_str(include_str!("ideal.config.toml")).unwrap();
+        config.override_with(toml_to_value(
+            r#"
             [vitest]
             treat_timeouts_as = "Caught"
-        "#));
+        "#,
+        ));
         assert_eq!(config.runners["vitest"].treat_timeouts_as, Outcome::Caught);
         assert!(config.runners["vitest"].init.is_some());
     }
