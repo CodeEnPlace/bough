@@ -16,6 +16,9 @@ fn default_state() -> String {
 fn default_logs() -> String {
     "/tmp/bough/logs".into()
 }
+fn default_pwd() -> String {
+    ".".into()
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(tag = "kind", rename_all = "lowercase")]
@@ -75,10 +78,11 @@ impl Default for Dirs {
     }
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Runner {
-    pub pwd: Option<String>,
+    #[serde(default = "default_pwd")]
+    pub pwd: String,
     pub treat_timeouts_as: Outcome,
     pub init: Option<Phase>,
     pub reset: Option<Phase>,
@@ -86,13 +90,38 @@ pub struct Runner {
     pub mutate: HashMap<String, MutateLanguage>,
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+impl Default for Runner {
+    fn default() -> Self {
+        Self {
+            pwd: default_pwd(),
+            treat_timeouts_as: Outcome::default(),
+            init: None,
+            reset: None,
+            test: Phase::default(),
+            mutate: HashMap::new(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Phase {
-    pub pwd: Option<String>,
+    #[serde(default = "default_pwd")]
+    pub pwd: String,
     pub timeout: Timeout,
     pub env: HashMap<String, String>,
     pub commands: Vec<String>,
+}
+
+impl Default for Phase {
+    fn default() -> Self {
+        Self {
+            pwd: default_pwd(),
+            timeout: Timeout::default(),
+            env: HashMap::new(),
+            commands: Vec::new(),
+        }
+    }
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
@@ -146,6 +175,35 @@ fn deep_merge(base: Value, patch: Value) -> Value {
 }
 
 impl Config {
+    pub fn resolve_paths(&mut self) {
+        let cwd = std::env::current_dir().expect("failed to get current directory");
+        let resolve = |p: &mut String| {
+            let path = std::path::PathBuf::from(&*p);
+            if !path.is_absolute() {
+                *p = cwd.join(path)
+                    .canonicalize()
+                    .unwrap_or_else(|_| cwd.join(&*p))
+                    .to_string_lossy()
+                    .into_owned();
+            }
+        };
+
+        resolve(&mut self.dirs.working);
+        resolve(&mut self.dirs.state);
+        resolve(&mut self.dirs.logs);
+
+        for runner in self.runners.values_mut() {
+            resolve(&mut runner.pwd);
+            if let Some(phase) = &mut runner.init {
+                resolve(&mut phase.pwd);
+            }
+            if let Some(phase) = &mut runner.reset {
+                resolve(&mut phase.pwd);
+            }
+            resolve(&mut runner.test.pwd);
+        }
+    }
+
     pub fn override_with(&mut self, patch: Value) {
         let base = serde_value::to_value(self.clone()).expect("failed to serialize config");
         let merged = deep_merge(base, patch);
@@ -193,7 +251,7 @@ mod tests {
         assert_eq!(vitest.treat_timeouts_as, Outcome::Missed);
 
         let init = vitest.init.as_ref().unwrap();
-        assert_eq!(init.pwd.as_deref(), Some("./examples/vitest"));
+        assert_eq!(init.pwd, "./examples/vitest");
         assert_eq!(init.commands, vec!["npm install"]);
 
         assert_eq!(vitest.test.timeout.absolute, Some(30));
@@ -207,7 +265,7 @@ mod tests {
         assert_eq!(js_mutate.mutants.skip.len(), 2);
 
         let cargo = &config.runners["cargo"];
-        assert_eq!(cargo.pwd.as_deref(), Some("./examples/cargo"));
+        assert_eq!(cargo.pwd, "./examples/cargo");
         assert_eq!(cargo.test.commands, vec!["cargo test"]);
     }
 
@@ -227,7 +285,7 @@ mod tests {
         assert!(vitest.reset.is_none());
 
         assert_eq!(vitest.test.commands, vec!["npx vitest run"]);
-        assert!(vitest.test.pwd.is_none());
+        assert_eq!(vitest.test.pwd, ".");
         assert!(vitest.test.env.is_empty());
         assert_eq!(vitest.test.timeout, Timeout::default());
 

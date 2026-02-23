@@ -114,5 +114,7 @@ pub fn load(cli: &Cli) -> Result<Config, Error> {
         config.override_with(patch);
     }
 
+    config.resolve_paths();
+
     Ok(config)
 }
