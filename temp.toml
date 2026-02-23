@@ -1,0 +1,67 @@
+vcs = "jj"
+parallelism = 1
+ordering = "random"
+
+[dirs]
+working = "/tmp/pollard/work"
+reports = "/tmp/pollard/report"
+logs = "/tmp/pollard/logs"
+
+[vitest]
+[vitest.init]
+pwd = "./examples/vitest"
+commands = ["npm install"]
+
+[vitest.reset]
+pwd = "./examples/vitest"
+commands = ["npm clean"]
+
+[vitest.test]
+pwd = "./examples/vitest"
+timeout.absolute = 30
+timeout.relative = 3
+commands = [
+  "npx run build",
+  "npx run test",
+]
+
+[vitest.mutate.js]
+#must be tree-sitter id
+files.include = ["**/*.js", "**/*.jsx"]
+files.exclude = ["**/*__mocks__*"]
+mutants.skip = [
+  { lisp = "((fn 'describe') @ignore)", },
+  { kind = { "BinaryOp" = "Add" } }
+]
+
+[vitest.mutate.rust]
+#must be tree-sitter id
+files.include = ["**/*.rs"]
+mutants.skip = [
+  { lisp = "((fn 'describe') @ignore)", },
+  { kind = { "BinaryOp" = "Add" } }
+]
+
+[cargo]
+[cargo.test]
+pwd = "./examples/cargo"
+timeout.absolute = 30
+timeout.relative = 3
+commands = ["cargo test"]
+
+[cargo.mutate.js]
+#must be tree-sitter id
+files.include = ["**/*.js", "**/*.jsx"]
+files.exclude = ["**/*__mocks__*"]
+mutants.skip = [
+  { lisp = "((fn 'describe') @ignore)", },
+  { kind = { "BinaryOp" = "Add" } }
+]
+
+[cargo.mutate.rust]
+#must be tree-sitter id
+files.include = ["**/*.rs"]
+mutants.skip = [
+  { lisp = "((fn 'describe') @ignore)", },
+  { kind = { "BinaryOp" = "Add" } }
+]
