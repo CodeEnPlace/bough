@@ -94,7 +94,7 @@ fn discover_config() -> Option<PathBuf> {
 }
 
 pub fn load(cli: &Cli) -> Result<Config, Error> {
-    let config_path = match &cli.config {
+    let config_path = match &cli.config_file {
         Some(path) => {
             if !path.exists() {
                 return Err(Error::Read(
@@ -114,11 +114,11 @@ pub fn load(cli: &Cli) -> Result<Config, Error> {
         config.override_with(patch);
     }
 
-    for toml_str in &cli.config_sets {
+    for toml_str in &cli.configs {
         let tv: toml::Value = toml::from_str(toml_str)
-            .map_err(|e| Error::Parse("<--set>".into(), e.to_string()))?;
+            .map_err(|e| Error::Parse("<--config>".into(), e.to_string()))?;
         let patch = serde_value::to_value(tv)
-            .map_err(|e| Error::Parse("<--set>".into(), e.to_string()))?;
+            .map_err(|e| Error::Parse("<--config>".into(), e.to_string()))?;
         config.override_with(patch);
     }
 

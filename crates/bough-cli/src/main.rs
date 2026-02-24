@@ -8,14 +8,14 @@ use std::path::PathBuf;
 #[derive(Debug, Parser)]
 #[command(name = "bough", about = "Cross-language mutation testing")]
 struct Cli {
-    #[arg(long, global = true)]
-    config: Option<PathBuf>,
+    #[arg(long = "config-file", global = true)]
+    config_file: Option<PathBuf>,
 
     #[arg(long = "config-override", global = true)]
     config_overrides: Vec<PathBuf>,
 
-    #[arg(long = "config-set", global = true)]
-    config_sets: Vec<String>,
+    #[arg(long = "config", global = true)]
+    configs: Vec<String>,
 
     #[arg(long, global = true, default_value = "pretty")]
     output_style: Style,
