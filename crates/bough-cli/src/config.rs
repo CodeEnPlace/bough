@@ -1,4 +1,4 @@
-use bough_core::config::Config;
+use bough_core::config::{Config, ConfigBuilder, ConfigError};
 use std::path::{Path, PathBuf};
 
 use crate::Cli;
@@ -8,6 +8,7 @@ pub enum Error {
     NoConfigFound,
     Read(PathBuf, std::io::Error),
     Parse(PathBuf, String),
+    Invalid(ConfigError),
 }
 
 impl std::fmt::Display for Error {
@@ -16,6 +17,7 @@ impl std::fmt::Display for Error {
             Error::NoConfigFound => write!(f, "no config file found"),
             Error::Read(path, err) => write!(f, "failed to read {}: {err}", path.display()),
             Error::Parse(path, err) => write!(f, "failed to parse {}: {err}", path.display()),
+            Error::Invalid(err) => write!(f, "{err}"),
         }
     }
 }
@@ -53,19 +55,6 @@ fn format_for(path: &Path) -> Format {
         Some("yml" | "yaml") => Format::Yaml,
         Some("json") => Format::Json,
         _ => Format::Toml,
-    }
-}
-
-fn read_config(path: &Path) -> Result<Config, Error> {
-    let content = std::fs::read_to_string(path)
-        .map_err(|e| Error::Read(path.to_owned(), e))?;
-    match format_for(path) {
-        Format::Toml => toml::from_str(&content)
-            .map_err(|e| Error::Parse(path.to_owned(), e.to_string())),
-        Format::Yaml => serde_yaml::from_str(&content)
-            .map_err(|e| Error::Parse(path.to_owned(), e.to_string())),
-        Format::Json => serde_json::from_str(&content)
-            .map_err(|e| Error::Parse(path.to_owned(), e.to_string())),
     }
 }
 
@@ -107,11 +96,12 @@ pub fn load(cli: &Cli) -> Result<Config, Error> {
         None => discover_config().ok_or(Error::NoConfigFound)?,
     };
 
-    let mut config = read_config(&config_path)?;
+    let base = read_as_value(&config_path)?;
+    let mut builder = ConfigBuilder::from_value(base);
 
     for override_path in &cli.config_overrides {
         let patch = read_as_value(override_path)?;
-        config.override_with(patch);
+        builder = builder.override_with(patch);
     }
 
     for toml_str in &cli.configs {
@@ -119,10 +109,8 @@ pub fn load(cli: &Cli) -> Result<Config, Error> {
             .map_err(|e| Error::Parse("<--config>".into(), e.to_string()))?;
         let patch = serde_value::to_value(tv)
             .map_err(|e| Error::Parse("<--config>".into(), e.to_string()))?;
-        config.override_with(patch);
+        builder = builder.override_with(patch);
     }
 
-    config.resolve_paths();
-
-    Ok(config)
+    builder.build().map_err(Error::Invalid)
 }

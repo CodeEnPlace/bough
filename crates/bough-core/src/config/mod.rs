@@ -51,9 +51,12 @@ pub enum Ordering {
     NewestFirst,
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Config {
+    #[serde(skip)]
+    _sealed: (),
+    pub active_runner: String,
     pub vcs: VcsConfig,
     #[serde(default = "default_parallelism")]
     pub parallelism: u32,
@@ -61,6 +64,20 @@ pub struct Config {
     pub dirs: Dirs,
     #[serde(flatten)]
     pub runners: HashMap<String, Runner>,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            _sealed: (),
+            active_runner: String::new(),
+            vcs: VcsConfig::default(),
+            parallelism: default_parallelism(),
+            ordering: Ordering::default(),
+            dirs: Dirs::default(),
+            runners: HashMap::new(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -181,8 +198,77 @@ fn deep_merge(base: Value, patch: Value) -> Value {
     }
 }
 
+pub struct ConfigBuilder {
+    config: Config,
+}
+
+impl ConfigBuilder {
+    pub fn new(config: Config) -> Self {
+        Self { config }
+    }
+
+    pub fn from_value(value: Value) -> Self {
+        let config = Config::deserialize(value).expect("failed to deserialize config");
+        Self { config }
+    }
+
+    pub fn override_with(mut self, patch: Value) -> Self {
+        let base = serde_value::to_value(self.config).expect("failed to serialize config");
+        let merged = deep_merge(base, patch);
+        self.config =
+            Config::deserialize(merged).expect("failed to deserialize merged config");
+        self
+    }
+
+    pub fn build(mut self) -> Result<Config, ConfigError> {
+        self.config.resolve_paths();
+        self.check_invariants()?;
+        Ok(self.config)
+    }
+
+    fn check_invariants(&self) -> Result<(), ConfigError> {
+        let runner = &self.config.active_runner;
+        if !runner.is_empty() && !self.config.runners.contains_key(runner) {
+            return Err(ConfigError::UnknownRunner {
+                name: runner.clone(),
+                available: self.config.runners.keys().cloned().collect(),
+            });
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug)]
+pub enum ConfigError {
+    UnknownRunner {
+        name: String,
+        available: Vec<String>,
+    },
+}
+
+impl std::fmt::Display for ConfigError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ConfigError::UnknownRunner { name, available } => {
+                write!(
+                    f,
+                    "runner '{}' not found in config (available: {})",
+                    name,
+                    if available.is_empty() {
+                        "none".to_string()
+                    } else {
+                        available.join(", ")
+                    }
+                )
+            }
+        }
+    }
+}
+
+impl std::error::Error for ConfigError {}
+
 impl Config {
-    pub fn resolve_paths(&mut self) {
+    fn resolve_paths(&mut self) {
         let cwd = std::env::current_dir().expect("failed to get current directory");
         let resolve = |p: &mut String| {
             let path = std::path::PathBuf::from(&*p);
@@ -211,11 +297,6 @@ impl Config {
         }
     }
 
-    pub fn override_with(&mut self, patch: Value) {
-        let base = serde_value::to_value(self.clone()).expect("failed to serialize config");
-        let merged = deep_merge(base, patch);
-        *self = Config::deserialize(merged).expect("failed to deserialize merged config");
-    }
 }
 
 impl Render for Config {
@@ -307,59 +388,65 @@ mod tests {
         serde_value::to_value(tv).unwrap()
     }
 
+    fn build_with_override(base: &str, patch: &str) -> Config {
+        ConfigBuilder::from_value(toml_to_value(base))
+            .override_with(toml_to_value(patch))
+            .build()
+            .unwrap()
+    }
+
     #[test]
     fn override_scalar() {
-        let mut config = Config::default();
-        config.override_with(toml_to_value("parallelism = 4"));
+        let config = build_with_override("", "parallelism = 4");
         assert_eq!(config.parallelism, 4);
     }
 
     #[test]
     fn override_nested_preserves_siblings() {
-        let mut config: Config = toml::from_str(include_str!("ideal.config.toml")).unwrap();
-        config.override_with(toml_to_value(
+        let config = build_with_override(
+            include_str!("ideal.config.toml"),
             r#"
             [dirs]
             working = "/override"
-        "#,
-        ));
+            "#,
+        );
         assert_eq!(config.dirs.working, "/override");
         assert_eq!(config.dirs.logs, "/tmp/bough/logs");
     }
 
     #[test]
     fn override_vec_replaces() {
-        let mut config: Config = toml::from_str(include_str!("minimal.config.toml")).unwrap();
-        config.override_with(toml_to_value(
+        let config = build_with_override(
+            include_str!("minimal.config.toml"),
             r#"
             [vitest.test]
             commands = ["npm test"]
-        "#,
-        ));
+            "#,
+        );
         assert_eq!(config.runners["vitest"].test.commands, vec!["npm test"]);
     }
 
     #[test]
     fn override_map_adds() {
-        let mut config: Config = toml::from_str(include_str!("minimal.config.toml")).unwrap();
-        config.override_with(toml_to_value(
+        let config = build_with_override(
+            include_str!("minimal.config.toml"),
             r#"
             [vitest.test.env]
             FOO = "bar"
-        "#,
-        ));
+            "#,
+        );
         assert_eq!(config.runners["vitest"].test.env["FOO"], "bar");
     }
 
     #[test]
     fn override_deep_merge_runner() {
-        let mut config: Config = toml::from_str(include_str!("ideal.config.toml")).unwrap();
-        config.override_with(toml_to_value(
+        let config = build_with_override(
+            include_str!("ideal.config.toml"),
             r#"
             [vitest]
             treat_timeouts_as = "Caught"
-        "#,
-        ));
+            "#,
+        );
         assert_eq!(config.runners["vitest"].treat_timeouts_as, Outcome::Caught);
         assert!(config.runners["vitest"].init.is_some());
     }
