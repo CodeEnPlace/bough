@@ -114,6 +114,14 @@ pub fn load(cli: &Cli) -> Result<Config, Error> {
         config.override_with(patch);
     }
 
+    for toml_str in &cli.config_sets {
+        let tv: toml::Value = toml::from_str(toml_str)
+            .map_err(|e| Error::Parse("<--set>".into(), e.to_string()))?;
+        let patch = serde_value::to_value(tv)
+            .map_err(|e| Error::Parse("<--set>".into(), e.to_string()))?;
+        config.override_with(patch);
+    }
+
     config.resolve_paths();
 
     Ok(config)
