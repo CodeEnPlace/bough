@@ -29,14 +29,14 @@ fn completions_bash() {
 
 #[test]
 fn dump_config_with_explicit_path() {
-    bough(&["--config", &fixture("full.config.toml"), "--output-style", "json", "dump-config"])
+    bough(&["--config-file", &fixture("full.config.toml"), "--output-style", "json", "dump-config"])
         .success()
         .stdout(contains(r#""parallelism":2"#));
 }
 
 #[test]
 fn dump_config_missing_file_errors() {
-    bough(&["--config", "nonexistent.toml", "dump-config"])
+    bough(&["--config-file", "nonexistent.toml", "dump-config"])
         .failure()
         .stderr(contains("nonexistent.toml"));
 }
@@ -44,7 +44,7 @@ fn dump_config_missing_file_errors() {
 #[test]
 fn config_override_file() {
     bough(&[
-        "--config", &fixture("full.config.toml"),
+        "--config-file", &fixture("full.config.toml"),
         "--config-override", &fixture("override.config.toml"),
         "--output-style", "json", "dump-config",
     ])
@@ -55,8 +55,8 @@ fn config_override_file() {
 #[test]
 fn config_set_inline() {
     bough(&[
-        "--config", &fixture("full.config.toml"),
-        "--config-set", "parallelism = 42",
+        "--config-file", &fixture("full.config.toml"),
+        "--config", "parallelism = 42",
         "--output-style", "json", "dump-config",
     ])
     .success()
@@ -66,9 +66,9 @@ fn config_set_inline() {
 #[test]
 fn config_set_after_override_file() {
     bough(&[
-        "--config", &fixture("full.config.toml"),
+        "--config-file", &fixture("full.config.toml"),
         "--config-override", &fixture("override.config.toml"),
-        "--config-set", "parallelism = 7",
+        "--config", "parallelism = 7",
         "--output-style", "json", "dump-config",
     ])
     .success()
