@@ -14,6 +14,9 @@ struct Cli {
     #[arg(long = "config-override", global = true)]
     config_overrides: Vec<PathBuf>,
 
+    #[arg(long = "config-set", global = true)]
+    config_sets: Vec<String>,
+
     #[arg(long, global = true, default_value = "pretty")]
     output_style: Style,
 

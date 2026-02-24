@@ -19,6 +19,12 @@ fn default_logs() -> String {
 fn default_pwd() -> String {
     ".".into()
 }
+fn default_test_phase() -> Phase {
+    Phase {
+        commands: vec!["exit 1".into()],
+        ..Phase::default()
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(tag = "kind", rename_all = "lowercase")]
@@ -86,6 +92,7 @@ pub struct Runner {
     pub treat_timeouts_as: Outcome,
     pub init: Option<Phase>,
     pub reset: Option<Phase>,
+    #[serde(default = "default_test_phase")]
     pub test: Phase,
     pub mutate: HashMap<String, MutateLanguage>,
 }
@@ -97,7 +104,7 @@ impl Default for Runner {
             treat_timeouts_as: Outcome::default(),
             init: None,
             reset: None,
-            test: Phase::default(),
+            test: default_test_phase(),
             mutate: HashMap::new(),
         }
     }
@@ -355,6 +362,15 @@ mod tests {
         ));
         assert_eq!(config.runners["vitest"].treat_timeouts_as, Outcome::Caught);
         assert!(config.runners["vitest"].init.is_some());
+    }
+
+    #[test]
+    fn runner_without_test_defaults_to_exit_1() {
+        let config: Config = toml::from_str(r#"
+            [myrunner]
+            pwd = "."
+        "#).unwrap();
+        assert_eq!(config.runners["myrunner"].test.commands, vec!["exit 1"]);
     }
 
     #[test]
