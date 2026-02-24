@@ -125,6 +125,30 @@ fn no_config_found_errors() {
 }
 
 #[test]
+fn unknown_runner_errors() {
+    bough(&[
+        "--config-file", &fixture("full.config.toml"),
+        "--config", "active_runner = \"nonexistent\"",
+        "dump-config",
+    ])
+    .failure()
+    .stderr(contains("runner 'nonexistent' not found"))
+    .stderr(contains("myrunner"));
+}
+
+#[test]
+fn valid_runner_succeeds() {
+    bough(&[
+        "--config-file", &fixture("full.config.toml"),
+        "--config", "active_runner = \"myrunner\"",
+        "--output-style", "json",
+        "dump-config",
+    ])
+    .success()
+    .stdout(contains(r#""active_runner":"myrunner""#));
+}
+
+#[test]
 fn default_test_phase_is_exit_1() {
     let dir = tempfile::tempdir().unwrap();
     fs::write(
