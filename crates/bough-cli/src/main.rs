@@ -32,6 +32,7 @@ enum Command {
         #[command(subcommand)]
         subject: ShowSubject,
     },
+    Run,
     Completions {
         #[arg(value_enum)]
         shell: Shell,
@@ -42,6 +43,7 @@ enum Command {
 enum ShowSubject {
     Config,
     Src,
+    Mutations,
 }
 
 fn main() {
@@ -55,6 +57,26 @@ fn main() {
                 "bough",
                 &mut std::io::stdout(),
             );
+        }
+        Command::Run => {
+            let no_color = !std::io::IsTerminal::is_terminal(&std::io::stdout());
+
+            let cfg = config::load(&cli).unwrap_or_else(|e| {
+                eprintln!("{e}");
+                std::process::exit(1);
+            });
+
+            let src_files = steps::get_src_files::run(&cfg).unwrap_or_else(|e| {
+                eprintln!("{e}");
+                std::process::exit(1);
+            });
+            src_files.render(&cli.output_style, no_color, 0);
+
+            let mutations = steps::get_mutations::run(&src_files).unwrap_or_else(|e| {
+                eprintln!("{e}");
+                std::process::exit(1);
+            });
+            mutations.render(&cli.output_style, no_color, 0);
         }
         Command::Show { subject } => match subject {
             ShowSubject::Config => {
@@ -70,7 +92,23 @@ fn main() {
                     eprintln!("{e}");
                     std::process::exit(1);
                 });
-                let result = steps::show_src_files::run(&cfg).unwrap_or_else(|e| {
+                let result = steps::get_src_files::run(&cfg).unwrap_or_else(|e| {
+                    eprintln!("{e}");
+                    std::process::exit(1);
+                });
+                let no_color = !std::io::IsTerminal::is_terminal(&std::io::stdout());
+                result.render(&cli.output_style, no_color, 0);
+            }
+            ShowSubject::Mutations => {
+                let cfg = config::load(&cli).unwrap_or_else(|e| {
+                    eprintln!("{e}");
+                    std::process::exit(1);
+                });
+                let src_files = steps::get_src_files::run(&cfg).unwrap_or_else(|e| {
+                    eprintln!("{e}");
+                    std::process::exit(1);
+                });
+                let result = steps::get_mutations::run(&src_files).unwrap_or_else(|e| {
                     eprintln!("{e}");
                     std::process::exit(1);
                 });
