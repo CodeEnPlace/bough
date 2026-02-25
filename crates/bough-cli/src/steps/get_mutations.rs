@@ -109,23 +109,18 @@ where
 }
 
 pub fn run(src_files: &ShowSrcFiles, config: &Config) -> Result<ShowMutations, Error> {
-    let runner = if config.active_runner.is_empty() {
-        config.runners.values().next()
-    } else {
-        config.runners.get(&config.active_runner)
-    };
+    let runner_name = config.resolved_runner_name();
 
     let mut mutations = BTreeMap::new();
 
     for (lang, files) in &src_files.files {
-        let skip = runner
-            .and_then(|r| r.mutate.get(lang))
-            .map(|m| m.mutants.skip.as_slice())
-            .unwrap_or(&[]);
+        let skips = runner_name
+            .map(|r| config.mutant_skips(r, *lang))
+            .unwrap_or_default();
 
         let lang_mutations = match lang {
-            LanguageId::Javascript => collect_mutations::<JavaScript>(files, skip, AnyMutation::Js)?,
-            LanguageId::Typescript => collect_mutations::<TypeScript>(files, skip, AnyMutation::Ts)?,
+            LanguageId::Javascript => collect_mutations::<JavaScript>(files, &skips, AnyMutation::Js)?,
+            LanguageId::Typescript => collect_mutations::<TypeScript>(files, &skips, AnyMutation::Ts)?,
         };
         mutations.insert(*lang, lang_mutations);
     }

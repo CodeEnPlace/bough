@@ -56,14 +56,14 @@ pub enum Ordering {
 pub struct Config {
     #[serde(skip)]
     _sealed: (),
-    pub active_runner: String,
-    pub vcs: VcsConfig,
+    active_runner: String,
+    vcs: VcsConfig,
     #[serde(default = "default_parallelism")]
-    pub parallelism: u32,
-    pub ordering: Ordering,
-    pub dirs: Dirs,
+    parallelism: u32,
+    ordering: Ordering,
+    dirs: Dirs,
     #[serde(flatten)]
-    pub runners: HashMap<String, Runner>,
+    runners: HashMap<String, Runner>,
 }
 
 impl Default for Config {
@@ -84,11 +84,11 @@ impl Default for Config {
 #[serde(default)]
 pub struct Dirs {
     #[serde(default = "default_working")]
-    pub working: String,
+    working: String,
     #[serde(default = "default_state")]
-    pub state: String,
+    state: String,
     #[serde(default = "default_logs")]
-    pub logs: String,
+    logs: String,
 }
 
 impl Default for Dirs {
@@ -105,13 +105,13 @@ impl Default for Dirs {
 #[serde(default)]
 pub struct Runner {
     #[serde(default = "default_pwd")]
-    pub pwd: String,
-    pub treat_timeouts_as: Outcome,
-    pub init: Option<Phase>,
-    pub reset: Option<Phase>,
+    pwd: String,
+    treat_timeouts_as: Outcome,
+    init: Option<Phase>,
+    reset: Option<Phase>,
     #[serde(default = "default_test_phase")]
-    pub test: Phase,
-    pub mutate: HashMap<LanguageId, MutateLanguage>,
+    test: Phase,
+    mutate: HashMap<LanguageId, MutateLanguage>,
 }
 
 impl Default for Runner {
@@ -131,10 +131,10 @@ impl Default for Runner {
 #[serde(default)]
 pub struct Phase {
     #[serde(default = "default_pwd")]
-    pub pwd: String,
-    pub timeout: Timeout,
-    pub env: HashMap<String, String>,
-    pub commands: Vec<String>,
+    pwd: String,
+    timeout: Timeout,
+    env: HashMap<String, String>,
+    commands: Vec<String>,
 }
 
 impl Default for Phase {
@@ -151,28 +151,28 @@ impl Default for Phase {
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Timeout {
-    pub absolute: Option<u64>,
-    pub relative: Option<u64>,
+    absolute: Option<u64>,
+    relative: Option<u64>,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct MutateLanguage {
-    pub files: FileFilter,
-    pub mutants: MutantFilter,
+    files: FileFilter,
+    mutants: MutantFilter,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct FileFilter {
-    pub include: Vec<String>,
-    pub exclude: Vec<String>,
+    include: Vec<String>,
+    exclude: Vec<String>,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct MutantFilter {
-    pub skip: Vec<MutantSkip>,
+    skip: Vec<MutantSkip>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -267,6 +267,157 @@ impl std::fmt::Display for ConfigError {
 impl std::error::Error for ConfigError {}
 
 impl Config {
+    pub fn active_runner(&self) -> &str {
+        &self.active_runner
+    }
+
+    pub fn vcs(&self) -> &VcsConfig {
+        &self.vcs
+    }
+
+    pub fn parallelism(&self) -> u32 {
+        self.parallelism
+    }
+
+    pub fn ordering(&self) -> Ordering {
+        self.ordering
+    }
+
+    pub fn working_dir(&self) -> &str {
+        &self.dirs.working
+    }
+
+    pub fn state_dir(&self) -> &str {
+        &self.dirs.state
+    }
+
+    pub fn logs_dir(&self) -> &str {
+        &self.dirs.logs
+    }
+
+    pub fn runner_names(&self) -> Vec<String> {
+        self.runners.keys().cloned().collect()
+    }
+
+    pub fn resolved_runner_name(&self) -> Option<&str> {
+        if self.active_runner.is_empty() {
+            self.runners.keys().next().map(|s| s.as_str())
+        } else if self.runners.contains_key(&self.active_runner) {
+            Some(&self.active_runner)
+        } else {
+            None
+        }
+    }
+
+    pub fn runner_pwd(&self, runner: &str) -> Option<&str> {
+        self.runners.get(runner).map(|r| r.pwd.as_str())
+    }
+
+    pub fn runner_treat_timeouts_as(&self, runner: &str) -> Option<Outcome> {
+        self.runners.get(runner).map(|r| r.treat_timeouts_as)
+    }
+
+    pub fn runner_init_commands(&self, runner: &str) -> Option<Vec<String>> {
+        self.runners
+            .get(runner)
+            .and_then(|r| r.init.as_ref())
+            .map(|p| p.commands.clone())
+    }
+
+    pub fn runner_init_pwd(&self, runner: &str) -> Option<&str> {
+        self.runners
+            .get(runner)
+            .and_then(|r| r.init.as_ref())
+            .map(|p| p.pwd.as_str())
+    }
+
+    pub fn runner_has_init(&self, runner: &str) -> bool {
+        self.runners
+            .get(runner)
+            .is_some_and(|r| r.init.is_some())
+    }
+
+    pub fn runner_has_reset(&self, runner: &str) -> bool {
+        self.runners
+            .get(runner)
+            .is_some_and(|r| r.reset.is_some())
+    }
+
+    pub fn runner_reset_commands(&self, runner: &str) -> Option<Vec<String>> {
+        self.runners
+            .get(runner)
+            .and_then(|r| r.reset.as_ref())
+            .map(|p| p.commands.clone())
+    }
+
+    pub fn runner_reset_pwd(&self, runner: &str) -> Option<&str> {
+        self.runners
+            .get(runner)
+            .and_then(|r| r.reset.as_ref())
+            .map(|p| p.pwd.as_str())
+    }
+
+    pub fn runner_test_commands(&self, runner: &str) -> Vec<String> {
+        self.runners
+            .get(runner)
+            .map(|r| r.test.commands.clone())
+            .unwrap_or_default()
+    }
+
+    pub fn runner_test_pwd(&self, runner: &str) -> Option<&str> {
+        self.runners.get(runner).map(|r| r.test.pwd.as_str())
+    }
+
+    pub fn runner_test_timeout_absolute(&self, runner: &str) -> Option<u64> {
+        self.runners
+            .get(runner)
+            .and_then(|r| r.test.timeout.absolute)
+    }
+
+    pub fn runner_test_timeout_relative(&self, runner: &str) -> Option<u64> {
+        self.runners
+            .get(runner)
+            .and_then(|r| r.test.timeout.relative)
+    }
+
+    pub fn runner_test_env(&self, runner: &str) -> HashMap<String, String> {
+        self.runners
+            .get(runner)
+            .map(|r| r.test.env.clone())
+            .unwrap_or_default()
+    }
+
+    pub fn mutate_languages(&self, runner: &str) -> Vec<LanguageId> {
+        self.runners
+            .get(runner)
+            .map(|r| r.mutate.keys().copied().collect())
+            .unwrap_or_default()
+    }
+
+    pub fn file_includes(&self, runner: &str, lang: LanguageId) -> Vec<String> {
+        self.runners
+            .get(runner)
+            .and_then(|r| r.mutate.get(&lang))
+            .map(|m| m.files.include.clone())
+            .unwrap_or_default()
+    }
+
+    pub fn file_excludes(&self, runner: &str, lang: LanguageId) -> Vec<String> {
+        self.runners
+            .get(runner)
+            .and_then(|r| r.mutate.get(&lang))
+            .map(|m| m.files.exclude.clone())
+            .unwrap_or_default()
+    }
+
+    pub fn mutant_skips(&self, runner: &str, lang: LanguageId) -> Vec<MutantSkip> {
+        self.runners
+            .get(runner)
+            .and_then(|r| r.mutate.get(&lang))
+            .map(|m| m.mutants.skip.clone())
+            .unwrap_or_default()
+    }
+
     fn resolve_paths(&mut self) {
         let cwd = std::env::current_dir().expect("failed to get current directory");
         let resolve = |p: &mut String| {
