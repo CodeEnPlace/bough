@@ -1,5 +1,5 @@
 [vitest.test]
 commands = ["npx vitest run"]
 
-[vitest.mutate.ts]
+[vitest.ts]
 files.include = ["src/**/*.ts"]

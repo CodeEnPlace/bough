@@ -7,7 +7,7 @@ pwd = "examples/vitest-js"
 init.commands = ["npm install"]
 test.commands = ["npm test"]
 
-[vitest-js.mutate.js]
+[vitest-js.js]
 files.include = ["src/*.js"]
 files.exclude = ["**/*.test.*"]
 mutants.skip = [

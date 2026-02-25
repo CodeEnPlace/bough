@@ -111,6 +111,7 @@ pub struct Runner {
     reset: Option<Phase>,
     #[serde(default = "default_test_phase")]
     test: Phase,
+    #[serde(flatten)]
     mutate: HashMap<LanguageId, MutateLanguage>,
 }
 

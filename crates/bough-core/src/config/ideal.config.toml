@@ -36,7 +36,7 @@ commands = [
   "npx run test",
 ]
 
-[vitest.mutate.js]
+[vitest.js]
 #must be tree-sitter id
 files.include = ["**/*.js", "**/*.jsx"]
 files.exclude = ["**/*__mocks__*"]
@@ -45,7 +45,7 @@ mutants.skip = [
   { kind = { "BinaryOp" = "Add" } }
 ]
 
-[vitest.mutate.ts]
+[vitest.ts]
 #must be tree-sitter id
 files.include = ["**/*.rs"]
 mutants.skip = [
@@ -60,7 +60,7 @@ timeout.absolute = 30
 timeout.relative = 3
 commands = ["cargo test"]
 
-[cargo.mutate.js]
+[cargo.js]
 #must be tree-sitter id
 files.include = ["**/*.js", "**/*.jsx"]
 files.exclude = ["**/*__mocks__*"]
@@ -69,7 +69,7 @@ mutants.skip = [
   { kind = { "BinaryOp" = "Add" } }
 ]
 
-[cargo.mutate.ts]
+[cargo.ts]
 #must be tree-sitter id
 files.include = ["**/*.rs"]
 mutants.skip = [
