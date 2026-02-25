@@ -1,4 +1,5 @@
 use crate::Outcome;
+use crate::languages::LanguageId;
 use serde::{Deserialize, Serialize};
 use serde_value::Value;
 use std::collections::HashMap;
@@ -110,7 +111,7 @@ pub struct Runner {
     pub reset: Option<Phase>,
     #[serde(default = "default_test_phase")]
     pub test: Phase,
-    pub mutate: HashMap<String, MutateLanguage>,
+    pub mutate: HashMap<LanguageId, MutateLanguage>,
 }
 
 impl Default for Runner {
@@ -331,7 +332,7 @@ mod tests {
         assert_eq!(vitest.test.env["NODE_ENV"], "production");
         assert_eq!(vitest.test.commands, vec!["npx run build", "npx run test"]);
 
-        let js_mutate = &vitest.mutate["js"];
+        let js_mutate = &vitest.mutate[&LanguageId::Javascript];
         assert_eq!(js_mutate.files.include, vec!["**/*.js", "**/*.jsx"]);
         assert_eq!(js_mutate.files.exclude, vec!["**/*__mocks__*"]);
         assert_eq!(js_mutate.mutants.skip.len(), 2);
@@ -361,7 +362,7 @@ mod tests {
         assert!(vitest.test.env.is_empty());
         assert_eq!(vitest.test.timeout, Timeout::default());
 
-        let ts_mutate = &vitest.mutate["ts"];
+        let ts_mutate = &vitest.mutate[&LanguageId::Typescript];
         assert_eq!(ts_mutate.files.include, vec!["src/**/*.ts"]);
         assert!(ts_mutate.files.exclude.is_empty());
         assert!(ts_mutate.mutants.skip.is_empty());

@@ -29,14 +29,14 @@ fn completions_bash() {
 
 #[test]
 fn dump_config_with_explicit_path() {
-    bough(&["--config-file", &fixture("full.config.toml"), "--output-style", "json", "dump-config"])
+    bough(&["--config-file", &fixture("full.config.toml"), "--output-style", "json", "show", "config"])
         .success()
         .stdout(contains(r#""parallelism":2"#));
 }
 
 #[test]
 fn dump_config_missing_file_errors() {
-    bough(&["--config-file", "nonexistent.toml", "dump-config"])
+    bough(&["--config-file", "nonexistent.toml", "show", "config"])
         .failure()
         .stderr(contains("nonexistent.toml"));
 }
@@ -46,7 +46,7 @@ fn config_override_file() {
     bough(&[
         "--config-file", &fixture("full.config.toml"),
         "--config-override", &fixture("override.config.toml"),
-        "--output-style", "json", "dump-config",
+        "--output-style", "json", "show", "config",
     ])
     .success()
     .stdout(contains(r#""parallelism":99"#));
@@ -57,7 +57,7 @@ fn config_set_inline() {
     bough(&[
         "--config-file", &fixture("full.config.toml"),
         "--config", "parallelism = 42",
-        "--output-style", "json", "dump-config",
+        "--output-style", "json", "show", "config",
     ])
     .success()
     .stdout(contains(r#""parallelism":42"#));
@@ -69,7 +69,7 @@ fn config_set_after_override_file() {
         "--config-file", &fixture("full.config.toml"),
         "--config-override", &fixture("override.config.toml"),
         "--config", "parallelism = 7",
-        "--output-style", "json", "dump-config",
+        "--output-style", "json", "show", "config",
     ])
     .success()
     .stdout(contains(r#""parallelism":7"#));
@@ -84,7 +84,7 @@ fn config_discovery_from_cwd() {
         Command::cargo_bin("bough").unwrap()
     };
     cmd.current_dir(dir.path())
-        .args(["--output-style", "json", "dump-config"])
+        .args(["--output-style", "json", "show", "config"])
         .assert()
         .success()
         .stdout(contains(r#""parallelism":5"#));
@@ -104,7 +104,7 @@ fn config_discovery_dotconfig_dir() {
         Command::cargo_bin("bough").unwrap()
     };
     cmd.current_dir(dir.path())
-        .args(["--output-style", "json", "dump-config"])
+        .args(["--output-style", "json", "show", "config"])
         .assert()
         .success()
         .stdout(contains(r#""parallelism":3"#));
@@ -118,7 +118,7 @@ fn no_config_found_errors() {
         Command::cargo_bin("bough").unwrap()
     };
     cmd.current_dir(dir.path())
-        .args(["dump-config"])
+        .args(["show", "config"])
         .assert()
         .failure()
         .stderr(contains("no config file found"));
@@ -129,7 +129,7 @@ fn unknown_runner_errors() {
     bough(&[
         "--config-file", &fixture("full.config.toml"),
         "--config", "active_runner = \"nonexistent\"",
-        "dump-config",
+        "show", "config",
     ])
     .failure()
     .stderr(contains("runner 'nonexistent' not found"))
@@ -142,7 +142,7 @@ fn valid_runner_succeeds() {
         "--config-file", &fixture("full.config.toml"),
         "--config", "active_runner = \"myrunner\"",
         "--output-style", "json",
-        "dump-config",
+        "show", "config",
     ])
     .success()
     .stdout(contains(r#""active_runner":"myrunner""#));
@@ -161,7 +161,7 @@ fn default_test_phase_is_exit_1() {
         Command::cargo_bin("bough").unwrap()
     };
     cmd.current_dir(dir.path())
-        .args(["--output-style", "json", "dump-config"])
+        .args(["--output-style", "json", "show", "config"])
         .assert()
         .success()
         .stdout(contains(r#""commands":["exit 1"]"#));

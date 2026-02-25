@@ -45,7 +45,7 @@ mutants.skip = [
   { kind = { "BinaryOp" = "Add" } }
 ]
 
-[vitest.mutate.rust]
+[vitest.mutate.ts]
 #must be tree-sitter id
 files.include = ["**/*.rs"]
 mutants.skip = [
@@ -69,7 +69,7 @@ mutants.skip = [
   { kind = { "BinaryOp" = "Add" } }
 ]
 
-[cargo.mutate.rust]
+[cargo.mutate.ts]
 #must be tree-sitter id
 files.include = ["**/*.rs"]
 mutants.skip = [
