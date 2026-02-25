@@ -72,7 +72,7 @@ fn main() {
             });
             src_files.render(&cli.output_style, no_color, 0);
 
-            let mutations = steps::get_mutations::run(&src_files).unwrap_or_else(|e| {
+            let mutations = steps::get_mutations::run(&src_files, &cfg).unwrap_or_else(|e| {
                 eprintln!("{e}");
                 std::process::exit(1);
             });
@@ -108,7 +108,7 @@ fn main() {
                     eprintln!("{e}");
                     std::process::exit(1);
                 });
-                let result = steps::get_mutations::run(&src_files).unwrap_or_else(|e| {
+                let result = steps::get_mutations::run(&src_files, &cfg).unwrap_or_else(|e| {
                     eprintln!("{e}");
                     std::process::exit(1);
                 });

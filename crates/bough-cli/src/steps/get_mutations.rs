@@ -1,6 +1,8 @@
+use bough_core::config::{Config, MutantSkip};
 use bough_core::languages::LanguageId;
 use bough_core::{
-    Language, Mutation, MutationKind, SourceFile, find_mutants, generate_mutations,
+    Language, Mutation, MutationKind, SourceFile, filter_mutants, find_mutants,
+    generate_mutations,
     languages::{JavaScript, TypeScript},
 };
 use bough_sha::ShaHashable;
@@ -77,17 +79,28 @@ pub struct ShowMutations {
 
 fn collect_mutations<L: Language>(
     files: &[SourceFile],
+    skip: &[MutantSkip],
     wrap: fn(Mutation<L>) -> AnyMutation,
 ) -> Result<Vec<AnyMutation>, Error>
 where
     L::Kind: Clone + Into<MutationKind>,
 {
+    let queries: Vec<String> = skip
+        .iter()
+        .filter_map(|s| match s {
+            MutantSkip::Query { query } => Some(query.clone()),
+            _ => None,
+        })
+        .collect();
+
     let mut results = Vec::new();
     for file in files {
         let content = std::fs::read_to_string(&file.path)
             .map_err(|e| Error::ReadFile(file.path.clone(), e))?;
-        for mutant in find_mutants::<L>(file, &content) {
-            for mutation in generate_mutations::<L>(&mutant) {
+        let mutants = find_mutants::<L>(file, &content);
+        let mutants = filter_mutants::<L>(mutants, &queries, &content);
+        for mutant in &mutants {
+            for mutation in generate_mutations::<L>(mutant) {
                 results.push(wrap(mutation));
             }
         }
@@ -95,13 +108,24 @@ where
     Ok(results)
 }
 
-pub fn run(src_files: &ShowSrcFiles) -> Result<ShowMutations, Error> {
+pub fn run(src_files: &ShowSrcFiles, config: &Config) -> Result<ShowMutations, Error> {
+    let runner = if config.active_runner.is_empty() {
+        config.runners.values().next()
+    } else {
+        config.runners.get(&config.active_runner)
+    };
+
     let mut mutations = BTreeMap::new();
 
     for (lang, files) in &src_files.files {
+        let skip = runner
+            .and_then(|r| r.mutate.get(lang))
+            .map(|m| m.mutants.skip.as_slice())
+            .unwrap_or(&[]);
+
         let lang_mutations = match lang {
-            LanguageId::Javascript => collect_mutations::<JavaScript>(files, AnyMutation::Js)?,
-            LanguageId::Typescript => collect_mutations::<TypeScript>(files, AnyMutation::Ts)?,
+            LanguageId::Javascript => collect_mutations::<JavaScript>(files, skip, AnyMutation::Js)?,
+            LanguageId::Typescript => collect_mutations::<TypeScript>(files, skip, AnyMutation::Ts)?,
         };
         mutations.insert(*lang, lang_mutations);
     }
