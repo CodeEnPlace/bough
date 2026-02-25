@@ -1,0 +1,13 @@
+[package]
+name = "bough-sha"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+sha2 = "0.10"
+serde = { version = "1", features = ["derive"] }
+bough-sha-derive = { path = "../bough-sha-derive" }
+
+[dev-dependencies]
+serde_json = "1"
