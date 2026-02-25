@@ -116,6 +116,7 @@ impl BinaryOpKind {
 pub enum MutationKind {
     StatementBlock,
     BinaryOp(BinaryOpKind),
+    Condition,
 }
 
 pub trait Language: Debug {
