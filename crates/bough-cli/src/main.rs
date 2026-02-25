@@ -1,8 +1,9 @@
 mod config;
+mod render;
 
-use bough_core::io::{Render, Style};
 use clap::{CommandFactory, Parser, Subcommand};
 use clap_complete::Shell;
+use render::{Render, Style};
 use std::path::PathBuf;
 
 #[derive(Debug, Parser)]
@@ -17,7 +18,7 @@ struct Cli {
     #[arg(long = "config", global = true)]
     configs: Vec<String>,
 
-    #[arg(long, global = true, default_value = "pretty")]
+    #[arg(long, global = true, default_value = "terse")]
     output_style: Style,
 
     #[command(subcommand)]
