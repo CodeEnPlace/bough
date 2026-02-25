@@ -118,7 +118,7 @@ pub enum MutationKind {
     BinaryOp(BinaryOpKind),
 }
 
-pub trait Language {
+pub trait Language: Debug {
     type Kind: Debug + Clone + PartialEq + Serialize + for<'de> Deserialize<'de> + ShaHashable + Into<MutationKind>;
 
     fn code_tag() -> &'static str;

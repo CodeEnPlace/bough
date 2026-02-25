@@ -1,3 +1,4 @@
+use bough_core::SourceFile;
 use bough_core::config::Config;
 use bough_core::languages::LanguageId;
 use serde::Serialize;
@@ -10,6 +11,7 @@ use crate::render::{Render, color};
 pub enum Error {
     NoActiveRunner,
     Glob(glob::PatternError),
+    ReadFile(PathBuf, std::io::Error),
 }
 
 impl std::fmt::Display for Error {
@@ -17,6 +19,7 @@ impl std::fmt::Display for Error {
         match self {
             Error::NoActiveRunner => write!(f, "no active runner configured"),
             Error::Glob(e) => write!(f, "invalid glob pattern: {e}"),
+            Error::ReadFile(path, e) => write!(f, "failed to read {}: {e}", path.display()),
         }
     }
 }
@@ -25,7 +28,7 @@ impl std::error::Error for Error {}
 
 #[derive(Debug, Serialize)]
 pub struct ShowSrcFiles {
-    pub files: BTreeMap<LanguageId, Vec<PathBuf>>,
+    pub files: BTreeMap<LanguageId, Vec<SourceFile>>,
 }
 
 fn collect_glob(pattern: &str, base: &str) -> Result<Vec<PathBuf>, Error> {
@@ -57,7 +60,7 @@ pub fn run(config: &Config) -> Result<ShowSrcFiles, Error> {
             .ok_or(Error::NoActiveRunner)?
     };
 
-    let mut files: BTreeMap<LanguageId, Vec<PathBuf>> = BTreeMap::new();
+    let mut files: BTreeMap<LanguageId, Vec<SourceFile>> = BTreeMap::new();
 
     for (lang, mutate_lang) in &runner.mutate {
         let mut included = Vec::new();
@@ -78,7 +81,13 @@ pub fn run(config: &Config) -> Result<ShowSrcFiles, Error> {
             .collect();
         paths.sort();
         paths.dedup();
-        files.insert(*lang, paths);
+
+        let mut src_files = Vec::with_capacity(paths.len());
+        for path in paths {
+            let sf = SourceFile::read(&path).map_err(|e| Error::ReadFile(path, e))?;
+            src_files.push(sf);
+        }
+        files.insert(*lang, src_files);
     }
 
     Ok(ShowSrcFiles { files })
@@ -103,14 +112,18 @@ impl Render for ShowSrcFiles {
 
     fn render_verbose(&self) -> String {
         let mut out = String::new();
-        for (lang, paths) in &self.files {
+        for (lang, files) in &self.files {
             out.push_str(&color(
                 "\x1b[1m",
-                &format!("{lang:?} ({} files)", paths.len()),
+                &format!("{lang:?} ({} files)", files.len()),
             ));
             out.push('\n');
-            for path in paths {
-                out.push_str(&format!("  {}\n", path.display()));
+            for f in files {
+                out.push_str(&format!(
+                    "  {} {}\n",
+                    color("\x1b[2m", &f.hash.to_string()),
+                    f.path.display(),
+                ));
             }
         }
         out
@@ -125,10 +138,10 @@ impl Render for ShowSrcFiles {
             "#".repeat((depth + 1).min(6) as usize),
         ));
 
-        for (lang, paths) in &self.files {
+        for (lang, files) in &self.files {
             out.push_str(&format!("{heading} {lang:?}\n\n"));
-            for path in paths {
-                out.push_str(&format!("- `{}`\n", path.display()));
+            for f in files {
+                out.push_str(&format!("- `{}`\n", f.path.display()));
             }
             out.push('\n');
         }

@@ -2,6 +2,7 @@ use crate::{BinaryOpKind, Language, MutationKind, SourceFile, Span};
 use bough_sha::ShaHashable;
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug)]
 pub struct TypeScript;
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, ShaHashable)]
