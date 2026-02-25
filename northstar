@@ -1,15 +1,16 @@
 $ bough run
-found _ test ids
 found _ mutants
+found _ test ids
 skipping _ mutants that were caught by tests that still exist
+removing _ mutants state that are no longer present in the repo
 running _ mutants that were caught by tests that no longer exist # After each run, a hashed file is written recording the outcome (eg mutant.DEADBEEF.json)
 running _ mutants that were previously missed
 	!ctrl-c
 recieved stop signal... removing workspaces
 
 $ bough run # continues where the previous run left off, as all data was stored hashed to disk
-found _ test ids
 found _ mutants
+found _ test ids
 skipping _ mutants that were caught by tests that still exist
 running _ mutants that were caught by tests that no longer exist
 running _ mutants that were previously missed
