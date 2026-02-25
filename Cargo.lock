@@ -127,7 +127,6 @@ dependencies = [
  "clap",
  "serde",
  "serde-value",
- "serde_json",
  "sha2",
  "toml 0.8.23",
  "tree-sitter",

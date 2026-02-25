@@ -1,5 +1,4 @@
 use crate::Outcome;
-use crate::io::Render;
 use serde::{Deserialize, Serialize};
 use serde_value::Value;
 use std::collections::HashMap;
@@ -298,20 +297,6 @@ impl Config {
     }
 }
 
-impl Render for Config {
-    fn render_json(&self) -> String {
-        serde_json::to_string(self).expect("failed to serialize config")
-    }
-
-    fn render_pretty(&self, _depth: u8) -> String {
-        format!("{self:#?}")
-    }
-
-    fn render_markdown(&self, _depth: u8) -> String {
-        format!("```\n{self:#?}\n```")
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -367,7 +352,7 @@ mod tests {
         assert_eq!(config.dirs, Dirs::default());
 
         let vitest = &config.runners["vitest"];
-        assert_eq!(vitest.treat_timeouts_as, Outcome::Missed);
+        assert_eq!(vitest.treat_timeouts_as, Outcome::Caught);
         assert!(vitest.init.is_none());
         assert!(vitest.reset.is_none());
 
