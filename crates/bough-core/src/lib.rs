@@ -6,7 +6,7 @@ use bough_sha::{ShaHash, ShaHashable};
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::path::{Path, PathBuf};
-use tree_sitter::Parser;
+use tree_sitter::{Parser, StreamingIterator};
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
@@ -211,6 +211,52 @@ where
         .map(|replacement| Mutation {
             mutant: mutant.clone(),
             replacement,
+        })
+        .collect()
+}
+
+pub fn filter_mutants<L: Language>(
+    mutants: Vec<Mutant<L>>,
+    queries: &[String],
+    content: &str,
+) -> Vec<Mutant<L>> {
+    if queries.is_empty() {
+        return mutants;
+    }
+
+    let mut parser = Parser::new();
+    parser
+        .set_language(&L::tree_sitter_language())
+        .expect("failed to load grammar");
+
+    let tree = parser
+        .parse(content, None)
+        .expect("failed to parse source");
+
+    let lang = L::tree_sitter_language();
+    let mut skip_ranges: Vec<(usize, usize)> = Vec::new();
+
+    for query_str in queries {
+        let query =
+            tree_sitter::Query::new(&lang, query_str).expect("failed to compile tree-sitter query");
+        let mut cursor = tree_sitter::QueryCursor::new();
+        let mut matches = cursor.matches(&query, tree.root_node(), content.as_bytes());
+        while let Some(m) = matches.next() {
+            for cap in m.captures {
+                let node = cap.node;
+                skip_ranges.push((node.start_byte(), node.end_byte()));
+            }
+        }
+    }
+
+    mutants
+        .into_iter()
+        .filter(|mutant| {
+            let start = mutant.span.start.byte;
+            let end = mutant.span.end.byte;
+            !skip_ranges
+                .iter()
+                .any(|&(skip_start, skip_end)| start >= skip_start && end <= skip_end)
         })
         .collect()
 }

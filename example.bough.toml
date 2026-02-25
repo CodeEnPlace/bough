@@ -10,3 +10,6 @@ test.commands = ["npm test"]
 [vitest-js.mutate.js]
 files.include = ["src/*.js"]
 files.exclude = ["**/*.test.*"]
+mutants.skip = [
+  { query = "(if_statement condition: (parenthesized_expression (member_expression object: (meta_property)))) @skip" },
+]
