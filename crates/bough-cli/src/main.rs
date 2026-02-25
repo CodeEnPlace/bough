@@ -46,6 +46,11 @@ enum Command {
 #[derive(Debug, Subcommand)]
 enum WorkspaceAction {
     Make,
+    List,
+    Drop {
+        #[arg()]
+        name: String,
+    },
 }
 
 #[derive(Debug, Subcommand)]
@@ -75,6 +80,30 @@ fn main() {
                     std::process::exit(1);
                 });
                 let result = steps::make_workspace::run(&cfg).unwrap_or_else(|e| {
+                    eprintln!("{e}");
+                    std::process::exit(1);
+                });
+                let no_color = !std::io::IsTerminal::is_terminal(&std::io::stdout());
+                result.render(&cli.output_style, no_color, 0);
+            }
+            WorkspaceAction::List => {
+                let cfg = config::load(&cli).unwrap_or_else(|e| {
+                    eprintln!("{e}");
+                    std::process::exit(1);
+                });
+                let result = steps::list_workspaces::run(&cfg).unwrap_or_else(|e| {
+                    eprintln!("{e}");
+                    std::process::exit(1);
+                });
+                let no_color = !std::io::IsTerminal::is_terminal(&std::io::stdout());
+                result.render(&cli.output_style, no_color, 0);
+            }
+            WorkspaceAction::Drop { name } => {
+                let cfg = config::load(&cli).unwrap_or_else(|e| {
+                    eprintln!("{e}");
+                    std::process::exit(1);
+                });
+                let result = steps::drop_workspace::run(&cfg, &name).unwrap_or_else(|e| {
                     eprintln!("{e}");
                     std::process::exit(1);
                 });
