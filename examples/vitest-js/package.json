@@ -3,7 +3,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "vitest run"
+    "test": "vitest run",
+    "get-test-ids": "node get-test-ids.js",
+    "get-failed-test-ids": "node get-failed-test-ids.js"
   },
   "devDependencies": {
     "vitest": "^3.0.0"
