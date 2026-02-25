@@ -342,6 +342,21 @@ impl Config {
             .map(|p| p.pwd.as_str())
     }
 
+    pub fn runner_init_timeout_absolute(&self, runner: &str) -> Option<u64> {
+        self.runners
+            .get(runner)
+            .and_then(|r| r.init.as_ref())
+            .and_then(|p| p.timeout.absolute)
+    }
+
+    pub fn runner_init_env(&self, runner: &str) -> HashMap<String, String> {
+        self.runners
+            .get(runner)
+            .and_then(|r| r.init.as_ref())
+            .map(|p| p.env.clone())
+            .unwrap_or_default()
+    }
+
     pub fn runner_has_init(&self, runner: &str) -> bool {
         self.runners.get(runner).is_some_and(|r| r.init.is_some())
     }
@@ -362,6 +377,21 @@ impl Config {
             .get(runner)
             .and_then(|r| r.reset.as_ref())
             .map(|p| p.pwd.as_str())
+    }
+
+    pub fn runner_reset_timeout_absolute(&self, runner: &str) -> Option<u64> {
+        self.runners
+            .get(runner)
+            .and_then(|r| r.reset.as_ref())
+            .and_then(|p| p.timeout.absolute)
+    }
+
+    pub fn runner_reset_env(&self, runner: &str) -> HashMap<String, String> {
+        self.runners
+            .get(runner)
+            .and_then(|r| r.reset.as_ref())
+            .map(|p| p.env.clone())
+            .unwrap_or_default()
     }
 
     pub fn runner_test_commands(&self, runner: &str) -> Vec<String> {
@@ -457,15 +487,7 @@ impl Config {
         resolve(&mut self.dirs.state);
         resolve(&mut self.dirs.logs);
 
-        for runner in self.runners.values_mut() {
-            resolve(&mut runner.pwd);
-            if let Some(phase) = &mut runner.init {
-                resolve(&mut phase.pwd);
-            }
-            if let Some(phase) = &mut runner.reset {
-                resolve(&mut phase.pwd);
-            }
-            resolve(&mut runner.test.pwd);
+        for _runner in self.runners.values_mut() {
         }
     }
 }

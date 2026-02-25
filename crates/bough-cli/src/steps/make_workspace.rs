@@ -33,23 +33,22 @@ pub struct MakeWorkspace {
     pub path: PathBuf,
     pub vcs: VcsConfig,
     pub name: Option<String>,
+    pub stdout: String,
 }
 
-fn run_cmd(cmd: &str, args: &[&str], cwd: &Path) -> Result<(), Error> {
+fn run_cmd(cmd: &str, args: &[&str], cwd: &Path) -> Result<String, Error> {
     let output = Command::new(cmd)
         .args(args)
         .current_dir(cwd)
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .status()
+        .output()
         .map_err(|e| Error::Command(format!("{cmd} {}", args.join(" ")), e))?;
-    if !output.success() {
+    if !output.status.success() {
         return Err(Error::CommandFailed(
             format!("{cmd} {}", args.join(" ")),
-            output.code().unwrap_or(-1),
+            output.status.code().unwrap_or(-1),
         ));
     }
-    Ok(())
+    Ok(String::from_utf8_lossy(&output.stdout).into_owned())
 }
 
 fn generate_name() -> String {
@@ -68,31 +67,31 @@ pub fn run(config: &Config) -> Result<MakeWorkspace, Error> {
 
     std::fs::create_dir_all(&base_dir).map_err(Error::CreateDir)?;
 
-    let (name, ws_dir) = match &vcs {
+    let (name, ws_dir, stdout) = match &vcs {
         VcsConfig::Jj { .. } => {
             let name = generate_name();
             let ws_dir = base_dir.join(&name);
-            run_cmd(
+            let stdout = run_cmd(
                 "jj",
                 &["workspace", "add", "--name", &name, &ws_dir.to_string_lossy()],
                 Path::new(runner_pwd),
             )?;
-            (Some(name), ws_dir)
+            (Some(name), ws_dir, stdout)
         }
         VcsConfig::Git { .. } => {
             let name = generate_name();
             let ws_dir = base_dir.join(&name);
-            run_cmd(
+            let stdout = run_cmd(
                 "git",
                 &["worktree", "add", "-b", &name, &ws_dir.to_string_lossy()],
                 Path::new(runner_pwd),
             )?;
-            (Some(name), ws_dir)
+            (Some(name), ws_dir, stdout)
         }
         VcsConfig::None => {
             let name = generate_name();
             let ws_dir = base_dir.join(&name);
-            run_cmd(
+            let stdout = run_cmd(
                 "cp",
                 &["-a", runner_pwd, &ws_dir.to_string_lossy()],
                 Path::new(runner_pwd),
@@ -102,7 +101,7 @@ pub fn run(config: &Config) -> Result<MakeWorkspace, Error> {
                 Error::CommandFailed(cmd, code) => Error::Copy(cmd, std::io::Error::other(format!("exit code {code}"))),
                 other => other,
             })?;
-            (None, ws_dir)
+            (None, ws_dir, stdout)
         }
         VcsConfig::Mercurial => {
             todo!("mercurial workspace support")
@@ -113,6 +112,7 @@ pub fn run(config: &Config) -> Result<MakeWorkspace, Error> {
         path: ws_dir,
         vcs,
         name,
+        stdout,
     })
 }
 
@@ -143,6 +143,9 @@ impl Render for MakeWorkspace {
         if let Some(name) = &self.name {
             out.push_str(&format!("  name: {}\n", color("\x1b[33m", name)));
         }
+        if !self.stdout.is_empty() {
+            out.push_str(&color("\x1b[2m", &self.stdout));
+        }
         out
     }
 
@@ -155,6 +158,9 @@ impl Render for MakeWorkspace {
         );
         if let Some(name) = &self.name {
             out.push_str(&format!("- **Name:** `{name}`\n"));
+        }
+        if !self.stdout.is_empty() {
+            out.push_str(&format!("\n```\n{}\n```\n", self.stdout.trim()));
         }
         out
     }
