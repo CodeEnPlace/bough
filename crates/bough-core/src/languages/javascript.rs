@@ -104,7 +104,7 @@ impl Language for JavaScript {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{BinaryOpKind, find_mutants};
+    use crate::{BinaryOpKind, apply_mutation, find_mutants, generate_mutations};
     use std::path::PathBuf;
 
     fn src(content: &str) -> (SourceFile, String) {
@@ -157,5 +157,35 @@ mod tests {
         let mutants = find_mutants::<JavaScript>(&f, &content);
         assert_eq!(mutants.len(), 1);
         assert_eq!(mutants[0].kind, JsMutationKind::BinaryOp(BinaryOpKind::And));
+    }
+
+    #[test]
+    fn condition_if_replaced_with_true_and_false() {
+        let (f, content) = src("if (x > 0) { y = 1; }");
+        let mutants = find_mutants::<JavaScript>(&f, &content);
+        let cond = mutants.iter().find(|m| m.kind == JsMutationKind::Condition).unwrap();
+        let mutations = generate_mutations(cond);
+        let applied: Vec<_> = mutations.iter().map(|m| apply_mutation(&content, &m.mutant.span, &m.replacement)).collect();
+        assert_eq!(applied, vec!["if (true) { y = 1; }", "if (false) { y = 1; }"]);
+    }
+
+    #[test]
+    fn condition_while_replaced_with_true_and_false() {
+        let (f, content) = src("while (x > 0) { x--; }");
+        let mutants = find_mutants::<JavaScript>(&f, &content);
+        let cond = mutants.iter().find(|m| m.kind == JsMutationKind::Condition).unwrap();
+        let mutations = generate_mutations(cond);
+        let applied: Vec<_> = mutations.iter().map(|m| apply_mutation(&content, &m.mutant.span, &m.replacement)).collect();
+        assert_eq!(applied, vec!["while (true) { x--; }", "while (false) { x--; }"]);
+    }
+
+    #[test]
+    fn condition_for_replaced_with_true_and_false() {
+        let (f, content) = src("for (let i = 0; i < 10; i++) { x++; }");
+        let mutants = find_mutants::<JavaScript>(&f, &content);
+        let cond = mutants.iter().find(|m| m.kind == JsMutationKind::Condition).unwrap();
+        let mutations = generate_mutations(cond);
+        let applied: Vec<_> = mutations.iter().map(|m| apply_mutation(&content, &m.mutant.span, &m.replacement)).collect();
+        assert_eq!(applied, vec!["for (let i = 0; true; i++) { x++; }", "for (let i = 0; false; i++) { x++; }"]);
     }
 }
