@@ -153,6 +153,28 @@ impl Default for Phase {
     }
 }
 
+impl Phase {
+    pub fn pwd(&self) -> &str {
+        &self.pwd
+    }
+
+    pub fn timeout_absolute(&self) -> Option<u64> {
+        self.timeout.absolute
+    }
+
+    pub fn timeout_relative(&self) -> Option<u64> {
+        self.timeout.relative
+    }
+
+    pub fn env(&self) -> &HashMap<String, String> {
+        &self.env
+    }
+
+    pub fn commands(&self) -> &[String] {
+        &self.commands
+    }
+}
+
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Timeout {
@@ -328,100 +350,16 @@ impl Config {
         self.runners.get(runner).map(|r| r.treat_timeouts_as)
     }
 
-    pub fn runner_init_commands(&self, runner: &str) -> Option<Vec<String>> {
-        self.runners
-            .get(runner)
-            .and_then(|r| r.init.as_ref())
-            .map(|p| p.commands.clone())
+    pub fn runner_init_phase(&self, runner: &str) -> Option<&Phase> {
+        self.runners.get(runner).and_then(|r| r.init.as_ref())
     }
 
-    pub fn runner_init_pwd(&self, runner: &str) -> Option<&str> {
-        self.runners
-            .get(runner)
-            .and_then(|r| r.init.as_ref())
-            .map(|p| p.pwd.as_str())
+    pub fn runner_reset_phase(&self, runner: &str) -> Option<&Phase> {
+        self.runners.get(runner).and_then(|r| r.reset.as_ref())
     }
 
-    pub fn runner_init_timeout_absolute(&self, runner: &str) -> Option<u64> {
-        self.runners
-            .get(runner)
-            .and_then(|r| r.init.as_ref())
-            .and_then(|p| p.timeout.absolute)
-    }
-
-    pub fn runner_init_env(&self, runner: &str) -> HashMap<String, String> {
-        self.runners
-            .get(runner)
-            .and_then(|r| r.init.as_ref())
-            .map(|p| p.env.clone())
-            .unwrap_or_default()
-    }
-
-    pub fn runner_has_init(&self, runner: &str) -> bool {
-        self.runners.get(runner).is_some_and(|r| r.init.is_some())
-    }
-
-    pub fn runner_has_reset(&self, runner: &str) -> bool {
-        self.runners.get(runner).is_some_and(|r| r.reset.is_some())
-    }
-
-    pub fn runner_reset_commands(&self, runner: &str) -> Option<Vec<String>> {
-        self.runners
-            .get(runner)
-            .and_then(|r| r.reset.as_ref())
-            .map(|p| p.commands.clone())
-    }
-
-    pub fn runner_reset_pwd(&self, runner: &str) -> Option<&str> {
-        self.runners
-            .get(runner)
-            .and_then(|r| r.reset.as_ref())
-            .map(|p| p.pwd.as_str())
-    }
-
-    pub fn runner_reset_timeout_absolute(&self, runner: &str) -> Option<u64> {
-        self.runners
-            .get(runner)
-            .and_then(|r| r.reset.as_ref())
-            .and_then(|p| p.timeout.absolute)
-    }
-
-    pub fn runner_reset_env(&self, runner: &str) -> HashMap<String, String> {
-        self.runners
-            .get(runner)
-            .and_then(|r| r.reset.as_ref())
-            .map(|p| p.env.clone())
-            .unwrap_or_default()
-    }
-
-    pub fn runner_test_commands(&self, runner: &str) -> Vec<String> {
-        self.runners
-            .get(runner)
-            .map(|r| r.test.commands.clone())
-            .unwrap_or_default()
-    }
-
-    pub fn runner_test_pwd(&self, runner: &str) -> Option<&str> {
-        self.runners.get(runner).map(|r| r.test.pwd.as_str())
-    }
-
-    pub fn runner_test_timeout_absolute(&self, runner: &str) -> Option<u64> {
-        self.runners
-            .get(runner)
-            .and_then(|r| r.test.timeout.absolute)
-    }
-
-    pub fn runner_test_timeout_relative(&self, runner: &str) -> Option<u64> {
-        self.runners
-            .get(runner)
-            .and_then(|r| r.test.timeout.relative)
-    }
-
-    pub fn runner_test_env(&self, runner: &str) -> HashMap<String, String> {
-        self.runners
-            .get(runner)
-            .map(|r| r.test.env.clone())
-            .unwrap_or_default()
+    pub fn runner_test_phase(&self, runner: &str) -> Option<&Phase> {
+        self.runners.get(runner).map(|r| &r.test)
     }
 
     pub fn runner_test_ids_get_all(&self, runner: &str) -> Option<&str> {
