@@ -47,30 +47,20 @@ fn collect_glob(pattern: &str, base: &str) -> Result<Vec<PathBuf>, Error> {
 }
 
 pub fn run(config: &Config) -> Result<ShowSrcFiles, Error> {
-    let runner = if config.active_runner.is_empty() {
-        config
-            .runners
-            .values()
-            .next()
-            .ok_or(Error::NoActiveRunner)?
-    } else {
-        config
-            .runners
-            .get(&config.active_runner)
-            .ok_or(Error::NoActiveRunner)?
-    };
+    let runner_name = config.resolved_runner_name().ok_or(Error::NoActiveRunner)?;
+    let runner_pwd = config.runner_pwd(runner_name).ok_or(Error::NoActiveRunner)?;
 
     let mut files: BTreeMap<LanguageId, Vec<SourceFile>> = BTreeMap::new();
 
-    for (lang, mutate_lang) in &runner.mutate {
+    for lang in config.mutate_languages(runner_name) {
         let mut included = Vec::new();
-        for pattern in &mutate_lang.files.include {
-            included.extend(collect_glob(pattern, &runner.pwd)?);
+        for pattern in &config.file_includes(runner_name, lang) {
+            included.extend(collect_glob(pattern, runner_pwd)?);
         }
 
         let mut excluded = std::collections::HashSet::new();
-        for pattern in &mutate_lang.files.exclude {
-            for path in collect_glob(pattern, &runner.pwd)? {
+        for pattern in &config.file_excludes(runner_name, lang) {
+            for path in collect_glob(pattern, runner_pwd)? {
                 excluded.insert(path);
             }
         }
@@ -87,7 +77,7 @@ pub fn run(config: &Config) -> Result<ShowSrcFiles, Error> {
             let sf = SourceFile::read(&path).map_err(|e| Error::ReadFile(path, e))?;
             src_files.push(sf);
         }
-        files.insert(*lang, src_files);
+        files.insert(lang, src_files);
     }
 
     Ok(ShowSrcFiles { files })
