@@ -41,7 +41,7 @@ commands = [
 files.include = ["**/*.js", "**/*.jsx"]
 files.exclude = ["**/*__mocks__*"]
 mutants.skip = [
-  { lisp = "((fn 'describe') @ignore)" } ,
+  { query = "((fn 'describe') @ignore)" } ,
   { kind = { "BinaryOp" = "Add" } }
 ]
 
@@ -49,7 +49,7 @@ mutants.skip = [
 #must be tree-sitter id
 files.include = ["**/*.rs"]
 mutants.skip = [
-  { lisp = "((fn 'describe') @ignore)" } ,
+  { query = "((condition'describe') @ignore)" } ,
   { kind = { "BinaryOp" = "Add" } }
 ]
 
@@ -65,7 +65,7 @@ commands = ["cargo test"]
 files.include = ["**/*.js", "**/*.jsx"]
 files.exclude = ["**/*__mocks__*"]
 mutants.skip = [
-  { lisp = "((fn 'describe') @ignore)" } ,
+  { query = "((fn 'describe') @ignore)" } ,
   { kind = { "BinaryOp" = "Add" } }
 ]
 
@@ -73,6 +73,6 @@ mutants.skip = [
 #must be tree-sitter id
 files.include = ["**/*.rs"]
 mutants.skip = [
-  { lisp = "((fn 'describe') @ignore)" } ,
+  { query = "((fn 'describe') @ignore)" } ,
   { kind = { "BinaryOp" = "Add" } }
 ]

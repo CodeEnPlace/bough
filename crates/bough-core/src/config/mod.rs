@@ -178,7 +178,7 @@ pub struct MutantFilter {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum MutantSkip {
-    Lisp { lisp: String },
+    Query { query: String },
     Kind { kind: HashMap<String, String> },
 }
 
