@@ -52,6 +52,10 @@ enum WorkspaceAction {
         #[arg()]
         path: PathBuf,
     },
+    Reset {
+        #[arg()]
+        path: PathBuf,
+    },
     Drop {
         #[arg()]
         name: String,
@@ -109,6 +113,18 @@ fn main() {
                     std::process::exit(1);
                 });
                 let result = steps::init_workspace::run(&cfg, &path).unwrap_or_else(|e| {
+                    eprintln!("{e}");
+                    std::process::exit(1);
+                });
+                let no_color = !std::io::IsTerminal::is_terminal(&std::io::stdout());
+                result.render(&cli.output_style, no_color, 0);
+            }
+            WorkspaceAction::Reset { path } => {
+                let cfg = config::load(&cli).unwrap_or_else(|e| {
+                    eprintln!("{e}");
+                    std::process::exit(1);
+                });
+                let result = steps::reset_workspace::run(&cfg, &path).unwrap_or_else(|e| {
                     eprintln!("{e}");
                     std::process::exit(1);
                 });

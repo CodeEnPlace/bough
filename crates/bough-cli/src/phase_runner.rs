@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use bough_core::config::Phase;
 use std::io::Read;
 use std::path::Path;
 use std::process::{Command, Stdio};
@@ -45,37 +45,27 @@ impl std::fmt::Display for Error {
 
 impl std::error::Error for Error {}
 
-pub struct PhaseRunner<'a> {
-    commands: Vec<String>,
-    pwd: &'a Path,
-    env: HashMap<String, String>,
-    timeout: Option<Duration>,
-}
-
 #[derive(Debug, Default)]
 pub struct PhaseOutput {
     pub stdout: String,
 }
 
+pub struct PhaseRunner<'a> {
+    phase: &'a Phase,
+    workspace: &'a Path,
+}
+
 impl<'a> PhaseRunner<'a> {
-    pub fn new(
-        commands: Vec<String>,
-        pwd: &'a Path,
-        env: HashMap<String, String>,
-        timeout_secs: Option<u64>,
-    ) -> Self {
-        Self {
-            commands,
-            pwd,
-            env,
-            timeout: timeout_secs.map(Duration::from_secs),
-        }
+    pub fn new(phase: &'a Phase, workspace: &'a Path) -> Self {
+        Self { phase, workspace }
     }
 
     pub fn run(&self) -> Result<PhaseOutput, Error> {
+        let pwd = self.workspace.join(self.phase.pwd());
+        let timeout = self.phase.timeout_absolute().map(Duration::from_secs);
         let mut combined_stdout = String::new();
-        for (i, cmd) in self.commands.iter().enumerate() {
-            let stdout = self.run_one(i, cmd)?;
+        for (i, cmd) in self.phase.commands().iter().enumerate() {
+            let stdout = self.run_one(i, cmd, &pwd, &timeout)?;
             combined_stdout.push_str(&stdout);
         }
         Ok(PhaseOutput {
@@ -83,12 +73,18 @@ impl<'a> PhaseRunner<'a> {
         })
     }
 
-    fn run_one(&self, index: usize, cmd: &str) -> Result<String, Error> {
+    fn run_one(
+        &self,
+        index: usize,
+        cmd: &str,
+        pwd: &Path,
+        timeout: &Option<Duration>,
+    ) -> Result<String, Error> {
         let mut child = Command::new("sh")
             .arg("-c")
             .arg(cmd)
-            .current_dir(&self.pwd)
-            .envs(&self.env)
+            .current_dir(pwd)
+            .envs(self.phase.env())
             .stdout(Stdio::piped())
             .stderr(Stdio::inherit())
             .spawn()
@@ -106,10 +102,10 @@ impl<'a> PhaseRunner<'a> {
             buf
         };
 
-        match self.timeout {
+        match timeout {
             Some(duration) => {
                 let status = child
-                    .wait_timeout(duration)
+                    .wait_timeout(*duration)
                     .map_err(|e| Error::Command {
                         index,
                         cmd: cmd.to_string(),
