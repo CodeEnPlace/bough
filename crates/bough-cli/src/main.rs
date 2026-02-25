@@ -44,6 +44,7 @@ enum ShowSubject {
     Config,
     Src,
     Mutations,
+    TestIds,
 }
 
 fn main() {
@@ -109,6 +110,18 @@ fn main() {
                     std::process::exit(1);
                 });
                 let result = steps::get_mutations::run(&src_files, &cfg).unwrap_or_else(|e| {
+                    eprintln!("{e}");
+                    std::process::exit(1);
+                });
+                let no_color = !std::io::IsTerminal::is_terminal(&std::io::stdout());
+                result.render(&cli.output_style, no_color, 0);
+            }
+            ShowSubject::TestIds => {
+                let cfg = config::load(&cli).unwrap_or_else(|e| {
+                    eprintln!("{e}");
+                    std::process::exit(1);
+                });
+                let result = steps::get_all_test_ids::run(&cfg).unwrap_or_else(|e| {
                     eprintln!("{e}");
                     std::process::exit(1);
                 });

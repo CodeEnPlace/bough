@@ -9,8 +9,8 @@ init.commands = ["npm install"]
 test.commands = ["npm test"]
 
 [vitest-js.test_ids]
-get_all = "npm run get-test-ids"
-get_failed = "npm run get-failed-test-ids"
+get_all = "npm run --silent get-test-ids"
+get_failed = "npm run --silent get-failed-test-ids"
 
 [vitest-js.js]
 files.include = ["src/*.js"]
