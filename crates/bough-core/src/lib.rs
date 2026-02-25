@@ -2,18 +2,13 @@ pub mod config;
 pub mod io;
 pub mod languages;
 
-use serde::de::{self, Deserializer, MapAccess, Visitor};
-use serde::ser::{SerializeStruct, Serializer};
+use bough_sha::{ShaHash, ShaHashable};
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
-use std::fmt;
+use std::fmt::Debug;
 use std::path::{Path, PathBuf};
 use tree_sitter::Parser;
 
-#[derive(Debug, Clone)]
-pub struct Hash([u8; 16]);
-
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub enum Outcome {
     #[default]
@@ -22,45 +17,63 @@ pub enum Outcome {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ShaHashable)]
-pub struct Mutation<L: Language> {
-    mutant: Mutant<L>,
-    replacement: String,
+pub struct SourceFile {
+    pub path: PathBuf,
+    pub hash: ShaHash,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ShaHashable)]
-pub struct Mutant<L: Language> {
-    src: SourceFile,
-    span: Span,
-    kind: L::Kind,
-}
+impl SourceFile {
+    pub fn read(path: &Path) -> std::io::Result<Self> {
+        let content = std::fs::read_to_string(path)?;
+        Ok(Self {
+            path: path.to_owned(),
+            hash: content.sha_hash(),
+        })
+    }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ShaHashable)]
-pub struct Span {
-    start: Point,
-    end: Point,
+    pub fn from_content(path: PathBuf, content: &str) -> Self {
+        Self {
+            path,
+            hash: content.sha_hash(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ShaHashable)]
 pub struct Point {
-    src: SourceFile,
-    line: usize,
-    char: usize,
-    byte: usize,
+    pub src: SourceFile,
+    pub line: usize,
+    pub char: usize,
+    pub byte: usize,
+}
+
+impl Point {
+    pub fn from_ts(file: &SourceFile, ts: tree_sitter::Point, byte: usize) -> Self {
+        Self {
+            src: file.clone(),
+            line: ts.row,
+            char: ts.column,
+            byte,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ShaHashable)]
-pub struct SourceFile {
-    path: PathBuf,
-    hash: Hash,
+pub struct Span {
+    pub start: Point,
+    pub end: Point,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ShaHashable)]
-pub enum MutationKind {
-    StatementBlock,
-    BinaryOp(BinaryOpKind),
+impl Span {
+    pub fn from_node(file: &SourceFile, node: tree_sitter::Node<'_>) -> Self {
+        Self {
+            start: Point::from_ts(file, node.start_position(), node.start_byte()),
+            end: Point::from_ts(file, node.end_position(), node.end_byte()),
+        }
+    }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ShaHashable)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, ShaHashable)]
 pub enum BinaryOpKind {
     Add,
     Sub,
@@ -78,269 +91,103 @@ pub enum BinaryOpKind {
     Gte,
 }
 
-pub trait Language {
-    type Kind: Into<MutationKind>;
-
-    fn code_tag() -> &'static str;
-    fn tree_sitter_language() -> tree_sitter::Language;
-    fn mutation_kind_for_node<'a>(
-        node: tree_sitter::Node<'_>,
-        file: &'a SourceFile,
-    ) -> Option<(Self::Kind, Span<'a>)>;
-    fn generate_substitutions<'a>(
-        kind: &Self::Kind,
-        file: &'a SourceFile,
-        span: &Span<'a>,
-    ) -> Vec<(String, MutatedFile<'a>)>;
-}
-
 impl BinaryOpKind {
     pub fn label(&self) -> &'static str {
         match self {
-            BinaryOpKind::Add => "+",
-            BinaryOpKind::Sub => "-",
-            BinaryOpKind::Mul => "*",
-            BinaryOpKind::Div => "/",
-            BinaryOpKind::And => "&&",
-            BinaryOpKind::Or => "||",
-            BinaryOpKind::StrictEq => "===",
-            BinaryOpKind::StrictNeq => "!==",
-            BinaryOpKind::Eq => "==",
-            BinaryOpKind::Neq => "!=",
-            BinaryOpKind::Lt => "<",
-            BinaryOpKind::Lte => "<=",
-            BinaryOpKind::Gt => ">",
-            BinaryOpKind::Gte => ">=",
+            BinaryOpKind::Add => "Add (+)",
+            BinaryOpKind::Sub => "Subtract (-)",
+            BinaryOpKind::Mul => "Multiply (*)",
+            BinaryOpKind::Div => "Divide (/)",
+            BinaryOpKind::And => "Logical And (&&)",
+            BinaryOpKind::Or => "Logical Or (||)",
+            BinaryOpKind::StrictEq => "Strict Equal (===)",
+            BinaryOpKind::StrictNeq => "Strict Not Equal (!==)",
+            BinaryOpKind::Eq => "Equal (==)",
+            BinaryOpKind::Neq => "Not Equal (!=)",
+            BinaryOpKind::Lt => "Less Than (<)",
+            BinaryOpKind::Lte => "Less Than or Equal (<=)",
+            BinaryOpKind::Gt => "Greater Than (>)",
+            BinaryOpKind::Gte => "Greater Than or Equal (>=)",
         }
     }
 }
 
-/*
-
-impl Serialize for Hash {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let hex: String = self.0.iter().map(|b| format!("{b:02x}")).collect();
-        serializer.serialize_str(&hex)
-    }
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ShaHashable)]
+pub enum MutationKind {
+    StatementBlock,
+    BinaryOp(BinaryOpKind),
 }
 
-impl<'de> Deserialize<'de> for Hash {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        let hex = <&str>::deserialize(deserializer)?;
-        let bytes: Vec<u8> = (0..hex.len())
-            .step_by(2)
-            .map(|i| u8::from_str_radix(&hex[i..i + 2], 16).map_err(de::Error::custom))
-            .collect::<Result<_, _>>()?;
-        let arr: [u8; 16] = bytes
-            .try_into()
-            .map_err(|_| de::Error::custom("expected 32 hex chars"))?;
-        Ok(Self(arr))
-    }
+pub trait Language {
+    type Kind: Debug + Clone + PartialEq + Serialize + for<'de> Deserialize<'de> + ShaHashable + Into<MutationKind>;
+
+    fn code_tag() -> &'static str;
+    fn tree_sitter_language() -> tree_sitter::Language;
+    fn mutation_kind_for_node(
+        node: tree_sitter::Node<'_>,
+        content: &[u8],
+        file: &SourceFile,
+    ) -> Option<(Self::Kind, Span)>;
+    fn substitutions_for_kind(kind: &Self::Kind) -> Vec<String>;
 }
 
-impl PartialEq for Hash {
-    fn eq(&self, other: &Self) -> bool {
-        self.0 == other.0
-    }
+#[derive(Debug, PartialEq, Serialize, Deserialize, ShaHashable)]
+#[serde(bound = "")]
+pub struct Mutant<L: Language> {
+    pub src: SourceFile,
+    pub span: Span,
+    pub kind: L::Kind,
 }
 
-impl fmt::Display for Hash {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for b in &self.0 {
-            write!(f, "{b:02x}")?;
-        }
-        Ok(())
-    }
-}
-
-impl std::str::FromStr for Hash {
-    type Err = String;
-
-    fn from_str(hex: &str) -> Result<Self, Self::Err> {
-        let bytes: Vec<u8> = (0..hex.len())
-            .step_by(2)
-            .map(|i| u8::from_str_radix(&hex[i..i + 2], 16).map_err(|e| e.to_string()))
-            .collect::<Result<_, _>>()?;
-        let arr: [u8; 16] = bytes
-            .try_into()
-            .map_err(|_| "expected 32 hex chars".to_string())?;
-        Ok(Self(arr))
-    }
-}
-
-impl Hash {
-    pub fn of(content: &str) -> Self {
-        let full: [u8; 32] = Sha256::digest(content.as_bytes()).into();
-        let mut truncated = [0u8; 16];
-        truncated.copy_from_slice(&full[..16]);
-        Self(truncated)
-    }
-}
-
-// we want to remove content from here so it's more easily serializable
-
-
-
-impl Serialize for MutatedFile<'_> {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let mut state = serializer.serialize_struct("MutatedFile", 2)?;
-        state.serialize_field("source_file", &self.source_file)?;
-        state.serialize_field("hash", &self.hash)?;
-        state.end()
-    }
-}
-
-impl Serialize for SourceFile {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let mut state = serializer.serialize_struct("SourceFile", 2)?;
-        state.serialize_field("path", &self.path)?;
-        state.serialize_field("hash", &self.hash)?;
-        state.end()
-    }
-}
-
-impl<'de> Deserialize<'de> for SourceFile {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        struct SourceFileVisitor;
-
-        impl<'de> Visitor<'de> for SourceFileVisitor {
-            type Value = SourceFile;
-
-            fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                f.write_str("a SourceFile with path and hash")
-            }
-
-            fn visit_map<A: MapAccess<'de>>(self, mut map: A) -> Result<SourceFile, A::Error> {
-                let mut path: Option<PathBuf> = None;
-                let mut hash: Option<Hash> = None;
-
-                while let Some(key) = map.next_key::<&str>()? {
-                    match key {
-                        "path" => path = Some(map.next_value()?),
-                        "hash" => hash = Some(map.next_value()?),
-                        _ => {
-                            let _ = map.next_value::<de::IgnoredAny>()?;
-                        }
-                    }
-                }
-
-                let path = path.ok_or_else(|| de::Error::missing_field("path"))?;
-                let hash = hash.ok_or_else(|| de::Error::missing_field("hash"))?;
-                let content = std::fs::read_to_string(&path).map_err(|e| {
-                    de::Error::custom(format!("failed to read {}: {e}", path.display()))
-                })?;
-
-                Ok(SourceFile {
-                    path,
-                    content,
-                    hash,
-                })
-            }
-        }
-
-        deserializer.deserialize_struct("SourceFile", &["path", "hash"], SourceFileVisitor)
-    }
-}
-
-impl SourceFile {
-    pub fn read(path: &Path) -> std::io::Result<Self> {
-        let content = std::fs::read_to_string(path)?;
-        let hash = Hash::of(&content);
-        Ok(Self {
-            path: path.to_owned(),
-            content,
-            hash,
-        })
-    }
-
-    pub fn path(&self) -> &Path {
-        &self.path
-    }
-
-    pub fn content(&self) -> &str {
-        &self.content
-    }
-
-    pub fn hash(&self) -> &Hash {
-        &self.hash
-    }
-
-    pub fn with_replacement(&self, span: &Span, replacement: &str) -> MutatedFile<'_> {
-        let mut content = String::with_capacity(self.content.len());
-        content.push_str(&self.content[..span.start.byte]);
-        content.push_str(replacement);
-        content.push_str(&self.content[span.end.byte..]);
-        let hash = Hash::of(&content);
-        MutatedFile {
-            source_file: self,
-            content,
-            hash,
-        }
-    }
-}
-
-impl<'a> MutatedFile<'a> {
-    pub fn source_file(&self) -> &'a SourceFile {
-        self.source_file
-    }
-
-    pub fn content(&self) -> &str {
-        &self.content
-    }
-
-    pub fn hash(&self) -> &Hash {
-        &self.hash
-    }
-}
-
-
-impl<'a> Point<'a> {
-    pub fn from_ts(file: &'a SourceFile, ts: tree_sitter::Point, byte: usize) -> Self {
+impl<L: Language> Clone for Mutant<L> {
+    fn clone(&self) -> Self {
         Self {
-            src: file,
-            line: ts.row,
-            char: ts.column,
-            byte,
+            src: self.src.clone(),
+            span: self.span.clone(),
+            kind: self.kind.clone(),
         }
     }
 }
 
-impl<'a> Span<'a> {
-    pub fn from_node(file: &'a SourceFile, node: tree_sitter::Node<'_>) -> Self {
+#[derive(Debug, PartialEq, Serialize, Deserialize, ShaHashable)]
+#[serde(bound = "")]
+pub struct Mutation<L: Language> {
+    pub mutant: Mutant<L>,
+    pub replacement: String,
+}
+
+impl<L: Language> Clone for Mutation<L> {
+    fn clone(&self) -> Self {
         Self {
-            src: file,
-            start: Point::from_ts(file, node.start_position(), node.start_byte()),
-            end: Point::from_ts(file, node.end_position(), node.end_byte()),
+            mutant: self.mutant.clone(),
+            replacement: self.replacement.clone(),
         }
     }
 }
 
-
-
-pub fn generate_mutation_substitutions<'a, L: Language>(
-    point: &Mutant<'a, L>,
-) -> Vec<(String, MutatedFile<'a>)> {
-    L::generate_substitutions(&point.kind, point.file, &point.span)
-}
-
-pub fn find_mutation_points<'a, L: Language>(file: &'a SourceFile) -> Vec<Mutant<'a, L>> {
+pub fn find_mutants<L: Language>(file: &SourceFile, content: &str) -> Vec<Mutant<L>> {
     let mut parser = Parser::new();
     parser
         .set_language(&L::tree_sitter_language())
         .expect("failed to load grammar");
 
     let tree = parser
-        .parse(file.content(), None)
+        .parse(content, None)
         .expect("failed to parse source");
 
-    let mut points = Vec::new();
+    let bytes = content.as_bytes();
+    let mut mutants = Vec::new();
     let mut cursor = tree.walk();
 
     loop {
         let node = cursor.node();
 
-        if let Some((kind, span)) = L::mutation_kind_for_node(node, file) {
-            points.push(Mutant { file, span, kind });
+        if let Some((kind, span)) = L::mutation_kind_for_node(node, bytes, file) {
+            mutants.push(Mutant {
+                src: file.clone(),
+                span,
+                kind,
+            });
         }
 
         if cursor.goto_first_child() {
@@ -348,44 +195,60 @@ pub fn find_mutation_points<'a, L: Language>(file: &'a SourceFile) -> Vec<Mutant
         }
         while !cursor.goto_next_sibling() {
             if !cursor.goto_parent() {
-                return points;
+                return mutants;
             }
         }
     }
+}
+
+pub fn generate_mutations<L: Language>(mutant: &Mutant<L>) -> Vec<Mutation<L>>
+where
+    L::Kind: Clone,
+{
+    L::substitutions_for_kind(&mutant.kind)
+        .into_iter()
+        .map(|replacement| Mutation {
+            mutant: mutant.clone(),
+            replacement,
+        })
+        .collect()
+}
+
+pub fn apply_mutation(content: &str, span: &Span, replacement: &str) -> String {
+    let mut result = String::with_capacity(content.len());
+    result.push_str(&content[..span.start.byte]);
+    result.push_str(replacement);
+    result.push_str(&content[span.end.byte..]);
+    result
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::languages::javascript::JavaScript;
-    use std::path::PathBuf;
 
-    fn file(content: &str) -> SourceFile {
-        let content = content.to_string();
-        let hash = Hash::of(&content);
-        SourceFile {
-            path: PathBuf::from("test.js"),
-            content,
-            hash,
-        }
+    fn src(content: &str) -> (SourceFile, String) {
+        let file = SourceFile::from_content(PathBuf::from("test.js"), content);
+        (file, content.to_string())
     }
 
     #[test]
     fn statement_block_substitution_is_empty_block() {
-        let f = file("function foo() { return 1; }");
-        let points = find_mutation_points::<JavaScript>(&f);
-        let subs = generate_mutation_substitutions(&points[0]);
-        assert_eq!(subs.len(), 1);
-        assert_eq!(subs[0].0, "{}");
-        assert_eq!(subs[0].1.content(), "function foo() {}");
+        let (f, content) = src("function foo() { return 1; }");
+        let mutants = find_mutants::<JavaScript>(&f, &content);
+        let mutations = generate_mutations(&mutants[0]);
+        assert_eq!(mutations.len(), 1);
+        assert_eq!(mutations[0].replacement, "{}");
+        let applied = apply_mutation(&content, &mutations[0].mutant.span, &mutations[0].replacement);
+        assert_eq!(applied, "function foo() {}");
     }
 
     #[test]
     fn addition_substitutions() {
-        let f = file("const x = a + b;");
-        let points = find_mutation_points::<JavaScript>(&f);
-        let subs = generate_mutation_substitutions(&points[0]);
-        let replacements: Vec<_> = subs.iter().map(|s| s.0.as_str()).collect();
+        let (f, content) = src("const x = a + b;");
+        let mutants = find_mutants::<JavaScript>(&f, &content);
+        let mutations = generate_mutations(&mutants[0]);
+        let replacements: Vec<_> = mutations.iter().map(|m| m.replacement.as_str()).collect();
         assert!(replacements.contains(&"-"));
         assert!(replacements.contains(&"*"));
         assert!(replacements.contains(&"/"));
@@ -393,10 +256,10 @@ mod tests {
 
     #[test]
     fn multiplication_substitutions() {
-        let f = file("const x = a * b;");
-        let points = find_mutation_points::<JavaScript>(&f);
-        let subs = generate_mutation_substitutions(&points[0]);
-        let replacements: Vec<_> = subs.iter().map(|s| s.0.as_str()).collect();
+        let (f, content) = src("const x = a * b;");
+        let mutants = find_mutants::<JavaScript>(&f, &content);
+        let mutations = generate_mutations(&mutants[0]);
+        let replacements: Vec<_> = mutations.iter().map(|m| m.replacement.as_str()).collect();
         assert!(replacements.contains(&"+"));
         assert!(replacements.contains(&"-"));
         assert!(replacements.contains(&"/"));
@@ -404,19 +267,19 @@ mod tests {
 
     #[test]
     fn logical_and_substitutions() {
-        let f = file("const x = a && b;");
-        let points = find_mutation_points::<JavaScript>(&f);
-        let subs = generate_mutation_substitutions(&points[0]);
-        let replacements: Vec<_> = subs.iter().map(|s| s.0.as_str()).collect();
+        let (f, content) = src("const x = a && b;");
+        let mutants = find_mutants::<JavaScript>(&f, &content);
+        let mutations = generate_mutations(&mutants[0]);
+        let replacements: Vec<_> = mutations.iter().map(|m| m.replacement.as_str()).collect();
         assert!(replacements.contains(&"||"));
     }
 
     #[test]
-    fn substitution_holds_ref_to_source_file() {
-        let f = file("const x = a + b;");
-        let points = find_mutation_points::<JavaScript>(&f);
-        let subs = generate_mutation_substitutions(&points[0]);
-        assert!(std::ptr::eq(subs[0].1.source_file(), &f));
+    fn source_file_hashes_content() {
+        let f1 = SourceFile::from_content(PathBuf::from("a.js"), "hello");
+        let f2 = SourceFile::from_content(PathBuf::from("a.js"), "hello");
+        let f3 = SourceFile::from_content(PathBuf::from("a.js"), "world");
+        assert_eq!(f1.hash, f2.hash);
+        assert_ne!(f1.hash, f3.hash);
     }
 }
-*/

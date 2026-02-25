@@ -40,11 +40,7 @@ pub trait Render {
                 serde_yaml::to_string(&self.render_value()).expect("failed to serialize")
             }
         };
-        let output = if no_color {
-            strip_ansi(&output)
-        } else {
-            output
-        };
+        let output = if no_color { strip_ansi(&output) } else { output };
         print!("{output}");
     }
 }
@@ -117,63 +113,63 @@ impl Render for MutationKind {
     }
 }
 
-impl<L: Language> Render for Mutation<'_, '_, L>
+impl<L: Language> Render for Mutation<L>
 where
-    L::Kind: Clone + Into<MutationKind>,
+    L::Kind: Clone + Into<MutationKind> + Serialize,
 {
+    fn render_value(&self) -> serde_value::Value {
+        serde_value::to_value(self).expect("failed to serialize")
+    }
+
     fn render_terse(&self) -> String {
-        let point = self.point;
-        let original = &point.file.content()[point.span.start.byte..point.span.end.byte];
-        let kind: MutationKind = point.kind.clone().into();
-        let path = point.file.path().display();
+        let kind: MutationKind = self.mutant.kind.clone().into();
+        let path = self.mutant.src.path.display();
+        let span = &self.mutant.span;
         let loc = format!(
             "{}:{}-{}:{}",
-            point.span.start.line + 1,
-            point.span.start.char + 1,
-            point.span.end.line + 1,
-            point.span.end.char + 1,
+            span.start.line + 1,
+            span.start.char + 1,
+            span.end.line + 1,
+            span.end.char + 1,
         );
         format!(
-            "{} at {}\n{}\n{}\n",
+            "{} at {} → {}\n",
             color("\x1b[1m", &kind.render_terse()),
             color("\x1b[36m", &format!("{path}:{loc}")),
-            color("\x1b[31m", original),
             color("\x1b[32m", &self.replacement),
         )
     }
 
     fn render_verbose(&self) -> String {
-        let point = self.point;
-        let original = &point.file.content()[point.span.start.byte..point.span.end.byte];
-        let kind: MutationKind = point.kind.clone().into();
-        let path = point.file.path().display();
+        let kind: MutationKind = self.mutant.kind.clone().into();
+        let path = self.mutant.src.path.display();
+        let span = &self.mutant.span;
         let loc = format!(
             "{}:{}-{}:{}",
-            point.span.start.line + 1,
-            point.span.start.char + 1,
-            point.span.end.line + 1,
-            point.span.end.char + 1,
+            span.start.line + 1,
+            span.start.char + 1,
+            span.end.line + 1,
+            span.end.char + 1,
         );
         format!(
-            "{} at {}\n{}\n{}\n",
+            "{} at {}\nhash: {}\nreplacement: {}\n",
             color("\x1b[1m", &kind.render_verbose()),
             color("\x1b[36m", &format!("{path}:{loc}")),
-            color("\x1b[31m", original),
+            self.mutant.src.hash,
             color("\x1b[32m", &self.replacement),
         )
     }
 
     fn render_markdown(&self, depth: u8) -> String {
-        let point = self.point;
-        let original = &point.file.content()[point.span.start.byte..point.span.end.byte];
-        let kind: MutationKind = point.kind.clone().into();
-        let path = point.file.path().display();
+        let kind: MutationKind = self.mutant.kind.clone().into();
+        let path = self.mutant.src.path.display();
+        let span = &self.mutant.span;
         let loc = format!(
             "{}:{}-{}:{}",
-            point.span.start.line + 1,
-            point.span.start.char + 1,
-            point.span.end.line + 1,
-            point.span.end.char + 1,
+            span.start.line + 1,
+            span.start.char + 1,
+            span.end.line + 1,
+            span.end.char + 1,
         );
         let heading = "#".repeat((depth + 1).min(6) as usize);
         let tag = L::code_tag();
@@ -182,33 +178,10 @@ where
              **Kind:** {}\n\n\
              **File:** `{path}`\n\n\
              **Location:** {loc}\n\n\
-             **Original:**\n```{tag}\n{original}\n```\n\n\
              **Replacement:**\n```{tag}\n{}\n```\n",
             kind.render_markdown(depth + 1),
             self.replacement,
         )
-    }
-
-    fn render_value(&self) -> serde_value::Value {
-        let point = self.point;
-        let original = &point.file.content()[point.span.start.byte..point.span.end.byte];
-        let kind: MutationKind = point.kind.clone().into();
-        let path = point.file.path().display().to_string();
-        let loc = format!(
-            "{}:{}-{}:{}",
-            point.span.start.line + 1,
-            point.span.start.char + 1,
-            point.span.end.line + 1,
-            point.span.end.char + 1,
-        );
-        serde_value::to_value(&serde_json::json!({
-            "path": path,
-            "location": loc,
-            "kind": kind,
-            "original": original,
-            "replacement": self.replacement,
-        }))
-        .expect("failed to serialize")
     }
 }
 

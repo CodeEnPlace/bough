@@ -189,6 +189,12 @@ impl<T: ShaHashable> ShaHashable for [T] {
     }
 }
 
+impl ShaHashable for ShaHash {
+    fn sha_hash_into(&self, state: &mut ShaState) {
+        state.update(self.0);
+    }
+}
+
 impl ShaHashable for Path {
     fn sha_hash_into(&self, state: &mut ShaState) {
         self.to_string_lossy().as_ref().sha_hash_into(state);
