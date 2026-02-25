@@ -1,9 +1,10 @@
-use crate::{BinaryOpKind, Language, MutatedFile, MutationKind, SourceFile, Span};
+use crate::{BinaryOpKind, Language, MutationKind, SourceFile, Span};
+use bough_sha::ShaHashable;
 use serde::{Deserialize, Serialize};
 
 pub struct JavaScript;
 
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, ShaHashable)]
 pub enum JsMutationKind {
     StatementBlock,
     BinaryOp(BinaryOpKind),
@@ -29,19 +30,18 @@ impl Language for JavaScript {
         tree_sitter_javascript::LANGUAGE.into()
     }
 
-    fn mutation_kind_for_node<'a>(
+    fn mutation_kind_for_node(
         node: tree_sitter::Node<'_>,
-        file: &'a SourceFile,
-    ) -> Option<(JsMutationKind, Span<'a>)> {
-        let source = file.content().as_bytes();
+        content: &[u8],
+        file: &SourceFile,
+    ) -> Option<(JsMutationKind, Span)> {
         match node.kind() {
             "statement_block" => {
-                let span = Span::from_node(file, node);
-                Some((JsMutationKind::StatementBlock, span))
+                Some((JsMutationKind::StatementBlock, Span::from_node(file, node)))
             }
             "binary_expression" => {
                 let op_node = node.child(1)?;
-                let op = match op_node.utf8_text(source).ok()? {
+                let op = match op_node.utf8_text(content).ok()? {
                     "+" => BinaryOpKind::Add,
                     "-" => BinaryOpKind::Sub,
                     "*" => BinaryOpKind::Mul,
@@ -58,18 +58,13 @@ impl Language for JavaScript {
                     ">=" => BinaryOpKind::Gte,
                     _ => return None,
                 };
-                let span = Span::from_node(file, op_node);
-                Some((JsMutationKind::BinaryOp(op), span))
+                Some((JsMutationKind::BinaryOp(op), Span::from_node(file, op_node)))
             }
             _ => None,
         }
     }
 
-    fn generate_substitutions<'a>(
-        kind: &JsMutationKind,
-        file: &'a SourceFile,
-        span: &Span<'a>,
-    ) -> Vec<(String, MutatedFile<'a>)> {
+    fn substitutions_for_kind(kind: &JsMutationKind) -> Vec<String> {
         use BinaryOpKind::*;
         let replacements: &[&str] = match kind {
             JsMutationKind::StatementBlock => &["{}"],
@@ -88,44 +83,36 @@ impl Language for JavaScript {
             JsMutationKind::BinaryOp(Gt) => &["<", "<=", ">="],
             JsMutationKind::BinaryOp(Gte) => &[">", "<", "<="],
         };
-        replacements
-            .iter()
-            .map(|r| (r.to_string(), file.with_replacement(span, r)))
-            .collect()
+        replacements.iter().map(|r| r.to_string()).collect()
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{BinaryOpKind, SourceFile, find_mutation_points};
+    use crate::{BinaryOpKind, find_mutants};
     use std::path::PathBuf;
 
-    fn file(content: &str) -> SourceFile {
-        let content = content.to_string();
-        let hash = crate::Hash::of(&content);
-        SourceFile {
-            path: PathBuf::from("test.js"),
-            content,
-            hash,
-        }
+    fn src(content: &str) -> (SourceFile, String) {
+        let file = SourceFile::from_content(PathBuf::from("test.js"), content);
+        (file, content.to_string())
     }
 
     #[test]
     fn finds_function_body() {
-        let f = file("function foo() { return 1; }");
-        let points = find_mutation_points::<JavaScript>(&f);
-        assert_eq!(points.len(), 1);
-        assert_eq!(points[0].span.start.byte, 15);
-        assert_eq!(points[0].span.end.byte, 28);
-        assert_eq!(points[0].kind, JsMutationKind::StatementBlock);
+        let (f, content) = src("function foo() { return 1; }");
+        let mutants = find_mutants::<JavaScript>(&f, &content);
+        assert_eq!(mutants.len(), 1);
+        assert_eq!(mutants[0].span.start.byte, 15);
+        assert_eq!(mutants[0].span.end.byte, 28);
+        assert_eq!(mutants[0].kind, JsMutationKind::StatementBlock);
     }
 
     #[test]
     fn finds_nested_blocks() {
-        let f = file("function foo() { if (x) { return 1; } }");
-        let points = find_mutation_points::<JavaScript>(&f);
-        assert_eq!(points.len(), 2);
+        let (f, content) = src("function foo() { if (x) { return 1; } }");
+        let mutants = find_mutants::<JavaScript>(&f, &content);
+        assert_eq!(mutants.len(), 2);
     }
 
     #[test]
@@ -136,25 +123,25 @@ mod tests {
 
     #[test]
     fn finds_addition() {
-        let f = file("const x = a + b;");
-        let points = find_mutation_points::<JavaScript>(&f);
-        assert_eq!(points.len(), 1);
-        assert_eq!(points[0].kind, JsMutationKind::BinaryOp(BinaryOpKind::Add));
+        let (f, content) = src("const x = a + b;");
+        let mutants = find_mutants::<JavaScript>(&f, &content);
+        assert_eq!(mutants.len(), 1);
+        assert_eq!(mutants[0].kind, JsMutationKind::BinaryOp(BinaryOpKind::Add));
     }
 
     #[test]
     fn finds_multiplication() {
-        let f = file("const x = a * b;");
-        let points = find_mutation_points::<JavaScript>(&f);
-        assert_eq!(points.len(), 1);
-        assert_eq!(points[0].kind, JsMutationKind::BinaryOp(BinaryOpKind::Mul));
+        let (f, content) = src("const x = a * b;");
+        let mutants = find_mutants::<JavaScript>(&f, &content);
+        assert_eq!(mutants.len(), 1);
+        assert_eq!(mutants[0].kind, JsMutationKind::BinaryOp(BinaryOpKind::Mul));
     }
 
     #[test]
     fn finds_logical_and() {
-        let f = file("const x = a && b;");
-        let points = find_mutation_points::<JavaScript>(&f);
-        assert_eq!(points.len(), 1);
-        assert_eq!(points[0].kind, JsMutationKind::BinaryOp(BinaryOpKind::And));
+        let (f, content) = src("const x = a && b;");
+        let mutants = find_mutants::<JavaScript>(&f, &content);
+        assert_eq!(mutants.len(), 1);
+        assert_eq!(mutants[0].kind, JsMutationKind::BinaryOp(BinaryOpKind::And));
     }
 }
