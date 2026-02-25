@@ -1,5 +1,5 @@
 use bough_core::config::Config;
-use bough_core::{BinaryOpKind, Language, MutationKind, MutationSubstitution};
+use bough_core::{BinaryOpKind, Language, Mutation, MutationKind};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, clap::ValueEnum)]
@@ -40,7 +40,11 @@ pub trait Render {
                 serde_yaml::to_string(&self.render_value()).expect("failed to serialize")
             }
         };
-        let output = if no_color { strip_ansi(&output) } else { output };
+        let output = if no_color {
+            strip_ansi(&output)
+        } else {
+            output
+        };
         print!("{output}");
     }
 }
@@ -113,7 +117,7 @@ impl Render for MutationKind {
     }
 }
 
-impl<L: Language> Render for MutationSubstitution<'_, '_, L>
+impl<L: Language> Render for Mutation<'_, '_, L>
 where
     L::Kind: Clone + Into<MutationKind>,
 {

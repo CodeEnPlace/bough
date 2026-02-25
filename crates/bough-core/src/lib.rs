@@ -2,14 +2,6 @@ pub mod config;
 pub mod io;
 pub mod languages;
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "PascalCase")]
-pub enum Outcome {
-    #[default]
-    Missed,
-    Caught,
-}
-
 use serde::de::{self, Deserializer, MapAccess, Visitor};
 use serde::ser::{SerializeStruct, Serializer};
 use serde::{Deserialize, Serialize};
@@ -20,6 +12,110 @@ use tree_sitter::Parser;
 
 #[derive(Debug, Clone)]
 pub struct Hash([u8; 16]);
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub enum Outcome {
+    #[default]
+    Missed,
+    Caught,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ShaHashable)]
+pub struct Mutation<L: Language> {
+    mutant: Mutant<L>,
+    replacement: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ShaHashable)]
+pub struct Mutant<L: Language> {
+    src: SourceFile,
+    span: Span,
+    kind: L::Kind,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ShaHashable)]
+pub struct Span {
+    start: Point,
+    end: Point,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ShaHashable)]
+pub struct Point {
+    src: SourceFile,
+    line: usize,
+    char: usize,
+    byte: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ShaHashable)]
+pub struct SourceFile {
+    path: PathBuf,
+    hash: Hash,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ShaHashable)]
+pub enum MutationKind {
+    StatementBlock,
+    BinaryOp(BinaryOpKind),
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ShaHashable)]
+pub enum BinaryOpKind {
+    Add,
+    Sub,
+    Mul,
+    Div,
+    And,
+    Or,
+    StrictEq,
+    StrictNeq,
+    Eq,
+    Neq,
+    Lt,
+    Lte,
+    Gt,
+    Gte,
+}
+
+pub trait Language {
+    type Kind: Into<MutationKind>;
+
+    fn code_tag() -> &'static str;
+    fn tree_sitter_language() -> tree_sitter::Language;
+    fn mutation_kind_for_node<'a>(
+        node: tree_sitter::Node<'_>,
+        file: &'a SourceFile,
+    ) -> Option<(Self::Kind, Span<'a>)>;
+    fn generate_substitutions<'a>(
+        kind: &Self::Kind,
+        file: &'a SourceFile,
+        span: &Span<'a>,
+    ) -> Vec<(String, MutatedFile<'a>)>;
+}
+
+impl BinaryOpKind {
+    pub fn label(&self) -> &'static str {
+        match self {
+            BinaryOpKind::Add => "+",
+            BinaryOpKind::Sub => "-",
+            BinaryOpKind::Mul => "*",
+            BinaryOpKind::Div => "/",
+            BinaryOpKind::And => "&&",
+            BinaryOpKind::Or => "||",
+            BinaryOpKind::StrictEq => "===",
+            BinaryOpKind::StrictNeq => "!==",
+            BinaryOpKind::Eq => "==",
+            BinaryOpKind::Neq => "!=",
+            BinaryOpKind::Lt => "<",
+            BinaryOpKind::Lte => "<=",
+            BinaryOpKind::Gt => ">",
+            BinaryOpKind::Gte => ">=",
+        }
+    }
+}
+
+/*
 
 impl Serialize for Hash {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
@@ -82,24 +178,8 @@ impl Hash {
 }
 
 // we want to remove content from here so it's more easily serializable
-#[derive(Debug)]
-pub struct SourceFile {
-    path: PathBuf,
-    content: String,
-    hash: Hash,
-}
 
-impl PartialEq for SourceFile {
-    fn eq(&self, other: &Self) -> bool {
-        self.path == other.path && self.hash.0 == other.hash.0
-    }
-}
 
-pub struct MutatedFile<'a> {
-    source_file: &'a SourceFile,
-    content: String,
-    hash: Hash,
-}
 
 impl Serialize for MutatedFile<'_> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
@@ -213,20 +293,6 @@ impl<'a> MutatedFile<'a> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize)]
-pub struct Point<'a> {
-    src: &'a SourceFile,
-    pub line: usize,
-    pub char: usize,
-    pub byte: usize,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize)]
-pub struct Span<'a> {
-    src: &'a SourceFile,
-    pub start: Point<'a>,
-    pub end: Point<'a>,
-}
 
 impl<'a> Point<'a> {
     pub fn from_ts(file: &'a SourceFile, ts: tree_sitter::Point, byte: usize) -> Self {
@@ -249,85 +315,15 @@ impl<'a> Span<'a> {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
-pub enum BinaryOpKind {
-    Add,
-    Sub,
-    Mul,
-    Div,
-    And,
-    Or,
-    StrictEq,
-    StrictNeq,
-    Eq,
-    Neq,
-    Lt,
-    Lte,
-    Gt,
-    Gte,
-}
 
-pub trait Language {
-    type Kind: Into<MutationKind>;
-
-    fn code_tag() -> &'static str;
-    fn tree_sitter_language() -> tree_sitter::Language;
-    fn mutation_kind_for_node<'a>(
-        node: tree_sitter::Node<'_>,
-        file: &'a SourceFile,
-    ) -> Option<(Self::Kind, Span<'a>)>;
-    fn generate_substitutions<'a>(
-        kind: &Self::Kind,
-        file: &'a SourceFile,
-        span: &Span<'a>,
-    ) -> Vec<(String, MutatedFile<'a>)>;
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub enum MutationKind {
-    StatementBlock,
-    BinaryOp(BinaryOpKind),
-}
-
-pub struct MutationPoint<'a, L: Language> {
-    pub file: &'a SourceFile,
-    pub span: Span<'a>,
-    pub kind: L::Kind,
-}
-
-pub struct MutationSubstitution<'a, 'b, L: Language> {
-    pub point: &'b MutationPoint<'a, L>,
-    pub replacement: String,
-}
-
-impl BinaryOpKind {
-    pub fn label(&self) -> &'static str {
-        match self {
-            BinaryOpKind::Add => "+",
-            BinaryOpKind::Sub => "-",
-            BinaryOpKind::Mul => "*",
-            BinaryOpKind::Div => "/",
-            BinaryOpKind::And => "&&",
-            BinaryOpKind::Or => "||",
-            BinaryOpKind::StrictEq => "===",
-            BinaryOpKind::StrictNeq => "!==",
-            BinaryOpKind::Eq => "==",
-            BinaryOpKind::Neq => "!=",
-            BinaryOpKind::Lt => "<",
-            BinaryOpKind::Lte => "<=",
-            BinaryOpKind::Gt => ">",
-            BinaryOpKind::Gte => ">=",
-        }
-    }
-}
 
 pub fn generate_mutation_substitutions<'a, L: Language>(
-    point: &MutationPoint<'a, L>,
+    point: &Mutant<'a, L>,
 ) -> Vec<(String, MutatedFile<'a>)> {
     L::generate_substitutions(&point.kind, point.file, &point.span)
 }
 
-pub fn find_mutation_points<'a, L: Language>(file: &'a SourceFile) -> Vec<MutationPoint<'a, L>> {
+pub fn find_mutation_points<'a, L: Language>(file: &'a SourceFile) -> Vec<Mutant<'a, L>> {
     let mut parser = Parser::new();
     parser
         .set_language(&L::tree_sitter_language())
@@ -344,7 +340,7 @@ pub fn find_mutation_points<'a, L: Language>(file: &'a SourceFile) -> Vec<Mutati
         let node = cursor.node();
 
         if let Some((kind, span)) = L::mutation_kind_for_node(node, file) {
-            points.push(MutationPoint { file, span, kind });
+            points.push(Mutant { file, span, kind });
         }
 
         if cursor.goto_first_child() {
@@ -423,3 +419,4 @@ mod tests {
         assert!(std::ptr::eq(subs[0].1.source_file(), &f));
     }
 }
+*/
