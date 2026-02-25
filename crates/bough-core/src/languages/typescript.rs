@@ -9,6 +9,7 @@ pub struct TypeScript;
 pub enum TsMutationKind {
     StatementBlock,
     BinaryOp(BinaryOpKind),
+    Condition,
 }
 
 impl From<TsMutationKind> for MutationKind {
@@ -16,6 +17,7 @@ impl From<TsMutationKind> for MutationKind {
         match k {
             TsMutationKind::StatementBlock => MutationKind::StatementBlock,
             TsMutationKind::BinaryOp(op) => MutationKind::BinaryOp(op),
+            TsMutationKind::Condition => MutationKind::Condition,
         }
     }
 }
@@ -39,6 +41,16 @@ impl Language for TypeScript {
         match node.kind() {
             "statement_block" => {
                 Some((TsMutationKind::StatementBlock, Span::from_node(file, node)))
+            }
+            "if_statement" | "while_statement" => {
+                let cond = node.child_by_field_name("condition")?;
+                let inner = cond.named_child(0)?;
+                Some((TsMutationKind::Condition, Span::from_node(file, inner)))
+            }
+            "for_statement" => {
+                let cond = node.child_by_field_name("condition")?;
+                if cond.kind() == "empty_statement" { return None; }
+                Some((TsMutationKind::Condition, Span::from_node(file, cond)))
             }
             "binary_expression" => {
                 let op_node = node.child(1)?;
@@ -69,6 +81,7 @@ impl Language for TypeScript {
         use BinaryOpKind::*;
         let replacements: &[&str] = match kind {
             TsMutationKind::StatementBlock => &["{}"],
+            TsMutationKind::Condition => &["true", "false"],
             TsMutationKind::BinaryOp(Add) => &["-", "*", "/"],
             TsMutationKind::BinaryOp(Sub) => &["+", "*", "/"],
             TsMutationKind::BinaryOp(Mul) => &["+", "-", "/"],
@@ -111,7 +124,7 @@ mod tests {
     fn finds_nested_blocks() {
         let (f, content) = src("function foo(): void { if (x) { return; } }");
         let mutants = find_mutants::<TypeScript>(&f, &content);
-        assert_eq!(mutants.len(), 2);
+        assert_eq!(mutants.len(), 3);
     }
 
     #[test]

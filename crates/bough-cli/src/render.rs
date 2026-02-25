@@ -93,6 +93,7 @@ impl Render for MutationKind {
         match self {
             MutationKind::StatementBlock => "empty statement block".to_string(),
             MutationKind::BinaryOp(op) => format!("binary operator {}", op.render_terse()),
+            MutationKind::Condition => "condition".to_string(),
         }
     }
 
@@ -100,12 +101,14 @@ impl Render for MutationKind {
         match self {
             MutationKind::StatementBlock => "empty statement block".to_string(),
             MutationKind::BinaryOp(op) => format!("binary operator {}", op.render_verbose()),
+            MutationKind::Condition => "condition".to_string(),
         }
     }
 
     fn render_markdown(&self, depth: u8) -> String {
         match self {
             MutationKind::StatementBlock => "empty statement block".to_string(),
+            MutationKind::Condition => "condition".to_string(),
             MutationKind::BinaryOp(op) => {
                 format!("binary operator {}", op.render_markdown(depth))
             }

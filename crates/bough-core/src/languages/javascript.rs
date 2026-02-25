@@ -9,6 +9,7 @@ pub struct JavaScript;
 pub enum JsMutationKind {
     StatementBlock,
     BinaryOp(BinaryOpKind),
+    Condition,
 }
 
 impl From<JsMutationKind> for MutationKind {
@@ -16,6 +17,7 @@ impl From<JsMutationKind> for MutationKind {
         match k {
             JsMutationKind::StatementBlock => MutationKind::StatementBlock,
             JsMutationKind::BinaryOp(op) => MutationKind::BinaryOp(op),
+            JsMutationKind::Condition => MutationKind::Condition,
         }
     }
 }
@@ -39,6 +41,16 @@ impl Language for JavaScript {
         match node.kind() {
             "statement_block" => {
                 Some((JsMutationKind::StatementBlock, Span::from_node(file, node)))
+            }
+            "if_statement" | "while_statement" => {
+                let cond = node.child_by_field_name("condition")?;
+                let inner = cond.named_child(0)?;
+                Some((JsMutationKind::Condition, Span::from_node(file, inner)))
+            }
+            "for_statement" => {
+                let cond = node.child_by_field_name("condition")?;
+                if cond.kind() == "empty_statement" { return None; }
+                Some((JsMutationKind::Condition, Span::from_node(file, cond)))
             }
             "binary_expression" => {
                 let op_node = node.child(1)?;
@@ -69,6 +81,7 @@ impl Language for JavaScript {
         use BinaryOpKind::*;
         let replacements: &[&str] = match kind {
             JsMutationKind::StatementBlock => &["{}"],
+            JsMutationKind::Condition => &["true", "false"],
             JsMutationKind::BinaryOp(Add) => &["-", "*", "/"],
             JsMutationKind::BinaryOp(Sub) => &["+", "*", "/"],
             JsMutationKind::BinaryOp(Mul) => &["+", "-", "/"],
@@ -113,7 +126,7 @@ mod tests {
     fn finds_nested_blocks() {
         let (f, content) = src("function foo() { if (x) { return 1; } }");
         let mutants = find_mutants::<JavaScript>(&f, &content);
-        assert_eq!(mutants.len(), 2);
+        assert_eq!(mutants.len(), 3);
     }
 
     #[test]
