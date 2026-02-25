@@ -1,0 +1,18 @@
+language = "js"
+vcs_kind = "jj"
+parallelism = 1
+ordering = "random"
+files = "examples/vitest-js/src/**/*.js"
+
+[directories]
+working_dir = "/tmp/bough-work"
+report_dir = "/tmp/bough-report"
+sub_dir = "examples/vitest-js"
+
+[timeout]
+absolute = 30
+relative = 1.5
+
+[commands]
+install = "npm install"
+test = "npx vitest run"
