@@ -1,0 +1,12 @@
+[vcs]
+kind = "jj"
+rev = "bough"
+
+[vitest-js]
+pwd = "examples/vitest-js"
+init.commands = ["npm install"]
+test.commands = ["npm test"]
+
+[vitest-js.mutate.js]
+files.include = ["src/*.js"]
+files.exclude = ["**/*.test.*"]

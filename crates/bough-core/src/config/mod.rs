@@ -118,7 +118,7 @@ impl Default for Runner {
     fn default() -> Self {
         Self {
             pwd: default_pwd(),
-            treat_timeouts_as: Outcome::default(),
+            treat_timeouts_as: Outcome::Caught,
             init: None,
             reset: None,
             test: default_test_phase(),
@@ -215,8 +215,7 @@ impl ConfigBuilder {
     pub fn override_with(mut self, patch: Value) -> Self {
         let base = serde_value::to_value(self.config).expect("failed to serialize config");
         let merged = deep_merge(base, patch);
-        self.config =
-            Config::deserialize(merged).expect("failed to deserialize merged config");
+        self.config = Config::deserialize(merged).expect("failed to deserialize merged config");
         self
     }
 
@@ -273,7 +272,8 @@ impl Config {
         let resolve = |p: &mut String| {
             let path = std::path::PathBuf::from(&*p);
             if !path.is_absolute() {
-                *p = cwd.join(path)
+                *p = cwd
+                    .join(path)
                     .canonicalize()
                     .unwrap_or_else(|_| cwd.join(&*p))
                     .to_string_lossy()
@@ -296,7 +296,6 @@ impl Config {
             resolve(&mut runner.test.pwd);
         }
     }
-
 }
 
 impl Render for Config {
@@ -453,10 +452,13 @@ mod tests {
 
     #[test]
     fn runner_without_test_defaults_to_exit_1() {
-        let config: Config = toml::from_str(r#"
+        let config: Config = toml::from_str(
+            r#"
             [myrunner]
             pwd = "."
-        "#).unwrap();
+        "#,
+        )
+        .unwrap();
         assert_eq!(config.runners["myrunner"].test.commands, vec!["exit 1"]);
     }
 
