@@ -1,0 +1,137 @@
+use bough_core::config::Config;
+use bough_core::languages::LanguageId;
+use serde::Serialize;
+use std::collections::BTreeMap;
+use std::path::PathBuf;
+
+use crate::render::{Render, color};
+
+#[derive(Debug)]
+pub enum Error {
+    NoActiveRunner,
+    Glob(glob::PatternError),
+}
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Error::NoActiveRunner => write!(f, "no active runner configured"),
+            Error::Glob(e) => write!(f, "invalid glob pattern: {e}"),
+        }
+    }
+}
+
+impl std::error::Error for Error {}
+
+#[derive(Debug, Serialize)]
+pub struct ShowSrcFiles {
+    pub files: BTreeMap<LanguageId, Vec<PathBuf>>,
+}
+
+fn collect_glob(pattern: &str, base: &str) -> Result<Vec<PathBuf>, Error> {
+    let full = if PathBuf::from(pattern).is_absolute() {
+        pattern.to_string()
+    } else {
+        format!("{base}/{pattern}")
+    };
+    let paths = glob::glob(&full)
+        .map_err(Error::Glob)?
+        .filter_map(Result::ok)
+        .filter(|p| p.is_file())
+        .map(|p| std::fs::canonicalize(&p).unwrap_or(p))
+        .collect();
+    Ok(paths)
+}
+
+pub fn run(config: &Config) -> Result<ShowSrcFiles, Error> {
+    let runner = if config.active_runner.is_empty() {
+        config
+            .runners
+            .values()
+            .next()
+            .ok_or(Error::NoActiveRunner)?
+    } else {
+        config
+            .runners
+            .get(&config.active_runner)
+            .ok_or(Error::NoActiveRunner)?
+    };
+
+    let mut files: BTreeMap<LanguageId, Vec<PathBuf>> = BTreeMap::new();
+
+    for (lang, mutate_lang) in &runner.mutate {
+        let mut included = Vec::new();
+        for pattern in &mutate_lang.files.include {
+            included.extend(collect_glob(pattern, &runner.pwd)?);
+        }
+
+        let mut excluded = std::collections::HashSet::new();
+        for pattern in &mutate_lang.files.exclude {
+            for path in collect_glob(pattern, &runner.pwd)? {
+                excluded.insert(path);
+            }
+        }
+
+        let mut paths: Vec<PathBuf> = included
+            .into_iter()
+            .filter(|p| !excluded.contains(p))
+            .collect();
+        paths.sort();
+        paths.dedup();
+        files.insert(*lang, paths);
+    }
+
+    Ok(ShowSrcFiles { files })
+}
+
+impl Render for ShowSrcFiles {
+    fn render_value(&self) -> serde_value::Value {
+        serde_value::to_value(&self.files).expect("failed to serialize")
+    }
+
+    fn render_terse(&self) -> String {
+        let mut out = String::new();
+        for (lang, paths) in &self.files {
+            out.push_str(&format!(
+                "found {} files for {}\n",
+                color("\x1b[1m", &paths.len().to_string()),
+                color("\x1b[36m", &format!("{lang:?}")),
+            ));
+        }
+        out
+    }
+
+    fn render_verbose(&self) -> String {
+        let mut out = String::new();
+        for (lang, paths) in &self.files {
+            out.push_str(&color(
+                "\x1b[1m",
+                &format!("{lang:?} ({} files)", paths.len()),
+            ));
+            out.push('\n');
+            for path in paths {
+                out.push_str(&format!("  {}\n", path.display()));
+            }
+        }
+        out
+    }
+
+    fn render_markdown(&self, depth: u8) -> String {
+        let heading = "#".repeat((depth + 2).min(6) as usize);
+        let mut out = String::new();
+
+        out.push_str(&format!(
+            "{} Src Files\n\n",
+            "#".repeat((depth + 1).min(6) as usize),
+        ));
+
+        for (lang, paths) in &self.files {
+            out.push_str(&format!("{heading} {lang:?}\n\n"));
+            for path in paths {
+                out.push_str(&format!("- `{}`\n", path.display()));
+            }
+            out.push('\n');
+        }
+        out
+    }
+}

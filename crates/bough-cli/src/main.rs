@@ -1,5 +1,6 @@
 mod config;
 mod render;
+mod steps;
 
 use clap::{CommandFactory, Parser, Subcommand};
 use clap_complete::Shell;
@@ -27,11 +28,20 @@ struct Cli {
 
 #[derive(Debug, Subcommand)]
 enum Command {
-    DumpConfig,
+    Show {
+        #[command(subcommand)]
+        subject: ShowSubject,
+    },
     Completions {
         #[arg(value_enum)]
         shell: Shell,
     },
+}
+
+#[derive(Debug, Subcommand)]
+enum ShowSubject {
+    Config,
+    Src,
 }
 
 fn main() {
@@ -46,13 +56,27 @@ fn main() {
                 &mut std::io::stdout(),
             );
         }
-        Command::DumpConfig => {
-            let cfg = config::load(&cli).unwrap_or_else(|e| {
-                eprintln!("{e}");
-                std::process::exit(1);
-            });
-            let no_color = !std::io::IsTerminal::is_terminal(&std::io::stdout());
-            cfg.render(&cli.output_style, no_color, 0);
-        }
+        Command::Show { subject } => match subject {
+            ShowSubject::Config => {
+                let cfg = config::load(&cli).unwrap_or_else(|e| {
+                    eprintln!("{e}");
+                    std::process::exit(1);
+                });
+                let no_color = !std::io::IsTerminal::is_terminal(&std::io::stdout());
+                cfg.render(&cli.output_style, no_color, 0);
+            }
+            ShowSubject::Src => {
+                let cfg = config::load(&cli).unwrap_or_else(|e| {
+                    eprintln!("{e}");
+                    std::process::exit(1);
+                });
+                let result = steps::show_src_files::run(&cfg).unwrap_or_else(|e| {
+                    eprintln!("{e}");
+                    std::process::exit(1);
+                });
+                let no_color = !std::io::IsTerminal::is_terminal(&std::io::stdout());
+                result.render(&cli.output_style, no_color, 0);
+            }
+        },
     }
 }
