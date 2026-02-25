@@ -75,13 +75,9 @@ fn main() {
 
     match &cli.command {
         Command::Completions { shell } => {
-            clap_complete::generate(
-                *shell,
-                &mut Cli::command(),
-                "bough",
-                &mut std::io::stdout(),
-            );
+            clap_complete::generate(*shell, &mut Cli::command(), "bough", &mut std::io::stdout());
         }
+
         Command::Workspace { action } => match action {
             WorkspaceAction::Make => {
                 let cfg = config::load(&cli).unwrap_or_else(|e| {
@@ -144,26 +140,7 @@ fn main() {
                 result.render(&cli.output_style, no_color, 0);
             }
         },
-        Command::Run => {
-            let no_color = !std::io::IsTerminal::is_terminal(&std::io::stdout());
 
-            let cfg = config::load(&cli).unwrap_or_else(|e| {
-                eprintln!("{e}");
-                std::process::exit(1);
-            });
-
-            let src_files = steps::get_src_files::run(&cfg).unwrap_or_else(|e| {
-                eprintln!("{e}");
-                std::process::exit(1);
-            });
-            src_files.render(&cli.output_style, no_color, 0);
-
-            let mutations = steps::get_mutations::run(&src_files, &cfg).unwrap_or_else(|e| {
-                eprintln!("{e}");
-                std::process::exit(1);
-            });
-            mutations.render(&cli.output_style, no_color, 0);
-        }
         Command::Show { subject } => match subject {
             ShowSubject::Config => {
                 let cfg = config::load(&cli).unwrap_or_else(|e| {
@@ -214,5 +191,48 @@ fn main() {
                 result.render(&cli.output_style, no_color, 0);
             }
         },
+
+        Command::Run => {
+            let no_color = !std::io::IsTerminal::is_terminal(&std::io::stdout());
+
+            let cfg = config::load(&cli).unwrap_or_else(|e| {
+                eprintln!("{e}");
+                std::process::exit(1);
+            });
+
+            let mutations_handle = {
+                let cfg = cfg.clone();
+                std::thread::spawn(move || {
+                    let src_files = steps::get_src_files::run(&cfg).unwrap_or_else(|e| {
+                        eprintln!("{e}");
+                        std::process::exit(1);
+                    });
+                    let mutations =
+                        steps::get_mutations::run(&src_files, &cfg).unwrap_or_else(|e| {
+                            eprintln!("{e}");
+                            std::process::exit(1);
+                        });
+                    (src_files, mutations)
+                })
+            };
+
+            let test_ids_handle = {
+                let cfg = cfg.clone();
+                std::thread::spawn(move || {
+                    steps::get_all_test_ids::run(&cfg).unwrap_or_else(|e| {
+                        eprintln!("{e}");
+                        std::process::exit(1);
+                    })
+                })
+            };
+
+            let (src_files, mutations) =
+                mutations_handle.join().expect("mutations thread panicked");
+            let test_ids = test_ids_handle.join().expect("test_ids thread panicked");
+
+            src_files.render(&cli.output_style, no_color, 0);
+            mutations.render(&cli.output_style, no_color, 0);
+            test_ids.render(&cli.output_style, no_color, 0);
+        }
     }
 }
