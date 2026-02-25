@@ -32,11 +32,20 @@ enum Command {
         #[command(subcommand)]
         subject: ShowSubject,
     },
+    Workspace {
+        #[command(subcommand)]
+        action: WorkspaceAction,
+    },
     Run,
     Completions {
         #[arg(value_enum)]
         shell: Shell,
     },
+}
+
+#[derive(Debug, Subcommand)]
+enum WorkspaceAction {
+    Make,
 }
 
 #[derive(Debug, Subcommand)]
@@ -59,6 +68,20 @@ fn main() {
                 &mut std::io::stdout(),
             );
         }
+        Command::Workspace { action } => match action {
+            WorkspaceAction::Make => {
+                let cfg = config::load(&cli).unwrap_or_else(|e| {
+                    eprintln!("{e}");
+                    std::process::exit(1);
+                });
+                let result = steps::make_workspace::run(&cfg).unwrap_or_else(|e| {
+                    eprintln!("{e}");
+                    std::process::exit(1);
+                });
+                let no_color = !std::io::IsTerminal::is_terminal(&std::io::stdout());
+                result.render(&cli.output_style, no_color, 0);
+            }
+        },
         Command::Run => {
             let no_color = !std::io::IsTerminal::is_terminal(&std::io::stdout());
 
