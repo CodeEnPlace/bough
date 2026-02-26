@@ -6,6 +6,7 @@ license.workspace = true
 
 [dependencies]
 bough-typed-hash = { path = "../bough-typed-hash" }
+chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "4.5.60", features = ["derive"] }
 glob = "0.3"
 serde = { version = "1", features = ["derive"] }
@@ -15,4 +16,5 @@ tree-sitter-javascript = "0.25"
 tree-sitter-typescript = "0.23"
 
 [dev-dependencies]
+tempfile = "3.26"
 toml = "0.8"
