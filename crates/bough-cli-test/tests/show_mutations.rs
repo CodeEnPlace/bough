@@ -19,13 +19,13 @@ files.include = ["*.js"]
     #[test]
     fn finds_mutations() {
         let dir = plan().setup();
-        cmd!(dir, "bough show mutations", "mutations for Javascript");
+        cmd!(dir, "bough show mutations", "found {!n} mutations for Javascript");
     }
 
     #[test]
     fn verbose_shows_replacements() {
         let dir = plan().setup();
-        cmd!(dir, "bough --output-style verbose show mutations", "BinaryOp");
+        cmd!(dir, "bough --output-style verbose show mutations", "Javascript ({!n} mutations)");
     }
 }
 
