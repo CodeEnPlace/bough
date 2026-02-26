@@ -3,7 +3,6 @@ mod phase_runner;
 mod render;
 mod steps;
 
-use bough_core::{MutationHash, WorkspaceId};
 use clap::{CommandFactory, Parser, Subcommand};
 use clap_complete::Shell;
 use render::{Render, Style};
@@ -40,9 +39,9 @@ enum Command {
     },
     Mutate {
         #[arg()]
-        workspace: WorkspaceId,
+        workspace: String,
         #[arg()]
-        mutation_hash: MutationHash,
+        mutation_hash: String,
     },
     Run,
     Completions {
@@ -57,15 +56,15 @@ enum WorkspaceAction {
     List,
     Init {
         #[arg()]
-        name: WorkspaceId,
+        name: String,
     },
     Reset {
         #[arg()]
-        name: WorkspaceId,
+        name: String,
     },
     Drop {
         #[arg()]
-        name: WorkspaceId,
+        name: String,
     },
 }
 
@@ -115,7 +114,11 @@ fn main() {
                     eprintln!("{e}");
                     std::process::exit(1);
                 });
-                let path = PathBuf::from(cfg.working_dir()).join(&name);
+                let ws = bough_core::WorkspaceId::new(name, &cfg).unwrap_or_else(|e| {
+                    eprintln!("{e}");
+                    std::process::exit(1);
+                });
+                let path = PathBuf::from(cfg.working_dir()).join(&*ws);
                 let result = steps::init_workspace::run(&cfg, &path).unwrap_or_else(|e| {
                     eprintln!("{e}");
                     std::process::exit(1);
@@ -128,7 +131,11 @@ fn main() {
                     eprintln!("{e}");
                     std::process::exit(1);
                 });
-                let path = PathBuf::from(cfg.working_dir()).join(&name);
+                let ws = bough_core::WorkspaceId::new(name, &cfg).unwrap_or_else(|e| {
+                    eprintln!("{e}");
+                    std::process::exit(1);
+                });
+                let path = PathBuf::from(cfg.working_dir()).join(&*ws);
                 let result = steps::reset_workspace::run(&cfg, &path).unwrap_or_else(|e| {
                     eprintln!("{e}");
                     std::process::exit(1);
@@ -141,7 +148,11 @@ fn main() {
                     eprintln!("{e}");
                     std::process::exit(1);
                 });
-                let result = steps::drop_workspace::run(&cfg, name).unwrap_or_else(|e| {
+                let ws = bough_core::WorkspaceId::new(name, &cfg).unwrap_or_else(|e| {
+                    eprintln!("{e}");
+                    std::process::exit(1);
+                });
+                let result = steps::drop_workspace::run(&cfg, &ws).unwrap_or_else(|e| {
                     eprintln!("{e}");
                     std::process::exit(1);
                 });
@@ -206,8 +217,16 @@ fn main() {
                 eprintln!("{e}");
                 std::process::exit(1);
             });
-            let path = PathBuf::from(cfg.working_dir()).join(&workspace);
-            let result = steps::mutate_workspace::run(&cfg, &path, mutation_hash).unwrap_or_else(|e| {
+            let ws = bough_core::WorkspaceId::new(workspace, &cfg).unwrap_or_else(|e| {
+                eprintln!("{e}");
+                std::process::exit(1);
+            });
+            let mh = bough_core::MutationHash::new(mutation_hash, &cfg).unwrap_or_else(|e| {
+                eprintln!("{e}");
+                std::process::exit(1);
+            });
+            let path = PathBuf::from(cfg.working_dir()).join(&*ws);
+            let result = steps::mutate_workspace::run(&cfg, &path, &mh).unwrap_or_else(|e| {
                 eprintln!("{e}");
                 std::process::exit(1);
             });

@@ -67,8 +67,8 @@ impl AnyMutation {
 
     pub fn mutation_hash(&self) -> MutationHash {
         match self {
-            AnyMutation::Js(m) => MutationHash(m.sha_hash()),
-            AnyMutation::Ts(m) => MutationHash(m.sha_hash()),
+            AnyMutation::Js(m) => MutationHash::from_trusted(m.sha_hash()),
+            AnyMutation::Ts(m) => MutationHash::from_trusted(m.sha_hash()),
         }
     }
 

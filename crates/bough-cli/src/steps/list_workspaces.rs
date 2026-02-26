@@ -67,7 +67,7 @@ pub fn run(config: &Config) -> Result<ListWorkspaces, Error> {
             out.lines()
                 .filter_map(|l| {
                     let name = l.split(':').next()?.trim();
-                    name.starts_with("bough-").then_some(WorkspaceId(name.to_string()))
+                    name.starts_with("bough-").then_some(WorkspaceId::from_trusted(name))
                 })
                 .map(|name| {
                     let path = PathBuf::from(config.working_dir()).join(&name);
@@ -86,7 +86,7 @@ pub fn run(config: &Config) -> Result<ListWorkspaces, Error> {
                     if branch.starts_with("bough-") {
                         if let Some(path) = current_path.take() {
                             workspaces.push(Workspace {
-                                name: WorkspaceId(branch.to_string()),
+                                name: WorkspaceId::from_trusted(branch),
                                 path,
                             });
                         }
@@ -105,7 +105,7 @@ pub fn run(config: &Config) -> Result<ListWorkspaces, Error> {
                     let name = e.file_name().to_string_lossy().to_string();
                     name.starts_with("bough-").then(|| Workspace {
                         path: e.path(),
-                        name: WorkspaceId(name),
+                        name: WorkspaceId::from_trusted(name),
                     })
                 })
                 .collect()

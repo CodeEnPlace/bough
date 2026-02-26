@@ -129,6 +129,7 @@ version = "0.0.0"
 dependencies = [
  "bough-sha",
  "clap",
+ "glob",
  "serde",
  "serde-value",
  "toml 0.8.23",
