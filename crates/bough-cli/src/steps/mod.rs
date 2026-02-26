@@ -7,3 +7,4 @@ pub mod list_workspaces;
 pub mod make_workspace;
 pub mod mutate_workspace;
 pub mod reset_workspace;
+pub mod test_workspace;
