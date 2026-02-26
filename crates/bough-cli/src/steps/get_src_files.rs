@@ -110,8 +110,7 @@ impl Render for ShowSrcFiles {
             out.push('\n');
             for f in files {
                 out.push_str(&format!(
-                    "  {} {}\n",
-                    color("\x1b[2m", &f.hash.to_string()),
+                    "  {}\n",
                     f.path.display(),
                 ));
             }

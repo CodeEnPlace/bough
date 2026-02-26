@@ -1,11 +1,11 @@
 use crate::{BinaryOpKind, Language, MutationKind, SourceFile, Span};
-use bough_sha::ShaHashable;
+use bough_typed_hash::HashInto;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug)]
 pub struct TypeScript;
 
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, ShaHashable)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, HashInto)]
 pub enum TsMutationKind {
     StatementBlock,
     BinaryOp(BinaryOpKind),

@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 /// ```
 /// use bough_typed_hash::{UnvalidatedHash, TypedHash, TypedHashable, HashStore, MemoryHashStore};
 ///
-/// #[derive(bough_typed_hash::TypedHashable)]
+/// #[derive(Clone, bough_typed_hash::TypedHashable)]
 /// pub struct Record { id: u32 }
 ///
 /// let mut store = MemoryHashStore::new();

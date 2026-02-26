@@ -3,19 +3,19 @@ use super::*;
 #[derive(TypedHash)]
 struct TestHash([u8; 32]);
 
-#[derive(TypedHashable)]
+#[derive(Clone, TypedHashable)]
 struct Widget {
     name: String,
     count: u32,
 }
 
-#[derive(HashInto)]
+#[derive(Clone, HashInto)]
 struct Part {
     label: String,
     weight: f64,
 }
 
-#[derive(TypedHashable)]
+#[derive(Clone, TypedHashable)]
 struct Assembly {
     part: Part,
     quantity: u32,
@@ -84,21 +84,21 @@ fn typed_hashable_produces_hash() {
 fn typed_hashable_deterministic() {
     let a = Widget { name: "gear".into(), count: 5 };
     let b = Widget { name: "gear".into(), count: 5 };
-    assert_eq!(compute_hash(&a).unwrap(), compute_hash(&b).unwrap());
+    assert_eq!(a.hash(&mut MemoryHashStore::new()).unwrap(), b.hash(&mut MemoryHashStore::new()).unwrap());
 }
 
 #[test]
 fn typed_hashable_different_values_differ() {
     let a = Widget { name: "gear".into(), count: 5 };
     let b = Widget { name: "gear".into(), count: 6 };
-    assert_ne!(compute_hash(&a).unwrap(), compute_hash(&b).unwrap());
+    assert_ne!(a.hash(&mut MemoryHashStore::new()).unwrap(), b.hash(&mut MemoryHashStore::new()).unwrap());
 }
 
 #[test]
 fn typed_hashable_hash_inserts_into_store() {
     let mut store = MemoryHashStore::new();
     let w = Widget { name: "auto".into(), count: 1 };
-    let h = compute_hash(&w).unwrap();
+    let h = w.hash(&mut MemoryHashStore::new()).unwrap();
     assert!(!store.contains(&h));
     w.hash(&mut store).unwrap();
     assert!(store.contains(&h));
@@ -109,8 +109,8 @@ fn hash_into_derive_nested() {
     let a = Assembly { part: Part { label: "bolt".into(), weight: 1.5 }, quantity: 10 };
     let b = Assembly { part: Part { label: "bolt".into(), weight: 1.5 }, quantity: 10 };
     let c = Assembly { part: Part { label: "nut".into(), weight: 0.5 }, quantity: 10 };
-    assert_eq!(compute_hash(&a).unwrap(), compute_hash(&b).unwrap());
-    assert_ne!(compute_hash(&a).unwrap(), compute_hash(&c).unwrap());
+    assert_eq!(a.hash(&mut MemoryHashStore::new()).unwrap(), b.hash(&mut MemoryHashStore::new()).unwrap());
+    assert_ne!(a.hash(&mut MemoryHashStore::new()).unwrap(), c.hash(&mut MemoryHashStore::new()).unwrap());
 }
 
 #[test]
@@ -249,7 +249,7 @@ fn chain_store_inserts_into_first() {
     let mut s2 = MemoryHashStore::new();
 
     let w = Widget { name: "gamma".into(), count: 3 };
-    let h = compute_hash(&w).unwrap();
+    let h = w.hash(&mut MemoryHashStore::new()).unwrap();
 
     {
         let mut chain = ChainStore::new(vec![&mut s1, &mut s2]);
@@ -266,7 +266,7 @@ fn chain_store_dedupes_prefix() {
     let mut s2 = MemoryHashStore::new();
 
     let w = Widget { name: "delta".into(), count: 4 };
-    let h = compute_hash(&w).unwrap();
+    let h = w.hash(&mut MemoryHashStore::new()).unwrap();
     let hex = h.to_string();
     s1.insert(Widget { name: "delta".into(), count: 4 });
     s2.insert(Widget { name: "delta".into(), count: 4 });
@@ -363,7 +363,7 @@ mod disk_tests {
     use super::*;
     use serde::{Deserialize, Serialize};
 
-    #[derive(Serialize, Deserialize, TypedHashable)]
+    #[derive(Clone, Serialize, Deserialize, TypedHashable)]
     pub struct DiskItem {
         pub val: u32,
     }

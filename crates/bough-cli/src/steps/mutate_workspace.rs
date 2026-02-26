@@ -1,6 +1,5 @@
 use bough_core::apply_mutation;
 use bough_core::config::Config;
-use bough_core::MutationHash;
 use serde::Serialize;
 use std::path::{Path, PathBuf};
 
@@ -12,7 +11,7 @@ use crate::render::{Render, color};
 pub enum Error {
     NoActiveRunner,
     WorkspaceNotFound(PathBuf),
-    MutationNotFound(MutationHash),
+    MutationNotFound(String),
     SrcFiles(get_src_files::Error),
     Mutations(super::get_mutations::Error),
     ReadFile(PathBuf, std::io::Error),
@@ -24,7 +23,7 @@ impl std::fmt::Display for Error {
         match self {
             Error::NoActiveRunner => write!(f, "no active runner configured"),
             Error::WorkspaceNotFound(p) => write!(f, "workspace not found: {}", p.display()),
-            Error::MutationNotFound(h) => write!(f, "no mutation found with hash {}", h),
+            Error::MutationNotFound(h) => write!(f, "no mutation found with hash {h}"),
             Error::SrcFiles(e) => write!(f, "{e}"),
             Error::Mutations(e) => write!(f, "{e}"),
             Error::ReadFile(p, e) => write!(f, "failed to read {}: {e}", p.display()),
@@ -39,23 +38,23 @@ impl std::error::Error for Error {}
 pub struct MutateWorkspace {
     pub workspace: PathBuf,
     pub file: PathBuf,
-    pub hash: MutationHash,
+    pub hash: String,
     pub replacement: String,
 }
 
-fn find_mutation(config: &Config, hash: &MutationHash) -> Result<AnyMutation, Error> {
+fn find_mutation(config: &Config, hash: &str) -> Result<AnyMutation, Error> {
     let src_files = get_src_files::run(config).map_err(Error::SrcFiles)?;
     let mutations = super::get_mutations::run(&src_files, config).map_err(Error::Mutations)?;
 
     for (_lang, muts) in &mutations.mutations {
         for m in muts {
-            if m.mutation_hash() == *hash {
+            if m.mutation_hash_hex() == hash {
                 return Ok(m.clone());
             }
         }
     }
 
-    Err(Error::MutationNotFound(hash.clone()))
+    Err(Error::MutationNotFound(hash.to_string()))
 }
 
 fn workspace_file_path(workspace: &Path, mutation_path: &Path, config: &Config) -> PathBuf {
@@ -67,7 +66,7 @@ fn workspace_file_path(workspace: &Path, mutation_path: &Path, config: &Config) 
     workspace.join(relative)
 }
 
-pub fn run(config: &Config, workspace: &Path, hash: &MutationHash) -> Result<MutateWorkspace, Error> {
+pub fn run(config: &Config, workspace: &Path, hash: &str) -> Result<MutateWorkspace, Error> {
     config.resolved_runner_name().ok_or(Error::NoActiveRunner)?;
 
     if !workspace.exists() {
@@ -88,7 +87,7 @@ pub fn run(config: &Config, workspace: &Path, hash: &MutationHash) -> Result<Mut
     Ok(MutateWorkspace {
         workspace: workspace.to_path_buf(),
         file: file_path,
-        hash: hash.clone(),
+        hash: hash.to_string(),
         replacement: mutation.replacement().to_string(),
     })
 }
@@ -101,7 +100,7 @@ impl Render for MutateWorkspace {
     fn render_terse(&self) -> String {
         format!(
             "applied mutation {} to {}\n",
-            color("\x1b[2m", &self.hash.to_string()),
+            color("\x1b[2m", &self.hash),
             color("\x1b[1m", &self.file.display().to_string()),
         )
     }
@@ -109,7 +108,7 @@ impl Render for MutateWorkspace {
     fn render_verbose(&self) -> String {
         format!(
             "applied mutation {} to {}\nreplacement: {}\n",
-            color("\x1b[2m", &self.hash.to_string()),
+            color("\x1b[2m", &self.hash),
             color("\x1b[1m", &self.file.display().to_string()),
             color("\x1b[32m", &self.replacement),
         )

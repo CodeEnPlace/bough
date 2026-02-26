@@ -1,4 +1,3 @@
-use bough_core::MutationHash;
 use bough_core::config::{Config, MutantSkip};
 use bough_core::languages::LanguageId;
 use bough_core::{
@@ -6,7 +5,7 @@ use bough_core::{
     generate_mutations,
     languages::{JavaScript, TypeScript},
 };
-use bough_sha::ShaHashable;
+use bough_typed_hash::{TypedHashable, MemoryHashStore};
 use serde::Serialize;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -65,10 +64,10 @@ impl AnyMutation {
         }
     }
 
-    pub fn mutation_hash(&self) -> MutationHash {
+    pub fn mutation_hash_hex(&self) -> String {
         match self {
-            AnyMutation::Js(m) => MutationHash::from_trusted(m.sha_hash()),
-            AnyMutation::Ts(m) => MutationHash::from_trusted(m.sha_hash()),
+            AnyMutation::Js(m) => m.hash(&mut MemoryHashStore::new()).expect("hash failed").to_string(),
+            AnyMutation::Ts(m) => m.hash(&mut MemoryHashStore::new()).expect("hash failed").to_string(),
         }
     }
 
@@ -164,7 +163,7 @@ impl Render for ShowMutations {
             for m in mutations {
                 out.push_str(&format!(
                     "  {} {}:{} {} → {}\n",
-                    color("\x1b[2m", &m.mutation_hash().to_string()),
+                    color("\x1b[2m", &m.mutation_hash_hex()),
                     m.path().display(),
                     m.line(),
                     color("\x1b[33m", &format!("{:?}", m.kind())),

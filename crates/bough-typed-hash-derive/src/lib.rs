@@ -110,8 +110,7 @@ pub fn derive_typed_hash(input: TokenStream) -> TokenStream {
 
         impl bough_typed_hash::HashInto for #name {
             fn hash_into(&self, state: &mut bough_typed_hash::ShaState) -> ::std::result::Result<(), ::std::io::Error> {
-                use sha2::Digest;
-                state.update(self.0);
+                bough_typed_hash::sha2::Digest::update(state, self.0);
                 Ok(())
             }
         }

@@ -109,7 +109,7 @@ version = "0.0.0"
 dependencies = [
  "assert_cmd",
  "bough-core",
- "bough-sha",
+ "bough-typed-hash",
  "clap",
  "clap_complete",
  "glob",
@@ -127,7 +127,7 @@ dependencies = [
 name = "bough-core"
 version = "0.0.0"
 dependencies = [
- "bough-sha",
+ "bough-typed-hash",
  "clap",
  "glob",
  "serde",
@@ -136,25 +136,6 @@ dependencies = [
  "tree-sitter",
  "tree-sitter-javascript",
  "tree-sitter-typescript",
-]
-
-[[package]]
-name = "bough-sha"
-version = "0.0.0"
-dependencies = [
- "bough-sha-derive",
- "serde",
- "serde_json",
- "sha2",
-]
-
-[[package]]
-name = "bough-sha-derive"
-version = "0.0.0"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
 ]
 
 [[package]]

@@ -158,7 +158,7 @@ where
             "{} at {}\nhash: {}\nreplacement: {}\n",
             color("\x1b[1m", &kind.render_verbose()),
             color("\x1b[36m", &format!("{path}:{loc}")),
-            self.mutant.src.hash,
+            self.mutant.src.path.display(),
             color("\x1b[32m", &self.replacement),
         )
     }
