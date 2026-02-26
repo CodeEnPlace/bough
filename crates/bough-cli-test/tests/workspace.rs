@@ -1,0 +1,81 @@
+use bough_cli_test::{TestPlan, cmd};
+
+mod jj {
+    use super::*;
+
+    fn plan() -> TestPlan {
+        TestPlan::new().config(
+            r#"
+[vcs]
+kind = "jj"
+rev = "bough"
+
+[runner]
+pwd = "."
+"#,
+        )
+    }
+
+    #[test]
+    fn make_and_list() {
+        let dir = plan().setup();
+
+        cmd!(dir, "bough workspace make", "created workspace at /tmp/bough/work/{!id_1}");
+        cmd!(
+            dir,
+            "bough --output-style verbose workspace list",
+            "{?id_1} /tmp/bough/work/{?id_1}"
+        );
+    }
+
+    #[test]
+    fn make_and_drop() {
+        let dir = plan().setup();
+
+        cmd!(dir, "bough workspace make", "created workspace at /tmp/bough/work/{!id_1}");
+        cmd!(dir, "bough workspace drop {?id_1}", "dropped workspace {?id_1}");
+        cmd!(dir, "bough workspace list", "0 workspaces");
+    }
+
+    #[test]
+    fn list_empty() {
+        let dir = plan().setup();
+        cmd!(dir, "bough workspace list", "0 workspaces");
+    }
+}
+
+mod no_vcs {
+    use super::*;
+
+    fn plan() -> TestPlan {
+        TestPlan::new()
+            .config(
+                r#"
+[vcs]
+kind = "none"
+
+[dirs]
+working = "./work"
+
+[runner]
+pwd = "."
+"#,
+            )
+            .file("src/app.js", "export const x = 1;")
+            .file("work/.keep", "")
+    }
+
+    #[test]
+    fn make_copies_files() {
+        let dir = plan().setup();
+
+        cmd!(dir, "bough workspace make", "created workspace at {!ws_path}");
+        cmd!(dir, "ls {?ws_path}/src/app.js", "{?ws_path}/src/app.js");
+    }
+
+    #[test]
+    fn list_empty() {
+        let dir = plan().setup();
+        cmd!(dir, "bough workspace list", "0 workspaces");
+    }
+}

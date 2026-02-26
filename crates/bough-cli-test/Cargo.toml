@@ -6,10 +6,5 @@ license.workspace = true
 
 [dependencies]
 tempfile = "3.26"
-regex = "1"
 assert_cmd = "2.1"
 bough-cli-test-macros = { path = "../bough-cli-test-macros" }
-
-[[test]]
-name = "smoke"
-path = "tests/smoke.rs"
