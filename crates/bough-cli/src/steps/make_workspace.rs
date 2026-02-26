@@ -77,7 +77,7 @@ pub fn run(config: &Config) -> Result<MakeWorkspace, Error> {
                 &["workspace", "add", "--name", &name, &ws_dir.to_string_lossy()],
                 Path::new(runner_pwd),
             )?;
-            (Some(WorkspaceId(name)), ws_dir, stdout)
+            (Some(WorkspaceId::from_trusted(name)), ws_dir, stdout)
         }
         VcsConfig::Git { .. } => {
             let name = generate_name();
@@ -87,7 +87,7 @@ pub fn run(config: &Config) -> Result<MakeWorkspace, Error> {
                 &["worktree", "add", "-b", &name, &ws_dir.to_string_lossy()],
                 Path::new(runner_pwd),
             )?;
-            (Some(WorkspaceId(name)), ws_dir, stdout)
+            (Some(WorkspaceId::from_trusted(name)), ws_dir, stdout)
         }
         VcsConfig::None => {
             let name = generate_name();

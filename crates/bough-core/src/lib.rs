@@ -8,19 +8,59 @@ use std::fmt::Debug;
 use std::path::{Path, PathBuf};
 use tree_sitter::{Parser, StreamingIterator};
 
+#[derive(Debug)]
+pub enum ValidationError {
+    WorkspaceNotFound { name: String, path: PathBuf },
+    NoActiveRunner,
+    InvalidHash(String),
+    SrcFileHashNotFound(String),
+    MutationHashNotFound(String),
+    Glob(glob::PatternError),
+    ReadFile(PathBuf, std::io::Error),
+}
+
+impl std::fmt::Display for ValidationError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::WorkspaceNotFound { name, path } => {
+                write!(f, "workspace '{}' not found at {}", name, path.display())
+            }
+            Self::NoActiveRunner => write!(f, "no active runner configured"),
+            Self::InvalidHash(s) => write!(f, "invalid hash: {s}"),
+            Self::SrcFileHashNotFound(s) => write!(f, "no source file with hash {s}"),
+            Self::MutationHashNotFound(s) => write!(f, "no mutation with hash {s}"),
+            Self::Glob(e) => write!(f, "invalid glob pattern: {e}"),
+            Self::ReadFile(p, e) => write!(f, "failed to read {}: {e}", p.display()),
+        }
+    }
+}
+
+impl std::error::Error for ValidationError {}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Hash)]
-pub struct WorkspaceId(pub String);
+pub struct WorkspaceId(String);
+
+impl WorkspaceId {
+    pub fn new(
+        name: impl Into<String>,
+        config: &config::Config,
+    ) -> Result<Self, ValidationError> {
+        let name = name.into();
+        let path = PathBuf::from(config.working_dir()).join(&name);
+        if !path.is_dir() {
+            return Err(ValidationError::WorkspaceNotFound { name, path });
+        }
+        Ok(Self(name))
+    }
+
+    pub fn from_trusted(name: impl Into<String>) -> Self {
+        Self(name.into())
+    }
+}
 
 impl std::fmt::Display for WorkspaceId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(&self.0)
-    }
-}
-
-impl std::str::FromStr for WorkspaceId {
-    type Err = std::convert::Infallible;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Self(s.to_string()))
     }
 }
 
@@ -38,18 +78,33 @@ impl AsRef<std::path::Path> for WorkspaceId {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct SrcFileHash(pub ShaHash);
+pub struct SrcFileHash(ShaHash);
+
+impl SrcFileHash {
+    pub fn new(
+        hash_str: &str,
+        config: &config::Config,
+    ) -> Result<Self, ValidationError> {
+        let hash: ShaHash = hash_str
+            .parse()
+            .map_err(|_| ValidationError::InvalidHash(hash_str.to_string()))?;
+        let candidate = SrcFileHash(hash);
+        let files = discover_src_files(config)?;
+        if files.iter().any(|f| f.hash == candidate) {
+            Ok(candidate)
+        } else {
+            Err(ValidationError::SrcFileHashNotFound(hash_str.to_string()))
+        }
+    }
+
+    pub(crate) fn from_content_hash(hash: ShaHash) -> Self {
+        Self(hash)
+    }
+}
 
 impl std::fmt::Display for SrcFileHash {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(&self.0, f)
-    }
-}
-
-impl std::str::FromStr for SrcFileHash {
-    type Err = String;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        s.parse::<ShaHash>().map(Self)
     }
 }
 
@@ -60,7 +115,29 @@ impl ShaHashable for SrcFileHash {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct MutationHash(pub ShaHash);
+pub struct MutationHash(ShaHash);
+
+impl MutationHash {
+    pub fn new(
+        hash_str: &str,
+        config: &config::Config,
+    ) -> Result<Self, ValidationError> {
+        let hash: ShaHash = hash_str
+            .parse()
+            .map_err(|_| ValidationError::InvalidHash(hash_str.to_string()))?;
+        let candidate = MutationHash(hash);
+        let files = discover_src_files(config)?;
+        if has_any_matching_mutation(&files, &candidate, config)? {
+            Ok(candidate)
+        } else {
+            Err(ValidationError::MutationHashNotFound(hash_str.to_string()))
+        }
+    }
+
+    pub fn from_trusted(hash: ShaHash) -> Self {
+        Self(hash)
+    }
+}
 
 impl std::fmt::Display for MutationHash {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -68,17 +145,140 @@ impl std::fmt::Display for MutationHash {
     }
 }
 
-impl std::str::FromStr for MutationHash {
-    type Err = String;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        s.parse::<ShaHash>().map(Self)
-    }
-}
-
 impl ShaHashable for MutationHash {
     fn sha_hash_into(&self, state: &mut ShaState) {
         self.0.sha_hash_into(state);
     }
+}
+
+fn collect_glob(pattern: &str, base: &str) -> Result<Vec<PathBuf>, ValidationError> {
+    let full = if PathBuf::from(pattern).is_absolute() {
+        pattern.to_string()
+    } else {
+        format!("{base}/{pattern}")
+    };
+    Ok(glob::glob(&full)
+        .map_err(ValidationError::Glob)?
+        .filter_map(Result::ok)
+        .filter(|p| p.is_file())
+        .map(|p| std::fs::canonicalize(&p).unwrap_or(p))
+        .collect())
+}
+
+fn discover_src_files(config: &config::Config) -> Result<Vec<SourceFile>, ValidationError> {
+    let runner = config
+        .resolved_runner_name()
+        .ok_or(ValidationError::NoActiveRunner)?;
+    let runner_pwd = config
+        .runner_pwd(runner)
+        .ok_or(ValidationError::NoActiveRunner)?;
+
+    let mut files = Vec::new();
+    for lang in config.mutate_languages(runner) {
+        let mut included = Vec::new();
+        for pattern in &config.file_includes(runner, lang) {
+            included.extend(collect_glob(pattern, runner_pwd)?);
+        }
+        let mut excluded = std::collections::HashSet::new();
+        for pattern in &config.file_excludes(runner, lang) {
+            for path in collect_glob(pattern, runner_pwd)? {
+                excluded.insert(path);
+            }
+        }
+        let mut paths: Vec<PathBuf> = included
+            .into_iter()
+            .filter(|p| !excluded.contains(p))
+            .collect();
+        paths.sort();
+        paths.dedup();
+
+        for path in paths {
+            let sf = SourceFile::read(&path)
+                .map_err(|e| ValidationError::ReadFile(path, e))?;
+            files.push(sf);
+        }
+    }
+    Ok(files)
+}
+
+fn has_any_matching_mutation(
+    files: &[SourceFile],
+    candidate: &MutationHash,
+    config: &config::Config,
+) -> Result<bool, ValidationError> {
+    use languages::{JavaScript, TypeScript, LanguageId};
+
+    let runner = config
+        .resolved_runner_name()
+        .ok_or(ValidationError::NoActiveRunner)?;
+
+    for lang in config.mutate_languages(runner) {
+        let lang_files: Vec<&SourceFile> = files
+            .iter()
+            .filter(|f| {
+                let includes = config.file_includes(runner, lang);
+                let runner_pwd = config.runner_pwd(runner).unwrap_or(".");
+                includes.iter().any(|pat| {
+                    let full = if PathBuf::from(pat).is_absolute() {
+                        pat.clone()
+                    } else {
+                        format!("{runner_pwd}/{pat}")
+                    };
+                    glob::Pattern::new(&full)
+                        .map(|p| p.matches_path(&f.path))
+                        .unwrap_or(false)
+                })
+            })
+            .collect();
+
+        let skips = config.mutant_skips(runner, lang);
+        let queries: Vec<String> = skips
+            .iter()
+            .filter_map(|s| match s {
+                config::MutantSkip::Query { query } => Some(query.clone()),
+                _ => None,
+            })
+            .collect();
+
+        for file in &lang_files {
+            let content = std::fs::read_to_string(&file.path)
+                .map_err(|e| ValidationError::ReadFile(file.path.clone(), e))?;
+
+            let found = match lang {
+                LanguageId::Javascript => {
+                    check_mutations::<JavaScript>(file, &content, &queries, candidate)
+                }
+                LanguageId::Typescript => {
+                    check_mutations::<TypeScript>(file, &content, &queries, candidate)
+                }
+            };
+            if found {
+                return Ok(true);
+            }
+        }
+    }
+    Ok(false)
+}
+
+fn check_mutations<L: Language>(
+    file: &SourceFile,
+    content: &str,
+    queries: &[String],
+    candidate: &MutationHash,
+) -> bool
+where
+    L::Kind: Clone + Into<MutationKind>,
+{
+    let mutants = find_mutants::<L>(file, content);
+    let mutants = filter_mutants::<L>(mutants, queries, content);
+    for mutant in &mutants {
+        for mutation in generate_mutations::<L>(mutant) {
+            if MutationHash::from_trusted(mutation.sha_hash()) == *candidate {
+                return true;
+            }
+        }
+    }
+    false
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -100,14 +300,14 @@ impl SourceFile {
         let content = std::fs::read_to_string(path)?;
         Ok(Self {
             path: path.to_owned(),
-            hash: SrcFileHash(content.sha_hash()),
+            hash: SrcFileHash::from_content_hash(content.sha_hash()),
         })
     }
 
     pub fn from_content(path: PathBuf, content: &str) -> Self {
         Self {
             path,
-            hash: SrcFileHash(content.sha_hash()),
+            hash: SrcFileHash::from_content_hash(content.sha_hash()),
         }
     }
 }
