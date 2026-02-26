@@ -108,9 +108,11 @@ pub struct Runner {
     pwd: String,
     treat_timeouts_as: Outcome,
     init: Option<Phase>,
+    get_test_ids: Option<String>,
     reset: Option<Phase>,
     #[serde(default = "default_test_phase")]
     test: Phase,
+    test_ids: Option<TestIds>,
     #[serde(flatten)]
     mutate: HashMap<LanguageId, MutateLanguage>,
 }
@@ -123,7 +125,9 @@ impl Default for Runner {
             init: None,
             reset: None,
             test: default_test_phase(),
+            test_ids: None,
             mutate: HashMap::new(),
+            get_test_ids: None,
         }
     }
 }
@@ -154,6 +158,12 @@ impl Default for Phase {
 pub struct Timeout {
     absolute: Option<u64>,
     relative: Option<u64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct TestIds {
+    get_all: String,
+    get_failed: String,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
@@ -333,15 +343,11 @@ impl Config {
     }
 
     pub fn runner_has_init(&self, runner: &str) -> bool {
-        self.runners
-            .get(runner)
-            .is_some_and(|r| r.init.is_some())
+        self.runners.get(runner).is_some_and(|r| r.init.is_some())
     }
 
     pub fn runner_has_reset(&self, runner: &str) -> bool {
-        self.runners
-            .get(runner)
-            .is_some_and(|r| r.reset.is_some())
+        self.runners.get(runner).is_some_and(|r| r.reset.is_some())
     }
 
     pub fn runner_reset_commands(&self, runner: &str) -> Option<Vec<String>> {
@@ -386,6 +392,20 @@ impl Config {
             .get(runner)
             .map(|r| r.test.env.clone())
             .unwrap_or_default()
+    }
+
+    pub fn runner_test_ids_get_all(&self, runner: &str) -> Option<&str> {
+        self.runners
+            .get(runner)
+            .and_then(|r| r.test_ids.as_ref())
+            .map(|t| t.get_all.as_str())
+    }
+
+    pub fn runner_test_ids_get_failed(&self, runner: &str) -> Option<&str> {
+        self.runners
+            .get(runner)
+            .and_then(|r| r.test_ids.as_ref())
+            .map(|t| t.get_failed.as_str())
     }
 
     pub fn mutate_languages(&self, runner: &str) -> Vec<LanguageId> {

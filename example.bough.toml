@@ -4,12 +4,17 @@ rev = "bough"
 
 [vitest-js]
 pwd = "examples/vitest-js"
+
 init.commands = ["npm install"]
 test.commands = ["npm test"]
+
+[vitest-js.test_ids]
+get_all = "npm run get-test-ids"
+get_failed = "npm run get-failed-test-ids"
 
 [vitest-js.js]
 files.include = ["src/*.js"]
 files.exclude = ["**/*.test.*"]
 mutants.skip = [
-  { query = "(if_statement condition: (parenthesized_expression (member_expression object: (meta_property)))) @skip" },
+  { query = "(if_statement condition: (parenthesized_expression (member_expression object: (meta_property)))) @skip" } ,
 ]
