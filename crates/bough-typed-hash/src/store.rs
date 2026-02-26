@@ -1,4 +1,11 @@
 use crate::{TypedHash, TypedHashable};
+use sha2::{Digest, Sha256};
+
+fn raw_hash<T: TypedHashable>(value: &T) -> T::Hash {
+    let mut state = Sha256::new();
+    value.hash_into(&mut state).expect("hash computation failed");
+    T::Hash::from_raw(state.finalize().into())
+}
 
 /// Reverse lookup: hash → value.
 ///
@@ -31,7 +38,7 @@ struct Entry<T: TypedHashable> {
 /// ```
 /// use bough_typed_hash::{TypedHashable, HashStore, MemoryHashStore};
 ///
-/// #[derive(bough_typed_hash::TypedHashable)]
+/// #[derive(Clone, bough_typed_hash::TypedHashable)]
 /// pub struct Item { value: u32 }
 ///
 /// let mut store = MemoryHashStore::new();
@@ -63,7 +70,7 @@ impl<T: TypedHashable> HashStore<T> for MemoryHashStore<T> {
     }
 
     fn insert(&mut self, value: T) {
-        let hash = crate::compute_hash(&value).expect("hash computation failed");
+        let hash = raw_hash(&value);
         if let Some(entry) = self.entries.iter_mut().find(|e| e.hash.as_bytes() == hash.as_bytes()) {
             entry.value = value;
             entry.hash = hash;
@@ -192,7 +199,7 @@ impl<T: TypedHashable + serde::Serialize + serde::de::DeserializeOwned> HashStor
     }
 
     fn insert(&mut self, value: T) {
-        let hash = crate::compute_hash(&value).expect("hash computation failed");
+        let hash = raw_hash(&value);
         std::fs::create_dir_all(&self.dir).expect("failed to create store directory");
         let json = serde_json::to_string_pretty(&value).expect("failed to serialize");
         std::fs::write(self.hash_path(&hash), json).expect("failed to write hash file");

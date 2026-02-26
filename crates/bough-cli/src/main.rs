@@ -221,12 +221,8 @@ fn main() {
                 eprintln!("{e}");
                 std::process::exit(1);
             });
-            let mh = bough_core::MutationHash::new(mutation_hash, &cfg).unwrap_or_else(|e| {
-                eprintln!("{e}");
-                std::process::exit(1);
-            });
             let path = PathBuf::from(cfg.working_dir()).join(&*ws);
-            let result = steps::mutate_workspace::run(&cfg, &path, &mh).unwrap_or_else(|e| {
+            let result = steps::mutate_workspace::run(&cfg, &path, mutation_hash).unwrap_or_else(|e| {
                 eprintln!("{e}");
                 std::process::exit(1);
             });

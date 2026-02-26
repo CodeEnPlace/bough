@@ -5,7 +5,7 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
-bough-sha = { path = "../bough-sha" }
+bough-typed-hash = { path = "../bough-typed-hash" }
 clap = { version = "4.5.60", features = ["derive"] }
 glob = "0.3"
 serde = { version = "1", features = ["derive"] }

@@ -12,7 +12,7 @@
 //! ```
 //! use bough_typed_hash::{HashInto, TypedHash, TypedHashable, MemoryHashStore, HashStore};
 //!
-//! #[derive(bough_typed_hash::TypedHashable)]
+//! #[derive(Clone, bough_typed_hash::TypedHashable)]
 //! pub struct Config {
 //!     name: String,
 //!     version: u32,
@@ -128,25 +128,17 @@ pub trait TypedHash: Sized {
 /// Only root objects addressed by hash implement this. Building blocks
 /// implement [`HashInto`] only. Calling [`hash`](TypedHashable::hash)
 /// computes the hash and inserts the value into the provided store.
-pub trait TypedHashable: HashInto + Sized {
+pub trait TypedHashable: HashInto + Clone + Sized {
     type Hash: TypedHash;
 
-    fn hash(self, store: &mut dyn HashStore<Self>) -> Result<Self::Hash, std::io::Error> {
+    fn hash(&self, store: &mut dyn HashStore<Self>) -> Result<Self::Hash, std::io::Error> {
         let mut state = Sha256::new();
         self.hash_into(&mut state)?;
         let bytes: [u8; 32] = state.finalize().into();
         let hash = Self::Hash::from_raw(bytes);
-        store.insert(self);
+        store.insert(self.clone());
         Ok(hash)
     }
-}
-
-/// Compute a typed hash from a `HashInto` value without consuming it or requiring a store.
-pub fn compute_hash<T: TypedHashable>(value: &T) -> Result<T::Hash, std::io::Error> {
-    let mut state = Sha256::new();
-    value.hash_into(&mut state)?;
-    let bytes: [u8; 32] = state.finalize().into();
-    Ok(T::Hash::from_raw(bytes))
 }
 
 fn hex_to_bytes(hex: &str) -> Result<[u8; 32], String> {
