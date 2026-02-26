@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 pub struct TestPlan {
@@ -45,16 +44,12 @@ impl TestPlan {
             .output()
             .ok();
 
-        TestDir {
-            dir,
-            captures: HashMap::new(),
-        }
+        TestDir { dir }
     }
 }
 
 pub struct TestDir {
     dir: tempfile::TempDir,
-    captures: HashMap<String, String>,
 }
 
 impl TestDir {
@@ -62,20 +57,7 @@ impl TestDir {
         self.dir.path()
     }
 
-    pub fn get(&self, name: &str) -> &str {
-        self.captures
-            .get(name)
-            .unwrap_or_else(|| panic!("no capture named '{name}'"))
-    }
-
-    pub fn take(&mut self, name: &str) -> String {
-        self.captures
-            .get(name)
-            .cloned()
-            .unwrap_or_else(|| panic!("no capture named '{name}'"))
-    }
-
-    pub fn run_success(&mut self, cmd_str: &str, pattern: &str) {
+    pub fn run_success(&self, cmd_str: &str) -> String {
         let output = self.exec(cmd_str);
 
         assert!(
@@ -84,11 +66,10 @@ impl TestDir {
             String::from_utf8_lossy(&output.stderr)
         );
 
-        let stdout = String::from_utf8(output.stdout).unwrap();
-        self.match_pattern(&stdout, pattern);
+        String::from_utf8(output.stdout).unwrap()
     }
 
-    pub fn run_failure(&mut self, cmd_str: &str, pattern: &str) {
+    pub fn run_failure(&self, cmd_str: &str) -> String {
         let output = self.exec(cmd_str);
 
         assert!(
@@ -97,8 +78,7 @@ impl TestDir {
             String::from_utf8_lossy(&output.stdout)
         );
 
-        let stderr = String::from_utf8(output.stderr).unwrap();
-        self.match_pattern(&stderr, pattern);
+        String::from_utf8(output.stderr).unwrap()
     }
 
     fn exec(&self, cmd_str: &str) -> std::process::Output {
@@ -113,60 +93,6 @@ impl TestDir {
             .output()
             .unwrap_or_else(|e| panic!("failed to execute '{cmd_str}': {e}"))
     }
-
-    fn match_pattern(&mut self, text: &str, pattern: &str) {
-        let pattern = pattern.trim();
-        let text = text.trim();
-
-        let mut regex_str = String::from("(?s)^");
-        let mut capture_names = Vec::new();
-        let pat_bytes = pattern.as_bytes();
-        let mut i = 0;
-
-        while i < pat_bytes.len() {
-            if i + 2 < pat_bytes.len()
-                && pat_bytes[i] == b'{'
-                && (pat_bytes[i + 1] == b'!' || pat_bytes[i + 1] == b'?')
-            {
-                let mode = pat_bytes[i + 1];
-                let rest = &pattern[i + 2..];
-                let close = rest
-                    .find('}')
-                    .unwrap_or_else(|| panic!("unclosed capture in pattern: {pattern}"));
-                let name = &pattern[i + 2..i + 2 + close];
-
-                if mode == b'!' {
-                    regex_str.push_str(&format!("(?P<{name}>\\S+)"));
-                    capture_names.push(name.to_string());
-                } else {
-                    let val = self
-                        .captures
-                        .get(name)
-                        .unwrap_or_else(|| panic!("no previous capture named '{name}'"));
-                    regex_str.push_str(&regex::escape(val));
-                }
-
-                i += 2 + close + 1;
-            } else {
-                regex_str.push_str(&regex::escape(&pattern[i..i + 1]));
-                i += 1;
-            }
-        }
-
-        regex_str.push('$');
-
-        let re = regex::Regex::new(&regex_str).unwrap();
-        let caps = re.captures(text).unwrap_or_else(|| {
-            panic!("pattern did not match\npattern: {pattern}\nregex:   {regex_str}\ntext:    {text}");
-        });
-
-        for name in &capture_names {
-            if let Some(m) = caps.name(name) {
-                self.captures
-                    .insert(name.clone(), m.as_str().to_string());
-            }
-        }
-    }
 }
 
 fn resolve_program(name: &str) -> PathBuf {
@@ -177,5 +103,3 @@ fn resolve_program(name: &str) -> PathBuf {
         PathBuf::from(name)
     }
 }
-
-

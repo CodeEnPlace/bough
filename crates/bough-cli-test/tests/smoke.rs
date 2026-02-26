@@ -66,14 +66,14 @@ test("monday's child is fair of face", () => {
 
     #[test]
     fn finds_1_source_file() {
-        let mut dir = plan().setup();
+        let dir = plan().setup();
 
         cmd!(dir, "bough show src", "found 1 files for Javascript");
     }
 
     #[test]
     fn makes_new_workspaces() {
-        let mut dir = plan().setup();
+        let dir = plan().setup();
 
         cmd!(
             dir,

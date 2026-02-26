@@ -129,7 +129,6 @@ version = "0.0.0"
 dependencies = [
  "assert_cmd",
  "bough-cli-test-macros",
- "regex",
  "tempfile",
 ]
 
