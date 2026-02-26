@@ -5,4 +5,5 @@ pub mod get_src_files;
 pub mod init_workspace;
 pub mod list_workspaces;
 pub mod make_workspace;
+pub mod mutate_workspace;
 pub mod reset_workspace;

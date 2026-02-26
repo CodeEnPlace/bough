@@ -37,6 +37,12 @@ enum Command {
         #[command(subcommand)]
         action: WorkspaceAction,
     },
+    Mutate {
+        #[arg()]
+        workspace: String,
+        #[arg()]
+        mutation_hash: String,
+    },
     Run,
     Completions {
         #[arg(value_enum)]
@@ -50,11 +56,11 @@ enum WorkspaceAction {
     List,
     Init {
         #[arg()]
-        path: PathBuf,
+        name: String,
     },
     Reset {
         #[arg()]
-        path: PathBuf,
+        name: String,
     },
     Drop {
         #[arg()]
@@ -103,11 +109,12 @@ fn main() {
                 let no_color = !std::io::IsTerminal::is_terminal(&std::io::stdout());
                 result.render(&cli.output_style, no_color, 0);
             }
-            WorkspaceAction::Init { path } => {
+            WorkspaceAction::Init { name } => {
                 let cfg = config::load(&cli).unwrap_or_else(|e| {
                     eprintln!("{e}");
                     std::process::exit(1);
                 });
+                let path = PathBuf::from(cfg.working_dir()).join(name);
                 let result = steps::init_workspace::run(&cfg, &path).unwrap_or_else(|e| {
                     eprintln!("{e}");
                     std::process::exit(1);
@@ -115,11 +122,12 @@ fn main() {
                 let no_color = !std::io::IsTerminal::is_terminal(&std::io::stdout());
                 result.render(&cli.output_style, no_color, 0);
             }
-            WorkspaceAction::Reset { path } => {
+            WorkspaceAction::Reset { name } => {
                 let cfg = config::load(&cli).unwrap_or_else(|e| {
                     eprintln!("{e}");
                     std::process::exit(1);
                 });
+                let path = PathBuf::from(cfg.working_dir()).join(name);
                 let result = steps::reset_workspace::run(&cfg, &path).unwrap_or_else(|e| {
                     eprintln!("{e}");
                     std::process::exit(1);
@@ -191,6 +199,20 @@ fn main() {
                 result.render(&cli.output_style, no_color, 0);
             }
         },
+
+        Command::Mutate { workspace, mutation_hash } => {
+            let cfg = config::load(&cli).unwrap_or_else(|e| {
+                eprintln!("{e}");
+                std::process::exit(1);
+            });
+            let path = PathBuf::from(cfg.working_dir()).join(workspace);
+            let result = steps::mutate_workspace::run(&cfg, &path, &mutation_hash).unwrap_or_else(|e| {
+                eprintln!("{e}");
+                std::process::exit(1);
+            });
+            let no_color = !std::io::IsTerminal::is_terminal(&std::io::stdout());
+            result.render(&cli.output_style, no_color, 0);
+        }
 
         Command::Run => {
             let no_color = !std::io::IsTerminal::is_terminal(&std::io::stdout());
