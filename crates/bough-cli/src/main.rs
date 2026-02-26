@@ -3,6 +3,7 @@ mod phase_runner;
 mod render;
 mod steps;
 
+use bough_core::{MutationHash, WorkspaceId};
 use clap::{CommandFactory, Parser, Subcommand};
 use clap_complete::Shell;
 use render::{Render, Style};
@@ -39,9 +40,9 @@ enum Command {
     },
     Mutate {
         #[arg()]
-        workspace: String,
+        workspace: WorkspaceId,
         #[arg()]
-        mutation_hash: String,
+        mutation_hash: MutationHash,
     },
     Run,
     Completions {
@@ -56,15 +57,15 @@ enum WorkspaceAction {
     List,
     Init {
         #[arg()]
-        name: String,
+        name: WorkspaceId,
     },
     Reset {
         #[arg()]
-        name: String,
+        name: WorkspaceId,
     },
     Drop {
         #[arg()]
-        name: String,
+        name: WorkspaceId,
     },
 }
 
@@ -114,7 +115,7 @@ fn main() {
                     eprintln!("{e}");
                     std::process::exit(1);
                 });
-                let path = PathBuf::from(cfg.working_dir()).join(name);
+                let path = PathBuf::from(cfg.working_dir()).join(&name);
                 let result = steps::init_workspace::run(&cfg, &path).unwrap_or_else(|e| {
                     eprintln!("{e}");
                     std::process::exit(1);
@@ -127,7 +128,7 @@ fn main() {
                     eprintln!("{e}");
                     std::process::exit(1);
                 });
-                let path = PathBuf::from(cfg.working_dir()).join(name);
+                let path = PathBuf::from(cfg.working_dir()).join(&name);
                 let result = steps::reset_workspace::run(&cfg, &path).unwrap_or_else(|e| {
                     eprintln!("{e}");
                     std::process::exit(1);
@@ -140,7 +141,7 @@ fn main() {
                     eprintln!("{e}");
                     std::process::exit(1);
                 });
-                let result = steps::drop_workspace::run(&cfg, &name).unwrap_or_else(|e| {
+                let result = steps::drop_workspace::run(&cfg, name).unwrap_or_else(|e| {
                     eprintln!("{e}");
                     std::process::exit(1);
                 });
@@ -205,8 +206,8 @@ fn main() {
                 eprintln!("{e}");
                 std::process::exit(1);
             });
-            let path = PathBuf::from(cfg.working_dir()).join(workspace);
-            let result = steps::mutate_workspace::run(&cfg, &path, &mutation_hash).unwrap_or_else(|e| {
+            let path = PathBuf::from(cfg.working_dir()).join(&workspace);
+            let result = steps::mutate_workspace::run(&cfg, &path, mutation_hash).unwrap_or_else(|e| {
                 eprintln!("{e}");
                 std::process::exit(1);
             });

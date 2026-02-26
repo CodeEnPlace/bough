@@ -1,3 +1,4 @@
+use bough_core::WorkspaceId;
 use bough_core::config::{Config, VcsConfig};
 use serde::Serialize;
 use std::path::{Path, PathBuf};
@@ -32,7 +33,7 @@ impl std::error::Error for Error {}
 pub struct MakeWorkspace {
     pub path: PathBuf,
     pub vcs: VcsConfig,
-    pub name: Option<String>,
+    pub name: Option<WorkspaceId>,
     pub stdout: String,
 }
 
@@ -76,7 +77,7 @@ pub fn run(config: &Config) -> Result<MakeWorkspace, Error> {
                 &["workspace", "add", "--name", &name, &ws_dir.to_string_lossy()],
                 Path::new(runner_pwd),
             )?;
-            (Some(name), ws_dir, stdout)
+            (Some(WorkspaceId(name)), ws_dir, stdout)
         }
         VcsConfig::Git { .. } => {
             let name = generate_name();
@@ -86,7 +87,7 @@ pub fn run(config: &Config) -> Result<MakeWorkspace, Error> {
                 &["worktree", "add", "-b", &name, &ws_dir.to_string_lossy()],
                 Path::new(runner_pwd),
             )?;
-            (Some(name), ws_dir, stdout)
+            (Some(WorkspaceId(name)), ws_dir, stdout)
         }
         VcsConfig::None => {
             let name = generate_name();
@@ -141,7 +142,7 @@ impl Render for MakeWorkspace {
             color("\x1b[1m", &self.path.display().to_string()),
         );
         if let Some(name) = &self.name {
-            out.push_str(&format!("  name: {}\n", color("\x1b[33m", name)));
+            out.push_str(&format!("  name: {}\n", color("\x1b[33m", &name)));
         }
         if !self.stdout.is_empty() {
             out.push_str(&color("\x1b[2m", &self.stdout));

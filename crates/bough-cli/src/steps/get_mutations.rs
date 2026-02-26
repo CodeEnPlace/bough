@@ -1,3 +1,4 @@
+use bough_core::MutationHash;
 use bough_core::config::{Config, MutantSkip};
 use bough_core::languages::LanguageId;
 use bough_core::{
@@ -64,10 +65,10 @@ impl AnyMutation {
         }
     }
 
-    pub fn hash_hex(&self) -> String {
+    pub fn mutation_hash(&self) -> MutationHash {
         match self {
-            AnyMutation::Js(m) => m.sha_hash().to_string(),
-            AnyMutation::Ts(m) => m.sha_hash().to_string(),
+            AnyMutation::Js(m) => MutationHash(m.sha_hash()),
+            AnyMutation::Ts(m) => MutationHash(m.sha_hash()),
         }
     }
 
@@ -163,7 +164,7 @@ impl Render for ShowMutations {
             for m in mutations {
                 out.push_str(&format!(
                     "  {} {}:{} {} → {}\n",
-                    color("\x1b[2m", &m.hash_hex()),
+                    color("\x1b[2m", &m.mutation_hash().to_string()),
                     m.path().display(),
                     m.line(),
                     color("\x1b[33m", &format!("{:?}", m.kind())),

@@ -1,3 +1,4 @@
+use bough_core::WorkspaceId;
 use bough_core::config::{Config, VcsConfig};
 use serde::Serialize;
 use std::path::Path;
@@ -8,7 +9,7 @@ use crate::render::{Render, color};
 #[derive(Debug)]
 pub enum Error {
     NoActiveRunner,
-    NotFound(String),
+    NotFound(WorkspaceId),
     Command(String, std::io::Error),
     CommandFailed(String, i32),
     RemoveDir(std::io::Error),
@@ -18,7 +19,7 @@ impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Error::NoActiveRunner => write!(f, "no active runner configured"),
-            Error::NotFound(name) => write!(f, "workspace '{name}' not found"),
+            Error::NotFound(id) => write!(f, "workspace '{}' not found", id),
             Error::Command(cmd, e) => write!(f, "failed to run `{cmd}`: {e}"),
             Error::CommandFailed(cmd, code) => write!(f, "`{cmd}` exited with code {code}"),
             Error::RemoveDir(e) => write!(f, "failed to remove workspace dir: {e}"),
@@ -30,7 +31,7 @@ impl std::error::Error for Error {}
 
 #[derive(Debug, Serialize)]
 pub struct DropWorkspace {
-    pub name: String,
+    pub name: WorkspaceId,
     pub vcs: VcsConfig,
 }
 
@@ -49,7 +50,7 @@ fn run_cmd(cmd: &str, args: &[&str], cwd: &Path) -> Result<(), Error> {
     Ok(())
 }
 
-pub fn run(config: &Config, name: &str) -> Result<DropWorkspace, Error> {
+pub fn run(config: &Config, name: &WorkspaceId) -> Result<DropWorkspace, Error> {
     let runner_name = config.resolved_runner_name().ok_or(Error::NoActiveRunner)?;
     let runner_pwd = config.runner_pwd(runner_name).ok_or(Error::NoActiveRunner)?;
     let vcs = config.vcs().clone();
@@ -58,10 +59,10 @@ pub fn run(config: &Config, name: &str) -> Result<DropWorkspace, Error> {
         VcsConfig::Jj { .. } => {
             run_cmd(
                 "jj",
-                &["workspace", "forget", name],
+                &["workspace", "forget", &name],
                 Path::new(runner_pwd),
             )?;
-            let dir = std::path::PathBuf::from(config.working_dir()).join(name);
+            let dir = std::path::PathBuf::from(config.working_dir()).join(&name);
             if dir.exists() {
                 std::fs::remove_dir_all(&dir).map_err(Error::RemoveDir)?;
             }
@@ -69,19 +70,19 @@ pub fn run(config: &Config, name: &str) -> Result<DropWorkspace, Error> {
         VcsConfig::Git { .. } => {
             run_cmd(
                 "git",
-                &["worktree", "remove", name, "--force"],
+                &["worktree", "remove", &name, "--force"],
                 Path::new(runner_pwd),
             )?;
             let _ = run_cmd(
                 "git",
-                &["branch", "-D", name],
+                &["branch", "-D", &name],
                 Path::new(runner_pwd),
             );
         }
         VcsConfig::None => {
-            let dir = std::path::PathBuf::from(config.working_dir()).join(name);
+            let dir = std::path::PathBuf::from(config.working_dir()).join(&name);
             if !dir.exists() {
-                return Err(Error::NotFound(name.to_string()));
+                return Err(Error::NotFound(name.clone()));
             }
             std::fs::remove_dir_all(&dir).map_err(Error::RemoveDir)?;
         }
@@ -91,7 +92,7 @@ pub fn run(config: &Config, name: &str) -> Result<DropWorkspace, Error> {
     }
 
     Ok(DropWorkspace {
-        name: name.to_string(),
+        name: name.clone(),
         vcs,
     })
 }
