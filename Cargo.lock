@@ -124,6 +124,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "bough-cli-test"
+version = "0.0.0"
+dependencies = [
+ "assert_cmd",
+ "regex",
+ "tempfile",
+]
+
+[[package]]
 name = "bough-core"
 version = "0.0.0"
 dependencies = [
