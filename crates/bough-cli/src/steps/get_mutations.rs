@@ -70,6 +70,13 @@ impl AnyMutation {
             AnyMutation::Ts(m) => m.sha_hash().to_string(),
         }
     }
+
+    pub fn span(&self) -> &bough_core::Span {
+        match self {
+            AnyMutation::Js(m) => &m.mutant.span,
+            AnyMutation::Ts(m) => &m.mutant.span,
+        }
+    }
 }
 
 #[derive(Debug, Serialize)]
