@@ -75,27 +75,17 @@ test("monday's child is fair of face", () => {
     fn makes_new_workspaces() {
         let dir = plan().setup();
 
-        cmd!(
-            dir,
-            "bough workspace make",
-            "created workspace at /tmp/bough/work/{!id_1}"
-        );
-        cmd!(
-            dir,
-            "bough workspace make",
-            "created workspace at /tmp/bough/work/{!id_2}"
-        );
+        cmd!(dir, "bough workspace make", "created workspace at /tmp/bough/work/{!id_1}");
+        cmd!(dir, "bough workspace make", "created workspace at /tmp/bough/work/{!id_2}");
 
         assert_ne!(id_1, id_2);
 
         cmd!(
             dir,
-            "bough workspace list --output-style verbose",
-            r#"
-2 workspaces
-  {?id_1} /tmp/bough/work/{?id_1}
-  {?id_2} /tmp/bough/work/{?id_2}
-"#
+            "bough --output-style verbose workspace list",
+            "2 workspaces",
+            "{?id_1} /tmp/bough/work/{?id_1}",
+            "{?id_2} /tmp/bough/work/{?id_2}",
         );
     }
 }

@@ -1,9 +1,9 @@
-use bough_cli_test::{TestPlan, cmd};
+use bough_cli_test::{TestPlan, cmd, cmd_err};
 
 #[test]
 fn no_args_shows_usage() {
     let dir = TestPlan::new().setup();
-    cmd!(dir, "bough", "", "Usage: bough [OPTIONS] <COMMAND>");
+    cmd_err!(dir, "bough", "Usage: bough [OPTIONS] <COMMAND>");
 }
 
 #[test]

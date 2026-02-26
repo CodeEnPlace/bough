@@ -56,43 +56,25 @@ impl TestDir {
     pub fn path(&self) -> &Path {
         self.dir.path()
     }
+}
 
-    pub fn run_success(&self, cmd_str: &str) -> String {
-        let output = self.exec(cmd_str);
-
-        assert!(
-            output.status.success(),
-            "expected success for: {cmd_str}\nstderr: {}",
-            String::from_utf8_lossy(&output.stderr)
-        );
-
-        String::from_utf8(output.stdout).unwrap()
+impl AsRef<Path> for TestDir {
+    fn as_ref(&self) -> &Path {
+        self.dir.path()
     }
+}
 
-    pub fn run_failure(&self, cmd_str: &str) -> String {
-        let output = self.exec(cmd_str);
+pub fn exec_cmd(dir: &Path, cmd_str: &str) -> std::process::Output {
+    let parts: Vec<&str> = cmd_str.split_whitespace().collect();
+    let (program, args) = parts.split_first().expect("empty command");
 
-        assert!(
-            !output.status.success(),
-            "expected failure for: {cmd_str}\nstdout: {}",
-            String::from_utf8_lossy(&output.stdout)
-        );
+    let program = resolve_program(program);
 
-        String::from_utf8(output.stderr).unwrap()
-    }
-
-    fn exec(&self, cmd_str: &str) -> std::process::Output {
-        let parts: Vec<&str> = cmd_str.split_whitespace().collect();
-        let (program, args) = parts.split_first().expect("empty command");
-
-        let program = resolve_program(program);
-
-        std::process::Command::new(&program)
-            .args(args)
-            .current_dir(self.path())
-            .output()
-            .unwrap_or_else(|e| panic!("failed to execute '{cmd_str}': {e}"))
-    }
+    std::process::Command::new(&program)
+        .args(args)
+        .current_dir(dir)
+        .output()
+        .unwrap_or_else(|e| panic!("failed to execute '{cmd_str}': {e}"))
 }
 
 fn resolve_program(name: &str) -> PathBuf {
@@ -104,10 +86,6 @@ fn resolve_program(name: &str) -> PathBuf {
     }
 }
 
-/// Try to match a single line against needles (fixed segments between captures).
-///
-/// `needles` has length = num_captures + 1. The first needle must be at the
-/// start of the line, the last must be at the end, and captures fill the gaps.
 pub fn match_line(line: &str, needles: &[&str]) -> Option<Vec<String>> {
     let mut captures = Vec::with_capacity(needles.len().saturating_sub(1));
     let mut cursor = 0;
@@ -136,10 +114,15 @@ pub fn match_line(line: &str, needles: &[&str]) -> Option<Vec<String>> {
     Some(captures)
 }
 
-/// Search forward through `lines` for one that matches `needles`.
-/// Returns (line_index, captured_values).
-pub fn find_line(lines: &[&str], needles: &[&str]) -> Option<(usize, Vec<String>)> {
+pub fn find_unmatched_line(
+    lines: &[&str],
+    matched: &[bool],
+    needles: &[&str],
+) -> Option<(usize, Vec<String>)> {
     for (i, line) in lines.iter().enumerate() {
+        if matched[i] {
+            continue;
+        }
         if let Some(caps) = match_line(line.trim(), needles) {
             return Some((i, caps));
         }
