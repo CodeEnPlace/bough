@@ -5,8 +5,7 @@ use syn::{parse::Parse, parse_macro_input, Expr, LitStr, Token};
 struct CmdArgs {
     dir: Expr,
     cmd: LitStr,
-    pattern: LitStr,
-    stderr: Option<LitStr>,
+    patterns: Vec<LitStr>,
 }
 
 impl Parse for CmdArgs {
@@ -14,15 +13,14 @@ impl Parse for CmdArgs {
         let dir = input.parse()?;
         input.parse::<Token![,]>()?;
         let cmd = input.parse()?;
-        input.parse::<Token![,]>()?;
-        let pattern = input.parse()?;
-        let stderr = if input.peek(Token![,]) {
+        let mut patterns = Vec::new();
+        while input.peek(Token![,]) {
             input.parse::<Token![,]>()?;
-            Some(input.parse()?)
-        } else {
-            None
-        };
-        Ok(Self { dir, cmd, pattern, stderr })
+            if !input.is_empty() {
+                patterns.push(input.parse()?);
+            }
+        }
+        Ok(Self { dir, cmd, patterns })
     }
 }
 
@@ -91,11 +89,9 @@ fn build_cmd_expr(cmd_lit: &LitStr) -> proc_macro2::TokenStream {
     quote! { &[#(#pieces),*].concat() }
 }
 
-/// For a single pattern line's segments, collect needles (literal/backref parts)
-/// and capture names. Needles alternate with captures:
-///   needle[0], capture[0], needle[1], capture[1], ..., needle[N]
-/// So needles.len() == captures.len() + 1. Empty needles mean the pattern
-/// starts/ends with a capture or has adjacent captures.
+/// Collect needles (literal/backref parts) and capture names from segments.
+/// Needles alternate with captures: needle[0], capture[0], needle[1], ...
+/// So needles.len() == captures.len() + 1.
 fn collect_needles_and_captures(
     segments: &[Segment],
 ) -> (Vec<Vec<proc_macro2::TokenStream>>, Vec<String>) {
@@ -124,53 +120,53 @@ fn collect_needles_and_captures(
     (needles, captures)
 }
 
-fn build_match_code(
-    output: &proc_macro2::TokenStream,
-    pattern_str: &str,
-) -> proc_macro2::TokenStream {
-    let pattern_lines: Vec<&str> = pattern_str
-        .lines()
-        .map(|l| l.trim())
-        .filter(|l| !l.is_empty())
-        .collect();
-
-    if pattern_lines.is_empty() {
-        return quote! {};
-    }
-
+fn build_pattern_stmts(patterns: &[LitStr]) -> Vec<proc_macro2::TokenStream> {
     let mut stmts = Vec::new();
 
-    for (li, pat_line) in pattern_lines.iter().enumerate() {
-        let segments = parse_pattern(pat_line);
+    for (pi, pat_lit) in patterns.iter().enumerate() {
+        let pat_str = pat_lit.value();
+        let pat_trimmed = pat_str.trim();
+
+        if pat_trimmed.is_empty() {
+            continue;
+        }
+
+        let segments = parse_pattern(pat_trimmed);
         let (needles, captures) = collect_needles_and_captures(&segments);
 
-        let needle_exprs: Vec<proc_macro2::TokenStream> = needles.iter().map(|parts| {
-            if parts.is_empty() {
-                quote! { String::new() }
-            } else if parts.len() == 1 {
-                let p = &parts[0];
-                quote! { #p.to_string() }
-            } else {
-                quote! { [#(#parts),*].concat() }
-            }
-        }).collect();
+        let needle_exprs: Vec<proc_macro2::TokenStream> = needles
+            .iter()
+            .map(|parts| {
+                if parts.is_empty() {
+                    quote! { String::new() }
+                } else if parts.len() == 1 {
+                    let p = &parts[0];
+                    quote! { #p.to_string() }
+                } else {
+                    quote! { [#(#parts),*].concat() }
+                }
+            })
+            .collect();
 
         let n_needles = needle_exprs.len();
-        let needles_ident = format_ident!("__needles_{}", li);
-        let refs_ident = format_ident!("__refs_{}", li);
-        let result_ident = format_ident!("__result_{}", li);
-        let pat_line_str = *pat_line;
+        let needles_ident = format_ident!("__needles_{}", pi);
+        let refs_ident = format_ident!("__refs_{}", pi);
+        let result_ident = format_ident!("__result_{}", pi);
 
         stmts.push(quote! {
             let #needles_ident: [String; #n_needles] = [#(#needle_exprs),*];
             let #refs_ident: Vec<&str> = #needles_ident.iter().map(|s| s.as_str()).collect();
-            let #result_ident = ::bough_cli_test::find_line(&__lines[__cursor..], &#refs_ident)
+            let #result_ident = ::bough_cli_test::find_unmatched_line(&__lines, &__matched, &#refs_ident)
                 .unwrap_or_else(|| panic!(
-                    "no output line matched pattern: {:?}\nremaining output:\n{}",
-                    #pat_line_str,
-                    __lines[__cursor..].join("\n"),
+                    "no output line matched pattern: {:?}\nunmatched output:\n{}",
+                    #pat_trimmed,
+                    __lines.iter().enumerate()
+                        .filter(|(i, _)| !__matched[*i])
+                        .map(|(_, l)| *l)
+                        .collect::<Vec<_>>()
+                        .join("\n"),
                 ));
-            __cursor += #result_ident.0 + 1;
+            __matched[#result_ident.0] = true;
         });
 
         for (ci, name) in captures.iter().enumerate() {
@@ -182,37 +178,58 @@ fn build_match_code(
         }
     }
 
+    stmts
+}
+
+fn build_cmd(args: CmdArgs, success: bool) -> TokenStream {
+    let dir = &args.dir;
+    let cmd_lit = &args.cmd;
+    let cmd_expr = build_cmd_expr(cmd_lit);
+    let pattern_stmts = build_pattern_stmts(&args.patterns);
+
+    let (assert_check, output_field) = if success {
+        (
+            quote! {
+                assert!(
+                    __output.status.success(),
+                    "expected success for: {}\nstderr: {}",
+                    #cmd_lit,
+                    String::from_utf8_lossy(&__output.stderr),
+                );
+            },
+            quote! { __output.stdout },
+        )
+    } else {
+        (
+            quote! {
+                assert!(
+                    !__output.status.success(),
+                    "expected failure for: {}\nstdout: {}",
+                    #cmd_lit,
+                    String::from_utf8_lossy(&__output.stdout),
+                );
+            },
+            quote! { __output.stderr },
+        )
+    };
+
     quote! {
-        let __lines: Vec<&str> = #output.lines().collect();
-        let mut __cursor: usize = 0;
-        #(#stmts)*
+        let __output = ::bough_cli_test::exec_cmd(#dir.as_ref(), #cmd_expr);
+        #assert_check
+        let __text = String::from_utf8(#output_field).unwrap();
+        let __lines: Vec<&str> = __text.lines().collect();
+        let mut __matched: Vec<bool> = vec![false; __lines.len()];
+        #(#pattern_stmts)*
     }
+    .into()
 }
 
 #[proc_macro]
 pub fn cmd(input: TokenStream) -> TokenStream {
-    let args = parse_macro_input!(input as CmdArgs);
-    let dir = &args.dir;
-    let cmd_lit = &args.cmd;
-    let pattern = &args.pattern;
+    build_cmd(parse_macro_input!(input as CmdArgs), true)
+}
 
-    let pattern_str = pattern.value();
-    let cmd_expr = build_cmd_expr(cmd_lit);
-
-    if let Some(stderr_pat) = &args.stderr {
-        let stderr_str = stderr_pat.value();
-        let match_code = build_match_code(&quote! { __stderr }, &stderr_str);
-        quote! {
-            let __stderr = #dir.run_failure(#cmd_expr);
-            #match_code
-        }
-        .into()
-    } else {
-        let match_code = build_match_code(&quote! { __stdout }, &pattern_str);
-        quote! {
-            let __stdout = #dir.run_success(#cmd_expr);
-            #match_code
-        }
-        .into()
-    }
+#[proc_macro]
+pub fn cmd_err(input: TokenStream) -> TokenStream {
+    build_cmd(parse_macro_input!(input as CmdArgs), false)
 }

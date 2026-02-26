@@ -24,7 +24,26 @@ pwd = "."
         cmd!(
             dir,
             "bough --output-style verbose workspace list",
-            "{?id_1} /tmp/bough/work/{?id_1}"
+            "1 workspaces",
+            "{?id_1} /tmp/bough/work/{?id_1}",
+        );
+    }
+
+    #[test]
+    fn make_two_and_list() {
+        let dir = plan().setup();
+
+        cmd!(dir, "bough workspace make", "created workspace at /tmp/bough/work/{!id_1}");
+        cmd!(dir, "bough workspace make", "created workspace at /tmp/bough/work/{!id_2}");
+
+        assert_ne!(id_1, id_2);
+
+        cmd!(
+            dir,
+            "bough --output-style verbose workspace list",
+            "2 workspaces",
+            "{?id_1} /tmp/bough/work/{?id_1}",
+            "{?id_2} /tmp/bough/work/{?id_2}",
         );
     }
 

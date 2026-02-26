@@ -1,4 +1,4 @@
-use bough_cli_test::{TestPlan, cmd};
+use bough_cli_test::{TestPlan, cmd, cmd_err};
 
 mod discovery {
     use super::*;
@@ -15,7 +15,7 @@ mod discovery {
     #[test]
     fn no_config_errors() {
         let dir = TestPlan::new().setup();
-        cmd!(dir, "bough show config", "", "no config file found");
+        cmd_err!(dir, "bough show config", "no config file found");
     }
 }
 
@@ -31,7 +31,7 @@ mod overrides {
         cmd!(
             dir,
             "bough --config parallelism=42 --output-style json show config",
-            "{!json}"
+            "{!json}",
         );
 
         assert!(json.contains("\"parallelism\":42"));
