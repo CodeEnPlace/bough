@@ -39,6 +39,12 @@ impl TestPlan {
             std::fs::write(full, content).unwrap();
         }
 
+        std::process::Command::new("jj")
+            .args(["git", "init"])
+            .current_dir(dir.path())
+            .output()
+            .ok();
+
         TestDir {
             dir,
             captures: HashMap::new(),

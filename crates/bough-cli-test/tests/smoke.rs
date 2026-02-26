@@ -23,7 +23,7 @@ files.exclude = ["**/*.test.*"]
     "#,
             )
             .file(
-                "src/index.js",
+                "examples/vitest-js/src/index.js",
                 r#"
 export function childsDay(date) {
   const day = date.getDay();
@@ -35,7 +35,7 @@ export function childsDay(date) {
     "#,
             )
             .file(
-                "src/test.js",
+                "examples/vitest-js/src/index.test.js",
                 r#"
 import { test, expect } from "vitest";
 import { childsDay } from "./index.js";
@@ -46,7 +46,7 @@ test("monday's child is fair of face", () => {
     "#,
             )
             .file(
-                "package.json",
+                "examples/vitest-js/package.json",
                 r#"
 {
   "name": "bough-example-vitest-js",
