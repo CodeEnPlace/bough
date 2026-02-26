@@ -3,6 +3,7 @@ pub mod io;
 pub mod languages;
 
 use bough_typed_hash::HashInto;
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::path::{Path, PathBuf};
@@ -76,11 +77,31 @@ pub enum Outcome {
     Caught,
 }
 
-// pub struct MutationResult {
-//     outcome: Outcome,
-//     mutation: Mutation,
-//     at: _,
-// }
+pub struct MutationResult<L: Language> {
+    pub outcome: Outcome,
+    pub mutation: Mutation<L>,
+    pub at: DateTime<Utc>,
+}
+
+impl<L: Language> Clone for MutationResult<L> {
+    fn clone(&self) -> Self {
+        Self {
+            outcome: self.outcome,
+            mutation: self.mutation.clone(),
+            at: self.at,
+        }
+    }
+}
+
+impl<L: Language> HashInto for MutationResult<L> {
+    fn hash_into(&self, state: &mut bough_typed_hash::ShaState) -> Result<(), std::io::Error> {
+        self.mutation.hash_into(state)
+    }
+}
+
+impl<L: Language> bough_typed_hash::TypedHashable for MutationResult<L> {
+    type Hash = MutationLHash;
+}
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, bough_typed_hash::TypedHashable)]
 pub struct SourceFile {
@@ -385,5 +406,63 @@ mod tests {
         let mutations = generate_mutations(&mutants[0]);
         let replacements: Vec<_> = mutations.iter().map(|m| m.replacement.as_str()).collect();
         assert!(replacements.contains(&"||"));
+    }
+
+    fn src_on_disk(content: &str) -> (SourceFile, String, tempfile::TempDir) {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("test.js");
+        std::fs::write(&path, content).unwrap();
+        let file = SourceFile::from_content(path, content);
+        (file, content.to_string(), dir)
+    }
+
+    #[test]
+    fn mutation_result_hash_equals_mutation_hash() {
+        use bough_typed_hash::{MemoryHashStore, TypedHash, TypedHashable};
+
+        let (f, content, _dir) = src_on_disk("const x = a + b;");
+        let mutants = find_mutants::<JavaScript>(&f, &content);
+        let mutation = generate_mutations(&mutants[0]).remove(0);
+
+        let mut store = MemoryHashStore::new();
+        let mutation_hash = mutation.hash(&mut store).unwrap();
+
+        let result = MutationResult {
+            outcome: Outcome::Caught,
+            mutation: mutation.clone(),
+            at: chrono::Utc::now(),
+        };
+
+        let mut store2 = MemoryHashStore::new();
+        let result_hash = result.hash(&mut store2).unwrap();
+
+        assert_eq!(mutation_hash.as_bytes(), result_hash.as_bytes());
+    }
+
+    #[test]
+    fn mutation_result_hash_ignores_outcome_and_timestamp() {
+        use bough_typed_hash::{MemoryHashStore, TypedHash, TypedHashable};
+
+        let (f, content, _dir) = src_on_disk("const x = a + b;");
+        let mutants = find_mutants::<JavaScript>(&f, &content);
+        let mutation = generate_mutations(&mutants[0]).remove(0);
+
+        let r1 = MutationResult {
+            outcome: Outcome::Caught,
+            mutation: mutation.clone(),
+            at: DateTime::from_timestamp(1000, 0).unwrap(),
+        };
+        let r2 = MutationResult {
+            outcome: Outcome::Missed,
+            mutation: mutation.clone(),
+            at: DateTime::from_timestamp(9999, 0).unwrap(),
+        };
+
+        let mut s1 = MemoryHashStore::new();
+        let mut s2 = MemoryHashStore::new();
+        let h1 = r1.hash(&mut s1).unwrap();
+        let h2 = r2.hash(&mut s2).unwrap();
+
+        assert_eq!(h1.as_bytes(), h2.as_bytes());
     }
 }
