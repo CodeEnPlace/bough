@@ -1,3 +1,4 @@
+use bough_core::WorkspaceId;
 use bough_core::config::{Config, VcsConfig};
 use serde::Serialize;
 use std::path::{Path, PathBuf};
@@ -30,7 +31,7 @@ impl std::error::Error for Error {}
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Workspace {
-    pub name: String,
+    pub name: WorkspaceId,
     pub path: PathBuf,
 }
 
@@ -66,7 +67,7 @@ pub fn run(config: &Config) -> Result<ListWorkspaces, Error> {
             out.lines()
                 .filter_map(|l| {
                     let name = l.split(':').next()?.trim();
-                    name.starts_with("bough-").then_some(name.to_string())
+                    name.starts_with("bough-").then_some(WorkspaceId(name.to_string()))
                 })
                 .map(|name| {
                     let path = PathBuf::from(config.working_dir()).join(&name);
@@ -85,7 +86,7 @@ pub fn run(config: &Config) -> Result<ListWorkspaces, Error> {
                     if branch.starts_with("bough-") {
                         if let Some(path) = current_path.take() {
                             workspaces.push(Workspace {
-                                name: branch.to_string(),
+                                name: WorkspaceId(branch.to_string()),
                                 path,
                             });
                         }
@@ -104,7 +105,7 @@ pub fn run(config: &Config) -> Result<ListWorkspaces, Error> {
                     let name = e.file_name().to_string_lossy().to_string();
                     name.starts_with("bough-").then(|| Workspace {
                         path: e.path(),
-                        name,
+                        name: WorkspaceId(name),
                     })
                 })
                 .collect()

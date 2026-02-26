@@ -2,11 +2,84 @@ pub mod config;
 pub mod io;
 pub mod languages;
 
-use bough_sha::{ShaHash, ShaHashable};
+use bough_sha::{ShaHash, ShaHashable, ShaState};
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::path::{Path, PathBuf};
 use tree_sitter::{Parser, StreamingIterator};
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Hash)]
+pub struct WorkspaceId(pub String);
+
+impl std::fmt::Display for WorkspaceId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
+impl std::str::FromStr for WorkspaceId {
+    type Err = std::convert::Infallible;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Self(s.to_string()))
+    }
+}
+
+impl std::ops::Deref for WorkspaceId {
+    type Target = str;
+    fn deref(&self) -> &str {
+        &self.0
+    }
+}
+
+impl AsRef<std::path::Path> for WorkspaceId {
+    fn as_ref(&self) -> &std::path::Path {
+        std::path::Path::new(&self.0)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SrcFileHash(pub ShaHash);
+
+impl std::fmt::Display for SrcFileHash {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(&self.0, f)
+    }
+}
+
+impl std::str::FromStr for SrcFileHash {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        s.parse::<ShaHash>().map(Self)
+    }
+}
+
+impl ShaHashable for SrcFileHash {
+    fn sha_hash_into(&self, state: &mut ShaState) {
+        self.0.sha_hash_into(state);
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MutationHash(pub ShaHash);
+
+impl std::fmt::Display for MutationHash {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(&self.0, f)
+    }
+}
+
+impl std::str::FromStr for MutationHash {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        s.parse::<ShaHash>().map(Self)
+    }
+}
+
+impl ShaHashable for MutationHash {
+    fn sha_hash_into(&self, state: &mut ShaState) {
+        self.0.sha_hash_into(state);
+    }
+}
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
@@ -19,7 +92,7 @@ pub enum Outcome {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ShaHashable)]
 pub struct SourceFile {
     pub path: PathBuf,
-    pub hash: ShaHash,
+    pub hash: SrcFileHash,
 }
 
 impl SourceFile {
@@ -27,14 +100,14 @@ impl SourceFile {
         let content = std::fs::read_to_string(path)?;
         Ok(Self {
             path: path.to_owned(),
-            hash: content.sha_hash(),
+            hash: SrcFileHash(content.sha_hash()),
         })
     }
 
     pub fn from_content(path: PathBuf, content: &str) -> Self {
         Self {
             path,
-            hash: content.sha_hash(),
+            hash: SrcFileHash(content.sha_hash()),
         }
     }
 }
