@@ -86,7 +86,7 @@ test("monday's child is fair of face", () => {
             "created workspace at /tmp/bough/work/{!id_2}"
         );
 
-        assert_ne!(dir.get("id_1"), dir.get("id_2"));
+        assert_ne!(id_1, id_2);
 
         cmd!(
             dir,

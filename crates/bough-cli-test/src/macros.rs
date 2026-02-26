@@ -68,6 +68,13 @@ impl TestDir {
             .unwrap_or_else(|| panic!("no capture named '{name}'"))
     }
 
+    pub fn take(&mut self, name: &str) -> String {
+        self.captures
+            .get(name)
+            .cloned()
+            .unwrap_or_else(|| panic!("no capture named '{name}'"))
+    }
+
     pub fn run_success(&mut self, cmd_str: &str, pattern: &str) {
         let output = self.exec(cmd_str);
 
@@ -171,12 +178,4 @@ fn resolve_program(name: &str) -> PathBuf {
     }
 }
 
-#[macro_export]
-macro_rules! cmd {
-    ($dir:expr, $cmd:expr, $pattern:expr) => {
-        $dir.run_success($cmd, $pattern)
-    };
-    ($dir:expr, $cmd:expr, $stdout:expr, $stderr:expr) => {
-        $dir.run_failure($cmd, $stderr)
-    };
-}
+
