@@ -1,0 +1,19 @@
+[package]
+name = "bough-typed-hash"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[features]
+default = []
+disk = ["serde_json"]
+
+[dependencies]
+sha2 = "0.10"
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", optional = true }
+bough-typed-hash-derive = { path = "../bough-typed-hash-derive" }
+
+[dev-dependencies]
+serde_json = "1"
+tempfile = "3"
