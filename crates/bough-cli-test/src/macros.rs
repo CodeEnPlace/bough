@@ -103,3 +103,46 @@ fn resolve_program(name: &str) -> PathBuf {
         PathBuf::from(name)
     }
 }
+
+/// Try to match a single line against needles (fixed segments between captures).
+///
+/// `needles` has length = num_captures + 1. The first needle must be at the
+/// start of the line, the last must be at the end, and captures fill the gaps.
+pub fn match_line(line: &str, needles: &[&str]) -> Option<Vec<String>> {
+    let mut captures = Vec::with_capacity(needles.len().saturating_sub(1));
+    let mut cursor = 0;
+
+    for (i, needle) in needles.iter().enumerate() {
+        if i == 0 {
+            if !needle.is_empty() {
+                if !line.starts_with(needle) {
+                    return None;
+                }
+                cursor = needle.len();
+            }
+        } else if needle.is_empty() {
+            captures.push(line[cursor..].to_string());
+        } else {
+            let pos = line[cursor..].find(needle)?;
+            captures.push(line[cursor..cursor + pos].to_string());
+            cursor += pos + needle.len();
+        }
+    }
+
+    if !needles.last().unwrap().is_empty() && cursor != line.len() {
+        return None;
+    }
+
+    Some(captures)
+}
+
+/// Search forward through `lines` for one that matches `needles`.
+/// Returns (line_index, captured_values).
+pub fn find_line(lines: &[&str], needles: &[&str]) -> Option<(usize, Vec<String>)> {
+    for (i, line) in lines.iter().enumerate() {
+        if let Some(caps) = match_line(line.trim(), needles) {
+            return Some((i, caps));
+        }
+    }
+    None
+}

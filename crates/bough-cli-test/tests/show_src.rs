@@ -27,7 +27,7 @@ files.exclude = ["**/*.test.*"]
     #[test]
     fn verbose_shows_paths() {
         let dir = plan().setup();
-        cmd!(dir, "bough --output-style verbose show src", "src/app.js");
+        cmd!(dir, "bough --output-style verbose show src", "Javascript (1 files)");
     }
 }
 

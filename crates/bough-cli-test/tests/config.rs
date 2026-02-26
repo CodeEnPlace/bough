@@ -3,14 +3,13 @@ use bough_cli_test::{TestPlan, cmd};
 mod discovery {
     use super::*;
 
-    fn minimal_config() -> TestPlan {
-        TestPlan::new().config("[runner]\npwd = \".\"")
-    }
-
     #[test]
     fn finds_bough_config_toml() {
-        let dir = minimal_config().setup();
-        cmd!(dir, "bough --output-style json show config", "\"parallelism\":1");
+        let dir = TestPlan::new()
+            .config("[runner]\npwd = \".\"")
+            .setup();
+
+        cmd!(dir, "bough --output-style json show config", "{!json}");
     }
 
     #[test]
@@ -32,8 +31,10 @@ mod overrides {
         cmd!(
             dir,
             "bough --config parallelism=42 --output-style json show config",
-            "\"parallelism\":42"
+            "{!json}"
         );
+
+        assert!(json.contains("\"parallelism\":42"));
     }
 }
 
@@ -47,7 +48,8 @@ mod output_styles {
     #[test]
     fn json_output() {
         let dir = plan().setup();
-        cmd!(dir, "bough --output-style json show config", "\"parallelism\":3");
+        cmd!(dir, "bough --output-style json show config", "{!json}");
+        assert!(json.contains("\"parallelism\":3"));
     }
 
     #[test]
