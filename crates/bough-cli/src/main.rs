@@ -62,6 +62,10 @@ enum WorkspaceAction {
         #[arg()]
         name: String,
     },
+    Test {
+        #[arg()]
+        name: String,
+    },
     Drop {
         #[arg()]
         name: String,
@@ -137,6 +141,23 @@ fn main() {
                 });
                 let path = PathBuf::from(cfg.working_dir()).join(&*ws);
                 let result = steps::reset_workspace::run(&cfg, &path).unwrap_or_else(|e| {
+                    eprintln!("{e}");
+                    std::process::exit(1);
+                });
+                let no_color = !std::io::IsTerminal::is_terminal(&std::io::stdout());
+                result.render(&cli.output_style, no_color, 0);
+            }
+            WorkspaceAction::Test { name } => {
+                let cfg = config::load(&cli).unwrap_or_else(|e| {
+                    eprintln!("{e}");
+                    std::process::exit(1);
+                });
+                let ws = bough_core::WorkspaceId::new(name, &cfg).unwrap_or_else(|e| {
+                    eprintln!("{e}");
+                    std::process::exit(1);
+                });
+                let path = PathBuf::from(cfg.working_dir()).join(&*ws);
+                let result = steps::test_workspace::run(&cfg, &path).unwrap_or_else(|e| {
                     eprintln!("{e}");
                     std::process::exit(1);
                 });

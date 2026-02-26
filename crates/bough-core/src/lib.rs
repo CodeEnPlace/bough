@@ -35,10 +35,7 @@ impl std::error::Error for ValidationError {}
 pub struct WorkspaceId(String);
 
 impl WorkspaceId {
-    pub fn new(
-        name: impl Into<String>,
-        config: &config::Config,
-    ) -> Result<Self, ValidationError> {
+    pub fn new(name: impl Into<String>, config: &config::Config) -> Result<Self, ValidationError> {
         let name = name.into();
         let path = PathBuf::from(config.working_dir()).join(&name);
         if !path.is_dir() {
@@ -78,6 +75,12 @@ pub enum Outcome {
     Missed,
     Caught,
 }
+
+// pub struct MutationResult {
+//     outcome: Outcome,
+//     mutation: Mutation,
+//     at: _,
+// }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, bough_typed_hash::TypedHashable)]
 pub struct SourceFile {
@@ -177,7 +180,13 @@ pub enum MutationKind {
 }
 
 pub trait Language: Debug {
-    type Kind: Debug + Clone + PartialEq + Serialize + for<'de> Deserialize<'de> + HashInto + Into<MutationKind>;
+    type Kind: Debug
+        + Clone
+        + PartialEq
+        + Serialize
+        + for<'de> Deserialize<'de>
+        + HashInto
+        + Into<MutationKind>;
 
     fn code_tag() -> &'static str;
     fn tree_sitter_language() -> tree_sitter::Language;
@@ -229,9 +238,7 @@ pub fn find_mutants<L: Language>(file: &SourceFile, content: &str) -> Vec<Mutant
         .set_language(&L::tree_sitter_language())
         .expect("failed to load grammar");
 
-    let tree = parser
-        .parse(content, None)
-        .expect("failed to parse source");
+    let tree = parser.parse(content, None).expect("failed to parse source");
 
     let bytes = content.as_bytes();
     let mut mutants = Vec::new();
@@ -286,9 +293,7 @@ pub fn filter_mutants<L: Language>(
         .set_language(&L::tree_sitter_language())
         .expect("failed to load grammar");
 
-    let tree = parser
-        .parse(content, None)
-        .expect("failed to parse source");
+    let tree = parser.parse(content, None).expect("failed to parse source");
 
     let lang = L::tree_sitter_language();
     let mut skip_ranges: Vec<(usize, usize)> = Vec::new();
@@ -343,7 +348,11 @@ mod tests {
         let mutations = generate_mutations(&mutants[0]);
         assert_eq!(mutations.len(), 1);
         assert_eq!(mutations[0].replacement, "{}");
-        let applied = apply_mutation(&content, &mutations[0].mutant.span, &mutations[0].replacement);
+        let applied = apply_mutation(
+            &content,
+            &mutations[0].mutant.span,
+            &mutations[0].replacement,
+        );
         assert_eq!(applied, "function foo() {}");
     }
 
