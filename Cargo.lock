@@ -158,6 +158,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "bough-typed-hash"
+version = "0.0.0"
+dependencies = [
+ "bough-typed-hash-derive",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
+]
+
+[[package]]
+name = "bough-typed-hash-derive"
+version = "0.0.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "bstr"
 version = "1.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
