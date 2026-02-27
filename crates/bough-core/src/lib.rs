@@ -80,8 +80,8 @@ pub enum Outcome {
 #[derive(Clone, Serialize, Deserialize)]
 pub struct MutationResult {
     pub outcome: Outcome,
-    pub mutation: Mutation,
     pub at: DateTime<Utc>,
+    pub mutation: Mutation,
 }
 
 impl HashInto for MutationResult {
@@ -248,7 +248,8 @@ pub fn find_mutants(file: &SourceFile, content: &str) -> Vec<Mutant> {
 }
 
 pub fn generate_mutations(mutant: &Mutant) -> Vec<Mutation> {
-    mutant.substitutions()
+    mutant
+        .substitutions()
         .into_iter()
         .map(|replacement| Mutation {
             mutant: mutant.clone(),
@@ -257,11 +258,7 @@ pub fn generate_mutations(mutant: &Mutant) -> Vec<Mutation> {
         .collect()
 }
 
-pub fn filter_mutants(
-    mutants: Vec<Mutant>,
-    queries: &[String],
-    content: &str,
-) -> Vec<Mutant> {
+pub fn filter_mutants(mutants: Vec<Mutant>, queries: &[String], content: &str) -> Vec<Mutant> {
     if queries.is_empty() || mutants.is_empty() {
         return mutants;
     }
@@ -315,7 +312,8 @@ mod tests {
     use super::*;
 
     fn src(content: &str) -> (SourceFile, String) {
-        let file = SourceFile::from_content(PathBuf::from("test.js"), content, LanguageId::Javascript);
+        let file =
+            SourceFile::from_content(PathBuf::from("test.js"), content, LanguageId::Javascript);
         (file, content.to_string())
     }
 

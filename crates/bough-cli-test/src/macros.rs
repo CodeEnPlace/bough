@@ -1,5 +1,33 @@
 use std::path::{Path, PathBuf};
 
+pub fn match_whole(text: &str, needles: &[&str]) -> Option<Vec<String>> {
+    let mut captures = Vec::with_capacity(needles.len().saturating_sub(1));
+    let mut cursor = 0;
+
+    for (i, needle) in needles.iter().enumerate() {
+        if i == 0 {
+            if !needle.is_empty() {
+                if !text.starts_with(needle) {
+                    return None;
+                }
+                cursor = needle.len();
+            }
+        } else if needle.is_empty() {
+            captures.push(text[cursor..].to_string());
+        } else {
+            let pos = text[cursor..].find(needle)?;
+            captures.push(text[cursor..cursor + pos].to_string());
+            cursor += pos + needle.len();
+        }
+    }
+
+    if !needles.last().unwrap().is_empty() && cursor != text.len() {
+        return None;
+    }
+
+    Some(captures)
+}
+
 pub struct TestPlan {
     config: Option<String>,
     files: Vec<(String, String)>,

@@ -257,6 +257,79 @@ impl Parse for AssertFileArgs {
 }
 
 #[proc_macro]
+pub fn assert_whole_file(input: TokenStream) -> TokenStream {
+    let args = parse_macro_input!(input as AssertWholeFileArgs);
+    let dir = &args.dir;
+    let path_lit = &args.path;
+    let path_expr = build_cmd_expr(path_lit);
+    let expected_lit = &args.expected;
+    let expected_str = expected_lit.value();
+
+    let segments = parse_pattern(&expected_str);
+    let (needles, captures) = collect_needles_and_captures(&segments);
+
+    let needle_exprs: Vec<proc_macro2::TokenStream> = needles
+        .iter()
+        .map(|parts| {
+            if parts.is_empty() {
+                quote! { String::new() }
+            } else if parts.len() == 1 {
+                let p = &parts[0];
+                quote! { #p.to_string() }
+            } else {
+                quote! { [#(#parts),*].concat() }
+            }
+        })
+        .collect();
+
+    let n_needles = needle_exprs.len();
+
+    let mut capture_stmts = Vec::new();
+    for (ci, name) in captures.iter().enumerate() {
+        let ident = format_ident!("{}", name);
+        capture_stmts.push(quote! {
+            let #ident = __caps[#ci].clone();
+        });
+    }
+
+    quote! {
+        let __file_path = ::std::path::Path::new(#dir.as_ref()).join(#path_expr);
+        let __text = ::std::fs::read_to_string(&__file_path)
+            .unwrap_or_else(|e| panic!("failed to read {}: {e}", __file_path.display()));
+        let __needles_arr: [String; #n_needles] = [#(#needle_exprs),*];
+        let __refs: Vec<&str> = __needles_arr.iter().map(|s| s.as_str()).collect();
+        let __caps = ::bough_cli_test::match_whole(__text.trim(), &__refs)
+            .unwrap_or_else(|| panic!(
+                "file content did not match pattern for {}\ncontent:\n{}",
+                __file_path.display(),
+                __text,
+            ));
+        #(#capture_stmts)*
+    }
+    .into()
+}
+
+struct AssertWholeFileArgs {
+    dir: Expr,
+    path: LitStr,
+    expected: LitStr,
+}
+
+impl Parse for AssertWholeFileArgs {
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        let dir = input.parse()?;
+        input.parse::<Token![,]>()?;
+        let path = input.parse()?;
+        input.parse::<Token![,]>()?;
+        let expected = input.parse()?;
+        if input.peek(Token![,]) {
+            input.parse::<Token![,]>()?;
+        }
+        Ok(Self { dir, path, expected })
+    }
+}
+
+#[proc_macro]
 pub fn assert_file(input: TokenStream) -> TokenStream {
     let args = parse_macro_input!(input as AssertFileArgs);
     let dir = &args.dir;
