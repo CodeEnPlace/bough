@@ -85,17 +85,20 @@ enum ShowSubject {
 fn main() {
     let cli = Cli::parse();
 
+    if let Command::Completions { shell } = &cli.command {
+        clap_complete::generate(*shell, &mut Cli::command(), "bough", &mut std::io::stdout());
+        return;
+    }
+
+    let cfg = config::load(&cli).unwrap_or_else(|e| {
+        eprintln!("{e}");
+        std::process::exit(1);
+    });
+
     match &cli.command {
-        Command::Completions { shell } => {
-            clap_complete::generate(*shell, &mut Cli::command(), "bough", &mut std::io::stdout());
-        }
 
         Command::Workspace { action } => match action {
             WorkspaceAction::Make => {
-                let cfg = config::load(&cli).unwrap_or_else(|e| {
-                    eprintln!("{e}");
-                    std::process::exit(1);
-                });
                 let result = steps::make_workspace::run(&cfg).unwrap_or_else(|e| {
                     eprintln!("{e}");
                     std::process::exit(1);
@@ -104,10 +107,6 @@ fn main() {
                 result.render(&cli.output_style, no_color, 0);
             }
             WorkspaceAction::List => {
-                let cfg = config::load(&cli).unwrap_or_else(|e| {
-                    eprintln!("{e}");
-                    std::process::exit(1);
-                });
                 let result = steps::list_workspaces::run(&cfg).unwrap_or_else(|e| {
                     eprintln!("{e}");
                     std::process::exit(1);
@@ -116,10 +115,6 @@ fn main() {
                 result.render(&cli.output_style, no_color, 0);
             }
             WorkspaceAction::Init { name } => {
-                let cfg = config::load(&cli).unwrap_or_else(|e| {
-                    eprintln!("{e}");
-                    std::process::exit(1);
-                });
                 let ws = bough_core::WorkspaceId::new(name, &cfg).unwrap_or_else(|e| {
                     eprintln!("{e}");
                     std::process::exit(1);
@@ -133,10 +128,6 @@ fn main() {
                 result.render(&cli.output_style, no_color, 0);
             }
             WorkspaceAction::Reset { name } => {
-                let cfg = config::load(&cli).unwrap_or_else(|e| {
-                    eprintln!("{e}");
-                    std::process::exit(1);
-                });
                 let ws = bough_core::WorkspaceId::new(name, &cfg).unwrap_or_else(|e| {
                     eprintln!("{e}");
                     std::process::exit(1);
@@ -149,28 +140,24 @@ fn main() {
                 let no_color = !std::io::IsTerminal::is_terminal(&std::io::stdout());
                 result.render(&cli.output_style, no_color, 0);
             }
-            WorkspaceAction::Test { name, mutation_hash } => {
-                let cfg = config::load(&cli).unwrap_or_else(|e| {
-                    eprintln!("{e}");
-                    std::process::exit(1);
-                });
+            WorkspaceAction::Test {
+                name,
+                mutation_hash,
+            } => {
                 let ws = bough_core::WorkspaceId::new(name, &cfg).unwrap_or_else(|e| {
                     eprintln!("{e}");
                     std::process::exit(1);
                 });
                 let path = PathBuf::from(cfg.working_dir()).join(&*ws);
-                let result = steps::test_workspace::run(&cfg, &path, mutation_hash).unwrap_or_else(|e| {
-                    eprintln!("{e}");
-                    std::process::exit(1);
-                });
+                let result =
+                    steps::test_workspace::run(&cfg, &path, mutation_hash).unwrap_or_else(|e| {
+                        eprintln!("{e}");
+                        std::process::exit(1);
+                    });
                 let no_color = !std::io::IsTerminal::is_terminal(&std::io::stdout());
                 result.render(&cli.output_style, no_color, 0);
             }
             WorkspaceAction::Drop { name } => {
-                let cfg = config::load(&cli).unwrap_or_else(|e| {
-                    eprintln!("{e}");
-                    std::process::exit(1);
-                });
                 let ws = bough_core::WorkspaceId::new(name, &cfg).unwrap_or_else(|e| {
                     eprintln!("{e}");
                     std::process::exit(1);
@@ -186,18 +173,10 @@ fn main() {
 
         Command::Show { subject } => match subject {
             ShowSubject::Config => {
-                let cfg = config::load(&cli).unwrap_or_else(|e| {
-                    eprintln!("{e}");
-                    std::process::exit(1);
-                });
                 let no_color = !std::io::IsTerminal::is_terminal(&std::io::stdout());
                 cfg.render(&cli.output_style, no_color, 0);
             }
             ShowSubject::Src => {
-                let cfg = config::load(&cli).unwrap_or_else(|e| {
-                    eprintln!("{e}");
-                    std::process::exit(1);
-                });
                 let result = steps::get_src_files::run(&cfg).unwrap_or_else(|e| {
                     eprintln!("{e}");
                     std::process::exit(1);
@@ -206,10 +185,6 @@ fn main() {
                 result.render(&cli.output_style, no_color, 0);
             }
             ShowSubject::Mutations => {
-                let cfg = config::load(&cli).unwrap_or_else(|e| {
-                    eprintln!("{e}");
-                    std::process::exit(1);
-                });
                 let src_files = steps::get_src_files::run(&cfg).unwrap_or_else(|e| {
                     eprintln!("{e}");
                     std::process::exit(1);
@@ -222,10 +197,6 @@ fn main() {
                 result.render(&cli.output_style, no_color, 0);
             }
             ShowSubject::TestIds => {
-                let cfg = config::load(&cli).unwrap_or_else(|e| {
-                    eprintln!("{e}");
-                    std::process::exit(1);
-                });
                 let result = steps::get_all_test_ids::run(&cfg).unwrap_or_else(|e| {
                     eprintln!("{e}");
                     std::process::exit(1);
@@ -235,20 +206,20 @@ fn main() {
             }
         },
 
-        Command::Mutate { workspace, mutation_hash } => {
-            let cfg = config::load(&cli).unwrap_or_else(|e| {
-                eprintln!("{e}");
-                std::process::exit(1);
-            });
+        Command::Mutate {
+            workspace,
+            mutation_hash,
+        } => {
             let ws = bough_core::WorkspaceId::new(workspace, &cfg).unwrap_or_else(|e| {
                 eprintln!("{e}");
                 std::process::exit(1);
             });
             let path = PathBuf::from(cfg.working_dir()).join(&*ws);
-            let result = steps::mutate_workspace::run(&cfg, &path, mutation_hash).unwrap_or_else(|e| {
-                eprintln!("{e}");
-                std::process::exit(1);
-            });
+            let result =
+                steps::mutate_workspace::run(&cfg, &path, mutation_hash).unwrap_or_else(|e| {
+                    eprintln!("{e}");
+                    std::process::exit(1);
+                });
             let no_color = !std::io::IsTerminal::is_terminal(&std::io::stdout());
             result.render(&cli.output_style, no_color, 0);
         }
@@ -256,14 +227,8 @@ fn main() {
         Command::Run => {
             let no_color = !std::io::IsTerminal::is_terminal(&std::io::stdout());
 
-            let cfg = config::load(&cli).unwrap_or_else(|e| {
-                eprintln!("{e}");
-                std::process::exit(1);
-            });
-
-            let mutations_handle = {
-                let cfg = cfg.clone();
-                std::thread::spawn(move || {
+            let ((src_files, mutations), test_ids) = std::thread::scope(|s| {
+                let mutations_handle = s.spawn(|| {
                     let src_files = steps::get_src_files::run(&cfg).unwrap_or_else(|e| {
                         eprintln!("{e}");
                         std::process::exit(1);
@@ -274,26 +239,25 @@ fn main() {
                             std::process::exit(1);
                         });
                     (src_files, mutations)
-                })
-            };
+                });
 
-            let test_ids_handle = {
-                let cfg = cfg.clone();
-                std::thread::spawn(move || {
+                let test_ids_handle = s.spawn(|| {
                     steps::get_all_test_ids::run(&cfg).unwrap_or_else(|e| {
                         eprintln!("{e}");
                         std::process::exit(1);
                     })
-                })
-            };
+                });
 
-            let (src_files, mutations) =
-                mutations_handle.join().expect("mutations thread panicked");
-            let test_ids = test_ids_handle.join().expect("test_ids thread panicked");
+                let mutations = mutations_handle.join().expect("mutations thread panicked");
+                let test_ids = test_ids_handle.join().expect("test_ids thread panicked");
+                (mutations, test_ids)
+            });
 
             src_files.render(&cli.output_style, no_color, 0);
             mutations.render(&cli.output_style, no_color, 0);
             test_ids.render(&cli.output_style, no_color, 0);
         }
+
+        Command::Completions { .. } => unreachable!(),
     }
 }
