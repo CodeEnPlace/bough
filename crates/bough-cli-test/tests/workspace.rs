@@ -4,28 +4,33 @@ mod jj {
     use super::*;
 
     fn plan() -> TestPlan {
-        TestPlan::new().config(
-            r#"
+        TestPlan::new()
+            .config(
+                r#"
 [vcs]
 kind = "jj"
 rev = "bough"
 
+[dirs]
+working = "./work"
+
 [runner]
 pwd = "."
 "#,
-        )
+            )
+            .file("work/.keep", "")
     }
 
     #[test]
     fn make_and_list() {
         let dir = plan().setup();
 
-        cmd!(dir, "bough workspace make", "created workspace at /tmp/bough/work/{!id_1}");
+        cmd!(dir, "bough workspace make", "created workspace at {!ws_path}");
         cmd!(
             dir,
             "bough --output-style verbose workspace list",
             "1 workspaces",
-            "{?id_1} /tmp/bough/work/{?id_1}",
+            "{!id_1} {?ws_path}",
         );
     }
 
@@ -33,17 +38,17 @@ pwd = "."
     fn make_two_and_list() {
         let dir = plan().setup();
 
-        cmd!(dir, "bough workspace make", "created workspace at /tmp/bough/work/{!id_1}");
-        cmd!(dir, "bough workspace make", "created workspace at /tmp/bough/work/{!id_2}");
+        cmd!(dir, "bough workspace make", "created workspace at {!ws_path_1}");
+        cmd!(dir, "bough workspace make", "created workspace at {!ws_path_2}");
 
-        assert_ne!(id_1, id_2);
+        assert_ne!(ws_path_1, ws_path_2);
 
         cmd!(
             dir,
             "bough --output-style verbose workspace list",
             "2 workspaces",
-            "{?id_1} /tmp/bough/work/{?id_1}",
-            "{?id_2} /tmp/bough/work/{?id_2}",
+            "{!id_1} {?ws_path_1}",
+            "{!id_2} {?ws_path_2}",
         );
     }
 
@@ -51,7 +56,12 @@ pwd = "."
     fn make_and_drop() {
         let dir = plan().setup();
 
-        cmd!(dir, "bough workspace make", "created workspace at /tmp/bough/work/{!id_1}");
+        cmd!(dir, "bough workspace make", "created workspace at {!ws_path}");
+        cmd!(
+            dir,
+            "bough --output-style verbose workspace list",
+            "{!id_1} {?ws_path}",
+        );
         cmd!(dir, "bough workspace drop {?id_1}", "dropped workspace {?id_1}");
         cmd!(dir, "bough workspace list", "0 workspaces");
     }
