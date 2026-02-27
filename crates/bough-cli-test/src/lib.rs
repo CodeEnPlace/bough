@@ -1,3 +1,3 @@
 mod macros;
 pub use macros::*;
-pub use bough_cli_test_macros::{cmd, cmd_err};
+pub use bough_cli_test_macros::{assert_file, cmd, cmd_err};

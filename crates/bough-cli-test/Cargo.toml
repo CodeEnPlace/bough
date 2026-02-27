@@ -8,3 +8,4 @@ license.workspace = true
 tempfile = "3.26"
 assert_cmd = "2.1"
 bough-cli-test-macros = { path = "../bough-cli-test-macros" }
+serde_json = "1"
