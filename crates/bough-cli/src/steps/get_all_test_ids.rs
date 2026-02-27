@@ -1,3 +1,4 @@
+use bough_core::TestId;
 use bough_core::config::Config;
 use serde::Serialize;
 use std::process::Command;
@@ -27,7 +28,7 @@ impl std::error::Error for Error {}
 
 #[derive(Debug, Serialize)]
 pub struct GetAllTestIds {
-    pub test_ids: Vec<String>,
+    pub test_ids: Vec<TestId>,
 }
 
 pub fn run(config: &Config) -> Result<GetAllTestIds, Error> {
@@ -52,7 +53,7 @@ pub fn run(config: &Config) -> Result<GetAllTestIds, Error> {
     let test_ids = stdout
         .lines()
         .filter(|l| !l.is_empty())
-        .map(String::from)
+        .map(TestId::new)
         .collect();
 
     Ok(GetAllTestIds { test_ids })

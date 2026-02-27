@@ -1,3 +1,4 @@
+pub mod clean;
 pub mod drop_workspace;
 pub mod get_all_test_ids;
 pub mod get_mutation_result;
