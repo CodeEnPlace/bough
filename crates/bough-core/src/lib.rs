@@ -1,6 +1,8 @@
 pub mod config;
 pub mod io;
 pub mod languages;
+pub mod phase;
+pub mod suite;
 
 use bough_typed_hash::HashInto;
 use chrono::{DateTime, Utc};
@@ -12,9 +14,10 @@ use tree_sitter::{Parser, StreamingIterator};
 #[derive(Debug)]
 pub enum ValidationError {
     WorkspaceNotFound { name: String, path: PathBuf },
-    NoActiveRunner,
+    NoActiveSuite,
     Glob(glob::PatternError),
     ReadFile(PathBuf, std::io::Error),
+    CreateDir(PathBuf, std::io::Error),
 }
 
 impl std::fmt::Display for ValidationError {
@@ -23,9 +26,10 @@ impl std::fmt::Display for ValidationError {
             Self::WorkspaceNotFound { name, path } => {
                 write!(f, "workspace '{}' not found at {}", name, path.display())
             }
-            Self::NoActiveRunner => write!(f, "no active runner configured"),
+            Self::NoActiveSuite => write!(f, "no active suite configured"),
             Self::Glob(e) => write!(f, "invalid glob pattern: {e}"),
             Self::ReadFile(p, e) => write!(f, "failed to read {}: {e}", p.display()),
+            Self::CreateDir(p, e) => write!(f, "failed to create {}: {e}", p.display()),
         }
     }
 }
@@ -38,9 +42,19 @@ pub struct WorkspaceId(String);
 impl WorkspaceId {
     pub fn new(name: impl Into<String>, config: &config::Config) -> Result<Self, ValidationError> {
         let name = name.into();
-        let path = PathBuf::from(config.working_dir()).join(&name);
+        let path = config.bough_dir.join(&name);
         if !path.is_dir() {
             return Err(ValidationError::WorkspaceNotFound { name, path });
+        }
+        Ok(Self(name))
+    }
+
+    pub fn create(name: impl Into<String>, config: &config::Config) -> Result<Self, ValidationError> {
+        let name = name.into();
+        let path = config.bough_dir.join(&name);
+        if !path.is_dir() {
+            std::fs::create_dir_all(&path)
+                .map_err(|e| ValidationError::CreateDir(path, e))?;
         }
         Ok(Self(name))
     }

@@ -1,22 +1,9 @@
-parallelism = 1
-ordering = "random"
-
-[vcs]
-kind = "jj"
-rev = "trunk()"
-
-[dirs]
-working = "/tmp/bough/work"
-state = "/tmp/bough/state"
-logs = "/tmp/bough/logs"
+threads = 1
+bough_dir = "./.bough"
 
 [vitest]
-
-# Things like pwd, env, and TreatAs config should be inherited UP.
-# when running vitest.test we should default them to values in vitest, then in root
-# allows project config with narrowing specificity
-
-treat_timeouts_as = "Missed" # or Caught
+ordering = "alphabetical"
+treat_timeouts_as = "Missed"
 
 [vitest.init]
 pwd = "./examples/vitest"
@@ -36,8 +23,7 @@ commands = [
   "npx run test",
 ]
 
-[vitest.js]
-#must be tree-sitter id
+[vitest.mutate.js]
 files.include = ["**/*.js", "**/*.jsx"]
 files.exclude = ["**/*__mocks__*"]
 mutants.skip = [
@@ -45,8 +31,7 @@ mutants.skip = [
   { kind = { "BinaryOp" = "Add" } }
 ]
 
-[vitest.ts]
-#must be tree-sitter id
+[vitest.mutate.ts]
 files.include = ["**/*.rs"]
 mutants.skip = [
   { query = "((condition'describe') @ignore)" } ,
@@ -55,13 +40,13 @@ mutants.skip = [
 
 [cargo]
 pwd = "./examples/cargo"
+
 [cargo.test]
 timeout.absolute = 30
 timeout.relative = 3
 commands = ["cargo test"]
 
-[cargo.js]
-#must be tree-sitter id
+[cargo.mutate.js]
 files.include = ["**/*.js", "**/*.jsx"]
 files.exclude = ["**/*__mocks__*"]
 mutants.skip = [
@@ -69,8 +54,7 @@ mutants.skip = [
   { kind = { "BinaryOp" = "Add" } }
 ]
 
-[cargo.ts]
-#must be tree-sitter id
+[cargo.mutate.ts]
 files.include = ["**/*.rs"]
 mutants.skip = [
   { query = "((fn 'describe') @ignore)" } ,
