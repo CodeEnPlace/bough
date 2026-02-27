@@ -52,7 +52,7 @@ fn run_cmd(cmd: &str, args: &[&str], cwd: &Path) -> Result<(), Error> {
 
 pub fn run(config: &Config, name: &WorkspaceId) -> Result<DropWorkspace, Error> {
     let runner_name = config.resolved_runner_name().ok_or(Error::NoActiveRunner)?;
-    let runner_pwd = config.runner_pwd(runner_name).ok_or(Error::NoActiveRunner)?;
+    let runner_pwd = config.resolve_pwd(config.runner(runner_name), None);
     let vcs = config.vcs().clone();
 
     match &vcs {

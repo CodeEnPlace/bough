@@ -48,7 +48,8 @@ fn collect_glob(pattern: &str, base: &Path) -> Result<Vec<PathBuf>, Error> {
 
 pub fn run(config: &Config) -> Result<ShowSrcFiles, Error> {
     let runner_name = config.resolved_runner_name().ok_or(Error::NoActiveRunner)?;
-    let runner_pwd = config.runner_pwd(runner_name).ok_or(Error::NoActiveRunner)?;
+    let runner = config.runner(runner_name);
+    let runner_pwd = config.resolve_pwd(runner, None);
 
     let mut files: BTreeMap<LanguageId, Vec<SourceFile>> = BTreeMap::new();
 

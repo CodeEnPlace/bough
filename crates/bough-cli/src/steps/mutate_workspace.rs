@@ -60,11 +60,11 @@ fn find_mutation(config: &Config, hash: &str) -> Result<Mutation, Error> {
 }
 
 fn workspace_file_path(workspace: &Path, mutation_path: &Path, config: &Config) -> PathBuf {
-    let runner_name = config.resolved_runner_name().unwrap();
-    let runner_pwd = config.runner_pwd(runner_name).unwrap();
+    let cwd = std::env::current_dir().unwrap();
     let relative = mutation_path
-        .strip_prefix(runner_pwd)
+        .strip_prefix(&cwd)
         .unwrap_or(mutation_path);
+    dbg!(&workspace, &mutation_path, &cwd, &relative);
     workspace.join(relative)
 }
 
