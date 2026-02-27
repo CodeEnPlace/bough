@@ -1,2 +1,3 @@
 [profile.default]
 status-level = "fail"
+max-progress-running = 0
