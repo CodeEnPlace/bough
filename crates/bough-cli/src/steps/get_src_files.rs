@@ -3,7 +3,7 @@ use bough_core::config::Config;
 use bough_core::languages::LanguageId;
 use serde::Serialize;
 use std::collections::BTreeMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use crate::render::{Render, color};
 
@@ -31,11 +31,11 @@ pub struct ShowSrcFiles {
     pub files: BTreeMap<LanguageId, Vec<SourceFile>>,
 }
 
-fn collect_glob(pattern: &str, base: &str) -> Result<Vec<PathBuf>, Error> {
-    let full = if PathBuf::from(pattern).is_absolute() {
+fn collect_glob(pattern: &str, base: &Path) -> Result<Vec<PathBuf>, Error> {
+    let full = if Path::new(pattern).is_absolute() {
         pattern.to_string()
     } else {
-        format!("{base}/{pattern}")
+        format!("{}/{pattern}", base.display())
     };
     let paths = glob::glob(&full)
         .map_err(Error::Glob)?

@@ -3,6 +3,7 @@ use crate::languages::LanguageId;
 use serde::{Deserialize, Serialize};
 use serde_value::Value;
 use std::collections::HashMap;
+use std::path::{Path, PathBuf};
 
 fn default_parallelism() -> u32 {
     1
@@ -16,8 +17,8 @@ fn default_state() -> String {
 fn default_logs() -> String {
     "/tmp/bough/logs".into()
 }
-fn default_pwd() -> String {
-    ".".into()
+fn default_pwd() -> PathBuf {
+    PathBuf::from(".")
 }
 fn default_test_phase() -> Phase {
     Phase {
@@ -105,7 +106,7 @@ impl Default for Dirs {
 #[serde(default)]
 pub struct Runner {
     #[serde(default = "default_pwd")]
-    pwd: String,
+    pwd: PathBuf,
     treat_timeouts_as: Outcome,
     init: Option<Phase>,
     get_test_ids: Option<String>,
@@ -120,7 +121,7 @@ pub struct Runner {
 impl Default for Runner {
     fn default() -> Self {
         Self {
-            pwd: default_pwd(),
+            pwd: PathBuf::from("."),
             treat_timeouts_as: Outcome::Caught,
             init: None,
             reset: None,
@@ -135,8 +136,7 @@ impl Default for Runner {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Phase {
-    #[serde(default = "default_pwd")]
-    pwd: String,
+    pwd: Option<PathBuf>,
     timeout: Timeout,
     env: HashMap<String, String>,
     commands: Vec<String>,
@@ -145,7 +145,7 @@ pub struct Phase {
 impl Default for Phase {
     fn default() -> Self {
         Self {
-            pwd: default_pwd(),
+            pwd: None,
             timeout: Timeout::default(),
             env: HashMap::new(),
             commands: Vec::new(),
@@ -154,22 +154,6 @@ impl Default for Phase {
 }
 
 impl Phase {
-    pub fn pwd(&self) -> &str {
-        &self.pwd
-    }
-
-    pub fn timeout_absolute(&self) -> Option<u64> {
-        self.timeout.absolute
-    }
-
-    pub fn timeout_relative(&self) -> Option<u64> {
-        self.timeout.relative
-    }
-
-    pub fn env(&self) -> &HashMap<String, String> {
-        &self.env
-    }
-
     pub fn commands(&self) -> &[String] {
         &self.commands
     }
@@ -342,8 +326,53 @@ impl Config {
         }
     }
 
-    pub fn runner_pwd(&self, runner: &str) -> Option<&str> {
-        self.runners.get(runner).map(|r| r.pwd.as_str())
+    pub fn runner(&self, runner: &str) -> Option<&Runner> {
+        self.runners.get(runner)
+    }
+
+    pub fn runner_pwd(&self, runner: &str) -> Option<&Path> {
+        self.runners.get(runner).map(|r| r.pwd.as_path())
+    }
+
+    pub fn resolve_pwd<'a>(
+        &self,
+        runner: Option<&'a Runner>,
+        phase: Option<&'a Phase>,
+    ) -> &'a Path {
+        static DEFAULT: &str = ".";
+        if let Some(pwd) = phase.and_then(|p| p.pwd.as_deref()) {
+            return pwd;
+        }
+        if let Some(r) = runner {
+            return &r.pwd;
+        }
+        Path::new(DEFAULT)
+    }
+
+    pub fn resolve_timeout_absolute(
+        &self,
+        _runner: Option<&Runner>,
+        phase: Option<&Phase>,
+    ) -> Option<u64> {
+        phase.and_then(|p| p.timeout.absolute)
+    }
+
+    pub fn resolve_timeout_relative(
+        &self,
+        _runner: Option<&Runner>,
+        phase: Option<&Phase>,
+    ) -> Option<u64> {
+        phase.and_then(|p| p.timeout.relative)
+    }
+
+    pub fn resolve_env<'a>(
+        &self,
+        _runner: Option<&'a Runner>,
+        phase: Option<&'a Phase>,
+    ) -> &'a HashMap<String, String> {
+        static EMPTY: std::sync::LazyLock<HashMap<String, String>> =
+            std::sync::LazyLock::new(HashMap::new);
+        phase.map(|p| &p.env).unwrap_or(&EMPTY)
     }
 
     pub fn runner_treat_timeouts_as(&self, runner: &str) -> Option<Outcome> {
@@ -456,7 +485,7 @@ mod tests {
         assert_eq!(vitest.treat_timeouts_as, Outcome::Missed);
 
         let init = vitest.init.as_ref().unwrap();
-        assert_eq!(init.pwd, "./examples/vitest");
+        assert_eq!(init.pwd.as_deref(), Some(Path::new("./examples/vitest")));
         assert_eq!(init.commands, vec!["npm install"]);
 
         assert_eq!(vitest.test.timeout.absolute, Some(30));
@@ -470,7 +499,7 @@ mod tests {
         assert_eq!(js_mutate.mutants.skip.len(), 2);
 
         let cargo = &config.runners["cargo"];
-        assert_eq!(cargo.pwd, "./examples/cargo");
+        assert_eq!(cargo.pwd, PathBuf::from("./examples/cargo"));
         assert_eq!(cargo.test.commands, vec!["cargo test"]);
     }
 
@@ -490,7 +519,7 @@ mod tests {
         assert!(vitest.reset.is_none());
 
         assert_eq!(vitest.test.commands, vec!["npx vitest run"]);
-        assert_eq!(vitest.test.pwd, ".");
+        assert_eq!(vitest.test.pwd, None);
         assert!(vitest.test.env.is_empty());
         assert_eq!(vitest.test.timeout, Timeout::default());
 
@@ -588,5 +617,136 @@ mod tests {
         assert_eq!(config.ordering, Ordering::Random);
         assert_eq!(config.dirs, Dirs::default());
         assert!(config.runners.is_empty());
+    }
+
+    fn make_runner(pwd: &str) -> Runner {
+        Runner {
+            pwd: PathBuf::from(pwd),
+            ..Runner::default()
+        }
+    }
+
+    fn make_phase(pwd: Option<&str>) -> Phase {
+        Phase {
+            pwd: pwd.map(PathBuf::from),
+            ..Phase::default()
+        }
+    }
+
+    mod resolve_pwd {
+        use super::*;
+
+        #[test]
+        fn phase_pwd_wins() {
+            let config: Config = toml::from_str("").unwrap();
+            let runner = make_runner("./runner");
+            let phase = make_phase(Some("./phase"));
+            assert_eq!(
+                config.resolve_pwd(Some(&runner), Some(&phase)),
+                Path::new("./phase")
+            );
+        }
+
+        #[test]
+        fn falls_back_to_runner_pwd() {
+            let config: Config = toml::from_str("").unwrap();
+            let runner = make_runner("./runner");
+            let phase = make_phase(None);
+            assert_eq!(
+                config.resolve_pwd(Some(&runner), Some(&phase)),
+                Path::new("./runner")
+            );
+        }
+
+        #[test]
+        fn falls_back_to_dot_without_runner() {
+            let config: Config = toml::from_str("").unwrap();
+            let phase = make_phase(None);
+            assert_eq!(config.resolve_pwd(None, Some(&phase)), Path::new("."));
+        }
+
+        #[test]
+        fn falls_back_to_dot_with_no_args() {
+            let config: Config = toml::from_str("").unwrap();
+            assert_eq!(config.resolve_pwd(None, None), Path::new("."));
+        }
+
+        #[test]
+        fn runner_pwd_without_phase() {
+            let config: Config = toml::from_str("").unwrap();
+            let runner = make_runner("./sub");
+            assert_eq!(config.resolve_pwd(Some(&runner), None), Path::new("./sub"));
+        }
+    }
+
+    mod resolve_timeout {
+        use super::*;
+
+        #[test]
+        fn returns_phase_timeout() {
+            let config: Config = toml::from_str("").unwrap();
+            let phase = Phase {
+                timeout: Timeout {
+                    absolute: Some(30),
+                    relative: Some(3),
+                },
+                ..Phase::default()
+            };
+            assert_eq!(
+                config.resolve_timeout_absolute(None, Some(&phase)),
+                Some(30)
+            );
+            assert_eq!(
+                config.resolve_timeout_relative(None, Some(&phase)),
+                Some(3)
+            );
+        }
+
+        #[test]
+        fn returns_none_without_phase() {
+            let config: Config = toml::from_str("").unwrap();
+            assert_eq!(config.resolve_timeout_absolute(None, None), None);
+            assert_eq!(config.resolve_timeout_relative(None, None), None);
+        }
+
+        #[test]
+        fn returns_none_for_default_phase() {
+            let config: Config = toml::from_str("").unwrap();
+            let phase = Phase::default();
+            assert_eq!(
+                config.resolve_timeout_absolute(None, Some(&phase)),
+                None
+            );
+        }
+    }
+
+    mod resolve_env {
+        use super::*;
+
+        #[test]
+        fn returns_phase_env() {
+            let config: Config = toml::from_str("").unwrap();
+            let phase = Phase {
+                env: HashMap::from([("K".into(), "V".into())]),
+                ..Phase::default()
+            };
+            let env = config.resolve_env(None, Some(&phase));
+            assert_eq!(env["K"], "V");
+        }
+
+        #[test]
+        fn returns_empty_without_phase() {
+            let config: Config = toml::from_str("").unwrap();
+            let env = config.resolve_env(None, None);
+            assert!(env.is_empty());
+        }
+
+        #[test]
+        fn returns_empty_for_default_phase() {
+            let config: Config = toml::from_str("").unwrap();
+            let phase = Phase::default();
+            let env = config.resolve_env(None, Some(&phase));
+            assert!(env.is_empty());
+        }
     }
 }

@@ -61,6 +61,7 @@ fn vcs_reset(vcs: &VcsConfig, workspace: &Path) -> Result<String, Error> {
 
 pub fn run(config: &Config, workspace: &Path) -> Result<ResetWorkspace, Error> {
     let runner_name = config.resolved_runner_name().ok_or(Error::NoActiveRunner)?;
+    let runner = config.runner(runner_name);
 
     if !workspace.exists() {
         return Err(Error::WorkspaceNotFound(workspace.to_path_buf()));
@@ -69,7 +70,7 @@ pub fn run(config: &Config, workspace: &Path) -> Result<ResetWorkspace, Error> {
     let mut stdout = vcs_reset(config.vcs(), workspace)?;
 
     if let Some(reset) = config.runner_reset_phase(runner_name) {
-        let output = PhaseRunner::new(reset, workspace)
+        let output = PhaseRunner::new(config, runner, reset, workspace)
             .run()
             .map_err(Error::Phase)?;
         stdout.push_str(&output.stdout);
