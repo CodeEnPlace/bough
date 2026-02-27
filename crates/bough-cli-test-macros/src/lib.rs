@@ -233,3 +233,44 @@ pub fn cmd(input: TokenStream) -> TokenStream {
 pub fn cmd_err(input: TokenStream) -> TokenStream {
     build_cmd(parse_macro_input!(input as CmdArgs), false)
 }
+
+struct AssertFileArgs {
+    dir: Expr,
+    path: LitStr,
+    patterns: Vec<LitStr>,
+}
+
+impl Parse for AssertFileArgs {
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        let dir = input.parse()?;
+        input.parse::<Token![,]>()?;
+        let path = input.parse()?;
+        let mut patterns = Vec::new();
+        while input.peek(Token![,]) {
+            input.parse::<Token![,]>()?;
+            if !input.is_empty() {
+                patterns.push(input.parse()?);
+            }
+        }
+        Ok(Self { dir, path, patterns })
+    }
+}
+
+#[proc_macro]
+pub fn assert_file(input: TokenStream) -> TokenStream {
+    let args = parse_macro_input!(input as AssertFileArgs);
+    let dir = &args.dir;
+    let path_lit = &args.path;
+    let path_expr = build_cmd_expr(path_lit);
+    let pattern_stmts = build_pattern_stmts(&args.patterns);
+
+    quote! {
+        let __file_path = ::std::path::Path::new(#dir.as_ref()).join(#path_expr);
+        let __text = ::std::fs::read_to_string(&__file_path)
+            .unwrap_or_else(|e| panic!("failed to read {}: {e}", __file_path.display()));
+        let __lines: Vec<&str> = __text.lines().collect();
+        let mut __matched: Vec<bool> = vec![false; __lines.len()];
+        #(#pattern_stmts)*
+    }
+    .into()
+}
