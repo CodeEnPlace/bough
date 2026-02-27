@@ -65,6 +65,8 @@ enum WorkspaceAction {
     Test {
         #[arg()]
         name: String,
+        #[arg()]
+        mutation_hash: String,
     },
     Drop {
         #[arg()]
@@ -147,7 +149,7 @@ fn main() {
                 let no_color = !std::io::IsTerminal::is_terminal(&std::io::stdout());
                 result.render(&cli.output_style, no_color, 0);
             }
-            WorkspaceAction::Test { name } => {
+            WorkspaceAction::Test { name, mutation_hash } => {
                 let cfg = config::load(&cli).unwrap_or_else(|e| {
                     eprintln!("{e}");
                     std::process::exit(1);
@@ -157,7 +159,7 @@ fn main() {
                     std::process::exit(1);
                 });
                 let path = PathBuf::from(cfg.working_dir()).join(&*ws);
-                let result = steps::test_workspace::run(&cfg, &path).unwrap_or_else(|e| {
+                let result = steps::test_workspace::run(&cfg, &path, mutation_hash).unwrap_or_else(|e| {
                     eprintln!("{e}");
                     std::process::exit(1);
                 });

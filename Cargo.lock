@@ -119,6 +119,7 @@ dependencies = [
  "assert_cmd",
  "bough-core",
  "bough-typed-hash",
+ "chrono",
  "clap",
  "clap_complete",
  "glob",

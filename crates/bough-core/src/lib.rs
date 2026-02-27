@@ -77,7 +77,7 @@ pub enum Outcome {
     Caught,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct MutationResult {
     pub outcome: Outcome,
     pub mutation: Mutation,
