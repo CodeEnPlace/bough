@@ -1,6 +1,7 @@
 [vcs]
 kind = "jj"
-rev = "bough"
+restore_to = "bough"
+on_top_of = "bough"
 
 [vitest-js]
 pwd = "examples/vitest-js"

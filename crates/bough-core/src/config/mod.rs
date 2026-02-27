@@ -36,7 +36,8 @@ pub enum VcsConfig {
         commit: String,
     },
     Jj {
-        rev: String,
+        restore_to: String,
+        on_top_of: String,
     },
     Mercurial,
 }
