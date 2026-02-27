@@ -74,7 +74,7 @@ pub fn run(config: &Config) -> Result<ShowSrcFiles, Error> {
 
         let mut src_files = Vec::with_capacity(paths.len());
         for path in paths {
-            let sf = SourceFile::read(&path).map_err(|e| Error::ReadFile(path, e))?;
+            let sf = SourceFile::read(&path, lang).map_err(|e| Error::ReadFile(path, e))?;
             src_files.push(sf);
         }
         files.insert(lang, src_files);

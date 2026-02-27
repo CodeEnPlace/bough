@@ -1,9 +1,10 @@
 use bough_core::apply_mutation;
 use bough_core::config::Config;
+use bough_core::Mutation;
+use bough_typed_hash::{MemoryHashStore, TypedHashable};
 use serde::Serialize;
 use std::path::{Path, PathBuf};
 
-use super::get_mutations::AnyMutation;
 use super::get_src_files;
 use crate::render::{Render, color};
 
@@ -42,13 +43,14 @@ pub struct MutateWorkspace {
     pub replacement: String,
 }
 
-fn find_mutation(config: &Config, hash: &str) -> Result<AnyMutation, Error> {
+fn find_mutation(config: &Config, hash: &str) -> Result<Mutation, Error> {
     let src_files = get_src_files::run(config).map_err(Error::SrcFiles)?;
     let mutations = super::get_mutations::run(&src_files, config).map_err(Error::Mutations)?;
 
     for (_lang, muts) in &mutations.mutations {
         for m in muts {
-            if m.mutation_hash_hex() == hash {
+            let m_hash = m.hash(&mut MemoryHashStore::new()).expect("hash failed").to_string();
+            if m_hash == hash {
                 return Ok(m.clone());
             }
         }
@@ -74,12 +76,12 @@ pub fn run(config: &Config, workspace: &Path, hash: &str) -> Result<MutateWorksp
     }
 
     let mutation = find_mutation(config, hash)?;
-    let file_path = workspace_file_path(workspace, mutation.path(), config);
+    let file_path = workspace_file_path(workspace, &mutation.mutant.src.path, config);
 
     let content = std::fs::read_to_string(&file_path)
         .map_err(|e| Error::ReadFile(file_path.clone(), e))?;
 
-    let mutated = apply_mutation(&content, mutation.span(), mutation.replacement());
+    let mutated = apply_mutation(&content, &mutation.mutant.span, &mutation.replacement);
 
     std::fs::write(&file_path, &mutated)
         .map_err(|e| Error::WriteFile(file_path.clone(), e))?;
@@ -88,7 +90,7 @@ pub fn run(config: &Config, workspace: &Path, hash: &str) -> Result<MutateWorksp
         workspace: workspace.to_path_buf(),
         file: file_path,
         hash: hash.to_string(),
-        replacement: mutation.replacement().to_string(),
+        replacement: mutation.replacement,
     })
 }
 
