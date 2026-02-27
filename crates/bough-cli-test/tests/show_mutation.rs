@@ -73,6 +73,83 @@ fn verbose_shows_detail() {
 }
 
 #[test]
+fn markdown_shows_before_and_diff() {
+    let dir = plan().setup();
+
+    cmd!(dir, "bough workspace make", "created workspace at {!ws_path}");
+    cmd!(
+        dir,
+        "bough --output-style verbose workspace list",
+        "{!ws_name} {?ws_path}",
+    );
+    cmd!(
+        dir,
+        "bough workspace test {?ws_name} 7c43fed8aeccd70bfd659b389dd2647fe348e5f9e97d06d94f25192ed371cfb0",
+        "caught mutation 7c43fed8aeccd70bfd659b389dd2647fe348e5f9e97d06d94f25192ed371cfb0 in workspace {?ws_path}",
+    );
+    cmd!(
+        dir,
+        "bough --output-style markdown show mutation 7c43fed8aeccd70bfd659b389dd2647fe348e5f9e97d06d94f25192ed371cfb0",
+        "## Before",
+        "```javascript",
+        "## Diff",
+        "```diff",
+        "-export function add(a, b) { return a + b; }",
+        "+export function add(a, b) { return a - b; }",
+    );
+}
+
+#[test]
+fn source_file_not_found_errors() {
+    let dir = plan().setup();
+
+    cmd!(dir, "bough workspace make", "created workspace at {!ws_path}");
+    cmd!(
+        dir,
+        "bough --output-style verbose workspace list",
+        "{!ws_name} {?ws_path}",
+    );
+    cmd!(
+        dir,
+        "bough workspace test {?ws_name} 7c43fed8aeccd70bfd659b389dd2647fe348e5f9e97d06d94f25192ed371cfb0",
+        "caught mutation 7c43fed8aeccd70bfd659b389dd2647fe348e5f9e97d06d94f25192ed371cfb0 in workspace {?ws_path}",
+    );
+
+    std::fs::remove_file(dir.as_ref().join("src/app.js")).unwrap();
+
+    cmd_err!(
+        dir,
+        "bough show mutation 7c43fed8aeccd70bfd659b389dd2647fe348e5f9e97d06d94f25192ed371cfb0",
+        "source file not found: {!path}",
+    );
+}
+
+#[test]
+fn source_file_changed_errors() {
+    let dir = plan().setup();
+
+    cmd!(dir, "bough workspace make", "created workspace at {!ws_path}");
+    cmd!(
+        dir,
+        "bough --output-style verbose workspace list",
+        "{!ws_name} {?ws_path}",
+    );
+    cmd!(
+        dir,
+        "bough workspace test {?ws_name} 7c43fed8aeccd70bfd659b389dd2647fe348e5f9e97d06d94f25192ed371cfb0",
+        "caught mutation 7c43fed8aeccd70bfd659b389dd2647fe348e5f9e97d06d94f25192ed371cfb0 in workspace {?ws_path}",
+    );
+
+    std::fs::write(dir.as_ref().join("src/app.js"), "export const x = 1;\n").unwrap();
+
+    cmd_err!(
+        dir,
+        "bough show mutation 7c43fed8aeccd70bfd659b389dd2647fe348e5f9e97d06d94f25192ed371cfb0",
+        "source file has changed: {!path}",
+    );
+}
+
+#[test]
 fn not_found_errors() {
     let dir = plan().setup();
 
