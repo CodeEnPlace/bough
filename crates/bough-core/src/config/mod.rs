@@ -1,254 +1,189 @@
-use crate::Outcome;
-use crate::languages::LanguageId;
+pub mod phase;
+pub mod suite;
+
+pub use phase::{PhaseConfig, PhaseMetaConfig, TimeoutConfig};
+pub use suite::{
+    FileSourceConfig, MutantFilterConfig, MutantSkipConfig, MutateLanguageConfig, OrderingConfig,
+    SuiteConfig, TestIdsConfig,
+};
+
+use crate::phase::{Phase, PhaseRunner, RunIn};
+use crate::suite::Suite;
 use serde::{Deserialize, Serialize};
 use serde_value::Value;
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
-fn default_parallelism() -> u32 {
+fn default_threads() -> u32 {
     1
 }
-fn default_working() -> String {
-    "/tmp/bough/work".into()
+fn default_bough_dir() -> PathBuf {
+    PathBuf::from("./.bough")
 }
-fn default_state() -> String {
-    "./bough/".into()
-}
-fn default_logs() -> String {
-    "/tmp/bough/logs".into()
-}
-fn default_pwd() -> PathBuf {
-    PathBuf::from(".")
-}
-fn default_test_phase() -> Phase {
-    Phase {
-        commands: vec!["exit 1".into()],
-        ..Phase::default()
+
+#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct SuiteId(pub(crate) String);
+
+impl std::fmt::Display for SuiteId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0)
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
-#[serde(tag = "kind", rename_all = "lowercase")]
-pub enum VcsConfig {
-    #[default]
-    None,
-    Git {
-        commit: String,
-    },
-    Jj {
-        restore_to: String,
-        on_top_of: String,
-    },
-    Mercurial,
-}
-
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, clap::ValueEnum)]
-#[serde(rename_all = "lowercase")]
-pub enum Ordering {
-    #[default]
-    Random,
-    Alphabetical,
-    MissedFirst,
-    CaughtFirst,
-    NewestFirst,
+impl SuiteId {
+    pub fn try_parse(config: &Config, name: &str) -> Result<Self, ConfigError> {
+        let id = Self(name.to_string());
+        if config.suites.contains_key(&id) {
+            Ok(id)
+        } else {
+            Err(ConfigError::UnknownSuite {
+                name: id,
+                available: config.suites.keys().cloned().collect(),
+            })
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Config {
+    pub(crate) active_suite: SuiteId,
+    #[serde(default = "default_threads")]
+    pub(crate) threads: u32,
+    #[serde(default = "default_bough_dir")]
+    pub(crate) bough_dir: PathBuf,
     #[serde(skip)]
-    _sealed: (),
-    active_runner: String,
-    vcs: VcsConfig,
-    #[serde(default = "default_parallelism")]
-    parallelism: u32,
-    ordering: Ordering,
-    dirs: Dirs,
+    pub(crate) source_dir: PathBuf,
     #[serde(flatten)]
-    runners: HashMap<String, Runner>,
+    pub(crate) suites: HashMap<SuiteId, SuiteConfig>,
+}
+
+impl Config {
+    pub fn new_suite<'a>(&'a self, id: &SuiteId) -> Result<Suite<'a>, ConfigError> {
+        let suite = self.suite_or_err(id)?;
+        Ok(Suite::new(suite))
+    }
+
+    pub fn new_phase_runner(
+        &self,
+        suite_id: &SuiteId,
+        phase: Phase,
+        run_in: RunIn,
+    ) -> Result<PhaseRunner, ConfigError> {
+        let suite = self.suite_or_err(suite_id)?;
+        let phase_config = suite.get_phase_config(phase).ok_or(ConfigError::PhaseNotConfigured {
+            phase,
+            suite: suite_id.clone(),
+        })?;
+
+        let base = match &run_in {
+            RunIn::SourceDir => self.source_dir.clone(),
+            RunIn::Workspace(id) => self.resolve_path(&self.bough_dir).join("workspaces").join(id),
+        };
+
+        let pwd = phase_config.meta.pwd.as_deref()
+            .or_else(|| suite.meta_defaults.pwd.as_deref())
+            .map(|p| base.join(p))
+            .unwrap_or(base);
+
+        let mut env = suite.meta_defaults.env.clone();
+        env.extend(phase_config.meta.env.clone());
+
+        let timeout = TimeoutConfig {
+            absolute: phase_config.meta.timeout.absolute.or(suite.meta_defaults.timeout.absolute),
+            relative: phase_config.meta.timeout.relative.or(suite.meta_defaults.timeout.relative),
+        };
+
+        Ok(PhaseRunner {
+            pwd,
+            env,
+            timeout,
+            commands: phase_config.commands.clone(),
+        })
+    }
+
+    fn resolve_path(&self, path: &std::path::Path) -> PathBuf {
+        if path.is_absolute() {
+            path.to_owned()
+        } else {
+            self.source_dir.join(path)
+        }
+    }
+
+    fn suite_or_err(&self, id: &SuiteId) -> Result<&SuiteConfig, ConfigError> {
+        self.suites
+            .get(id)
+            .ok_or_else(|| ConfigError::UnknownSuite {
+                name: id.clone(),
+                available: self.suites.keys().cloned().collect(),
+            })
+    }
 }
 
 impl Default for Config {
     fn default() -> Self {
         Self {
-            _sealed: (),
-            active_runner: String::new(),
-            vcs: VcsConfig::default(),
-            parallelism: default_parallelism(),
-            ordering: Ordering::default(),
-            dirs: Dirs::default(),
-            runners: HashMap::new(),
+            active_suite: SuiteId::default(),
+            threads: default_threads(),
+            bough_dir: default_bough_dir(),
+            source_dir: PathBuf::default(),
+            suites: HashMap::new(),
         }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(default)]
-pub struct Dirs {
-    #[serde(default = "default_working")]
-    working: String,
-    #[serde(default = "default_state")]
-    state: String,
-    #[serde(default = "default_logs")]
-    logs: String,
-}
-
-impl Default for Dirs {
-    fn default() -> Self {
-        Self {
-            working: default_working(),
-            state: default_state(),
-            logs: default_logs(),
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(default)]
-pub struct Runner {
-    #[serde(default = "default_pwd")]
-    pwd: PathBuf,
-    treat_timeouts_as: Outcome,
-    init: Option<Phase>,
-    get_test_ids: Option<String>,
-    reset: Option<Phase>,
-    #[serde(default = "default_test_phase")]
-    test: Phase,
-    test_ids: Option<TestIds>,
-    #[serde(flatten)]
-    mutate: HashMap<LanguageId, MutateLanguage>,
-}
-
-impl Default for Runner {
-    fn default() -> Self {
-        Self {
-            pwd: PathBuf::from("."),
-            treat_timeouts_as: Outcome::Caught,
-            init: None,
-            reset: None,
-            test: default_test_phase(),
-            test_ids: None,
-            mutate: HashMap::new(),
-            get_test_ids: None,
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(default)]
-pub struct Phase {
-    pwd: Option<PathBuf>,
-    timeout: Timeout,
-    env: HashMap<String, String>,
-    commands: Vec<String>,
-}
-
-impl Default for Phase {
-    fn default() -> Self {
-        Self {
-            pwd: None,
-            timeout: Timeout::default(),
-            env: HashMap::new(),
-            commands: Vec::new(),
-        }
-    }
-}
-
-impl Phase {
-    pub fn commands(&self) -> &[String] {
-        &self.commands
-    }
-}
-
-#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(default)]
-pub struct Timeout {
-    absolute: Option<u64>,
-    relative: Option<u64>,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct TestIds {
-    get_all: String,
-    get_failed: String,
-}
-
-#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(default)]
-pub struct MutateLanguage {
-    files: FileFilter,
-    mutants: MutantFilter,
-}
-
-#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(default)]
-pub struct FileFilter {
-    include: Vec<String>,
-    exclude: Vec<String>,
-}
-
-#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(default)]
-pub struct MutantFilter {
-    skip: Vec<MutantSkip>,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(untagged)]
-pub enum MutantSkip {
-    Query { query: String },
-    Kind { kind: HashMap<String, String> },
-}
-
-fn deep_merge(base: Value, patch: Value) -> Value {
-    match (base, patch) {
-        (Value::Map(mut base_map), Value::Map(patch_map)) => {
-            for (k, v) in patch_map {
-                let merged = match base_map.remove(&k) {
-                    Some(existing) => deep_merge(existing, v),
-                    None => v,
-                };
-                base_map.insert(k, merged);
-            }
-            Value::Map(base_map)
-        }
-        (_, patch) => patch,
     }
 }
 
 pub struct ConfigBuilder {
-    config: Config,
+    value: Value,
+    source_dir: PathBuf,
 }
 
 impl ConfigBuilder {
-    pub fn new(config: Config) -> Self {
-        Self { config }
+    pub fn new(source_dir: PathBuf) -> Self {
+        Self {
+            value: Value::Map(Default::default()),
+            source_dir,
+        }
     }
 
-    pub fn from_value(value: Value) -> Self {
-        let config = Config::deserialize(value).expect("failed to deserialize config");
-        Self { config }
+    pub fn from_value(self, value: Value) -> Self {
+        Self { value, ..self }
     }
 
     pub fn override_with(mut self, patch: Value) -> Self {
-        let base = serde_value::to_value(self.config).expect("failed to serialize config");
-        let merged = deep_merge(base, patch);
-        self.config = Config::deserialize(merged).expect("failed to deserialize merged config");
+        self.value = Self::deep_merge(self.value, patch);
         self
     }
 
-    pub fn build(mut self) -> Result<Config, ConfigError> {
-        self.config.resolve_paths();
-        self.check_invariants()?;
-        Ok(self.config)
+    fn deep_merge(base: Value, patch: Value) -> Value {
+        match (base, patch) {
+            (Value::Map(mut base_map), Value::Map(patch_map)) => {
+                for (k, v) in patch_map {
+                    let merged = match base_map.remove(&k) {
+                        Some(existing) => Self::deep_merge(existing, v),
+                        None => v,
+                    };
+                    base_map.insert(k, merged);
+                }
+                Value::Map(base_map)
+            }
+            (_, patch) => patch,
+        }
     }
 
-    fn check_invariants(&self) -> Result<(), ConfigError> {
-        let runner = &self.config.active_runner;
-        if !runner.is_empty() && !self.config.runners.contains_key(runner) {
-            return Err(ConfigError::UnknownRunner {
-                name: runner.clone(),
-                available: self.config.runners.keys().cloned().collect(),
+    pub fn build(self) -> Result<Config, ConfigError> {
+        let mut config = Config::deserialize(self.value).map_err(ConfigError::Deserialize)?;
+        config.source_dir = self.source_dir;
+        Self::check_invariants(&config)?;
+        Ok(config)
+    }
+
+    fn check_invariants(config: &Config) -> Result<(), ConfigError> {
+        let suite = &config.active_suite;
+        if !suite.0.is_empty() && !config.suites.contains_key(suite) {
+            return Err(ConfigError::UnknownSuite {
+                name: suite.clone(),
+                available: config.suites.keys().cloned().collect(),
             });
         }
         Ok(())
@@ -257,246 +192,87 @@ impl ConfigBuilder {
 
 #[derive(Debug)]
 pub enum ConfigError {
-    UnknownRunner {
-        name: String,
-        available: Vec<String>,
+    UnknownSuite {
+        name: SuiteId,
+        available: Vec<SuiteId>,
     },
+    PhaseNotConfigured {
+        phase: Phase,
+        suite: SuiteId,
+    },
+    Deserialize(serde_value::DeserializerError),
 }
 
 impl std::fmt::Display for ConfigError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ConfigError::UnknownRunner { name, available } => {
+            ConfigError::UnknownSuite { name, available } => {
                 write!(
                     f,
-                    "runner '{}' not found in config (available: {})",
+                    "suite '{}' not found in config (available: {})",
                     name,
                     if available.is_empty() {
                         "none".to_string()
                     } else {
-                        available.join(", ")
+                        available
+                            .iter()
+                            .map(|s| s.0.as_str())
+                            .collect::<Vec<_>>()
+                            .join(", ")
                     }
                 )
             }
+            ConfigError::PhaseNotConfigured { phase, suite } => {
+                write!(f, "phase '{phase:?}' not configured in suite '{suite}'")
+            }
+            ConfigError::Deserialize(e) => write!(f, "failed to deserialize config: {e}"),
         }
     }
 }
 
 impl std::error::Error for ConfigError {}
 
-impl Config {
-    pub fn active_runner(&self) -> &str {
-        &self.active_runner
-    }
-
-    pub fn vcs(&self) -> &VcsConfig {
-        &self.vcs
-    }
-
-    pub fn parallelism(&self) -> u32 {
-        self.parallelism
-    }
-
-    pub fn ordering(&self) -> Ordering {
-        self.ordering
-    }
-
-    pub fn working_dir(&self) -> &str {
-        &self.dirs.working
-    }
-
-    pub fn state_dir(&self) -> &str {
-        &self.dirs.state
-    }
-
-    pub fn logs_dir(&self) -> &str {
-        &self.dirs.logs
-    }
-
-    pub fn runner_names(&self) -> Vec<String> {
-        self.runners.keys().cloned().collect()
-    }
-
-    pub fn resolved_runner_name(&self) -> Option<&str> {
-        if self.active_runner.is_empty() {
-            self.runners.keys().next().map(|s| s.as_str())
-        } else if self.runners.contains_key(&self.active_runner) {
-            Some(&self.active_runner)
-        } else {
-            None
-        }
-    }
-
-    pub fn runner(&self, runner: &str) -> Option<&Runner> {
-        self.runners.get(runner)
-    }
-
-    pub fn resolve_pwd<'a>(
-        &self,
-        runner: Option<&'a Runner>,
-        phase: Option<&'a Phase>,
-    ) -> &'a Path {
-        static DEFAULT: &str = ".";
-        if let Some(pwd) = phase.and_then(|p| p.pwd.as_deref()) {
-            return pwd;
-        }
-        if let Some(r) = runner {
-            return &r.pwd;
-        }
-        Path::new(DEFAULT)
-    }
-
-    pub fn resolve_timeout_absolute(
-        &self,
-        _runner: Option<&Runner>,
-        phase: Option<&Phase>,
-    ) -> Option<u64> {
-        phase.and_then(|p| p.timeout.absolute)
-    }
-
-    pub fn resolve_timeout_relative(
-        &self,
-        _runner: Option<&Runner>,
-        phase: Option<&Phase>,
-    ) -> Option<u64> {
-        phase.and_then(|p| p.timeout.relative)
-    }
-
-    pub fn resolve_env<'a>(
-        &self,
-        _runner: Option<&'a Runner>,
-        phase: Option<&'a Phase>,
-    ) -> &'a HashMap<String, String> {
-        static EMPTY: std::sync::LazyLock<HashMap<String, String>> =
-            std::sync::LazyLock::new(HashMap::new);
-        phase.map(|p| &p.env).unwrap_or(&EMPTY)
-    }
-
-    pub fn runner_treat_timeouts_as(&self, runner: &str) -> Option<Outcome> {
-        self.runners.get(runner).map(|r| r.treat_timeouts_as)
-    }
-
-    pub fn runner_init_phase(&self, runner: &str) -> Option<&Phase> {
-        self.runners.get(runner).and_then(|r| r.init.as_ref())
-    }
-
-    pub fn runner_reset_phase(&self, runner: &str) -> Option<&Phase> {
-        self.runners.get(runner).and_then(|r| r.reset.as_ref())
-    }
-
-    pub fn runner_test_phase(&self, runner: &str) -> Option<&Phase> {
-        self.runners.get(runner).map(|r| &r.test)
-    }
-
-    pub fn runner_test_ids_get_all(&self, runner: &str) -> Option<&str> {
-        self.runners
-            .get(runner)
-            .and_then(|r| r.test_ids.as_ref())
-            .map(|t| t.get_all.as_str())
-    }
-
-    pub fn runner_test_ids_get_failed(&self, runner: &str) -> Option<&str> {
-        self.runners
-            .get(runner)
-            .and_then(|r| r.test_ids.as_ref())
-            .map(|t| t.get_failed.as_str())
-    }
-
-    pub fn mutate_languages(&self, runner: &str) -> Vec<LanguageId> {
-        self.runners
-            .get(runner)
-            .map(|r| r.mutate.keys().copied().collect())
-            .unwrap_or_default()
-    }
-
-    pub fn file_includes(&self, runner: &str, lang: LanguageId) -> Vec<String> {
-        self.runners
-            .get(runner)
-            .and_then(|r| r.mutate.get(&lang))
-            .map(|m| m.files.include.clone())
-            .unwrap_or_default()
-    }
-
-    pub fn file_excludes(&self, runner: &str, lang: LanguageId) -> Vec<String> {
-        self.runners
-            .get(runner)
-            .and_then(|r| r.mutate.get(&lang))
-            .map(|m| m.files.exclude.clone())
-            .unwrap_or_default()
-    }
-
-    pub fn mutant_skips(&self, runner: &str, lang: LanguageId) -> Vec<MutantSkip> {
-        self.runners
-            .get(runner)
-            .and_then(|r| r.mutate.get(&lang))
-            .map(|m| m.mutants.skip.clone())
-            .unwrap_or_default()
-    }
-
-    fn resolve_paths(&mut self) {
-        let cwd = std::env::current_dir().expect("failed to get current directory");
-        let resolve = |p: &mut String| {
-            let path = std::path::PathBuf::from(&*p);
-            if !path.is_absolute() {
-                *p = cwd
-                    .join(path)
-                    .canonicalize()
-                    .unwrap_or_else(|_| cwd.join(&*p))
-                    .to_string_lossy()
-                    .into_owned();
-            }
-        };
-
-        resolve(&mut self.dirs.working);
-        resolve(&mut self.dirs.state);
-        resolve(&mut self.dirs.logs);
-
-        for _runner in self.runners.values_mut() {}
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::languages::LanguageId;
+    use crate::phase::Phase;
+
+    use crate::Outcome;
 
     #[test]
     fn deserialize_ideal_config() {
         let toml_str = include_str!("ideal.config.toml");
         let config: Config = toml::from_str(toml_str).expect("failed to parse ideal config");
 
-        assert_eq!(
-            config.vcs,
-            VcsConfig::Jj {
-                rev: "trunk()".into()
-            }
-        );
-        assert_eq!(config.parallelism, 1);
-        assert_eq!(config.ordering, Ordering::Random);
+        assert_eq!(config.threads, 1);
+        assert_eq!(config.bough_dir, PathBuf::from("./.bough"));
 
-        assert_eq!(config.dirs.working, "/tmp/bough/work");
-        assert_eq!(config.dirs.state, "/tmp/bough/state");
-        assert_eq!(config.dirs.logs, "/tmp/bough/logs");
-
-        let vitest = &config.runners["vitest"];
+        let vitest = &config.suites[&SuiteId("vitest".into())];
+        assert_eq!(vitest.ordering, OrderingConfig::Alphabetical);
         assert_eq!(vitest.treat_timeouts_as, Outcome::Missed);
 
-        let init = vitest.init.as_ref().unwrap();
-        assert_eq!(init.pwd.as_deref(), Some(Path::new("./examples/vitest")));
+        let init = &vitest.phases[&Phase::Init];
+        assert_eq!(init.meta.pwd, Some(PathBuf::from("./examples/vitest")));
         assert_eq!(init.commands, vec!["npm install"]);
 
-        assert_eq!(vitest.test.timeout.absolute, Some(30));
-        assert_eq!(vitest.test.timeout.relative, Some(3));
-        assert_eq!(vitest.test.env["NODE_ENV"], "production");
-        assert_eq!(vitest.test.commands, vec!["npx run build", "npx run test"]);
+        let test = &vitest.phases[&Phase::Test];
+        assert_eq!(test.meta.timeout.absolute, Some(30));
+        assert_eq!(test.meta.timeout.relative, Some(3));
+        assert_eq!(test.meta.env["NODE_ENV"], "production");
+        assert_eq!(test.commands, vec!["npx run build", "npx run test"]);
 
         let js_mutate = &vitest.mutate[&LanguageId::Javascript];
         assert_eq!(js_mutate.files.include, vec!["**/*.js", "**/*.jsx"]);
         assert_eq!(js_mutate.files.exclude, vec!["**/*__mocks__*"]);
         assert_eq!(js_mutate.mutants.skip.len(), 2);
 
-        let cargo = &config.runners["cargo"];
-        assert_eq!(cargo.pwd, PathBuf::from("./examples/cargo"));
-        assert_eq!(cargo.test.commands, vec!["cargo test"]);
+        let cargo = &config.suites[&SuiteId("cargo".into())];
+        assert_eq!(
+            cargo.meta_defaults.pwd,
+            Some(PathBuf::from("./examples/cargo"))
+        );
+        assert_eq!(cargo.phases[&Phase::Test].commands, vec!["cargo test"]);
     }
 
     #[test]
@@ -504,20 +280,20 @@ mod tests {
         let toml_str = include_str!("minimal.config.toml");
         let config: Config = toml::from_str(toml_str).expect("failed to parse minimal config");
 
-        assert_eq!(config.vcs, VcsConfig::None);
-        assert_eq!(config.parallelism, 1);
-        assert_eq!(config.ordering, Ordering::Random);
-        assert_eq!(config.dirs, Dirs::default());
+        assert_eq!(config.threads, 1);
+        assert_eq!(config.bough_dir, PathBuf::from("./.bough"));
 
-        let vitest = &config.runners["vitest"];
+        let vitest = &config.suites[&SuiteId("vitest".into())];
+        assert_eq!(vitest.ordering, OrderingConfig::Random);
         assert_eq!(vitest.treat_timeouts_as, Outcome::Caught);
-        assert!(vitest.init.is_none());
-        assert!(vitest.reset.is_none());
+        assert!(!vitest.phases.contains_key(&Phase::Init));
+        assert!(!vitest.phases.contains_key(&Phase::Reset));
 
-        assert_eq!(vitest.test.commands, vec!["npx vitest run"]);
-        assert_eq!(vitest.test.pwd, None);
-        assert!(vitest.test.env.is_empty());
-        assert_eq!(vitest.test.timeout, Timeout::default());
+        let test = &vitest.phases[&Phase::Test];
+        assert_eq!(test.commands, vec!["npx vitest run"]);
+        assert_eq!(test.meta.pwd, None);
+        assert!(test.meta.env.is_empty());
+        assert_eq!(test.meta.timeout, TimeoutConfig::default());
 
         let ts_mutate = &vitest.mutate[&LanguageId::Typescript];
         assert_eq!(ts_mutate.files.include, vec!["src/**/*.ts"]);
@@ -531,7 +307,8 @@ mod tests {
     }
 
     fn build_with_override(base: &str, patch: &str) -> Config {
-        ConfigBuilder::from_value(toml_to_value(base))
+        ConfigBuilder::new(PathBuf::new())
+            .from_value(toml_to_value(base))
             .override_with(toml_to_value(patch))
             .build()
             .unwrap()
@@ -539,21 +316,17 @@ mod tests {
 
     #[test]
     fn override_scalar() {
-        let config = build_with_override("", "parallelism = 4");
-        assert_eq!(config.parallelism, 4);
+        let config = build_with_override("", "threads = 4");
+        assert_eq!(config.threads, 4);
     }
 
     #[test]
-    fn override_nested_preserves_siblings() {
+    fn override_bough_dir() {
         let config = build_with_override(
             include_str!("ideal.config.toml"),
-            r#"
-            [dirs]
-            working = "/override"
-            "#,
+            r#"bough_dir = "/override""#,
         );
-        assert_eq!(config.dirs.working, "/override");
-        assert_eq!(config.dirs.logs, "/tmp/bough/logs");
+        assert_eq!(config.bough_dir, PathBuf::from("/override"));
     }
 
     #[test]
@@ -565,7 +338,10 @@ mod tests {
             commands = ["npm test"]
             "#,
         );
-        assert_eq!(config.runners["vitest"].test.commands, vec!["npm test"]);
+        assert_eq!(
+            config.suites[&SuiteId("vitest".into())].phases[&Phase::Test].commands,
+            vec!["npm test"]
+        );
     }
 
     #[test]
@@ -577,11 +353,16 @@ mod tests {
             FOO = "bar"
             "#,
         );
-        assert_eq!(config.runners["vitest"].test.env["FOO"], "bar");
+        assert_eq!(
+            config.suites[&SuiteId("vitest".into())].phases[&Phase::Test]
+                .meta
+                .env["FOO"],
+            "bar"
+        );
     }
 
     #[test]
-    fn override_deep_merge_runner() {
+    fn override_deep_merge_suite() {
         let config = build_with_override(
             include_str!("ideal.config.toml"),
             r#"
@@ -589,154 +370,22 @@ mod tests {
             treat_timeouts_as = "Caught"
             "#,
         );
-        assert_eq!(config.runners["vitest"].treat_timeouts_as, Outcome::Caught);
-        assert!(config.runners["vitest"].init.is_some());
-    }
-
-    #[test]
-    fn runner_without_test_defaults_to_exit_1() {
-        let config: Config = toml::from_str(
-            r#"
-            [myrunner]
-            pwd = "."
-        "#,
-        )
-        .unwrap();
-        assert_eq!(config.runners["myrunner"].test.commands, vec!["exit 1"]);
+        assert_eq!(
+            config.suites[&SuiteId("vitest".into())].treat_timeouts_as,
+            Outcome::Caught
+        );
+        assert!(
+            config.suites[&SuiteId("vitest".into())]
+                .phases
+                .contains_key(&Phase::Init)
+        );
     }
 
     #[test]
     fn defaults_are_sane() {
         let config: Config = toml::from_str("").expect("empty config should parse");
-        assert_eq!(config.vcs, VcsConfig::None);
-        assert_eq!(config.parallelism, 1);
-        assert_eq!(config.ordering, Ordering::Random);
-        assert_eq!(config.dirs, Dirs::default());
-        assert!(config.runners.is_empty());
-    }
-
-    fn make_runner(pwd: &str) -> Runner {
-        Runner {
-            pwd: PathBuf::from(pwd),
-            ..Runner::default()
-        }
-    }
-
-    fn make_phase(pwd: Option<&str>) -> Phase {
-        Phase {
-            pwd: pwd.map(PathBuf::from),
-            ..Phase::default()
-        }
-    }
-
-    mod resolve_pwd {
-        use super::*;
-
-        #[test]
-        fn phase_pwd_wins() {
-            let config: Config = toml::from_str("").unwrap();
-            let runner = make_runner("./runner");
-            let phase = make_phase(Some("./phase"));
-            assert_eq!(
-                config.resolve_pwd(Some(&runner), Some(&phase)),
-                Path::new("./phase")
-            );
-        }
-
-        #[test]
-        fn falls_back_to_runner_pwd() {
-            let config: Config = toml::from_str("").unwrap();
-            let runner = make_runner("./runner");
-            let phase = make_phase(None);
-            assert_eq!(
-                config.resolve_pwd(Some(&runner), Some(&phase)),
-                Path::new("./runner")
-            );
-        }
-
-        #[test]
-        fn falls_back_to_dot_without_runner() {
-            let config: Config = toml::from_str("").unwrap();
-            let phase = make_phase(None);
-            assert_eq!(config.resolve_pwd(None, Some(&phase)), Path::new("."));
-        }
-
-        #[test]
-        fn falls_back_to_dot_with_no_args() {
-            let config: Config = toml::from_str("").unwrap();
-            assert_eq!(config.resolve_pwd(None, None), Path::new("."));
-        }
-
-        #[test]
-        fn runner_pwd_without_phase() {
-            let config: Config = toml::from_str("").unwrap();
-            let runner = make_runner("./sub");
-            assert_eq!(config.resolve_pwd(Some(&runner), None), Path::new("./sub"));
-        }
-    }
-
-    mod resolve_timeout {
-        use super::*;
-
-        #[test]
-        fn returns_phase_timeout() {
-            let config: Config = toml::from_str("").unwrap();
-            let phase = Phase {
-                timeout: Timeout {
-                    absolute: Some(30),
-                    relative: Some(3),
-                },
-                ..Phase::default()
-            };
-            assert_eq!(
-                config.resolve_timeout_absolute(None, Some(&phase)),
-                Some(30)
-            );
-            assert_eq!(config.resolve_timeout_relative(None, Some(&phase)), Some(3));
-        }
-
-        #[test]
-        fn returns_none_without_phase() {
-            let config: Config = toml::from_str("").unwrap();
-            assert_eq!(config.resolve_timeout_absolute(None, None), None);
-            assert_eq!(config.resolve_timeout_relative(None, None), None);
-        }
-
-        #[test]
-        fn returns_none_for_default_phase() {
-            let config: Config = toml::from_str("").unwrap();
-            let phase = Phase::default();
-            assert_eq!(config.resolve_timeout_absolute(None, Some(&phase)), None);
-        }
-    }
-
-    mod resolve_env {
-        use super::*;
-
-        #[test]
-        fn returns_phase_env() {
-            let config: Config = toml::from_str("").unwrap();
-            let phase = Phase {
-                env: HashMap::from([("K".into(), "V".into())]),
-                ..Phase::default()
-            };
-            let env = config.resolve_env(None, Some(&phase));
-            assert_eq!(env["K"], "V");
-        }
-
-        #[test]
-        fn returns_empty_without_phase() {
-            let config: Config = toml::from_str("").unwrap();
-            let env = config.resolve_env(None, None);
-            assert!(env.is_empty());
-        }
-
-        #[test]
-        fn returns_empty_for_default_phase() {
-            let config: Config = toml::from_str("").unwrap();
-            let phase = Phase::default();
-            let env = config.resolve_env(None, Some(&phase));
-            assert!(env.is_empty());
-        }
+        assert_eq!(config.threads, 1);
+        assert_eq!(config.bough_dir, PathBuf::from("./.bough"));
+        assert!(config.suites.is_empty());
     }
 }
