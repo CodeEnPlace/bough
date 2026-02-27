@@ -11,6 +11,9 @@ mod js {
 kind = "jj"
 rev = "bough"
 
+[dirs]
+working = "./work"
+
 [vitest-js]
 pwd = "examples/vitest-js"
 
@@ -22,6 +25,7 @@ files.include = ["src/*.js"]
 files.exclude = ["**/*.test.*"]
     "#,
             )
+            .file("work/.keep", "")
             .file(
                 "examples/vitest-js/src/index.js",
                 r#"
@@ -75,17 +79,17 @@ test("monday's child is fair of face", () => {
     fn makes_new_workspaces() {
         let dir = plan().setup();
 
-        cmd!(dir, "bough workspace make", "created workspace at /tmp/bough/work/{!id_1}");
-        cmd!(dir, "bough workspace make", "created workspace at /tmp/bough/work/{!id_2}");
+        cmd!(dir, "bough workspace make", "created workspace at {!ws_path_1}");
+        cmd!(dir, "bough workspace make", "created workspace at {!ws_path_2}");
 
-        assert_ne!(id_1, id_2);
+        assert_ne!(ws_path_1, ws_path_2);
 
         cmd!(
             dir,
             "bough --output-style verbose workspace list",
             "2 workspaces",
-            "{?id_1} /tmp/bough/work/{?id_1}",
-            "{?id_2} /tmp/bough/work/{?id_2}",
+            "{!id_1} {?ws_path_1}",
+            "{!id_2} {?ws_path_2}",
         );
     }
 }
