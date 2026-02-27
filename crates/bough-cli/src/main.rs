@@ -44,6 +44,7 @@ enum Command {
         mutation_hash: String,
     },
     Run,
+    Clean,
     Completions {
         #[arg(value_enum)]
         shell: Shell,
@@ -269,6 +270,15 @@ fn main() {
             src_files.render(&cli.output_style, no_color, 0);
             mutations.render(&cli.output_style, no_color, 0);
             test_ids.render(&cli.output_style, no_color, 0);
+        }
+
+        Command::Clean => {
+            let result = steps::clean::run(&cfg).unwrap_or_else(|e| {
+                eprintln!("{e}");
+                std::process::exit(1);
+            });
+            let no_color = !std::io::IsTerminal::is_terminal(&std::io::stdout());
+            result.render(&cli.output_style, no_color, 0);
         }
 
         Command::Completions { .. } => unreachable!(),
