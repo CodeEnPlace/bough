@@ -61,6 +61,7 @@ fn find_mutation(config: &Config, hash: &str) -> Result<Mutation, Error> {
 
 pub fn run(config: &Config, workspace: &Path, mutation_hash: &str) -> Result<TestWorkspace, Error> {
     let runner_name = config.resolved_runner_name().ok_or(Error::NoActiveRunner)?;
+    let runner = config.runner(runner_name);
     let test_phase = config.runner_test_phase(runner_name).ok_or(Error::NoTestPhase)?;
 
     if !workspace.exists() {
@@ -69,7 +70,7 @@ pub fn run(config: &Config, workspace: &Path, mutation_hash: &str) -> Result<Tes
 
     let mutation = find_mutation(config, mutation_hash)?;
 
-    let outcome = match PhaseRunner::new(test_phase, workspace).run() {
+    let outcome = match PhaseRunner::new(config, runner, test_phase, workspace).run() {
         Ok(_) => Outcome::Missed,
         Err(phase_runner::Error::CommandFailed { .. }) => Outcome::Caught,
         Err(phase_runner::Error::Timeout { .. }) => {

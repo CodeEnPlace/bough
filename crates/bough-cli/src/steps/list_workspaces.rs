@@ -63,7 +63,7 @@ pub fn run(config: &Config) -> Result<ListWorkspaces, Error> {
 
     let workspaces = match &vcs {
         VcsConfig::Jj { .. } => {
-            let out = run_cmd_output("jj", &["workspace", "list"], Path::new(runner_pwd))?;
+            let out = run_cmd_output("jj", &["workspace", "list"], runner_pwd)?;
             out.lines()
                 .filter_map(|l| {
                     let name = l.split(':').next()?.trim();
@@ -76,7 +76,7 @@ pub fn run(config: &Config) -> Result<ListWorkspaces, Error> {
                 .collect()
         }
         VcsConfig::Git { .. } => {
-            let out = run_cmd_output("git", &["worktree", "list", "--porcelain"], Path::new(runner_pwd))?;
+            let out = run_cmd_output("git", &["worktree", "list", "--porcelain"], runner_pwd)?;
             let mut workspaces = Vec::new();
             let mut current_path: Option<PathBuf> = None;
             for line in out.lines() {

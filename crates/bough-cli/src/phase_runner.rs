@@ -1,4 +1,4 @@
-use bough_core::config::Phase;
+use bough_core::config::{Config, Phase, Runner};
 use std::io::Read;
 use std::path::Path;
 use std::process::{Command, Stdio};
@@ -51,18 +51,35 @@ pub struct PhaseOutput {
 }
 
 pub struct PhaseRunner<'a> {
+    config: &'a Config,
+    runner: Option<&'a Runner>,
     phase: &'a Phase,
     workspace: &'a Path,
 }
 
 impl<'a> PhaseRunner<'a> {
-    pub fn new(phase: &'a Phase, workspace: &'a Path) -> Self {
-        Self { phase, workspace }
+    pub fn new(
+        config: &'a Config,
+        runner: Option<&'a Runner>,
+        phase: &'a Phase,
+        workspace: &'a Path,
+    ) -> Self {
+        Self {
+            config,
+            runner,
+            phase,
+            workspace,
+        }
     }
 
     pub fn run(&self) -> Result<PhaseOutput, Error> {
-        let pwd = self.workspace.join(self.phase.pwd());
-        let timeout = self.phase.timeout_absolute().map(Duration::from_secs);
+        let pwd = self
+            .workspace
+            .join(self.config.resolve_pwd(self.runner, Some(self.phase)));
+        let timeout = self
+            .config
+            .resolve_timeout_absolute(self.runner, Some(self.phase))
+            .map(Duration::from_secs);
         let mut combined_stdout = String::new();
         for (i, cmd) in self.phase.commands().iter().enumerate() {
             let stdout = self.run_one(i, cmd, &pwd, &timeout)?;
@@ -80,11 +97,12 @@ impl<'a> PhaseRunner<'a> {
         pwd: &Path,
         timeout: &Option<Duration>,
     ) -> Result<String, Error> {
+        let env = self.config.resolve_env(self.runner, Some(self.phase));
         let mut child = Command::new("sh")
             .arg("-c")
             .arg(cmd)
             .current_dir(pwd)
-            .envs(self.phase.env())
+            .envs(env)
             .stdout(Stdio::piped())
             .stderr(Stdio::inherit())
             .spawn()

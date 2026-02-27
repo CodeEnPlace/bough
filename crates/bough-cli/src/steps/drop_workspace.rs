@@ -60,7 +60,7 @@ pub fn run(config: &Config, name: &WorkspaceId) -> Result<DropWorkspace, Error> 
             run_cmd(
                 "jj",
                 &["workspace", "forget", &name],
-                Path::new(runner_pwd),
+                runner_pwd,
             )?;
             let dir = std::path::PathBuf::from(config.working_dir()).join(&name);
             if dir.exists() {
@@ -71,12 +71,12 @@ pub fn run(config: &Config, name: &WorkspaceId) -> Result<DropWorkspace, Error> 
             run_cmd(
                 "git",
                 &["worktree", "remove", &name, "--force"],
-                Path::new(runner_pwd),
+                runner_pwd,
             )?;
             let _ = run_cmd(
                 "git",
                 &["branch", "-D", &name],
-                Path::new(runner_pwd),
+                runner_pwd,
             );
         }
         VcsConfig::None => {

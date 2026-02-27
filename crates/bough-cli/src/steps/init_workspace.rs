@@ -34,13 +34,14 @@ pub struct InitWorkspace {
 
 pub fn run(config: &Config, workspace: &Path) -> Result<InitWorkspace, Error> {
     let runner_name = config.resolved_runner_name().ok_or(Error::NoActiveRunner)?;
+    let runner = config.runner(runner_name);
     let init = config.runner_init_phase(runner_name).ok_or(Error::NoInitPhase)?;
 
     if !workspace.exists() {
         return Err(Error::WorkspaceNotFound(workspace.to_path_buf()));
     }
 
-    let output = PhaseRunner::new(init, workspace)
+    let output = PhaseRunner::new(config, runner, init, workspace)
         .run()
         .map_err(Error::Phase)?;
 
