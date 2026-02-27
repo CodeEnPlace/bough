@@ -79,6 +79,10 @@ enum ShowSubject {
     Config,
     Src,
     Mutations,
+    Mutation {
+        #[arg()]
+        hash: String,
+    },
     TestIds,
 }
 
@@ -193,6 +197,15 @@ fn main() {
                     eprintln!("{e}");
                     std::process::exit(1);
                 });
+                let no_color = !std::io::IsTerminal::is_terminal(&std::io::stdout());
+                result.render(&cli.output_style, no_color, 0);
+            }
+            ShowSubject::Mutation { hash } => {
+                let result =
+                    steps::get_mutation_result::run(&cfg, hash).unwrap_or_else(|e| {
+                        eprintln!("{e}");
+                        std::process::exit(1);
+                    });
                 let no_color = !std::io::IsTerminal::is_terminal(&std::io::stdout());
                 result.render(&cli.output_style, no_color, 0);
             }
