@@ -204,6 +204,16 @@ impl Mutant {
     pub fn substitutions(&self) -> Vec<String> {
         driver_for(self.src.language).substitutions_for_kind(&self.kind)
     }
+
+    pub fn to_ts_node<'tree>(&self, tree: &'tree tree_sitter::Tree) -> Option<tree_sitter::Node<'tree>> {
+        let start = tree_sitter::Point::new(self.span.start.line, self.span.start.char);
+        let node = tree.root_node().descendant_for_point_range(start, start)?;
+        if node.start_byte() == self.span.start.byte && node.end_byte() == self.span.end.byte {
+            Some(node)
+        } else {
+            None
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, bough_typed_hash::TypedHashable)]
