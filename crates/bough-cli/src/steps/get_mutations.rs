@@ -1,9 +1,7 @@
 use bough_core::config::{Config, MutantSkip};
 use bough_core::languages::LanguageId;
 use bough_core::{
-    Language, Mutation, MutationKind, SourceFile, filter_mutants, find_mutants,
-    generate_mutations,
-    languages::{JavaScript, TypeScript},
+    Mutation, MutationKind, SourceFile, filter_mutants, find_mutants, generate_mutations,
 };
 use bough_typed_hash::{TypedHashable, MemoryHashStore};
 use serde::Serialize;
@@ -28,70 +26,15 @@ impl std::fmt::Display for Error {
 
 impl std::error::Error for Error {}
 
-#[derive(Debug, Clone, Serialize)]
-#[serde(untagged)]
-pub enum AnyMutation {
-    Js(Mutation<JavaScript>),
-    Ts(Mutation<TypeScript>),
-}
-
-impl AnyMutation {
-    pub fn path(&self) -> &std::path::Path {
-        match self {
-            AnyMutation::Js(m) => &m.mutant.src.path,
-            AnyMutation::Ts(m) => &m.mutant.src.path,
-        }
-    }
-
-    pub fn line(&self) -> usize {
-        match self {
-            AnyMutation::Js(m) => m.mutant.span.start.line + 1,
-            AnyMutation::Ts(m) => m.mutant.span.start.line + 1,
-        }
-    }
-
-    pub fn kind(&self) -> MutationKind {
-        match self {
-            AnyMutation::Js(m) => m.mutant.kind.clone().into(),
-            AnyMutation::Ts(m) => m.mutant.kind.clone().into(),
-        }
-    }
-
-    pub fn replacement(&self) -> &str {
-        match self {
-            AnyMutation::Js(m) => &m.replacement,
-            AnyMutation::Ts(m) => &m.replacement,
-        }
-    }
-
-    pub fn mutation_hash_hex(&self) -> String {
-        match self {
-            AnyMutation::Js(m) => m.hash(&mut MemoryHashStore::new()).expect("hash failed").to_string(),
-            AnyMutation::Ts(m) => m.hash(&mut MemoryHashStore::new()).expect("hash failed").to_string(),
-        }
-    }
-
-    pub fn span(&self) -> &bough_core::Span {
-        match self {
-            AnyMutation::Js(m) => &m.mutant.span,
-            AnyMutation::Ts(m) => &m.mutant.span,
-        }
-    }
-}
-
 #[derive(Debug, Serialize)]
 pub struct ShowMutations {
-    pub mutations: BTreeMap<LanguageId, Vec<AnyMutation>>,
+    pub mutations: BTreeMap<LanguageId, Vec<Mutation>>,
 }
 
-fn collect_mutations<L: Language>(
+fn collect_mutations(
     files: &[SourceFile],
     skip: &[MutantSkip],
-    wrap: fn(Mutation<L>) -> AnyMutation,
-) -> Result<Vec<AnyMutation>, Error>
-where
-    L::Kind: Clone + Into<MutationKind>,
-{
+) -> Result<Vec<Mutation>, Error> {
     let queries: Vec<String> = skip
         .iter()
         .filter_map(|s| match s {
@@ -104,11 +47,11 @@ where
     for file in files {
         let content = std::fs::read_to_string(&file.path)
             .map_err(|e| Error::ReadFile(file.path.clone(), e))?;
-        let mutants = find_mutants::<L>(file, &content);
-        let mutants = filter_mutants::<L>(mutants, &queries, &content);
+        let mutants = find_mutants(file, &content);
+        let mutants = filter_mutants(mutants, &queries, &content);
         for mutant in &mutants {
-            for mutation in generate_mutations::<L>(mutant) {
-                results.push(wrap(mutation));
+            for mutation in generate_mutations(mutant) {
+                results.push(mutation);
             }
         }
     }
@@ -125,14 +68,15 @@ pub fn run(src_files: &ShowSrcFiles, config: &Config) -> Result<ShowMutations, E
             .map(|r| config.mutant_skips(r, *lang))
             .unwrap_or_default();
 
-        let lang_mutations = match lang {
-            LanguageId::Javascript => collect_mutations::<JavaScript>(files, &skips, AnyMutation::Js)?,
-            LanguageId::Typescript => collect_mutations::<TypeScript>(files, &skips, AnyMutation::Ts)?,
-        };
+        let lang_mutations = collect_mutations(files, &skips)?;
         mutations.insert(*lang, lang_mutations);
     }
 
     Ok(ShowMutations { mutations })
+}
+
+fn mutation_hash_hex(m: &Mutation) -> String {
+    m.hash(&mut MemoryHashStore::new()).expect("hash failed").to_string()
 }
 
 impl Render for ShowMutations {
@@ -161,13 +105,14 @@ impl Render for ShowMutations {
             ));
             out.push('\n');
             for m in mutations {
+                let kind: MutationKind = m.mutant.kind.clone();
                 out.push_str(&format!(
                     "  {} {}:{} {} → {}\n",
-                    color("\x1b[2m", &m.mutation_hash_hex()),
-                    m.path().display(),
-                    m.line(),
-                    color("\x1b[33m", &format!("{:?}", m.kind())),
-                    color("\x1b[32m", m.replacement()),
+                    color("\x1b[2m", &mutation_hash_hex(m)),
+                    m.mutant.src.path.display(),
+                    m.mutant.span.start.line + 1,
+                    color("\x1b[33m", &format!("{kind:?}")),
+                    color("\x1b[32m", &m.replacement),
                 ));
             }
         }
@@ -186,12 +131,13 @@ impl Render for ShowMutations {
             out.push_str("| File | Line | Kind | Replacement |\n");
             out.push_str("|------|------|------|-------------|\n");
             for m in mutations {
+                let kind: MutationKind = m.mutant.kind.clone();
                 out.push_str(&format!(
                     "| `{}` | {} | {:?} | `{}` |\n",
-                    m.path().display(),
-                    m.line(),
-                    m.kind(),
-                    m.replacement(),
+                    m.mutant.src.path.display(),
+                    m.mutant.span.start.line + 1,
+                    kind,
+                    m.replacement,
                 ));
             }
             out.push('\n');

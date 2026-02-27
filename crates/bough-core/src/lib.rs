@@ -4,8 +4,8 @@ pub mod languages;
 
 use bough_typed_hash::HashInto;
 use chrono::{DateTime, Utc};
+use languages::{LanguageId, driver_for};
 use serde::{Deserialize, Serialize};
-use std::fmt::Debug;
 use std::path::{Path, PathBuf};
 use tree_sitter::{Parser, StreamingIterator};
 
@@ -77,46 +77,39 @@ pub enum Outcome {
     Caught,
 }
 
-pub struct MutationResult<L: Language> {
+#[derive(Clone)]
+pub struct MutationResult {
     pub outcome: Outcome,
-    pub mutation: Mutation<L>,
+    pub mutation: Mutation,
     pub at: DateTime<Utc>,
 }
 
-impl<L: Language> Clone for MutationResult<L> {
-    fn clone(&self) -> Self {
-        Self {
-            outcome: self.outcome,
-            mutation: self.mutation.clone(),
-            at: self.at,
-        }
-    }
-}
-
-impl<L: Language> HashInto for MutationResult<L> {
+impl HashInto for MutationResult {
     fn hash_into(&self, state: &mut bough_typed_hash::ShaState) -> Result<(), std::io::Error> {
         self.mutation.hash_into(state)
     }
 }
 
-impl<L: Language> bough_typed_hash::TypedHashable for MutationResult<L> {
-    type Hash = MutationLHash;
+impl bough_typed_hash::TypedHashable for MutationResult {
+    type Hash = MutationHash;
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, bough_typed_hash::TypedHashable)]
 pub struct SourceFile {
     pub path: PathBuf,
+    pub language: LanguageId,
 }
 
 impl SourceFile {
-    pub fn read(path: &Path) -> std::io::Result<Self> {
+    pub fn read(path: &Path, language: LanguageId) -> std::io::Result<Self> {
         Ok(Self {
             path: path.to_owned(),
+            language,
         })
     }
 
-    pub fn from_content(path: PathBuf, _content: &str) -> Self {
-        Self { path }
+    pub fn from_content(path: PathBuf, _content: &str, language: LanguageId) -> Self {
+        Self { path, language }
     }
 }
 
@@ -200,63 +193,30 @@ pub enum MutationKind {
     Condition,
 }
 
-pub trait Language: Debug {
-    type Kind: Debug
-        + Clone
-        + PartialEq
-        + Serialize
-        + for<'de> Deserialize<'de>
-        + HashInto
-        + Into<MutationKind>;
-
-    fn code_tag() -> &'static str;
-    fn tree_sitter_language() -> tree_sitter::Language;
-    fn mutation_kind_for_node(
-        node: tree_sitter::Node<'_>,
-        content: &[u8],
-        file: &SourceFile,
-    ) -> Option<(Self::Kind, Span)>;
-    fn substitutions_for_kind(kind: &Self::Kind) -> Vec<String>;
-}
-
-#[derive(Debug, PartialEq, Serialize, Deserialize, HashInto)]
-#[serde(bound = "")]
-pub struct Mutant<L: Language> {
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, HashInto)]
+pub struct Mutant {
     pub src: SourceFile,
     pub span: Span,
-    pub kind: L::Kind,
+    pub kind: MutationKind,
 }
 
-impl<L: Language> Clone for Mutant<L> {
-    fn clone(&self) -> Self {
-        Self {
-            src: self.src.clone(),
-            span: self.span.clone(),
-            kind: self.kind.clone(),
-        }
+impl Mutant {
+    pub fn substitutions(&self) -> Vec<String> {
+        driver_for(self.src.language).substitutions_for_kind(&self.kind)
     }
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize, bough_typed_hash::TypedHashable)]
-#[serde(bound = "")]
-pub struct Mutation<L: Language> {
-    pub mutant: Mutant<L>,
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, bough_typed_hash::TypedHashable)]
+pub struct Mutation {
+    pub mutant: Mutant,
     pub replacement: String,
 }
 
-impl<L: Language> Clone for Mutation<L> {
-    fn clone(&self) -> Self {
-        Self {
-            mutant: self.mutant.clone(),
-            replacement: self.replacement.clone(),
-        }
-    }
-}
-
-pub fn find_mutants<L: Language>(file: &SourceFile, content: &str) -> Vec<Mutant<L>> {
+pub fn find_mutants(file: &SourceFile, content: &str) -> Vec<Mutant> {
+    let driver = driver_for(file.language);
     let mut parser = Parser::new();
     parser
-        .set_language(&L::tree_sitter_language())
+        .set_language(&driver.tree_sitter_language())
         .expect("failed to load grammar");
 
     let tree = parser.parse(content, None).expect("failed to parse source");
@@ -268,7 +228,7 @@ pub fn find_mutants<L: Language>(file: &SourceFile, content: &str) -> Vec<Mutant
     loop {
         let node = cursor.node();
 
-        if let Some((kind, span)) = L::mutation_kind_for_node(node, bytes, file) {
+        if let Some((kind, span)) = driver.mutation_kind_for_node(node, bytes, file) {
             mutants.push(Mutant {
                 src: file.clone(),
                 span,
@@ -287,11 +247,8 @@ pub fn find_mutants<L: Language>(file: &SourceFile, content: &str) -> Vec<Mutant
     }
 }
 
-pub fn generate_mutations<L: Language>(mutant: &Mutant<L>) -> Vec<Mutation<L>>
-where
-    L::Kind: Clone,
-{
-    L::substitutions_for_kind(&mutant.kind)
+pub fn generate_mutations(mutant: &Mutant) -> Vec<Mutation> {
+    mutant.substitutions()
         .into_iter()
         .map(|replacement| Mutation {
             mutant: mutant.clone(),
@@ -300,23 +257,24 @@ where
         .collect()
 }
 
-pub fn filter_mutants<L: Language>(
-    mutants: Vec<Mutant<L>>,
+pub fn filter_mutants(
+    mutants: Vec<Mutant>,
     queries: &[String],
     content: &str,
-) -> Vec<Mutant<L>> {
-    if queries.is_empty() {
+) -> Vec<Mutant> {
+    if queries.is_empty() || mutants.is_empty() {
         return mutants;
     }
 
+    let driver = driver_for(mutants[0].src.language);
     let mut parser = Parser::new();
     parser
-        .set_language(&L::tree_sitter_language())
+        .set_language(&driver.tree_sitter_language())
         .expect("failed to load grammar");
 
     let tree = parser.parse(content, None).expect("failed to parse source");
 
-    let lang = L::tree_sitter_language();
+    let lang = driver.tree_sitter_language();
     let mut skip_ranges: Vec<(usize, usize)> = Vec::new();
 
     for query_str in queries {
@@ -355,17 +313,16 @@ pub fn apply_mutation(content: &str, span: &Span, replacement: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::languages::javascript::JavaScript;
 
     fn src(content: &str) -> (SourceFile, String) {
-        let file = SourceFile::from_content(PathBuf::from("test.js"), content);
+        let file = SourceFile::from_content(PathBuf::from("test.js"), content, LanguageId::Javascript);
         (file, content.to_string())
     }
 
     #[test]
     fn statement_block_substitution_is_empty_block() {
         let (f, content) = src("function foo() { return 1; }");
-        let mutants = find_mutants::<JavaScript>(&f, &content);
+        let mutants = find_mutants(&f, &content);
         let mutations = generate_mutations(&mutants[0]);
         assert_eq!(mutations.len(), 1);
         assert_eq!(mutations[0].replacement, "{}");
@@ -380,7 +337,7 @@ mod tests {
     #[test]
     fn addition_substitutions() {
         let (f, content) = src("const x = a + b;");
-        let mutants = find_mutants::<JavaScript>(&f, &content);
+        let mutants = find_mutants(&f, &content);
         let mutations = generate_mutations(&mutants[0]);
         let replacements: Vec<_> = mutations.iter().map(|m| m.replacement.as_str()).collect();
         assert!(replacements.contains(&"-"));
@@ -391,7 +348,7 @@ mod tests {
     #[test]
     fn multiplication_substitutions() {
         let (f, content) = src("const x = a * b;");
-        let mutants = find_mutants::<JavaScript>(&f, &content);
+        let mutants = find_mutants(&f, &content);
         let mutations = generate_mutations(&mutants[0]);
         let replacements: Vec<_> = mutations.iter().map(|m| m.replacement.as_str()).collect();
         assert!(replacements.contains(&"+"));
@@ -402,7 +359,7 @@ mod tests {
     #[test]
     fn logical_and_substitutions() {
         let (f, content) = src("const x = a && b;");
-        let mutants = find_mutants::<JavaScript>(&f, &content);
+        let mutants = find_mutants(&f, &content);
         let mutations = generate_mutations(&mutants[0]);
         let replacements: Vec<_> = mutations.iter().map(|m| m.replacement.as_str()).collect();
         assert!(replacements.contains(&"||"));
@@ -412,7 +369,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("test.js");
         std::fs::write(&path, content).unwrap();
-        let file = SourceFile::from_content(path, content);
+        let file = SourceFile::from_content(path, content, LanguageId::Javascript);
         (file, content.to_string(), dir)
     }
 
@@ -421,7 +378,7 @@ mod tests {
         use bough_typed_hash::{MemoryHashStore, TypedHash, TypedHashable};
 
         let (f, content, _dir) = src_on_disk("const x = a + b;");
-        let mutants = find_mutants::<JavaScript>(&f, &content);
+        let mutants = find_mutants(&f, &content);
         let mutation = generate_mutations(&mutants[0]).remove(0);
 
         let mut store = MemoryHashStore::new();
@@ -444,7 +401,7 @@ mod tests {
         use bough_typed_hash::{MemoryHashStore, TypedHash, TypedHashable};
 
         let (f, content, _dir) = src_on_disk("const x = a + b;");
-        let mutants = find_mutants::<JavaScript>(&f, &content);
+        let mutants = find_mutants(&f, &content);
         let mutation = generate_mutations(&mutants[0]).remove(0);
 
         let r1 = MutationResult {

@@ -1,5 +1,5 @@
 use bough_core::config::Config;
-use bough_core::{BinaryOpKind, Language, Mutation, MutationKind};
+use bough_core::{BinaryOpKind, Mutation, MutationKind};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, clap::ValueEnum)]
@@ -116,16 +116,13 @@ impl Render for MutationKind {
     }
 }
 
-impl<L: Language> Render for Mutation<L>
-where
-    L::Kind: Clone + Into<MutationKind> + Serialize,
-{
+impl Render for Mutation {
     fn render_value(&self) -> serde_value::Value {
         serde_value::to_value(self).expect("failed to serialize")
     }
 
     fn render_terse(&self) -> String {
-        let kind: MutationKind = self.mutant.kind.clone().into();
+        let kind = &self.mutant.kind;
         let path = self.mutant.src.path.display();
         let span = &self.mutant.span;
         let loc = format!(
@@ -144,7 +141,7 @@ where
     }
 
     fn render_verbose(&self) -> String {
-        let kind: MutationKind = self.mutant.kind.clone().into();
+        let kind = &self.mutant.kind;
         let path = self.mutant.src.path.display();
         let span = &self.mutant.span;
         let loc = format!(
@@ -164,7 +161,7 @@ where
     }
 
     fn render_markdown(&self, depth: u8) -> String {
-        let kind: MutationKind = self.mutant.kind.clone().into();
+        let kind = &self.mutant.kind;
         let path = self.mutant.src.path.display();
         let span = &self.mutant.span;
         let loc = format!(
@@ -175,13 +172,12 @@ where
             span.end.char + 1,
         );
         let heading = "#".repeat((depth + 1).min(6) as usize);
-        let tag = L::code_tag();
         format!(
             "{heading} Mutation\n\n\
              **Kind:** {}\n\n\
              **File:** `{path}`\n\n\
              **Location:** {loc}\n\n\
-             **Replacement:**\n```{tag}\n{}\n```\n",
+             **Replacement:**\n```\n{}\n```\n",
             kind.render_markdown(depth + 1),
             self.replacement,
         )
