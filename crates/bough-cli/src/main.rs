@@ -88,6 +88,7 @@ enum ShowSubject {
 }
 
 fn main() {
+    let no_color = !std::io::IsTerminal::is_terminal(&std::io::stdout());
     let cli = Cli::parse();
 
     if let Command::Completions { shell } = &cli.command {
@@ -101,14 +102,13 @@ fn main() {
     });
 
     match &cli.command {
-
         Command::Workspace { action } => match action {
             WorkspaceAction::Make => {
                 let result = steps::make_workspace::run(&cfg).unwrap_or_else(|e| {
                     eprintln!("{e}");
                     std::process::exit(1);
                 });
-                let no_color = !std::io::IsTerminal::is_terminal(&std::io::stdout());
+
                 result.render(&cli.output_style, no_color, 0);
             }
             WorkspaceAction::List => {
@@ -116,7 +116,7 @@ fn main() {
                     eprintln!("{e}");
                     std::process::exit(1);
                 });
-                let no_color = !std::io::IsTerminal::is_terminal(&std::io::stdout());
+
                 result.render(&cli.output_style, no_color, 0);
             }
             WorkspaceAction::Init { name } => {
@@ -129,7 +129,7 @@ fn main() {
                     eprintln!("{e}");
                     std::process::exit(1);
                 });
-                let no_color = !std::io::IsTerminal::is_terminal(&std::io::stdout());
+
                 result.render(&cli.output_style, no_color, 0);
             }
             WorkspaceAction::Reset { name } => {
@@ -142,7 +142,7 @@ fn main() {
                     eprintln!("{e}");
                     std::process::exit(1);
                 });
-                let no_color = !std::io::IsTerminal::is_terminal(&std::io::stdout());
+
                 result.render(&cli.output_style, no_color, 0);
             }
             WorkspaceAction::Test {
@@ -159,7 +159,7 @@ fn main() {
                         eprintln!("{e}");
                         std::process::exit(1);
                     });
-                let no_color = !std::io::IsTerminal::is_terminal(&std::io::stdout());
+
                 result.render(&cli.output_style, no_color, 0);
             }
             WorkspaceAction::Drop { name } => {
@@ -171,14 +171,13 @@ fn main() {
                     eprintln!("{e}");
                     std::process::exit(1);
                 });
-                let no_color = !std::io::IsTerminal::is_terminal(&std::io::stdout());
+
                 result.render(&cli.output_style, no_color, 0);
             }
         },
 
         Command::Show { subject } => match subject {
             ShowSubject::Config => {
-                let no_color = !std::io::IsTerminal::is_terminal(&std::io::stdout());
                 cfg.render(&cli.output_style, no_color, 0);
             }
             ShowSubject::Src => {
@@ -186,7 +185,7 @@ fn main() {
                     eprintln!("{e}");
                     std::process::exit(1);
                 });
-                let no_color = !std::io::IsTerminal::is_terminal(&std::io::stdout());
+
                 result.render(&cli.output_style, no_color, 0);
             }
             ShowSubject::Mutations => {
@@ -198,16 +197,15 @@ fn main() {
                     eprintln!("{e}");
                     std::process::exit(1);
                 });
-                let no_color = !std::io::IsTerminal::is_terminal(&std::io::stdout());
+
                 result.render(&cli.output_style, no_color, 0);
             }
             ShowSubject::Mutation { hash } => {
-                let result =
-                    steps::get_mutation_result::run(&cfg, hash).unwrap_or_else(|e| {
-                        eprintln!("{e}");
-                        std::process::exit(1);
-                    });
-                let no_color = !std::io::IsTerminal::is_terminal(&std::io::stdout());
+                let result = steps::get_mutation_result::run(&cfg, hash).unwrap_or_else(|e| {
+                    eprintln!("{e}");
+                    std::process::exit(1);
+                });
+
                 result.render(&cli.output_style, no_color, 0);
             }
             ShowSubject::TestIds => {
@@ -215,7 +213,7 @@ fn main() {
                     eprintln!("{e}");
                     std::process::exit(1);
                 });
-                let no_color = !std::io::IsTerminal::is_terminal(&std::io::stdout());
+
                 result.render(&cli.output_style, no_color, 0);
             }
         },
@@ -234,13 +232,11 @@ fn main() {
                     eprintln!("{e}");
                     std::process::exit(1);
                 });
-            let no_color = !std::io::IsTerminal::is_terminal(&std::io::stdout());
+
             result.render(&cli.output_style, no_color, 0);
         }
 
         Command::Run => {
-            let no_color = !std::io::IsTerminal::is_terminal(&std::io::stdout());
-
             let ((src_files, mutations), test_ids) = std::thread::scope(|s| {
                 let mutations_handle = s.spawn(|| {
                     let src_files = steps::get_src_files::run(&cfg).unwrap_or_else(|e| {
@@ -277,7 +273,6 @@ fn main() {
                 eprintln!("{e}");
                 std::process::exit(1);
             });
-            let no_color = !std::io::IsTerminal::is_terminal(&std::io::stdout());
             result.render(&cli.output_style, no_color, 0);
         }
 
