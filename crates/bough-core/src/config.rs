@@ -1,0 +1,432 @@
+use crate::Outcome;
+use crate::languages::LanguageId;
+use crate::phase::{Phase, PhaseRunner, RunIn};
+use serde::{Deserialize, Serialize};
+use serde_value::Value;
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
+
+fn default_threads() -> u32 {
+    1
+}
+fn default_bough_dir() -> PathBuf {
+    PathBuf::from("./.bough")
+}
+
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct PhaseMetaConfig {
+    pub(crate) pwd: Option<PathBuf>,
+    pub(crate) timeout: TimeoutConfig,
+    pub(crate) env: HashMap<String, String>,
+}
+
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct PhaseConfig {
+    #[serde(flatten)]
+    pub(crate) meta: PhaseMetaConfig,
+    pub(crate) commands: String,
+}
+
+impl PhaseConfig {
+    pub fn commands(&self) -> &str {
+        &self.commands
+    }
+}
+
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct TimeoutConfig {
+    pub(crate) absolute: Option<u64>,
+    pub(crate) relative: Option<u64>,
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, clap::ValueEnum)]
+#[serde(rename_all = "lowercase")]
+pub enum OrderingConfig {
+    #[default]
+    Random,
+    Alphabetical,
+    MissedFirst,
+    CaughtFirst,
+    NewestFirst,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct TestIdsConfig {
+    pub(crate) get_all: String,
+    pub(crate) get_failed: String,
+}
+
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct MutateLanguageConfig {
+    pub(crate) files: FileSourceConfig,
+    pub(crate) mutants: MutantFilterConfig,
+}
+
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct FileSourceConfig {
+    pub(crate) include: Vec<String>,
+    pub(crate) exclude: Vec<String>,
+    pub(crate) ignore_files: Vec<PathBuf>,
+}
+
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct MutantFilterConfig {
+    pub(crate) skip: Vec<MutantSkipConfig>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum MutantSkipConfig {
+    Query { query: String },
+    Kind { kind: HashMap<String, String> },
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Config {
+    pub(crate) source_dir: PathBuf,
+    pub(crate) ordering: OrderingConfig,
+    pub(crate) treat_timeouts_as: Outcome,
+    pub(crate) test_ids: Option<TestIdsConfig>,
+
+    #[serde(default = "default_threads")]
+    pub(crate) threads: u32,
+
+    #[serde(default = "default_bough_dir")]
+    pub(crate) bough_dir: PathBuf,
+
+    #[serde(skip)]
+    #[serde(flatten)]
+    pub(crate) meta_defaults: PhaseMetaConfig,
+
+    #[serde(flatten)]
+    pub(crate) phases: HashMap<Phase, PhaseConfig>,
+
+    #[serde(default)]
+    pub(crate) mutate: HashMap<LanguageId, MutateLanguageConfig>,
+}
+
+impl Config {
+    pub fn get_phase_config(&self, phase: Phase) -> Option<&PhaseConfig> {
+        self.phases.get(&phase)
+    }
+
+    pub fn new_phase_runner(
+        &self,
+        phase: Phase,
+        run_in: RunIn,
+    ) -> Result<PhaseRunner, ConfigError> {
+        let phase_config = self
+            .phases
+            .get(&phase)
+            .ok_or(ConfigError::PhaseNotConfigured { phase })?;
+
+        let base = match &run_in {
+            RunIn::SourceDir => self.source_dir.clone(),
+            RunIn::Workspace(id) => self
+                .resolve_path(&self.bough_dir)
+                .join("workspaces")
+                .join(id),
+        };
+
+        let pwd = phase_config
+            .meta
+            .pwd
+            .as_deref()
+            .or_else(|| self.meta_defaults.pwd.as_deref())
+            .map(|p| base.join(p))
+            .unwrap_or(base);
+
+        let mut env = self.meta_defaults.env.clone();
+        env.extend(phase_config.meta.env.clone());
+
+        let timeout = TimeoutConfig {
+            absolute: phase_config
+                .meta
+                .timeout
+                .absolute
+                .or(self.meta_defaults.timeout.absolute),
+            relative: phase_config
+                .meta
+                .timeout
+                .relative
+                .or(self.meta_defaults.timeout.relative),
+        };
+
+        Ok(PhaseRunner {
+            pwd,
+            env,
+            timeout,
+            commands: phase_config.commands.clone(),
+        })
+    }
+
+    fn resolve_path(&self, path: &Path) -> PathBuf {
+        if path.is_absolute() {
+            path.to_owned()
+        } else {
+            self.source_dir.join(path)
+        }
+    }
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            threads: default_threads(),
+            bough_dir: default_bough_dir(),
+            source_dir: PathBuf::default(),
+            ordering: OrderingConfig::default(),
+            treat_timeouts_as: Outcome::Caught,
+            test_ids: None,
+            meta_defaults: PhaseMetaConfig::default(),
+            phases: HashMap::new(),
+            mutate: HashMap::new(),
+        }
+    }
+}
+
+pub struct ConfigBuilder {
+    value: Value,
+    source_dir: PathBuf,
+}
+
+impl ConfigBuilder {
+    pub fn new(source_dir: PathBuf) -> Self {
+        Self {
+            value: Value::Map(Default::default()),
+            source_dir,
+        }
+    }
+
+    pub fn from_value(self, value: Value) -> Self {
+        Self { value, ..self }
+    }
+
+    pub fn override_with(mut self, patch: Value) -> Self {
+        self.value = Self::deep_merge(self.value, patch);
+        self
+    }
+
+    fn deep_merge(base: Value, patch: Value) -> Value {
+        match (base, patch) {
+            (Value::Map(mut base_map), Value::Map(patch_map)) => {
+                for (k, v) in patch_map {
+                    let merged = match base_map.remove(&k) {
+                        Some(existing) => Self::deep_merge(existing, v),
+                        None => v,
+                    };
+                    base_map.insert(k, merged);
+                }
+                Value::Map(base_map)
+            }
+            (_, patch) => patch,
+        }
+    }
+
+    pub fn build(self) -> Result<Config, ConfigError> {
+        let mut config = Config::deserialize(self.value).map_err(ConfigError::Deserialize)?;
+        config.source_dir = self.source_dir;
+        Ok(config)
+    }
+}
+
+#[derive(Debug)]
+pub enum ConfigError {
+    PhaseNotConfigured { phase: Phase },
+    Deserialize(serde_value::DeserializerError),
+}
+
+impl std::fmt::Display for ConfigError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ConfigError::PhaseNotConfigured { phase } => {
+                write!(f, "phase '{phase:?}' not configured")
+            }
+            ConfigError::Deserialize(e) => write!(f, "failed to deserialize config: {e}"),
+        }
+    }
+}
+
+impl std::error::Error for ConfigError {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::Outcome;
+    use crate::languages::LanguageId;
+    use crate::phase::Phase;
+
+    const IDEAL_CONFIG: &str = r#"
+threads = 1
+bough_dir = "./.bough"
+ordering = "alphabetical"
+treat_timeouts_as = "Missed"
+
+[init]
+pwd = "./examples/vitest"
+commands = "npm install"
+
+[reset]
+pwd = "./examples/vitest"
+commands = "npm clean"
+
+[test]
+pwd = "./examples/vitest"
+timeout.absolute = 30
+timeout.relative = 3
+env = { NODE_ENV = "production" }
+commands = "npx run test"
+
+[mutate.js]
+files.include = ["**/*.js", "**/*.jsx"]
+files.exclude = ["**/*__mocks__*"]
+mutants.skip = [
+  { query = "((fn 'describe') @ignore)" },
+  { kind = { "BinaryOp" = "Add" } }
+]
+
+[mutate.ts]
+files.include = ["**/*.rs"]
+mutants.skip = [
+  { query = "((condition 'describe') @ignore)" },
+  { kind = { "BinaryOp" = "Add" } }
+]
+"#;
+
+    const MINIMAL_CONFIG: &str = r#"
+[test]
+commands = "npx vitest run"
+
+[mutate.ts]
+files.include = ["src/**/*.ts"]
+"#;
+
+    fn toml_to_value(s: &str) -> Value {
+        let tv: toml::Value = toml::from_str(s).unwrap();
+        serde_value::to_value(tv).unwrap()
+    }
+
+    #[test]
+    fn deserialize_ideal_config() {
+        let config: Config = toml::from_str(IDEAL_CONFIG).expect("failed to parse ideal config");
+
+        assert_eq!(config.threads, 1);
+        assert_eq!(config.bough_dir, PathBuf::from("./.bough"));
+        assert_eq!(config.ordering, OrderingConfig::Alphabetical);
+        assert_eq!(config.treat_timeouts_as, Outcome::Missed);
+
+        let init = &config.phases[&Phase::Init];
+        assert_eq!(init.meta.pwd, Some(PathBuf::from("./examples/vitest")));
+        assert_eq!(init.commands, "npm install");
+
+        let test = &config.phases[&Phase::Test];
+        assert_eq!(test.meta.timeout.absolute, Some(30));
+        assert_eq!(test.meta.timeout.relative, Some(3));
+        assert_eq!(test.meta.env["NODE_ENV"], "production");
+        assert_eq!(test.commands, "npx run test");
+
+        let js_mutate = &config.mutate[&LanguageId::Javascript];
+        assert_eq!(js_mutate.files.include, vec!["**/*.js", "**/*.jsx"]);
+        assert_eq!(js_mutate.files.exclude, vec!["**/*__mocks__*"]);
+        assert_eq!(js_mutate.mutants.skip.len(), 2);
+    }
+
+    #[test]
+    fn deserialize_minimal_config() {
+        let config: Config =
+            toml::from_str(MINIMAL_CONFIG).expect("failed to parse minimal config");
+
+        assert_eq!(config.threads, 1);
+        assert_eq!(config.bough_dir, PathBuf::from("./.bough"));
+        assert_eq!(config.ordering, OrderingConfig::Random);
+        assert_eq!(config.treat_timeouts_as, Outcome::Caught);
+        assert!(!config.phases.contains_key(&Phase::Init));
+        assert!(!config.phases.contains_key(&Phase::Reset));
+
+        let test = &config.phases[&Phase::Test];
+        assert_eq!(test.commands, "npx vitest run");
+        assert_eq!(test.meta.pwd, None);
+        assert!(test.meta.env.is_empty());
+        assert_eq!(test.meta.timeout, TimeoutConfig::default());
+
+        let ts_mutate = &config.mutate[&LanguageId::Typescript];
+        assert_eq!(ts_mutate.files.include, vec!["src/**/*.ts"]);
+        assert!(ts_mutate.files.exclude.is_empty());
+        assert!(ts_mutate.mutants.skip.is_empty());
+    }
+
+    fn build_with_override(base: &str, patch: &str) -> Config {
+        ConfigBuilder::new(PathBuf::new())
+            .from_value(toml_to_value(base))
+            .override_with(toml_to_value(patch))
+            .build()
+            .unwrap()
+    }
+
+    #[test]
+    fn override_scalar() {
+        let config = build_with_override("", "threads = 4");
+        assert_eq!(config.threads, 4);
+    }
+
+    #[test]
+    fn override_bough_dir() {
+        let config = build_with_override(IDEAL_CONFIG, r#"bough_dir = "/override""#);
+        assert_eq!(config.bough_dir, PathBuf::from("/override"));
+    }
+
+    #[test]
+    fn override_vec_replaces() {
+        let config = build_with_override(
+            MINIMAL_CONFIG,
+            r#"
+            [test]
+            commands = "npm test"
+            "#,
+        );
+        assert_eq!(config.phases[&Phase::Test].commands, "npm test");
+    }
+
+    #[test]
+    fn override_map_adds() {
+        let config = build_with_override(
+            MINIMAL_CONFIG,
+            r#"
+            [test.env]
+            FOO = "bar"
+            "#,
+        );
+        assert_eq!(config.phases[&Phase::Test].meta.env["FOO"], "bar");
+    }
+
+    #[test]
+    fn override_deep_merge_phase() {
+        let config = build_with_override(IDEAL_CONFIG, r#"treat_timeouts_as = "Caught""#);
+        assert_eq!(config.treat_timeouts_as, Outcome::Caught);
+        assert!(config.phases.contains_key(&Phase::Init));
+    }
+
+    #[test]
+    fn defaults_are_sane() {
+        let config: Config = toml::from_str("").expect("empty config should parse");
+        assert_eq!(config.threads, 1);
+        assert_eq!(config.bough_dir, PathBuf::from("./.bough"));
+        assert!(config.phases.is_empty());
+    }
+
+    #[test]
+    fn project_bough_config_parses() {
+        let toml_str = include_str!("../../../bough.config.toml");
+        ConfigBuilder::new(PathBuf::new())
+            .from_value(toml_to_value(toml_str))
+            .build()
+            .expect("bough.config.toml should parse without errors or invariant violations");
+    }
+}

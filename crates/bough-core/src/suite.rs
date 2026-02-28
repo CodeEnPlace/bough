@@ -1,11 +1,13 @@
-use crate::config::SuiteConfig;
+use crate::WorkspaceId;
 
-pub struct Suite<'a> {
-    pub config: &'a SuiteConfig,
-}
+pub struct Suite {}
 
-impl<'a> Suite<'a> {
-    pub fn new(config: &'a SuiteConfig) -> Self {
-        Self { config }
+impl Suite {
+    pub fn new() -> Self {
+        Self {}
+    }
+
+    pub fn make_new_workspace(&self) -> WorkspaceId {
+        todo!()
     }
 }

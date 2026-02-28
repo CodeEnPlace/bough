@@ -62,21 +62,14 @@ pub struct PhaseRunner {
     pub pwd: PathBuf,
     pub env: HashMap<String, String>,
     pub timeout: TimeoutConfig,
-    pub commands: Vec<String>,
+    pub commands: String,
 }
 
 impl PhaseRunner {
     pub fn run(&self) -> Result<PhaseOutput, Error> {
         let timeout = self.timeout.absolute.map(Duration::from_secs);
-        let mut stdout = String::new();
-        for (i, cmd) in self.commands.iter().enumerate() {
-            let (chunk, code) = self.run_one(i, cmd, &self.pwd, &timeout)?;
-            stdout.push_str(&chunk);
-            if code != 0 {
-                return Ok(PhaseOutput { stdout, error_code: Some(code) });
-            }
-        }
-        Ok(PhaseOutput { stdout, error_code: None })
+        let (stdout, code) = self.run_one(0, &self.commands, &self.pwd, &timeout)?;
+        Ok(PhaseOutput { stdout, error_code: if code != 0 { Some(code) } else { None } })
     }
 
     fn run_one(
@@ -133,7 +126,7 @@ impl PhaseRunner {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::{ConfigBuilder, ConfigError, SuiteId};
+    use crate::config::{ConfigBuilder, ConfigError};
     use crate::WorkspaceId;
     use std::path::PathBuf;
 
@@ -145,53 +138,47 @@ mod tests {
             .unwrap()
     }
 
-    fn sid(config: &crate::config::Config, name: &str) -> SuiteId {
-        SuiteId::try_parse(config, name).unwrap()
-    }
-
     #[test]
     fn source_dir_is_pwd_when_no_pwd_set() {
         let c = config("/src", r#"
-            [suite.test]
-            commands = ["run"]
+            [test]
+            commands = "run"
         "#);
-        let r = c.new_phase_runner(&sid(&c, "suite"), Phase::Test, RunIn::SourceDir).unwrap();
+        let r = c.new_phase_runner(Phase::Test, RunIn::SourceDir).unwrap();
         assert_eq!(r.pwd, PathBuf::from("/src"));
     }
 
     #[test]
     fn phase_pwd_joined_to_source_dir() {
         let c = config("/src", r#"
-            [suite.test]
+            [test]
             pwd = "subdir"
-            commands = ["run"]
+            commands = "run"
         "#);
-        let r = c.new_phase_runner(&sid(&c, "suite"), Phase::Test, RunIn::SourceDir).unwrap();
+        let r = c.new_phase_runner(Phase::Test, RunIn::SourceDir).unwrap();
         assert_eq!(r.pwd, PathBuf::from("/src/subdir"));
     }
 
     #[test]
-    fn suite_default_pwd_used_when_phase_has_none() {
+    fn meta_default_pwd_used_when_phase_has_none() {
         let c = config("/src", r#"
-            [suite]
-            pwd = "suite-dir"
-            [suite.test]
-            commands = ["run"]
+            pwd = "default-dir"
+            [test]
+            commands = "run"
         "#);
-        let r = c.new_phase_runner(&sid(&c, "suite"), Phase::Test, RunIn::SourceDir).unwrap();
-        assert_eq!(r.pwd, PathBuf::from("/src/suite-dir"));
+        let r = c.new_phase_runner(Phase::Test, RunIn::SourceDir).unwrap();
+        assert_eq!(r.pwd, PathBuf::from("/src/default-dir"));
     }
 
     #[test]
-    fn phase_pwd_takes_precedence_over_suite_default() {
+    fn phase_pwd_takes_precedence_over_meta_default() {
         let c = config("/src", r#"
-            [suite]
-            pwd = "suite-dir"
-            [suite.test]
+            pwd = "default-dir"
+            [test]
             pwd = "phase-dir"
-            commands = ["run"]
+            commands = "run"
         "#);
-        let r = c.new_phase_runner(&sid(&c, "suite"), Phase::Test, RunIn::SourceDir).unwrap();
+        let r = c.new_phase_runner(Phase::Test, RunIn::SourceDir).unwrap();
         assert_eq!(r.pwd, PathBuf::from("/src/phase-dir"));
     }
 
@@ -199,10 +186,10 @@ mod tests {
     fn workspace_absolute_bough_dir() {
         let c = config("/src", r#"
             bough_dir = "/bough"
-            [suite.test]
-            commands = ["run"]
+            [test]
+            commands = "run"
         "#);
-        let r = c.new_phase_runner(&sid(&c, "suite"), Phase::Test, RunIn::Workspace(WorkspaceId::from_trusted("ws"))).unwrap();
+        let r = c.new_phase_runner(Phase::Test, RunIn::Workspace(WorkspaceId::from_trusted("ws"))).unwrap();
         assert_eq!(r.pwd, PathBuf::from("/bough/workspaces/ws"));
     }
 
@@ -210,43 +197,42 @@ mod tests {
     fn workspace_relative_bough_dir_resolved_from_source_dir() {
         let c = config("/src", r#"
             bough_dir = ".bough"
-            [suite.test]
-            commands = ["run"]
+            [test]
+            commands = "run"
         "#);
-        let r = c.new_phase_runner(&sid(&c, "suite"), Phase::Test, RunIn::Workspace(WorkspaceId::from_trusted("ws"))).unwrap();
+        let r = c.new_phase_runner(Phase::Test, RunIn::Workspace(WorkspaceId::from_trusted("ws"))).unwrap();
         assert_eq!(r.pwd, PathBuf::from("/src/.bough/workspaces/ws"));
     }
 
     #[test]
-    fn env_merge_phase_overrides_suite() {
+    fn env_merge_phase_overrides_meta_default() {
         let c = config("/src", r#"
-            [suite.env]
-            SHARED = "suite"
-            SUITE_ONLY = "s"
-            [suite.test]
-            commands = ["run"]
-            [suite.test.env]
+            [env]
+            SHARED = "default"
+            DEFAULT_ONLY = "d"
+            [test]
+            commands = "run"
+            [test.env]
             SHARED = "phase"
             PHASE_ONLY = "p"
         "#);
-        let r = c.new_phase_runner(&sid(&c, "suite"), Phase::Test, RunIn::SourceDir).unwrap();
+        let r = c.new_phase_runner(Phase::Test, RunIn::SourceDir).unwrap();
         assert_eq!(r.env["SHARED"], "phase");
-        assert_eq!(r.env["SUITE_ONLY"], "s");
+        assert_eq!(r.env["DEFAULT_ONLY"], "d");
         assert_eq!(r.env["PHASE_ONLY"], "p");
     }
 
     #[test]
-    fn timeout_phase_overrides_suite_per_field() {
+    fn timeout_phase_overrides_meta_default_per_field() {
         let c = config("/src", r#"
-            [suite.timeout]
-            absolute = 60
-            relative = 5
-            [suite.test]
-            commands = ["run"]
-            [suite.test.timeout]
+            timeout.absolute = 60
+            timeout.relative = 5
+            [test]
+            commands = "run"
+            [test.timeout]
             absolute = 30
         "#);
-        let r = c.new_phase_runner(&sid(&c, "suite"), Phase::Test, RunIn::SourceDir).unwrap();
+        let r = c.new_phase_runner(Phase::Test, RunIn::SourceDir).unwrap();
         assert_eq!(r.timeout.absolute, Some(30));
         assert_eq!(r.timeout.relative, Some(5));
     }
@@ -254,27 +240,20 @@ mod tests {
     #[test]
     fn commands_taken_from_phase() {
         let c = config("/src", r#"
-            [suite.test]
-            commands = ["step1", "step2"]
+            [test]
+            commands = "step1"
         "#);
-        let r = c.new_phase_runner(&sid(&c, "suite"), Phase::Test, RunIn::SourceDir).unwrap();
-        assert_eq!(r.commands, vec!["step1", "step2"]);
-    }
-
-    #[test]
-    fn unknown_suite_returns_error() {
-        let c = config("/src", "");
-        let err = c.new_phase_runner(&SuiteId("missing".into()), Phase::Test, RunIn::SourceDir).unwrap_err();
-        assert!(matches!(err, ConfigError::UnknownSuite { .. }));
+        let r = c.new_phase_runner(Phase::Test, RunIn::SourceDir).unwrap();
+        assert_eq!(r.commands, "step1");
     }
 
     #[test]
     fn phase_not_configured_returns_error() {
         let c = config("/src", r#"
-            [suite.test]
-            commands = ["run"]
+            [test]
+            commands = "run"
         "#);
-        let err = c.new_phase_runner(&sid(&c, "suite"), Phase::Init, RunIn::SourceDir).unwrap_err();
+        let err = c.new_phase_runner(Phase::Init, RunIn::SourceDir).unwrap_err();
         assert!(matches!(err, ConfigError::PhaseNotConfigured { .. }));
     }
 }
