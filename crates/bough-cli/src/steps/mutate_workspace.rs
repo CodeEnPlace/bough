@@ -1,6 +1,6 @@
+use bough_core::Mutation;
 use bough_core::apply_mutation;
 use bough_core::config::Config;
-use bough_core::Mutation;
 use bough_typed_hash::{MemoryHashStore, TypedHashable};
 use serde::Serialize;
 use std::path::{Path, PathBuf};
@@ -49,7 +49,10 @@ fn find_mutation(config: &Config, hash: &str) -> Result<Mutation, Error> {
 
     for (_lang, muts) in &mutations.mutations {
         for m in muts {
-            let m_hash = m.hash(&mut MemoryHashStore::new()).expect("hash failed").to_string();
+            let m_hash = m
+                .hash(&mut MemoryHashStore::new())
+                .expect("hash failed")
+                .to_string();
             if m_hash == hash {
                 return Ok(m.clone());
             }
@@ -61,10 +64,7 @@ fn find_mutation(config: &Config, hash: &str) -> Result<Mutation, Error> {
 
 fn workspace_file_path(workspace: &Path, mutation_path: &Path, config: &Config) -> PathBuf {
     let cwd = std::env::current_dir().unwrap();
-    let relative = mutation_path
-        .strip_prefix(&cwd)
-        .unwrap_or(mutation_path);
-    dbg!(&workspace, &mutation_path, &cwd, &relative);
+    let relative = mutation_path.strip_prefix(&cwd).unwrap_or(mutation_path);
     workspace.join(relative)
 }
 
@@ -78,13 +78,12 @@ pub fn run(config: &Config, workspace: &Path, hash: &str) -> Result<MutateWorksp
     let mutation = find_mutation(config, hash)?;
     let file_path = workspace_file_path(workspace, &mutation.mutant.src.path, config);
 
-    let content = std::fs::read_to_string(&file_path)
-        .map_err(|e| Error::ReadFile(file_path.clone(), e))?;
+    let content =
+        std::fs::read_to_string(&file_path).map_err(|e| Error::ReadFile(file_path.clone(), e))?;
 
     let mutated = apply_mutation(&content, &mutation.mutant.span, &mutation.replacement);
 
-    std::fs::write(&file_path, &mutated)
-        .map_err(|e| Error::WriteFile(file_path.clone(), e))?;
+    std::fs::write(&file_path, &mutated).map_err(|e| Error::WriteFile(file_path.clone(), e))?;
 
     Ok(MutateWorkspace {
         workspace: workspace.to_path_buf(),

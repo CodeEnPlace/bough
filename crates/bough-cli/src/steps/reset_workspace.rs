@@ -37,7 +37,10 @@ pub struct ResetWorkspace {
 
 fn vcs_reset(vcs: &VcsConfig, workspace: &Path) -> Result<String, Error> {
     let (cmd, args): (&str, Vec<&str>) = match vcs {
-        VcsConfig::Jj { rev } => ("jj", vec!["edit", rev]),
+        VcsConfig::Jj {
+            restore_to,
+            on_top_of,
+        } => ("jj", vec!["new", on_top_of]),
         VcsConfig::Git { commit } => ("git", vec!["checkout", commit, "--force"]),
         VcsConfig::None => return Ok(String::new()),
         VcsConfig::Mercurial => todo!("mercurial workspace reset"),

@@ -1,0 +1,36 @@
+{
+  "outcome": "Caught",
+  "at": "2026-02-27T16:47:09.211928Z",
+  "mutation": {
+    "mutant": {
+      "src": {
+        "path": "/Users/freddie/Documents/pollard/examples/vitest-js/src/index.js",
+        "language": "javascript"
+      },
+      "span": {
+        "start": {
+          "src": {
+            "path": "/Users/freddie/Documents/pollard/examples/vitest-js/src/index.js",
+            "language": "javascript"
+          },
+          "line": 4,
+          "char": 10,
+          "byte": 135
+        },
+        "end": {
+          "src": {
+            "path": "/Users/freddie/Documents/pollard/examples/vitest-js/src/index.js",
+            "language": "javascript"
+          },
+          "line": 4,
+          "char": 13,
+          "byte": 138
+        }
+      },
+      "kind": {
+        "BinaryOp": "StrictEq"
+      }
+    },
+    "replacement": "!=="
+  }
+}
