@@ -1,5 +1,0 @@
-[vitest.test]
-commands = ["npx vitest run"]
-
-[vitest.mutate.ts]
-files.include = ["src/**/*.ts"]

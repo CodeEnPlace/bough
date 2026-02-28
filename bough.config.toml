@@ -1,23 +1,21 @@
 bough_dir = "./.bough"
-
-[vitest-js]
 pwd = "examples/vitest-js"
 ordering = "random"
 
-[vitest-js.init]
-commands = ["npm install"]
+[init]
+commands = "npm install"
 
-[vitest-js.test]
-commands = ["npm test"]
+[test]
+commands = "npm test"
 
-[vitest-js.test_ids]
+[test_ids]
 get_all = "npm run --silent get-test-ids"
 get_failed = "npm run --silent get-failed-test-ids"
 
-[vitest-js.mutate.js]
+[mutate.js]
 files.include = ["src/*.js"]
 files.exclude = ["**/*.test.*"]
 files.ignore_files = []
 mutants.skip = [
-  { query = "(if_statement condition: (parenthesized_expression (member_expression object: (meta_property)))) @skip" } ,
+  { query = "(if_statement condition: (parenthesized_expression (member_expression object: (meta_property)))) @skip" },
 ]

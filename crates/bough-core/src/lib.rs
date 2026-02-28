@@ -1,8 +1,9 @@
 pub mod config;
-pub mod io;
 pub mod languages;
 pub mod phase;
+mod session;
 pub mod suite;
+pub mod workspace;
 
 use bough_typed_hash::HashInto;
 use chrono::{DateTime, Utc};
@@ -49,12 +50,14 @@ impl WorkspaceId {
         Ok(Self(name))
     }
 
-    pub fn create(name: impl Into<String>, config: &config::Config) -> Result<Self, ValidationError> {
+    pub fn create(
+        name: impl Into<String>,
+        config: &config::Config,
+    ) -> Result<Self, ValidationError> {
         let name = name.into();
         let path = config.bough_dir.join(&name);
         if !path.is_dir() {
-            std::fs::create_dir_all(&path)
-                .map_err(|e| ValidationError::CreateDir(path, e))?;
+            std::fs::create_dir_all(&path).map_err(|e| ValidationError::CreateDir(path, e))?;
         }
         Ok(Self(name))
     }
@@ -241,7 +244,10 @@ impl Mutant {
         driver_for(self.src.language).substitutions_for_kind(&self.kind)
     }
 
-    pub fn to_ts_node<'tree>(&self, tree: &'tree tree_sitter::Tree) -> Option<tree_sitter::Node<'tree>> {
+    pub fn to_ts_node<'tree>(
+        &self,
+        tree: &'tree tree_sitter::Tree,
+    ) -> Option<tree_sitter::Node<'tree>> {
         let start = tree_sitter::Point::new(self.span.start.line, self.span.start.char);
         let node = tree.root_node().descendant_for_point_range(start, start)?;
         if node.start_byte() == self.span.start.byte && node.end_byte() == self.span.end.byte {
