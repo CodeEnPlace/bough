@@ -36,7 +36,7 @@ pub fn run(config: &Config) -> Result<GetAllTestIds, Error> {
     let cmd_str = config
         .runner_test_ids_get_all(runner_name)
         .ok_or(Error::NoTestIds)?;
-    let pwd = config.runner_pwd(runner_name).ok_or(Error::NoActiveRunner)?;
+    let pwd = config.resolve_pwd(config.runner(runner_name), None);
 
     let output = Command::new("sh")
         .arg("-c")

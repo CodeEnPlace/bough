@@ -62,7 +62,7 @@ fn generate_name() -> String {
 
 pub fn run(config: &Config) -> Result<MakeWorkspace, Error> {
     let runner_name = config.resolved_runner_name().ok_or(Error::NoActiveRunner)?;
-    let runner_pwd = config.runner_pwd(runner_name).ok_or(Error::NoActiveRunner)?;
+    let runner_pwd = config.resolve_pwd(config.runner(runner_name), None);
     let base_dir = PathBuf::from(config.working_dir());
     let vcs = config.vcs().clone();
 

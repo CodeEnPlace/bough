@@ -330,10 +330,6 @@ impl Config {
         self.runners.get(runner)
     }
 
-    pub fn runner_pwd(&self, runner: &str) -> Option<&Path> {
-        self.runners.get(runner).map(|r| r.pwd.as_path())
-    }
-
     pub fn resolve_pwd<'a>(
         &self,
         runner: Option<&'a Runner>,
@@ -454,8 +450,7 @@ impl Config {
         resolve(&mut self.dirs.state);
         resolve(&mut self.dirs.logs);
 
-        for _runner in self.runners.values_mut() {
-        }
+        for _runner in self.runners.values_mut() {}
     }
 }
 
@@ -696,10 +691,7 @@ mod tests {
                 config.resolve_timeout_absolute(None, Some(&phase)),
                 Some(30)
             );
-            assert_eq!(
-                config.resolve_timeout_relative(None, Some(&phase)),
-                Some(3)
-            );
+            assert_eq!(config.resolve_timeout_relative(None, Some(&phase)), Some(3));
         }
 
         #[test]
@@ -713,10 +705,7 @@ mod tests {
         fn returns_none_for_default_phase() {
             let config: Config = toml::from_str("").unwrap();
             let phase = Phase::default();
-            assert_eq!(
-                config.resolve_timeout_absolute(None, Some(&phase)),
-                None
-            );
+            assert_eq!(config.resolve_timeout_absolute(None, Some(&phase)), None);
         }
     }
 
