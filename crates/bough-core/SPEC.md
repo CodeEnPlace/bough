@@ -50,27 +50,67 @@ A file should be excluded if it matches any of the exclude globs
 r[core.source.files.vcs-ignore]
 A file should be excluded if it matches any of the globs in a vcs ignore file
 
+r[core.source.files.iter]
+Source::all_files returns an iterator overall files matched
+
 ### Workspace
 
 r[core.workspace]
 Workspace struct exists as a handle for a directory
 
-r[core.workspace.create]
-Workspace struct exists as a handle for a directory
+r[core.workspace.relationship]
+Workspace struct has a 1-to-1 relationship with a workspace directory
 
-r[core.workspace.dir.create]
+r[core.workspace.id]
+WorkspaceId is a randomly generated 8 char hex identifier
+
+r[core.workspace.create]
+`Workplace::create -> Result<Self, _>` makes a new dir
+
+r[core.workspace.create.dir]
 workspace should be created inside the configured bough dir, in a `work` sub dir
 
-r[core.workspace.dir.create.from-source-files]
-Workspace should be created by copying the matched files of r[core.source.files]
+r[core.workspace.create.dir.previous]
+if the dir previously existed, that's an error
 
-r[core.workspace.attach.check-eq]
-When the Workspace struct is constructed as a handler for a dir that already existed, it should check that the files matched by r[core.source.files] are bitwise equal in source and its dir.
+r[core.workspace.create.from-source-files]
+Workspace should be created by copying the matched files of Source::all_files
+
+r[core.workspace.create.validate-unchanged]
+called after creation
+
+r[core.workspace.attach]
+`Workplace::attach -> Result<Self, _>` creates a new struct associated with an existing directory
+
+r[core.workspace.attach.validate-unchanged]
+called after attach
+
+r[core.workspace.validate-unchanged]
+Workspace::validate_unchanged checks that the files from Source::all_files are bitwise equal in source and its dir.
 
 ### Phase
 
 r[core.phase.in-workspace]
 A phase should only ever run inside a workspace dir, never in the source dir
+
+### Mutation
+
+r[core.mut.apply.not-in-source]
+A Mutation should never be applied to a file in the source dir
+
+r[core.mut.apply.in-workspace]
+A Mutation can only be applied to a file in a workspace dir
+
+### MutationResult
+
+r[core.mut-res.role]
+`MutationResult`s store the most recent outcoming of running a Test Phase against the specified Mutation
+
+r[core.mut-res.store]
+`MutationResult` are stored and managed via a DiskHashStore bound to `$BOUGH_DIR/state`
+
+r[core.mut-res.hash]
+`MutationResult` identified by the hash of their mutation, not any other properties. Updating other properties should not alter its hash
 
 ### Testing
 
