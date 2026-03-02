@@ -30,7 +30,7 @@ impl Session {
         Ok(Self { config, workspaces })
     }
 
-    // r[impl core.session.workspace.discovery]
+    // core[impl session.workspace.discovery]
     fn discover_workspaces(config: &Config) -> Result<HashMap<WorkspaceId, Workspace>, Error> {
         let dir = config.workspaces_dir();
         if !dir.is_dir() {
@@ -91,7 +91,7 @@ files.include = ["src/**/*.ts"]
             .unwrap()
     }
 
-    // r[verify core.session.workspace.discovery]
+    // core[verify session.workspace.discovery]
     #[test]
     fn no_workspaces_dir_yields_empty() {
         let tmp = setup();
@@ -100,7 +100,7 @@ files.include = ["src/**/*.ts"]
         assert!(session.workspaces.is_empty());
     }
 
-    // r[verify core.session.workspace.discovery]
+    // core[verify session.workspace.discovery]
     #[test]
     fn discovers_existing_workspaces() {
         let tmp = setup();

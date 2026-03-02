@@ -95,8 +95,8 @@ pub struct Mutation {
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct MutationResult {
-    pub outcome: Outcome,
-    pub at: DateTime<Utc>,
+    pub outcome: Option<Outcome>,
+    pub modified_at: DateTime<Utc>,
     pub mutation: Mutation,
 }
 
@@ -109,8 +109,6 @@ impl HashInto for MutationResult {
 impl bough_typed_hash::TypedHashable for MutationResult {
     type Hash = MutationHash;
 }
-
-
 
 pub fn find_mutants(file: &SourceFile, content: &str) -> Vec<Mutant> {
     let driver = driver_for(file.language);
@@ -286,9 +284,9 @@ mod tests {
         let mutation_hash = mutation.hash(&mut store).unwrap();
 
         let result = MutationResult {
-            outcome: Outcome::Caught,
+            outcome: Some(Outcome::Caught),
             mutation: mutation.clone(),
-            at: chrono::Utc::now(),
+            modified_at: chrono::Utc::now(),
         };
 
         let mut store2 = MemoryHashStore::new();
@@ -307,14 +305,14 @@ mod tests {
         let mutation = generate_mutations(&mutants[0]).remove(0);
 
         let r1 = MutationResult {
-            outcome: Outcome::Caught,
+            outcome: Some(Outcome::Caught),
             mutation: mutation.clone(),
-            at: DateTime::from_timestamp(1000, 0).unwrap(),
+            modified_at: DateTime::from_timestamp(1000, 0).unwrap(),
         };
         let r2 = MutationResult {
-            outcome: Outcome::Missed,
+            outcome: Some(Outcome::Missed),
             mutation: mutation.clone(),
-            at: DateTime::from_timestamp(9999, 0).unwrap(),
+            modified_at: DateTime::from_timestamp(9999, 0).unwrap(),
         };
 
         let mut s1 = MemoryHashStore::new();

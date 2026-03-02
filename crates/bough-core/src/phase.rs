@@ -138,7 +138,7 @@ mod tests {
             .unwrap()
     }
 
-    // r[verify core.config.pwd.root]
+    // core[verify config.pwd.root]
     #[test]
     fn source_dir_is_pwd_when_no_pwd_set() {
         let c = config("/src", r#"
@@ -149,7 +149,7 @@ mod tests {
         assert_eq!(r.pwd, PathBuf::from("/src"));
     }
 
-    // r[verify core.config.pwd.phase]
+    // core[verify config.pwd.phase]
     #[test]
     fn phase_pwd_joined_to_source_dir() {
         let c = config("/src", r#"
@@ -172,7 +172,7 @@ mod tests {
         assert_eq!(r.pwd, PathBuf::from("/src/default-dir"));
     }
 
-    // r[verify core.config.pwd.phase]
+    // core[verify config.pwd.phase]
     #[test]
     fn phase_pwd_takes_precedence_over_meta_default() {
         let c = config("/src", r#"
