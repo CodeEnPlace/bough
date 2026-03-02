@@ -41,6 +41,15 @@ The bough dir may be touched or altered, even if it exists inside the source dir
 
 ### Source
 
+core[source]
+SourceDir struct exists as a handle for a directory
+
+core[source.new]
+`Source::new(config: &Config) -> Result<Self, _>`
+
+core[workspace.relationship]
+SourceDir struct has a 1-to-1 relationship with the source directory
+
 core[source.pure]
 The source directory must never be touched or altered
 
@@ -54,7 +63,7 @@ core[source.files.vcs-ignore]
 A file should be excluded if it matches any of the globs in a vcs ignore file
 
 core[source.files.iter]
-`Source::all_files -> Iter<SourceFile>` returns an iterator overall files matched
+`SourceDir::all_files -> Iter<SourceFile>` returns an iterator overall files matched
 
 ### Workspace
 

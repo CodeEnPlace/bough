@@ -1,6 +1,6 @@
 use crate::config;
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug)]
 pub enum ValidationError {
@@ -76,6 +76,31 @@ impl AsRef<std::path::Path> for WorkspaceId {
     }
 }
 
-pub struct Workspace {}
+// core[impl workspace]
+pub struct Workspace {
+    path: PathBuf,
+}
 
-impl Workspace {}
+impl Workspace {
+    pub fn from_path(path: PathBuf) -> Self {
+        Self { path }
+    }
+
+    pub fn path(&self) -> &Path {
+        &self.path
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::Path;
+
+    // core[verify workspace]
+    #[test]
+    fn workspace_holds_directory_path() {
+        let dir = PathBuf::from("/tmp/test-workspace");
+        let ws = Workspace { path: dir.clone() };
+        assert_eq!(ws.path(), Path::new("/tmp/test-workspace"));
+    }
+}

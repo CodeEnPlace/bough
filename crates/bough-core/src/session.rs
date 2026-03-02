@@ -42,7 +42,7 @@ impl Session {
             let entry = entry.map_err(Error::Discovery)?;
             if entry.path().is_dir() {
                 let name = entry.file_name().to_string_lossy().into_owned();
-                workspaces.insert(WorkspaceId::from_trusted(name), Workspace {});
+                workspaces.insert(WorkspaceId::from_trusted(name), Workspace::from_path(entry.path()));
             }
         }
         Ok(workspaces)

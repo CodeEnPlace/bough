@@ -3,6 +3,8 @@ use bough_typed_hash::HashInto;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
+pub struct SourceDir {}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, bough_typed_hash::TypedHashable)]
 pub struct SourceFile {
     pub path: PathBuf,
