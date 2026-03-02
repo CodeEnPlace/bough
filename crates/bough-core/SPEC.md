@@ -45,13 +45,13 @@ core[source]
 SourceDir struct exists as a handle for a directory
 
 core[source.new]
-`Source::new(config: &Config) -> Result<Self, _>`
+`SourceDir::new(config: &Config) -> Result<Self, _>`
 
 core[workspace.relationship]
 SourceDir struct has a 1-to-1 relationship with the source directory
 
 core[source.pure]
-The source directory must never be touched or altered
+The source directory on disk must never be touched or altered
 
 core[source.files.include]
 A file should be included if it matches any of the include globs

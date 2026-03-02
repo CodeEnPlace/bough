@@ -3,7 +3,33 @@ use bough_typed_hash::HashInto;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
-pub struct SourceDir {}
+// core[impl source]
+pub struct SourceDir {
+    path: PathBuf,
+}
+
+impl SourceDir {
+    pub fn from_path(path: PathBuf) -> Self {
+        Self { path }
+    }
+
+    pub fn path(&self) -> &Path {
+        &self.path
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // core[verify source]
+    #[test]
+    fn source_dir_holds_directory_path() {
+        let dir = PathBuf::from("/tmp/test-source");
+        let sd = SourceDir { path: dir.clone() };
+        assert_eq!(sd.path(), Path::new("/tmp/test-source"));
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, bough_typed_hash::TypedHashable)]
 pub struct SourceFile {
