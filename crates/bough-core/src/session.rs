@@ -25,6 +25,7 @@ pub struct Session {
 }
 
 impl Session {
+    // core[impl session.new]
     pub fn new(config: Config) -> Result<Self, Error> {
         let workspaces = Self::discover_workspaces(&config)?;
         Ok(Self { config, workspaces })
@@ -89,6 +90,34 @@ files.include = ["src/**/*.ts"]
             .from_value(v)
             .build()
             .unwrap()
+    }
+
+    // core[verify session.new]
+    #[test]
+    fn new_returns_session_from_config() {
+        let tmp = setup();
+        let config = build_config(tmp.path().to_path_buf());
+        let session = Session::new(config).unwrap();
+        assert!(session.workspaces.is_empty());
+    }
+
+    // core[verify session.new]
+    #[test]
+    fn new_returns_error_on_unreadable_workspaces_dir() {
+        let tmp = setup();
+        let ws_dir = tmp.path().join(".bough/workspaces");
+        std::fs::create_dir_all(&ws_dir).unwrap();
+
+        // make workspaces dir unreadable
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(&ws_dir, std::fs::Permissions::from_mode(0o000)).unwrap();
+
+        let config = build_config(tmp.path().to_path_buf());
+        let result = Session::new(config);
+        assert!(result.is_err());
+
+        // restore permissions so TempDir cleanup works
+        std::fs::set_permissions(&ws_dir, std::fs::Permissions::from_mode(0o755)).unwrap();
     }
 
     // core[verify session.workspace.discovery]
