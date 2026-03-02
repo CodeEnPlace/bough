@@ -3,10 +3,10 @@ pwd = "examples/vitest-js"
 ordering = "random"
 
 [init]
-commands = "npm install"
+command = "npm install"
 
 [test]
-commands = "npm test"
+command = "npm test"
 
 [test_ids]
 get_all = "npm run --silent get-test-ids"

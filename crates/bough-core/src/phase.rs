@@ -62,13 +62,13 @@ pub struct PhaseRunner {
     pub pwd: PathBuf,
     pub env: HashMap<String, String>,
     pub timeout: TimeoutConfig,
-    pub commands: String,
+    pub command: String,
 }
 
 impl PhaseRunner {
     pub fn run(&self) -> Result<PhaseOutput, Error> {
         let timeout = self.timeout.absolute.map(Duration::from_secs);
-        let (stdout, code) = self.run_one(0, &self.commands, &self.pwd, &timeout)?;
+        let (stdout, code) = self.run_one(0, &self.command, &self.pwd, &timeout)?;
         Ok(PhaseOutput { stdout, error_code: if code != 0 { Some(code) } else { None } })
     }
 
@@ -133,7 +133,7 @@ mod tests {
     fn config(source_dir: &str, toml: &str) -> crate::config::Config {
         let tv: toml::Value = toml::from_str(toml).unwrap();
         ConfigBuilder::new(PathBuf::from(source_dir))
-            .from_value(serde_value::to_value(tv).unwrap())
+            .from_value(tv)
             .build()
             .unwrap()
     }
@@ -142,7 +142,7 @@ mod tests {
     fn source_dir_is_pwd_when_no_pwd_set() {
         let c = config("/src", r#"
             [test]
-            commands = "run"
+            command = "run"
         "#);
         let r = c.new_phase_runner(Phase::Test, RunIn::SourceDir).unwrap();
         assert_eq!(r.pwd, PathBuf::from("/src"));
@@ -153,7 +153,7 @@ mod tests {
         let c = config("/src", r#"
             [test]
             pwd = "subdir"
-            commands = "run"
+            command = "run"
         "#);
         let r = c.new_phase_runner(Phase::Test, RunIn::SourceDir).unwrap();
         assert_eq!(r.pwd, PathBuf::from("/src/subdir"));
@@ -164,7 +164,7 @@ mod tests {
         let c = config("/src", r#"
             pwd = "default-dir"
             [test]
-            commands = "run"
+            command = "run"
         "#);
         let r = c.new_phase_runner(Phase::Test, RunIn::SourceDir).unwrap();
         assert_eq!(r.pwd, PathBuf::from("/src/default-dir"));
@@ -176,7 +176,7 @@ mod tests {
             pwd = "default-dir"
             [test]
             pwd = "phase-dir"
-            commands = "run"
+            command = "run"
         "#);
         let r = c.new_phase_runner(Phase::Test, RunIn::SourceDir).unwrap();
         assert_eq!(r.pwd, PathBuf::from("/src/phase-dir"));
@@ -187,7 +187,7 @@ mod tests {
         let c = config("/src", r#"
             bough_dir = "/bough"
             [test]
-            commands = "run"
+            command = "run"
         "#);
         let r = c.new_phase_runner(Phase::Test, RunIn::Workspace(WorkspaceId::from_trusted("ws"))).unwrap();
         assert_eq!(r.pwd, PathBuf::from("/bough/workspaces/ws"));
@@ -198,7 +198,7 @@ mod tests {
         let c = config("/src", r#"
             bough_dir = ".bough"
             [test]
-            commands = "run"
+            command = "run"
         "#);
         let r = c.new_phase_runner(Phase::Test, RunIn::Workspace(WorkspaceId::from_trusted("ws"))).unwrap();
         assert_eq!(r.pwd, PathBuf::from("/src/.bough/workspaces/ws"));
@@ -211,7 +211,7 @@ mod tests {
             SHARED = "default"
             DEFAULT_ONLY = "d"
             [test]
-            commands = "run"
+            command = "run"
             [test.env]
             SHARED = "phase"
             PHASE_ONLY = "p"
@@ -228,7 +228,7 @@ mod tests {
             timeout.absolute = 60
             timeout.relative = 5
             [test]
-            commands = "run"
+            command = "run"
             [test.timeout]
             absolute = 30
         "#);
@@ -238,20 +238,20 @@ mod tests {
     }
 
     #[test]
-    fn commands_taken_from_phase() {
+    fn command_taken_from_phase() {
         let c = config("/src", r#"
             [test]
-            commands = "step1"
+            command = "step1"
         "#);
         let r = c.new_phase_runner(Phase::Test, RunIn::SourceDir).unwrap();
-        assert_eq!(r.commands, "step1");
+        assert_eq!(r.command, "step1");
     }
 
     #[test]
     fn phase_not_configured_returns_error() {
         let c = config("/src", r#"
             [test]
-            commands = "run"
+            command = "run"
         "#);
         let err = c.new_phase_runner(Phase::Init, RunIn::SourceDir).unwrap_err();
         assert!(matches!(err, ConfigError::PhaseNotConfigured { .. }));

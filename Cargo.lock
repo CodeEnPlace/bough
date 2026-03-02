@@ -162,7 +162,6 @@ dependencies = [
  "clap",
  "glob",
  "serde",
- "serde-value",
  "tempfile",
  "toml 0.8.23",
  "tree-sitter",

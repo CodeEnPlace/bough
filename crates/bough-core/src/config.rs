@@ -2,7 +2,6 @@ use crate::Outcome;
 use crate::languages::LanguageId;
 use crate::phase::{Phase, PhaseRunner, RunIn};
 use serde::{Deserialize, Serialize};
-use serde_value::Value;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
@@ -26,12 +25,12 @@ pub struct PhaseMetaConfig {
 pub struct PhaseConfig {
     #[serde(flatten)]
     pub(crate) meta: PhaseMetaConfig,
-    pub(crate) commands: String,
+    pub(crate) command: String,
 }
 
 impl PhaseConfig {
-    pub fn commands(&self) -> &str {
-        &self.commands
+    pub fn command(&self) -> &str {
+        &self.command
     }
 }
 
@@ -90,31 +89,31 @@ pub enum MutantSkipConfig {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Config {
+    #[serde(default = "default_threads")]
+    pub(crate) threads: u32,
+    #[serde(default = "default_bough_dir")]
+    pub(crate) bough_dir: PathBuf,
+    #[serde(skip)]
     pub(crate) source_dir: PathBuf,
     pub(crate) ordering: OrderingConfig,
     pub(crate) treat_timeouts_as: Outcome,
     pub(crate) test_ids: Option<TestIdsConfig>,
-
-    #[serde(default = "default_threads")]
-    pub(crate) threads: u32,
-
-    #[serde(default = "default_bough_dir")]
-    pub(crate) bough_dir: PathBuf,
-
-    #[serde(skip)]
     #[serde(flatten)]
     pub(crate) meta_defaults: PhaseMetaConfig,
-
-    #[serde(flatten)]
-    pub(crate) phases: HashMap<Phase, PhaseConfig>,
-
+    pub(crate) init: Option<PhaseConfig>,
+    pub(crate) reset: Option<PhaseConfig>,
+    pub(crate) test: Option<PhaseConfig>,
     #[serde(default)]
     pub(crate) mutate: HashMap<LanguageId, MutateLanguageConfig>,
 }
 
 impl Config {
     pub fn get_phase_config(&self, phase: Phase) -> Option<&PhaseConfig> {
-        self.phases.get(&phase)
+        match phase {
+            Phase::Init => self.init.as_ref(),
+            Phase::Reset => self.reset.as_ref(),
+            Phase::Test => self.test.as_ref(),
+        }
     }
 
     pub fn new_phase_runner(
@@ -123,8 +122,7 @@ impl Config {
         run_in: RunIn,
     ) -> Result<PhaseRunner, ConfigError> {
         let phase_config = self
-            .phases
-            .get(&phase)
+            .get_phase_config(phase)
             .ok_or(ConfigError::PhaseNotConfigured { phase })?;
 
         let base = match &run_in {
@@ -163,7 +161,7 @@ impl Config {
             pwd,
             env,
             timeout,
-            commands: phase_config.commands.clone(),
+            command: phase_config.command.clone(),
         })
     }
 
@@ -186,37 +184,39 @@ impl Default for Config {
             treat_timeouts_as: Outcome::Caught,
             test_ids: None,
             meta_defaults: PhaseMetaConfig::default(),
-            phases: HashMap::new(),
+            init: None,
+            reset: None,
+            test: None,
             mutate: HashMap::new(),
         }
     }
 }
 
 pub struct ConfigBuilder {
-    value: Value,
+    value: toml::Value,
     source_dir: PathBuf,
 }
 
 impl ConfigBuilder {
     pub fn new(source_dir: PathBuf) -> Self {
         Self {
-            value: Value::Map(Default::default()),
+            value: toml::Value::Table(Default::default()),
             source_dir,
         }
     }
 
-    pub fn from_value(self, value: Value) -> Self {
+    pub fn from_value(self, value: toml::Value) -> Self {
         Self { value, ..self }
     }
 
-    pub fn override_with(mut self, patch: Value) -> Self {
+    pub fn override_with(mut self, patch: toml::Value) -> Self {
         self.value = Self::deep_merge(self.value, patch);
         self
     }
 
-    fn deep_merge(base: Value, patch: Value) -> Value {
+    fn deep_merge(base: toml::Value, patch: toml::Value) -> toml::Value {
         match (base, patch) {
-            (Value::Map(mut base_map), Value::Map(patch_map)) => {
+            (toml::Value::Table(mut base_map), toml::Value::Table(patch_map)) => {
                 for (k, v) in patch_map {
                     let merged = match base_map.remove(&k) {
                         Some(existing) => Self::deep_merge(existing, v),
@@ -224,7 +224,7 @@ impl ConfigBuilder {
                     };
                     base_map.insert(k, merged);
                 }
-                Value::Map(base_map)
+                toml::Value::Table(base_map)
             }
             (_, patch) => patch,
         }
@@ -240,7 +240,7 @@ impl ConfigBuilder {
 #[derive(Debug)]
 pub enum ConfigError {
     PhaseNotConfigured { phase: Phase },
-    Deserialize(serde_value::DeserializerError),
+    Deserialize(toml::de::Error),
 }
 
 impl std::fmt::Display for ConfigError {
@@ -261,7 +261,6 @@ mod tests {
     use super::*;
     use crate::Outcome;
     use crate::languages::LanguageId;
-    use crate::phase::Phase;
 
     const IDEAL_CONFIG: &str = r#"
 threads = 1
@@ -271,18 +270,18 @@ treat_timeouts_as = "Missed"
 
 [init]
 pwd = "./examples/vitest"
-commands = "npm install"
+command = "npm install"
 
 [reset]
 pwd = "./examples/vitest"
-commands = "npm clean"
+command = "npm clean"
 
 [test]
 pwd = "./examples/vitest"
 timeout.absolute = 30
 timeout.relative = 3
 env = { NODE_ENV = "production" }
-commands = "npx run test"
+command = "npx run test"
 
 [mutate.js]
 files.include = ["**/*.js", "**/*.jsx"]
@@ -302,15 +301,14 @@ mutants.skip = [
 
     const MINIMAL_CONFIG: &str = r#"
 [test]
-commands = "npx vitest run"
+command = "npx vitest run"
 
 [mutate.ts]
 files.include = ["src/**/*.ts"]
 "#;
 
-    fn toml_to_value(s: &str) -> Value {
-        let tv: toml::Value = toml::from_str(s).unwrap();
-        serde_value::to_value(tv).unwrap()
+    fn toml_to_value(s: &str) -> toml::Value {
+        toml::from_str(s).unwrap()
     }
 
     #[test]
@@ -322,15 +320,15 @@ files.include = ["src/**/*.ts"]
         assert_eq!(config.ordering, OrderingConfig::Alphabetical);
         assert_eq!(config.treat_timeouts_as, Outcome::Missed);
 
-        let init = &config.phases[&Phase::Init];
+        let init = config.init.as_ref().unwrap();
         assert_eq!(init.meta.pwd, Some(PathBuf::from("./examples/vitest")));
-        assert_eq!(init.commands, "npm install");
+        assert_eq!(init.command, "npm install");
 
-        let test = &config.phases[&Phase::Test];
+        let test = config.test.as_ref().unwrap();
         assert_eq!(test.meta.timeout.absolute, Some(30));
         assert_eq!(test.meta.timeout.relative, Some(3));
         assert_eq!(test.meta.env["NODE_ENV"], "production");
-        assert_eq!(test.commands, "npx run test");
+        assert_eq!(test.command, "npx run test");
 
         let js_mutate = &config.mutate[&LanguageId::Javascript];
         assert_eq!(js_mutate.files.include, vec!["**/*.js", "**/*.jsx"]);
@@ -347,11 +345,11 @@ files.include = ["src/**/*.ts"]
         assert_eq!(config.bough_dir, PathBuf::from("./.bough"));
         assert_eq!(config.ordering, OrderingConfig::Random);
         assert_eq!(config.treat_timeouts_as, Outcome::Caught);
-        assert!(!config.phases.contains_key(&Phase::Init));
-        assert!(!config.phases.contains_key(&Phase::Reset));
+        assert!(config.init.is_none());
+        assert!(config.reset.is_none());
 
-        let test = &config.phases[&Phase::Test];
-        assert_eq!(test.commands, "npx vitest run");
+        let test = config.test.as_ref().unwrap();
+        assert_eq!(test.command, "npx vitest run");
         assert_eq!(test.meta.pwd, None);
         assert!(test.meta.env.is_empty());
         assert_eq!(test.meta.timeout, TimeoutConfig::default());
@@ -388,10 +386,10 @@ files.include = ["src/**/*.ts"]
             MINIMAL_CONFIG,
             r#"
             [test]
-            commands = "npm test"
+            command = "npm test"
             "#,
         );
-        assert_eq!(config.phases[&Phase::Test].commands, "npm test");
+        assert_eq!(config.test.as_ref().unwrap().command, "npm test");
     }
 
     #[test]
@@ -403,14 +401,14 @@ files.include = ["src/**/*.ts"]
             FOO = "bar"
             "#,
         );
-        assert_eq!(config.phases[&Phase::Test].meta.env["FOO"], "bar");
+        assert_eq!(config.test.as_ref().unwrap().meta.env["FOO"], "bar");
     }
 
     #[test]
     fn override_deep_merge_phase() {
         let config = build_with_override(IDEAL_CONFIG, r#"treat_timeouts_as = "Caught""#);
         assert_eq!(config.treat_timeouts_as, Outcome::Caught);
-        assert!(config.phases.contains_key(&Phase::Init));
+        assert!(config.init.is_some());
     }
 
     #[test]
@@ -418,7 +416,7 @@ files.include = ["src/**/*.ts"]
         let config: Config = toml::from_str("").expect("empty config should parse");
         assert_eq!(config.threads, 1);
         assert_eq!(config.bough_dir, PathBuf::from("./.bough"));
-        assert!(config.phases.is_empty());
+        assert!(config.init.is_none() && config.reset.is_none() && config.test.is_none());
     }
 
     #[test]
