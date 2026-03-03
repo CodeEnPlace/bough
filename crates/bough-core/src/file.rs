@@ -84,6 +84,7 @@ impl Twig {
     }
 }
 
+// core[impl file.root]
 fn validate_root(path: &PathBuf) -> Result<(), Error> {
     if !path.is_absolute() {
         return Err(Error::RootMustBeAbsolute(path.clone()));
@@ -128,6 +129,22 @@ impl Root for Workspace {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bough_typed_hash::sha2::Digest;
+
+    #[derive(Debug, Clone, PartialEq)]
+    struct TestRoot(PathBuf);
+
+    impl TestRoot {
+        fn new(path: impl Into<PathBuf>) -> Self {
+            Self(path.into())
+        }
+    }
+
+    impl Root for TestRoot {
+        fn path(&self) -> &Path {
+            &self.0
+        }
+    }
 
     // core[verify file.source]
     #[test]
@@ -137,6 +154,7 @@ mod tests {
     }
 
     // core[verify file.source]
+    // core[verify file.root]
     #[test]
     fn source_rejects_relative_path() {
         assert!(matches!(
@@ -153,6 +171,7 @@ mod tests {
     }
 
     // core[verify file.workspace]
+    // core[verify file.root]
     #[test]
     fn workspace_rejects_relative_path() {
         assert!(matches!(
@@ -180,7 +199,7 @@ mod tests {
     // core[verify file.file]
     #[test]
     fn file_holds_root_and_twig() {
-        let root = Source::new(PathBuf::from("/tmp/project")).unwrap();
+        let root = TestRoot::new("/tmp/project");
         let twig = Twig::new(PathBuf::from("src/main.rs")).unwrap();
         let file = File::new(&root, &twig);
         assert_eq!(file.root.path(), root.path());
@@ -190,7 +209,7 @@ mod tests {
     // core[verify file.file.resolve]
     #[test]
     fn file_resolve_joins_root_and_twig() {
-        let root = Source::new(PathBuf::from("/tmp/project")).unwrap();
+        let root = TestRoot::new("/tmp/project");
         let twig = Twig::new(PathBuf::from("src/main.rs")).unwrap();
         let file = File::new(&root, &twig);
         assert_eq!(file.resolve(), PathBuf::from("/tmp/project/src/main.rs"));
@@ -199,13 +218,11 @@ mod tests {
     // core[verify file.file.hash]
     #[test]
     fn file_hash_reads_resolved_contents() {
-        use bough_typed_hash::sha2::Digest;
-
         let dir = tempfile::tempdir().unwrap();
         std::fs::create_dir_all(dir.path().join("src")).unwrap();
         std::fs::write(dir.path().join("src/test.txt"), "hello").unwrap();
 
-        let root = Source::new(dir.path().to_path_buf()).unwrap();
+        let root = TestRoot::new(dir.path());
         let twig = Twig::new(PathBuf::from("src/test.txt")).unwrap();
         let file = File::new(&root, &twig);
 
@@ -216,9 +233,7 @@ mod tests {
     // core[verify file.file.hash]
     #[test]
     fn file_hash_fails_for_missing_file() {
-        use bough_typed_hash::sha2::Digest;
-
-        let root = Source::new(PathBuf::from("/tmp/nonexistent_dir_abc123")).unwrap();
+        let root = TestRoot::new("/tmp/nonexistent_dir_abc123");
         let twig = Twig::new(PathBuf::from("missing.txt")).unwrap();
         let file = File::new(&root, &twig);
 
@@ -229,11 +244,11 @@ mod tests {
     // core[verify file.transplant]
     #[test]
     fn transplant_replaces_root() {
-        let source = Source::new(PathBuf::from("/project/src")).unwrap();
-        let workspace = Workspace::new(PathBuf::from("/project/ws")).unwrap();
+        let root_a = TestRoot::new("/project/a");
+        let root_b = TestRoot::new("/project/b");
         let twig = Twig::new(PathBuf::from("src/main.rs")).unwrap();
-        let file = File::new(&source, &twig);
-        let moved = file.transplant(&workspace);
-        assert_eq!(moved.resolve(), PathBuf::from("/project/ws/src/main.rs"));
+        let file = File::new(&root_a, &twig);
+        let moved = file.transplant(&root_b);
+        assert_eq!(moved.resolve(), PathBuf::from("/project/b/src/main.rs"));
     }
 }

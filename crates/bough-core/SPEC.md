@@ -1,11 +1,9 @@
-# Spec
+# Core
 
-## Core
-
-### File
+## File
 
 core[file.root]
-Root(PathBuf) must be created with an absolute path
+Root Path must be created with an absolute path
 
 core[file.twig]
 Twig(PathBuf) must be created with a relative path
@@ -19,168 +17,188 @@ File::resolve joins root and twig to create the fully resolved path
 core[file.transplant]
 `File::transplant(&self, root: &Root) -> Self` replace root
 
-### Source
+core[file.source.config]
+FileSource holds a ref to FileSourceConfig
 
-core[source.root]
-Source should impl Root
+core[file.source.root]
+FileSource holds a ref to a Root
 
-core[source.files]
-Source should include a FileSourceConfig
+core[file.source.iter]
+FileSource prodices FileSourceIter which iterates Twigs
 
-core[source.files.include]
+core[file.source.iter.include]
 A file should be included if it matches any of the include globs
 
-core[source.files.exclude]
+core[file.source.iter.exclude]
 A file should be excluded if it matches any of the exclude globs
 
-core[source.files.vcs-ignore]
+core[file.source.iter.vcs-ignore]
 A file should be excluded if it matches any of the globs in a vcs ignore file
 
-core[source.files.iter]
-`SourceDir::all_files -> Iter<SourceFile>` returns an iterator overall files matched
+### Base
 
-### Config
+<!-- ### Source -->
 
-core[config.partials]
-Config should be constable from multiple partials, checking for required values an invariants once all are applied
+<!-- core[source.root] -->
+<!-- Source should impl Root -->
 
-core[config.source-dir]
-Config should retain the root of the source code as source_dir
+<!-- core[source.files] -->
+<!-- Source should include a FileSourceConfig -->
 
-core[config.pwd.root]
-Config should set the pwd for commands
+<!-- core[source.files.include] -->
+<!-- A file should be included if it matches any of the include globs -->
 
-core[config.pwd.phase]
-A phase should be able to override pwd
+<!-- core[source.files.exclude] -->
+<!-- A file should be excluded if it matches any of the exclude globs -->
 
-### Session
+<!-- core[source.files.vcs-ignore] -->
+<!-- A file should be excluded if it matches any of the globs in a vcs ignore file -->
 
-core[session.new]
-Session::new(config: Config) -> Result<Self, session::Error>
+<!-- core[source.files.iter] -->
+<!-- `SourceDir::all_files -> Iter<SourceFile>` returns an iterator overall files matched -->
 
-core[session.is-entry-point]
-All IO and actions must be performed starting by using the Session to create Structs (eg, Session::get_workspace, Session::get_source_dir)
+<!-- ### Config -->
 
-core[session.workspace.discovery]
-Session should find all pre-existing workspaces at creation time
+<!-- core[config.partials] -->
+<!-- Config should be constable from multiple partials, checking for required values an invariants once all are applied -->
 
-core[session.workspace.discovery.changed]
-If during discovery, one of the workspaces failed to validate_unchanged, the directory should be removed.
+<!-- core[config.source-dir] -->
+<!-- Config should retain the root of the source code as source_dir -->
 
-core[session.bough-dir.in]
-The bough dir may be inside the source dir
+<!-- core[config.pwd.root] -->
+<!-- Config should set the pwd for commands -->
 
-core[session.bough-dir.out]
-The bough dir may be outside the source dir
+<!-- core[config.pwd.phase] -->
+<!-- A phase should be able to override pwd -->
 
-core[session.bough-dir.impure]
-The bough dir may be touched or altered, even if it exists inside the source dir
+<!-- ### Session -->
 
-### Workspace
+<!-- core[session.new] -->
+<!-- Session::new(config: Config) -> Result<Self, session::Error> -->
 
-core[workspace]
-Workspace struct exists as a handle for a directory
+<!-- core[session.is-entry-point] -->
+<!-- All IO and actions must be performed starting by using the Session to create Structs (eg, Session::get_workspace, Session::get_source_dir) -->
 
-core[workspace.relationship]
-Workspace struct has a 1-to-1 relationship with a workspace directory
+<!-- core[session.workspace.discovery] -->
+<!-- Session should find all pre-existing workspaces at creation time -->
 
-core[workspace.id]
-WorkspaceId is a randomly generated 8 char hex identifier
+<!-- core[session.workspace.discovery.changed] -->
+<!-- If during discovery, one of the workspaces failed to validate_unchanged, the directory should be removed. -->
 
-core[workspace.new]
-`Workspace::new -> Result<Self, worspace::Error>` makes a new dir
+<!-- core[session.bough-dir.in] -->
+<!-- The bough dir may be inside the source dir -->
 
-core[workspace.new.dir]
-workspace should be created inside the configured bough dir, in a `work` sub dir
+<!-- core[session.bough-dir.out] -->
+<!-- The bough dir may be outside the source dir -->
 
-core[workspace.new.dir.previous]
-if the dir previously existed, that's an error
+<!-- core[session.bough-dir.impure] -->
+<!-- The bough dir may be touched or altered, even if it exists inside the source dir -->
 
-core[workspace.new.from-source-files]
-Workspace should be reated by copying the matched files of Source::all_files
+<!-- ### Workspace -->
 
-core[workspace.bind]
-`Workplace::bind(id: &WorkspaceId) -> Result<Self, _>` creates a new struct associated with an existing directory
+<!-- core[workspace] -->
+<!-- Workspace struct exists as a handle for a directory -->
 
-core[workspacen.bind.validate-unchanged]
-Workspace::validate_unchanged() is called after bind to ensure it has not changed
+<!-- core[workspace.relationship] -->
+<!-- Workspace struct has a 1-to-1 relationship with a workspace directory -->
 
-core[workspace.validate-unchanged]
-Workspace::validate_unchanged() checks that the files from Source::all_files are bitwise equal in source and its dir.
+<!-- core[workspace.id] -->
+<!-- WorkspaceId is a randomly generated 8 char hex identifier -->
 
-### Phase
+<!-- core[workspace.new] -->
+<!-- `Workspace::new -> Result<Self, worspace::Error>` makes a new dir -->
 
-core[phase.in-source.timeout]
-A phase should be runnable in the Source dir, producing an InSourceDuration
+<!-- core[workspace.new.dir] -->
+<!-- workspace should be created inside the configured bough dir, in a `work` sub dir -->
 
-core[phase.in-workspace.timeout]
-A phase running in a workspace should be provided with a InSourceDuration struct that says how long the phase took to execute when run in the Source Dir
+<!-- core[workspace.new.dir.previous] -->
+<!-- if the dir previously existed, that's an error -->
 
-core[phase.setup.pwd]
-A PhaseRunner should be created with a pwd, resolved from the PhaseConfig, Config, or process pwd, in that order
+<!-- core[workspace.new.from-source-files] -->
+<!-- Workspace should be reated by copying the matched files of Source::all_files -->
 
-core[phase.setup.timeout]
-A PhaseRunner should be created with a timeout, resolved from the PhaseConfig, or Config, in that order
+<!-- core[workspace.bind] -->
+<!-- `Workplace::bind(id: &WorkspaceId) -> Result<Self, _>` creates a new struct associated with an existing directory -->
 
-core[phase.setup.env]
-A PhaseRunner should be created with an env var map, resolved by merging from the PhaseConfig, & Config & process environment varialbes,
+<!-- core[workspacen.bind.validate-unchanged] -->
+<!-- Workspace::validate_unchanged() is called after bind to ensure it has not changed -->
 
-core[phase.setup.env.unset]
-If a config sets an env var to `""`, that should remove it from the env map.
+<!-- core[workspace.validate-unchanged] -->
+<!-- Workspace::validate_unchanged() checks that the files from Source::all_files are bitwise equal in source and its dir. -->
 
-### Mutation
+<!-- ### Phase -->
 
-core[mut.apply.not-in-source]
-A Mutation should never be applied to a file in the source dir
+<!-- core[phase.in-source.timeout] -->
+<!-- A phase should be runnable in the Source dir, producing an InSourceDuration -->
 
-core[mut.apply.in-workspace]
-A Mutation can only be applied to a file in a workspace dir
+<!-- core[phase.in-workspace.timeout] -->
+<!-- A phase running in a workspace should be provided with a InSourceDuration struct that says how long the phase took to execute when run in the Source Dir -->
 
-core[mut.undo]
-Mutation::undo should reset the workspace to the pre-mutation state, so Workspace::validate_unchanged() succeeds again.
+<!-- core[phase.setup.pwd] -->
+<!-- A PhaseRunner should be created with a pwd, resolved from the PhaseConfig, Config, or process pwd, in that order -->
 
-core[mut.by-lang]
-A config can specify multiple languages to produce mutations for
+<!-- core[phase.setup.timeout] -->
+<!-- A PhaseRunner should be created with a timeout, resolved from the PhaseConfig, or Config, in that order -->
 
-core[mut.by-lang.files]
-Files sourced are configured using the same schema as overall source files, but do not nescisarily match the same files
+<!-- core[phase.setup.env] -->
+<!-- A PhaseRunner should be created with an env var map, resolved by merging from the PhaseConfig, & Config & process environment varialbes, -->
 
-core[mut.by-lang.files.only-one]
-No file can be matched by multiple languages
+<!-- core[phase.setup.env.unset] -->
+<!-- If a config sets an env var to `""`, that should remove it from the env map. -->
 
-core[mut.by-lang.files.in-source]
-It is an error for a language config to mutate a file that is not included in SourceDir::all_files
+<!-- ### Mutation -->
 
-### MutationResult
+<!-- core[mut.apply.not-in-source] -->
+<!-- A Mutation should never be applied to a file in the source dir -->
 
-core[mut-res.role]
-`MutationResult`s store the most recent outcoming of running a Test Phase against the specified Mutation
+<!-- core[mut.apply.in-workspace] -->
+<!-- A Mutation can only be applied to a file in a workspace dir -->
 
-core[mut-res.store]
-`MutationResult` are stored and managed via a DiskHashStore bound to `$BOUGH_DIR/state`
+<!-- core[mut.undo] -->
+<!-- Mutation::undo should reset the workspace to the pre-mutation state, so Workspace::validate_unchanged() succeeds again. -->
 
-core[mut-res.init]
-`MutationResult` is created on disk once a mutation is identified, even if the test suite has not been identified so there is no `outcome`
+<!-- core[mut.by-lang] -->
+<!-- A config can specify multiple languages to produce mutations for -->
 
-core[mut-res.hash]
-`MutationResult` identified by the hash of their mutation, not any other properties. Updating other properties should not alter its hash
+<!-- core[mut.by-lang.files] -->
+<!-- Files sourced are configured using the same schema as overall source files, but do not nescisarily match the same files -->
 
-core[mut-res.missed]
-MutationResult::outcome should be set to missed if the test phase exits zero when run on a workspace that has the coresponding mutant applied
+<!-- core[mut.by-lang.files.only-one] -->
+<!-- No file can be matched by multiple languages -->
 
-core[mut-res.caught]
-MutationResult::outcome should be set to caught if the test phase exits non-zero when run on a workspace that has the coresponding mutant applied
+<!-- core[mut.by-lang.files.in-source] -->
+<!-- It is an error for a language config to mutate a file that is not included in SourceDir::all_files -->
 
-core[mut-res.mod-at]
-MutationResult::modified_at should be updated every time the mutation result changes.
+<!-- ### MutationResult -->
 
-core[mut-res.mod-at.not-changed]
-MutationResult::modified_at should not be updated if the mutation result has not changed.
+<!-- core[mut-res.role] -->
+<!-- `MutationResult`s store the most recent outcoming of running a Test Phase against the specified Mutation -->
 
-### Testing
+<!-- core[mut-res.store] -->
+<!-- `MutationResult` are stored and managed via a DiskHashStore bound to `$BOUGH_DIR/state` -->
 
-core[testing.source]
-All tests that involve file IO should start by creating a temp dir, copying the contents of examples/vitest-js in, and operating over that temp dir
+<!-- core[mut-res.init] -->
+<!-- `MutationResult` is created on disk once a mutation is identified, even if the test suite has not been identified so there is no `outcome` -->
 
-core[testing.config]
-tests should define their config via a TOML string, tests can share config strings.
+<!-- core[mut-res.hash] -->
+<!-- `MutationResult` identified by the hash of their mutation, not any other properties. Updating other properties should not alter its hash -->
+
+<!-- core[mut-res.missed] -->
+<!-- MutationResult::outcome should be set to missed if the test phase exits zero when run on a workspace that has the coresponding mutant applied -->
+
+<!-- core[mut-res.caught] -->
+<!-- MutationResult::outcome should be set to caught if the test phase exits non-zero when run on a workspace that has the coresponding mutant applied -->
+
+<!-- core[mut-res.mod-at] -->
+<!-- MutationResult::modified_at should be updated every time the mutation result changes. -->
+
+<!-- core[mut-res.mod-at.not-changed] -->
+<!-- MutationResult::modified_at should not be updated if the mutation result has not changed. -->
+
+<!-- ### Testing -->
+
+<!-- core[testing.source] -->
+<!-- All tests that involve file IO should start by creating a temp dir, copying the contents of examples/vitest-js in, and operating over that temp dir -->
+
+<!-- core[testing.config] -->
+<!-- tests should define their config via a TOML string, tests can share config strings. -->
