@@ -1,0 +1,2 @@
+struct PhaseOutcome {}
+struct Phase {}
