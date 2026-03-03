@@ -125,6 +125,7 @@ impl Config {
             .get_phase_config(phase)
             .ok_or(ConfigError::PhaseNotConfigured { phase })?;
 
+        // r[impl core.config.pwd.root]
         let base = match &run_in {
             RunIn::SourceDir => self.source_dir.clone(),
             RunIn::Workspace(id) => self
@@ -133,6 +134,7 @@ impl Config {
                 .join(id),
         };
 
+        // r[impl core.config.pwd.phase]
         let pwd = phase_config
             .meta
             .pwd
@@ -192,6 +194,7 @@ impl Default for Config {
     }
 }
 
+// r[impl core.config.partials]
 pub struct ConfigBuilder {
     value: toml::Value,
     source_dir: PathBuf,
@@ -230,6 +233,7 @@ impl ConfigBuilder {
         }
     }
 
+    // r[impl core.config.source-dir]
     pub fn build(self) -> Result<Config, ConfigError> {
         let mut config = Config::deserialize(self.value).map_err(ConfigError::Deserialize)?;
         config.source_dir = self.source_dir;
@@ -368,18 +372,21 @@ files.include = ["src/**/*.ts"]
             .unwrap()
     }
 
+    // r[verify core.config.partials]
     #[test]
     fn override_scalar() {
         let config = build_with_override("", "threads = 4");
         assert_eq!(config.threads, 4);
     }
 
+    // r[verify core.config.partials]
     #[test]
     fn override_bough_dir() {
         let config = build_with_override(IDEAL_CONFIG, r#"bough_dir = "/override""#);
         assert_eq!(config.bough_dir, PathBuf::from("/override"));
     }
 
+    // r[verify core.config.partials]
     #[test]
     fn override_vec_replaces() {
         let config = build_with_override(
@@ -392,6 +399,7 @@ files.include = ["src/**/*.ts"]
         assert_eq!(config.test.as_ref().unwrap().command, "npm test");
     }
 
+    // r[verify core.config.partials]
     #[test]
     fn override_map_adds() {
         let config = build_with_override(
@@ -404,6 +412,7 @@ files.include = ["src/**/*.ts"]
         assert_eq!(config.test.as_ref().unwrap().meta.env["FOO"], "bar");
     }
 
+    // r[verify core.config.partials]
     #[test]
     fn override_deep_merge_phase() {
         let config = build_with_override(IDEAL_CONFIG, r#"treat_timeouts_as = "Caught""#);
@@ -419,6 +428,7 @@ files.include = ["src/**/*.ts"]
         assert!(config.init.is_none() && config.reset.is_none() && config.test.is_none());
     }
 
+    // r[verify core.config.source-dir]
     #[test]
     fn project_bough_config_parses() {
         let toml_str = include_str!("../../../bough.config.toml");
