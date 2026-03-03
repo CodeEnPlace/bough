@@ -66,10 +66,11 @@ fn typed_hash_clone_eq() {
 }
 
 #[test]
-fn typed_hash_serialize() {
+fn typed_hash_display_format() {
     let h = TestHash::from_raw([0xab; 32]);
-    let json = serde_json::to_string(&h).unwrap();
-    assert_eq!(json, format!("\"{}\"", h));
+    let displayed = h.to_string();
+    assert_eq!(displayed.len(), 64);
+    assert!(displayed.chars().all(|c| c == 'a' || c == 'b'));
 }
 
 #[test]
@@ -220,8 +221,7 @@ fn unvalidated_hash_roundtrip() {
     let h = w.hash(&mut store).unwrap();
     let hex = h.to_string();
 
-    let json = format!("\"{hex}\"");
-    let unvalidated: UnvalidatedHash = serde_json::from_str(&json).unwrap();
+    let unvalidated = UnvalidatedHash::new(hex);
     let validated = unvalidated.validate::<Widget>(&store).unwrap();
     assert_eq!(validated, h);
 }
@@ -361,9 +361,8 @@ fn hash_std_trait_impls() {
 #[cfg(feature = "disk")]
 mod disk_tests {
     use super::*;
-    use serde::{Deserialize, Serialize};
 
-    #[derive(Clone, Serialize, Deserialize, TypedHashable)]
+    #[derive(Clone, facet::Facet, TypedHashable)]
     pub struct DiskItem {
         pub val: u32,
     }
