@@ -17,31 +17,42 @@ File::resolve joins root and twig to create the fully resolved path
 core[file.transplant]
 `File::transplant(&self, root: &Root) -> Self` replace root
 
-core[file.source.config]
-FileSource holds a ref to FileSourceConfig
+core[file.files.config]
+FilesIter holds a ref to FileSourceConfig
 
-core[file.source.root]
-FileSource holds a ref to a Root
+core[file.files.root]
+FilesIter holds a ref to a Root
 
-core[file.source.iter]
-FileSource prodices FileSourceIter which iterates Twigs
+core[file.files.iter]
+FilesIter iterates Twigs
 
-core[file.source.iter.include]
+core[file.files.iter.include]
 A file should be included if it matches any of the include globs
 
-core[file.source.iter.exclude]
+core[file.files.iter.exclude]
 A file should be excluded if it matches any of the exclude globs
 
-core[file.source.iter.vcs-ignore]
+core[file.files.iter.vcs-ignore]
 A file should be excluded if it matches any of the globs in a vcs ignore file
 
-<!-- ## Base -->
+## Base
 
-<!-- core[base.root] -->
-<!-- Base impls Root -->
+core[base.root]
+Base impls Root
 
-<!-- core[base.source] -->
-<!-- Base::file_source -->
+core[base.files]
+Base::files -> FilesIter
+
+## Workspace
+
+core[workspace.root]
+Workspace impls Root
+
+core[workspace.base]
+Workspace holds &Base
+
+core[workspace.files]
+Workspace::files -> FilesIter
 
 <!-- ### Source -->
 

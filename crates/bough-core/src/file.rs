@@ -126,33 +126,19 @@ impl Root for Workspace {
     }
 }
 
-// core[impl file.source.config]
-// core[impl file.source.root]
-pub struct FileSource<'a, R: Root> {
-    root: &'a R,
-    config: &'a crate::config::FileSourceConfig,
+// core[impl file.files.config]
+// core[impl file.files.root]
+// core[impl file.files.iter]
+pub struct FilesIter {
+    twigs: std::vec::IntoIter<Twig>,
 }
 
-impl<'a, R: Root> FileSource<'a, R> {
-    pub fn new(root: &'a R, config: &'a crate::config::FileSourceConfig) -> Self {
-        Self { root, config }
-    }
+impl FilesIter {
+    pub fn new<R: Root>(root: &R, config: &crate::config::FileSourceConfig) -> Self {
+        let root = root.path();
 
-    pub fn root(&self) -> &R {
-        self.root
-    }
-
-    pub fn config(&self) -> &crate::config::FileSourceConfig {
-        self.config
-    }
-
-    // core[impl file.source.iter]
-    pub fn iter(&self) -> impl Iterator<Item = Twig> {
-        let root = self.root.path();
-
-        // core[impl file.source.iter.include]
-        let mut included: Vec<PathBuf> = self
-            .config
+        // core[impl file.files.iter.include]
+        let mut included: Vec<PathBuf> = config
             .include
             .iter()
             .filter_map(|pattern| {
@@ -167,9 +153,8 @@ impl<'a, R: Root> FileSource<'a, R> {
         included.sort();
         included.dedup();
 
-        // core[impl file.source.iter.vcs-ignore]
-        let ignore_patterns: Vec<glob::Pattern> = self
-            .config
+        // core[impl file.files.iter.vcs-ignore]
+        let ignore_patterns: Vec<glob::Pattern> = config
             .ignore_files
             .iter()
             .filter_map(|path| std::fs::read_to_string(path).ok())
@@ -191,9 +176,8 @@ impl<'a, R: Root> FileSource<'a, R> {
             })
             .collect();
 
-        // core[impl file.source.iter.exclude]
-        let exclude_patterns: Vec<glob::Pattern> = self
-            .config
+        // core[impl file.files.iter.exclude]
+        let exclude_patterns: Vec<glob::Pattern> = config
             .exclude
             .iter()
             .filter_map(|pattern| {
@@ -202,22 +186,29 @@ impl<'a, R: Root> FileSource<'a, R> {
             })
             .collect();
 
-        included
+        let twigs: Vec<Twig> = included
             .into_iter()
             .filter(move |path| {
                 let path_str = path.to_string_lossy();
-                !exclude_patterns
-                    .iter()
-                    .any(|p| p.matches(&path_str))
-                    && !ignore_patterns
-                        .iter()
-                        .any(|p| p.matches(&path_str))
+                !exclude_patterns.iter().any(|p| p.matches(&path_str))
+                    && !ignore_patterns.iter().any(|p| p.matches(&path_str))
             })
-            .filter_map(move |abs| {
+            .filter_map(|abs| {
                 abs.strip_prefix(root)
                     .ok()
                     .and_then(|rel| Twig::new(rel.to_path_buf()).ok())
             })
+            .collect();
+
+        Self { twigs: twigs.into_iter() }
+    }
+}
+
+impl Iterator for FilesIter {
+    type Item = Twig;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.twigs.next()
     }
 }
 
@@ -241,22 +232,21 @@ mod tests {
         }
     }
 
-    // core[verify file.source.config]
+    // core[verify file.files.config]
+    // core[verify file.files.root]
+    // core[verify file.files.iter]
     #[test]
-    fn file_source_holds_config() {
-        let config = crate::config::FileSourceConfig::default();
-        let root = TestRoot::new("/tmp/project");
-        let fs = FileSource::new(&root, &config);
-        assert_eq!(fs.config().include, config.include);
-    }
-
-    // core[verify file.source.root]
-    #[test]
-    fn file_source_holds_root() {
-        let config = crate::config::FileSourceConfig::default();
-        let root = TestRoot::new("/tmp/project");
-        let fs = FileSource::new(&root, &config);
-        assert_eq!(fs.root().path(), root.path());
+    fn files_iter_takes_root_and_config() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("a.txt"), "content").unwrap();
+        let root = TestRoot::new(dir.path());
+        let config = crate::config::FileSourceConfig {
+            include: vec!["*.txt".into()],
+            ..Default::default()
+        };
+        let twigs: Vec<_> = FilesIter::new(&root, &config).collect();
+        assert_eq!(twigs.len(), 1);
+        assert_eq!(twigs[0].path(), Path::new("a.txt"));
     }
 
     // core[verify file.source]
@@ -369,14 +359,16 @@ mod tests {
         }
     }
 
-    fn sorted_twigs(fs: &FileSource<TestRoot>) -> Vec<PathBuf> {
-        let mut twigs: Vec<PathBuf> = fs.iter().map(|t| t.path().to_path_buf()).collect();
+    fn sorted_twigs(root: &TestRoot, config: &crate::config::FileSourceConfig) -> Vec<PathBuf> {
+        let mut twigs: Vec<PathBuf> = FilesIter::new(root, config)
+            .map(|t| t.path().to_path_buf())
+            .collect();
         twigs.sort();
         twigs
     }
 
-    // core[verify file.source.iter]
-    // core[verify file.source.iter.include]
+    // core[verify file.files.iter]
+    // core[verify file.files.iter.include]
     #[test]
     fn iter_includes_matching_files() {
         let dir = tempfile::tempdir().unwrap();
@@ -386,15 +378,14 @@ mod tests {
             include: vec!["src/**/*.js".into()],
             ..Default::default()
         };
-        let fs = FileSource::new(&root, &config);
-        let twigs = sorted_twigs(&fs);
+        let twigs = sorted_twigs(&root, &config);
         assert_eq!(twigs, vec![
             PathBuf::from("src/index.js"),
             PathBuf::from("src/utils.js"),
         ]);
     }
 
-    // core[verify file.source.iter.include]
+    // core[verify file.files.iter.include]
     #[test]
     fn iter_includes_multiple_globs() {
         let dir = tempfile::tempdir().unwrap();
@@ -404,8 +395,7 @@ mod tests {
             include: vec!["src/**/*.js".into(), "**/*.md".into()],
             ..Default::default()
         };
-        let fs = FileSource::new(&root, &config);
-        let twigs = sorted_twigs(&fs);
+        let twigs = sorted_twigs(&root, &config);
         assert_eq!(twigs, vec![
             PathBuf::from("README.md"),
             PathBuf::from("src/index.js"),
@@ -413,7 +403,7 @@ mod tests {
         ]);
     }
 
-    // core[verify file.source.iter.exclude]
+    // core[verify file.files.iter.exclude]
     #[test]
     fn iter_excludes_matching_files() {
         let dir = tempfile::tempdir().unwrap();
@@ -424,8 +414,7 @@ mod tests {
             exclude: vec!["build/**".into()],
             ..Default::default()
         };
-        let fs = FileSource::new(&root, &config);
-        let twigs = sorted_twigs(&fs);
+        let twigs = sorted_twigs(&root, &config);
         assert_eq!(twigs, vec![
             PathBuf::from("src/index.js"),
             PathBuf::from("src/utils.js"),
@@ -433,7 +422,7 @@ mod tests {
         ]);
     }
 
-    // core[verify file.source.iter.vcs-ignore]
+    // core[verify file.files.iter.vcs-ignore]
     #[test]
     fn iter_respects_vcs_ignore() {
         let dir = tempfile::tempdir().unwrap();
@@ -446,8 +435,7 @@ mod tests {
             ignore_files: vec![ignore_path],
             ..Default::default()
         };
-        let fs = FileSource::new(&root, &config);
-        let twigs = sorted_twigs(&fs);
+        let twigs = sorted_twigs(&root, &config);
         assert_eq!(twigs, vec![
             PathBuf::from("src/index.js"),
             PathBuf::from("src/utils.js"),
