@@ -200,13 +200,17 @@ fn span_from_node(node: &tree_sitter::Node<'_>) -> Span {
     )
 }
 
+// core[impl mutant.iter.find.js.statement]
 impl LanguageDriver for JavascriptDriver {
     fn check_node(
         &self,
-        _node: &tree_sitter::Node<'_>,
+        node: &tree_sitter::Node<'_>,
         _file_content: &[u8],
     ) -> Option<(MutantKind, Span)> {
-        None
+        match node.kind() {
+            "statement_block" => Some((MutantKind::StatementBlock, span_from_node(node))),
+            _ => None,
+        }
     }
 }
 
@@ -269,9 +273,13 @@ mod tests {
     use std::path::PathBuf;
 
     fn make_base() -> (tempfile::TempDir, Base) {
+        make_js_base("const a = 1;")
+    }
+
+    fn make_js_base(content: &str) -> (tempfile::TempDir, Base) {
         let dir = tempfile::tempdir().unwrap();
         std::fs::create_dir_all(dir.path().join("src")).unwrap();
-        std::fs::write(dir.path().join("src/a.js"), "const a = 1;").unwrap();
+        std::fs::write(dir.path().join("src/a.js"), content).unwrap();
         let base = Base::new(
             dir.path().to_path_buf(),
             FileSourceConfig {
@@ -406,11 +414,29 @@ mod tests {
     // core[verify mutant.iter.find]
     #[test]
     fn mutants_iter_walks_tree_and_returns_mutants() {
-        let (_dir, base) = make_base();
+        let (_dir, base) = make_js_base("const a = 1;");
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let iter = MutantsIter::new(LanguageId::Javascript, &base, &twig).unwrap();
         let mutants: Vec<_> = iter.collect();
         assert!(mutants.is_empty());
+    }
+
+    // core[verify mutant.iter.find.js.statement]
+    #[test]
+    fn js_finds_statement_blocks() {
+        let js = "function foo() { return 1; }\nfunction bar() { return 2; }";
+        let (_dir, base) = make_js_base(js);
+        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
+        let mutants: Vec<_> = MutantsIter::new(LanguageId::Javascript, &base, &twig)
+            .unwrap()
+            .collect();
+        let blocks: Vec<_> = mutants
+            .iter()
+            .filter(|m| matches!(m.kind(), MutantKind::StatementBlock))
+            .collect();
+        assert_eq!(blocks.len(), 2);
+        assert_eq!(blocks[0].span().start().line(), 0);
+        assert_eq!(blocks[1].span().start().line(), 1);
     }
 
     // core[verify span.point]
