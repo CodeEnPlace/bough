@@ -88,7 +88,7 @@ impl Twig {
 }
 
 // core[impl file.root]
-fn validate_root(path: &PathBuf) -> Result<(), Error> {
+pub(crate) fn validate_root(path: &PathBuf) -> Result<(), Error> {
     if !path.is_absolute() {
         return Err(Error::RootMustBeAbsolute(path.clone()));
     }
