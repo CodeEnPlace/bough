@@ -2,6 +2,23 @@
 
 ## Core
 
+### File
+
+core[file.root]
+Root(PathBuf) must be created with an absolute path
+
+core[file.twig]
+Twig(PathBuf) must be created with a relative path
+
+core[file.file]
+`pub struct File<'a> { root: &'a Root, twig: &'a Twig, }`
+
+core[file.file.resolve]
+File::resolve joins root and twig to create the fully resolved path
+
+core[file.transplant]
+`File::transplant(&self, root: &Root) -> Self` replace root
+
 ### Config
 
 core[config.partials]
@@ -46,12 +63,6 @@ SourceDir struct exists as a handle for a directory
 
 core[source.new]
 `SourceDir::new(config: &Config) -> Result<Self, _>`
-
-core[source.relationship]
-SourceDir struct has a 1-to-1 relationship with the source directory
-
-core[source.pure]
-The source directory on disk must never be touched or altered
 
 core[source.files.include]
 A file should be included if it matches any of the include globs
