@@ -54,6 +54,42 @@ Workspace holds &Base
 core[workspace.files]
 Workspace::files -> FilesIter
 
+core[workspace.is-handle]
+Workspace struct exists as a handle for a directory
+
+core[workspace.relationship]
+Workspace struct has a 1-to-1 relationship with a workspace directory
+
+core[workspace.id]
+WorkspaceId is a randomly generated 8 char hex identifier
+
+core[workspace.id.is-dir-name]
+The directory a Workspace points to must be a valid WorkspaceId
+
+core[workspace.id.get]
+Workspace::id() -> WorkspaceId
+
+core[workspace.new]
+`Workspace::new(dir: PathBuf) -> Result<Self, worspace::Error>` makes a new dir
+
+core[workspace.new.dir]
+workspace should be created inside the provided dir, in a `work` sub dir
+
+core[workspace.new.dir.previous]
+if the dir previously existed, that's an error
+
+core[workspace.new.from-source-files]
+Workspace should be reated by copying the matched files of Source::all_files
+
+core[workspace.bind]
+`Workplace::bind(dir: PathBuf, id: &WorkspaceId) -> Result<Self, _>` creates a new struct associated with an existing directory
+
+core[workspacen.bind.validate-unchanged]
+Workspace::validate_unchanged() is called after bind to ensure it has not changed
+
+core[workspace.validate-unchanged]
+Workspace::validate_unchanged() checks that list and file contents of Base::files and Workspace::files are identicall
+
 <!-- ### Source -->
 
 <!-- core[source.root] -->
@@ -112,36 +148,6 @@ Workspace::files -> FilesIter
 <!-- The bough dir may be touched or altered, even if it exists inside the source dir -->
 
 <!-- ### Workspace -->
-
-<!-- core[workspace] -->
-<!-- Workspace struct exists as a handle for a directory -->
-
-<!-- core[workspace.relationship] -->
-<!-- Workspace struct has a 1-to-1 relationship with a workspace directory -->
-
-<!-- core[workspace.id] -->
-<!-- WorkspaceId is a randomly generated 8 char hex identifier -->
-
-<!-- core[workspace.new] -->
-<!-- `Workspace::new -> Result<Self, worspace::Error>` makes a new dir -->
-
-<!-- core[workspace.new.dir] -->
-<!-- workspace should be created inside the configured bough dir, in a `work` sub dir -->
-
-<!-- core[workspace.new.dir.previous] -->
-<!-- if the dir previously existed, that's an error -->
-
-<!-- core[workspace.new.from-source-files] -->
-<!-- Workspace should be reated by copying the matched files of Source::all_files -->
-
-<!-- core[workspace.bind] -->
-<!-- `Workplace::bind(id: &WorkspaceId) -> Result<Self, _>` creates a new struct associated with an existing directory -->
-
-<!-- core[workspacen.bind.validate-unchanged] -->
-<!-- Workspace::validate_unchanged() is called after bind to ensure it has not changed -->
-
-<!-- core[workspace.validate-unchanged] -->
-<!-- Workspace::validate_unchanged() checks that the files from Source::all_files are bitwise equal in source and its dir. -->
 
 <!-- ### Phase -->
 
