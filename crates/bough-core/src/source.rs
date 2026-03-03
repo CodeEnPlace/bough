@@ -63,6 +63,7 @@ impl SourceDir {
             .collect::<Result<_, _>>()
             .map_err(Error::Glob)?;
 
+        // core[impl source.files.include]
         for include in &self.files_config.include {
             let pattern = self.path.join(include).to_string_lossy().into_owned();
             for entry in glob::glob(&pattern).map_err(Error::Glob)? {
@@ -177,6 +178,33 @@ files.include = ["src/**/*.js"]
         let paths: Vec<_> = files.iter().map(|f| f.path.clone()).collect();
         assert!(paths.iter().any(|p| p.ends_with("index.js")));
         assert!(!paths.iter().any(|p| p.to_string_lossy().contains(".test.")));
+    }
+
+    // core[verify source.files.include]
+    #[test]
+    fn include_glob_matches_files() {
+        let tmp = setup_vitest_js();
+        let config_str = r#"
+[test]
+command = "npx vitest run"
+
+[files]
+include = ["src/**/*.test.js"]
+
+[mutate.js]
+files.include = ["src/**/*.js"]
+"#;
+        let v: toml::Value = toml::from_str(config_str).unwrap();
+        let config = ConfigBuilder::new(tmp.path().to_path_buf())
+            .from_value(v)
+            .build()
+            .unwrap();
+        let sd = SourceDir::new(&config).unwrap();
+        let files = sd.all_files().unwrap();
+        let paths: Vec<_> = files.iter().map(|f| f.path.clone()).collect();
+        assert!(!paths.is_empty());
+        assert!(paths.iter().all(|p| p.to_string_lossy().contains(".test.")));
+        assert!(!paths.iter().any(|p| p.ends_with("index.js")));
     }
 
     // core[verify source.files.iter]
