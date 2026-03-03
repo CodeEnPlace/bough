@@ -145,6 +145,80 @@ impl<'a, R: Root> FileSource<'a, R> {
     pub fn config(&self) -> &crate::config::FileSourceConfig {
         self.config
     }
+
+    // core[impl file.source.iter]
+    pub fn iter(&self) -> impl Iterator<Item = Twig> {
+        let root = self.root.path();
+
+        // core[impl file.source.iter.include]
+        let mut included: Vec<PathBuf> = self
+            .config
+            .include
+            .iter()
+            .filter_map(|pattern| {
+                let abs_pattern = root.join(pattern).to_string_lossy().to_string();
+                glob::glob(&abs_pattern).ok()
+            })
+            .flatten()
+            .filter_map(|r| r.ok())
+            .filter(|p| p.is_file())
+            .collect();
+
+        included.sort();
+        included.dedup();
+
+        // core[impl file.source.iter.vcs-ignore]
+        let ignore_patterns: Vec<glob::Pattern> = self
+            .config
+            .ignore_files
+            .iter()
+            .filter_map(|path| std::fs::read_to_string(path).ok())
+            .flat_map(|contents| {
+                let root = root.to_path_buf();
+                contents
+                    .lines()
+                    .filter(|l| !l.trim().is_empty() && !l.starts_with('#'))
+                    .flat_map(|l| {
+                        let trimmed = l.trim().trim_end_matches('/');
+                        let with_glob = format!("{trimmed}/**");
+                        [trimmed.to_string(), with_glob]
+                    })
+                    .filter_map(move |entry| {
+                        let abs = root.join("**").join(&entry).to_string_lossy().to_string();
+                        glob::Pattern::new(&abs).ok()
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .collect();
+
+        // core[impl file.source.iter.exclude]
+        let exclude_patterns: Vec<glob::Pattern> = self
+            .config
+            .exclude
+            .iter()
+            .filter_map(|pattern| {
+                let abs = root.join(pattern).to_string_lossy().to_string();
+                glob::Pattern::new(&abs).ok()
+            })
+            .collect();
+
+        included
+            .into_iter()
+            .filter(move |path| {
+                let path_str = path.to_string_lossy();
+                !exclude_patterns
+                    .iter()
+                    .any(|p| p.matches(&path_str))
+                    && !ignore_patterns
+                        .iter()
+                        .any(|p| p.matches(&path_str))
+            })
+            .filter_map(move |abs| {
+                abs.strip_prefix(root)
+                    .ok()
+                    .and_then(|rel| Twig::new(rel.to_path_buf()).ok())
+            })
+    }
 }
 
 #[cfg(test)]
@@ -278,6 +352,107 @@ mod tests {
 
         let mut state = bough_typed_hash::ShaState::new();
         assert!(file.hash_into(&mut state).is_err());
+    }
+
+    fn make_test_tree(dir: &std::path::Path) {
+        for p in &[
+            "src/index.js",
+            "src/utils.js",
+            "src/style.css",
+            "test/index.test.js",
+            "build/output.js",
+            "README.md",
+        ] {
+            let full = dir.join(p);
+            std::fs::create_dir_all(full.parent().unwrap()).unwrap();
+            std::fs::write(&full, "content").unwrap();
+        }
+    }
+
+    fn sorted_twigs(fs: &FileSource<TestRoot>) -> Vec<PathBuf> {
+        let mut twigs: Vec<PathBuf> = fs.iter().map(|t| t.path().to_path_buf()).collect();
+        twigs.sort();
+        twigs
+    }
+
+    // core[verify file.source.iter]
+    // core[verify file.source.iter.include]
+    #[test]
+    fn iter_includes_matching_files() {
+        let dir = tempfile::tempdir().unwrap();
+        make_test_tree(dir.path());
+        let root = TestRoot::new(dir.path());
+        let config = crate::config::FileSourceConfig {
+            include: vec!["src/**/*.js".into()],
+            ..Default::default()
+        };
+        let fs = FileSource::new(&root, &config);
+        let twigs = sorted_twigs(&fs);
+        assert_eq!(twigs, vec![
+            PathBuf::from("src/index.js"),
+            PathBuf::from("src/utils.js"),
+        ]);
+    }
+
+    // core[verify file.source.iter.include]
+    #[test]
+    fn iter_includes_multiple_globs() {
+        let dir = tempfile::tempdir().unwrap();
+        make_test_tree(dir.path());
+        let root = TestRoot::new(dir.path());
+        let config = crate::config::FileSourceConfig {
+            include: vec!["src/**/*.js".into(), "**/*.md".into()],
+            ..Default::default()
+        };
+        let fs = FileSource::new(&root, &config);
+        let twigs = sorted_twigs(&fs);
+        assert_eq!(twigs, vec![
+            PathBuf::from("README.md"),
+            PathBuf::from("src/index.js"),
+            PathBuf::from("src/utils.js"),
+        ]);
+    }
+
+    // core[verify file.source.iter.exclude]
+    #[test]
+    fn iter_excludes_matching_files() {
+        let dir = tempfile::tempdir().unwrap();
+        make_test_tree(dir.path());
+        let root = TestRoot::new(dir.path());
+        let config = crate::config::FileSourceConfig {
+            include: vec!["**/*.js".into()],
+            exclude: vec!["build/**".into()],
+            ..Default::default()
+        };
+        let fs = FileSource::new(&root, &config);
+        let twigs = sorted_twigs(&fs);
+        assert_eq!(twigs, vec![
+            PathBuf::from("src/index.js"),
+            PathBuf::from("src/utils.js"),
+            PathBuf::from("test/index.test.js"),
+        ]);
+    }
+
+    // core[verify file.source.iter.vcs-ignore]
+    #[test]
+    fn iter_respects_vcs_ignore() {
+        let dir = tempfile::tempdir().unwrap();
+        make_test_tree(dir.path());
+        let ignore_path = dir.path().join(".gitignore");
+        std::fs::write(&ignore_path, "build/\n").unwrap();
+        let root = TestRoot::new(dir.path());
+        let config = crate::config::FileSourceConfig {
+            include: vec!["**/*.js".into()],
+            ignore_files: vec![ignore_path],
+            ..Default::default()
+        };
+        let fs = FileSource::new(&root, &config);
+        let twigs = sorted_twigs(&fs);
+        assert_eq!(twigs, vec![
+            PathBuf::from("src/index.js"),
+            PathBuf::from("src/utils.js"),
+            PathBuf::from("test/index.test.js"),
+        ]);
     }
 
     // core[verify file.transplant]
