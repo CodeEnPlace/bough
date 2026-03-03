@@ -126,6 +126,27 @@ impl Root for Workspace {
     }
 }
 
+// core[impl file.source.config]
+// core[impl file.source.root]
+pub struct FileSource<'a, R: Root> {
+    root: &'a R,
+    config: &'a crate::config::FileSourceConfig,
+}
+
+impl<'a, R: Root> FileSource<'a, R> {
+    pub fn new(root: &'a R, config: &'a crate::config::FileSourceConfig) -> Self {
+        Self { root, config }
+    }
+
+    pub fn root(&self) -> &R {
+        self.root
+    }
+
+    pub fn config(&self) -> &crate::config::FileSourceConfig {
+        self.config
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -144,6 +165,24 @@ mod tests {
         fn path(&self) -> &Path {
             &self.0
         }
+    }
+
+    // core[verify file.source.config]
+    #[test]
+    fn file_source_holds_config() {
+        let config = crate::config::FileSourceConfig::default();
+        let root = TestRoot::new("/tmp/project");
+        let fs = FileSource::new(&root, &config);
+        assert_eq!(fs.config().include, config.include);
+    }
+
+    // core[verify file.source.root]
+    #[test]
+    fn file_source_holds_root() {
+        let config = crate::config::FileSourceConfig::default();
+        let root = TestRoot::new("/tmp/project");
+        let fs = FileSource::new(&root, &config);
+        assert_eq!(fs.root().path(), root.path());
     }
 
     // core[verify file.source]

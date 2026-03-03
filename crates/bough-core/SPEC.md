@@ -35,7 +35,13 @@ A file should be excluded if it matches any of the exclude globs
 core[file.source.iter.vcs-ignore]
 A file should be excluded if it matches any of the globs in a vcs ignore file
 
-### Base
+<!-- ## Base -->
+
+<!-- core[base.root] -->
+<!-- Base impls Root -->
+
+<!-- core[base.source] -->
+<!-- Base::file_source -->
 
 <!-- ### Source -->
 
