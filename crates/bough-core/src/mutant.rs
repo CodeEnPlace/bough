@@ -1,3 +1,4 @@
+use bough_typed_hash::{HashInto, TypedHashable};
 use crate::{LanguageId, base::Base, file::Twig};
 
 trait LanguageDriver {
@@ -21,11 +22,15 @@ pub struct MutantsIter<'a> {
     found: std::vec::IntoIter<(MutantKind, Span)>,
 }
 
+#[derive(bough_typed_hash::TypedHash)]
+pub struct MutantHash([u8; 32]);
+
 // core[impl mutant.lang]
 // core[impl mutant.base]
 // core[impl mutant.twig]
 // core[impl mutant.kind]
 // core[impl mutant.span]
+#[derive(Clone)]
 pub struct Mutant<'a> {
     lang: LanguageId,
     base: &'a Base,
@@ -60,7 +65,19 @@ impl<'a> Mutant<'a> {
     }
 }
 
+// core[impl mutant.hash.typed-hashable]
+impl HashInto for Mutant<'_> {
+    fn hash_into(&self, state: &mut bough_typed_hash::ShaState) -> Result<(), std::io::Error> {
+        Ok(())
+    }
+}
+
+impl TypedHashable for Mutant<'_> {
+    type Hash = MutantHash;
+}
+
 // core[impl span.point]
+#[derive(Clone)]
 pub struct Span {
     start: Point,
     end: Point,
@@ -83,17 +100,20 @@ impl Span {
 // core[impl point.line]
 // core[impl point.col]
 // core[impl point.byte]
+#[derive(Clone)]
 pub struct Point {
     line: usize,
     col: usize,
     byte: usize,
 }
 
+#[derive(Clone)]
 pub enum BinaryOpMutationKind {
     Add,
     Sub,
 }
 
+#[derive(Clone)]
 pub enum MutantKind {
     StatementBlock,
     Condition,
@@ -556,6 +576,25 @@ mod tests {
             .filter(|m| matches!(m.kind(), MutantKind::BinaryOp(_)))
             .collect();
         assert!(binary_ops.is_empty());
+    }
+
+    use bough_typed_hash::HashStore;
+
+    // core[verify mutant.hash.typed-hashable]
+    #[test]
+    fn mutant_produces_typed_hash() {
+        let (_dir, base) = make_base();
+        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
+        let m = Mutant::new(
+            LanguageId::Javascript,
+            &base,
+            &twig,
+            MutantKind::StatementBlock,
+            Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
+        );
+        let mut store = bough_typed_hash::MemoryHashStore::new();
+        let hash = m.hash(&mut store).unwrap();
+        assert!(store.contains(&hash));
     }
 
     // core[verify span.point]
