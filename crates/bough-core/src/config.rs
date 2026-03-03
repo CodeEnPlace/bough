@@ -1,9 +1,25 @@
-use crate::Outcome;
-use crate::languages::LanguageId;
-use crate::phase::{Phase, PhaseRunner, RunIn};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub enum Outcome {
+    #[default]
+    Missed,
+    Caught,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize, clap::ValueEnum, bough_typed_hash::HashInto)]
+#[serde(rename_all = "lowercase")]
+pub enum LanguageId {
+    #[serde(alias = "js")]
+    #[value(alias = "js")]
+    Javascript,
+    #[serde(alias = "ts")]
+    #[value(alias = "ts")]
+    Typescript,
+}
 
 fn default_threads() -> u32 {
     1
@@ -108,79 +124,6 @@ pub struct Config {
     pub(crate) mutate: HashMap<LanguageId, MutateLanguageConfig>,
 }
 
-impl Config {
-    pub fn workspaces_dir(&self) -> PathBuf {
-        self.resolve_path(&self.bough_dir).join("workspaces")
-    }
-
-    pub fn get_phase_config(&self, phase: Phase) -> Option<&PhaseConfig> {
-        match phase {
-            Phase::Init => self.init.as_ref(),
-            Phase::Reset => self.reset.as_ref(),
-            Phase::Test => self.test.as_ref(),
-        }
-    }
-
-    pub fn new_phase_runner(
-        &self,
-        phase: Phase,
-        run_in: RunIn,
-    ) -> Result<PhaseRunner, ConfigError> {
-        let phase_config = self
-            .get_phase_config(phase)
-            .ok_or(ConfigError::PhaseNotConfigured { phase })?;
-
-        // core[impl config.pwd.root]
-        let base = match &run_in {
-            RunIn::SourceDir => self.source_dir.clone(),
-            RunIn::Workspace(id) => self
-                .resolve_path(&self.bough_dir)
-                .join("workspaces")
-                .join(id),
-        };
-
-        // core[impl config.pwd.phase]
-        let pwd = phase_config
-            .meta
-            .pwd
-            .as_deref()
-            .or_else(|| self.meta_defaults.pwd.as_deref())
-            .map(|p| base.join(p))
-            .unwrap_or(base);
-
-        let mut env = self.meta_defaults.env.clone();
-        env.extend(phase_config.meta.env.clone());
-
-        let timeout = TimeoutConfig {
-            absolute: phase_config
-                .meta
-                .timeout
-                .absolute
-                .or(self.meta_defaults.timeout.absolute),
-            relative: phase_config
-                .meta
-                .timeout
-                .relative
-                .or(self.meta_defaults.timeout.relative),
-        };
-
-        Ok(PhaseRunner {
-            pwd,
-            env,
-            timeout,
-            command: phase_config.command.clone(),
-        })
-    }
-
-    fn resolve_path(&self, path: &Path) -> PathBuf {
-        if path.is_absolute() {
-            path.to_owned()
-        } else {
-            self.source_dir.join(path)
-        }
-    }
-}
-
 impl Default for Config {
     fn default() -> Self {
         Self {
@@ -249,16 +192,12 @@ impl ConfigBuilder {
 
 #[derive(Debug)]
 pub enum ConfigError {
-    PhaseNotConfigured { phase: Phase },
     Deserialize(toml::de::Error),
 }
 
 impl std::fmt::Display for ConfigError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ConfigError::PhaseNotConfigured { phase } => {
-                write!(f, "phase '{phase:?}' not configured")
-            }
             ConfigError::Deserialize(e) => write!(f, "failed to deserialize config: {e}"),
         }
     }
@@ -269,8 +208,6 @@ impl std::error::Error for ConfigError {}
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Outcome;
-    use crate::languages::LanguageId;
 
     const IDEAL_CONFIG: &str = r#"
 threads = 1
