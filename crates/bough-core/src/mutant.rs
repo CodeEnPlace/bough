@@ -66,8 +66,10 @@ impl<'a> Mutant<'a> {
 }
 
 // core[impl mutant.hash.typed-hashable]
+// core[impl mutant.hash.lang]
 impl HashInto for Mutant<'_> {
     fn hash_into(&self, state: &mut bough_typed_hash::ShaState) -> Result<(), std::io::Error> {
+        self.lang.hash_into(state)?;
         Ok(())
     }
 }
@@ -579,6 +581,31 @@ mod tests {
     }
 
     use bough_typed_hash::HashStore;
+
+    fn hash_mutant(mutant: &Mutant<'_>) -> [u8; 32] {
+        use bough_typed_hash::sha2::Digest;
+        let mut state = bough_typed_hash::ShaState::new();
+        mutant.hash_into(&mut state).unwrap();
+        state.finalize().into()
+    }
+
+    // core[verify mutant.hash.lang]
+    #[test]
+    fn mutant_hash_includes_lang() {
+        let (_dir, base) = make_base();
+        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
+        let m1 = Mutant::new(
+            LanguageId::Javascript, &base, &twig,
+            MutantKind::StatementBlock,
+            Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
+        );
+        let m2 = Mutant::new(
+            LanguageId::Typescript, &base, &twig,
+            MutantKind::StatementBlock,
+            Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
+        );
+        assert_ne!(hash_mutant(&m1), hash_mutant(&m2));
+    }
 
     // core[verify mutant.hash.typed-hashable]
     #[test]
