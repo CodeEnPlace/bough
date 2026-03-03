@@ -19,12 +19,43 @@ struct MutantsIter<'a> {
     driver: Box<dyn LanguageDriver>,
 }
 
-struct Mutant<'a> {
+// core[impl mutant.lang]
+// core[impl mutant.base]
+// core[impl mutant.twig]
+// core[impl mutant.kind]
+// core[impl mutant.span]
+pub struct Mutant<'a> {
     lang: LanguageId,
     base: &'a Base,
     twig: &'a Twig,
     kind: MutantKind,
     span: Span,
+}
+
+impl<'a> Mutant<'a> {
+    pub fn new(lang: LanguageId, base: &'a Base, twig: &'a Twig, kind: MutantKind, span: Span) -> Self {
+        Self { lang, base, twig, kind, span }
+    }
+
+    pub fn lang(&self) -> LanguageId {
+        self.lang
+    }
+
+    pub fn base(&self) -> &Base {
+        self.base
+    }
+
+    pub fn twig(&self) -> &Twig {
+        self.twig
+    }
+
+    pub fn kind(&self) -> &MutantKind {
+        &self.kind
+    }
+
+    pub fn span(&self) -> &Span {
+        &self.span
+    }
 }
 
 // core[impl span.point]
@@ -56,12 +87,12 @@ pub struct Point {
     byte: usize,
 }
 
-enum BinaryOpMutationKind {
+pub enum BinaryOpMutationKind {
     Add,
     Sub,
 }
 
-enum MutantKind {
+pub enum MutantKind {
     StatementBlock,
     Condition,
     BinaryOp(BinaryOpMutationKind),
@@ -161,6 +192,102 @@ mod tests {
     fn point_byte() {
         let p = Point::new(10, 5, 42);
         assert_eq!(p.byte(), 42);
+    }
+
+    use crate::base::Base;
+    use crate::config::FileSourceConfig;
+    use crate::file::Root;
+    use std::path::PathBuf;
+
+    fn make_base() -> (tempfile::TempDir, Base) {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(dir.path().join("src")).unwrap();
+        std::fs::write(dir.path().join("src/a.js"), "const a = 1;").unwrap();
+        let base = Base::new(
+            dir.path().to_path_buf(),
+            FileSourceConfig {
+                include: vec!["src/**/*.js".into()],
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        (dir, base)
+    }
+
+    // core[verify mutant.lang]
+    #[test]
+    fn mutant_owns_language_id() {
+        let (_dir, base) = make_base();
+        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
+        let m = Mutant::new(
+            LanguageId::Javascript,
+            &base,
+            &twig,
+            MutantKind::StatementBlock,
+            Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
+        );
+        assert_eq!(m.lang(), LanguageId::Javascript);
+    }
+
+    // core[verify mutant.base]
+    #[test]
+    fn mutant_holds_base() {
+        let (_dir, base) = make_base();
+        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
+        let m = Mutant::new(
+            LanguageId::Javascript,
+            &base,
+            &twig,
+            MutantKind::StatementBlock,
+            Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
+        );
+        assert_eq!(m.base().path(), base.path());
+    }
+
+    // core[verify mutant.twig]
+    #[test]
+    fn mutant_holds_twig() {
+        let (_dir, base) = make_base();
+        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
+        let m = Mutant::new(
+            LanguageId::Javascript,
+            &base,
+            &twig,
+            MutantKind::StatementBlock,
+            Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
+        );
+        assert_eq!(m.twig().path(), std::path::Path::new("src/a.js"));
+    }
+
+    // core[verify mutant.kind]
+    #[test]
+    fn mutant_owns_kind() {
+        let (_dir, base) = make_base();
+        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
+        let m = Mutant::new(
+            LanguageId::Javascript,
+            &base,
+            &twig,
+            MutantKind::Condition,
+            Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
+        );
+        assert!(matches!(m.kind(), MutantKind::Condition));
+    }
+
+    // core[verify mutant.span]
+    #[test]
+    fn mutant_owns_span() {
+        let (_dir, base) = make_base();
+        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
+        let m = Mutant::new(
+            LanguageId::Javascript,
+            &base,
+            &twig,
+            MutantKind::StatementBlock,
+            Span::new(Point::new(3, 5, 30), Point::new(7, 1, 60)),
+        );
+        assert_eq!(m.span().start().line(), 3);
+        assert_eq!(m.span().end().byte(), 60);
     }
 
     // core[verify span.point]
