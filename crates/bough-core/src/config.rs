@@ -108,6 +108,10 @@ pub struct Config {
 }
 
 impl Config {
+    pub fn workspaces_dir(&self) -> PathBuf {
+        self.resolve_path(&self.bough_dir).join("workspaces")
+    }
+
     pub fn get_phase_config(&self, phase: Phase) -> Option<&PhaseConfig> {
         match phase {
             Phase::Init => self.init.as_ref(),
