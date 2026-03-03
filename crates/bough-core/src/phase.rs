@@ -2,7 +2,30 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use crate::config::TimeoutConfig;
-use crate::file::{Root, Twig};
+use crate::file::{File, Root, Twig};
+
+#[derive(Debug)]
+pub enum Error {
+    Io(std::io::Error),
+    EmptyCommand,
+}
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Error::Io(e) => write!(f, "phase io error: {e}"),
+            Error::EmptyCommand => write!(f, "phase command is empty"),
+        }
+    }
+}
+
+impl std::error::Error for Error {}
+
+impl From<std::io::Error> for Error {
+    fn from(e: std::io::Error) -> Self {
+        Error::Io(e)
+    }
+}
 
 // core[impl phase.root]
 // core[impl phase.pwd]
@@ -36,6 +59,32 @@ impl<'a, R: Root> Phase<'a, R> {
 
     pub fn timeout(&self) -> &TimeoutConfig {
         &self.timeout
+    }
+
+    // core[impl phase.run]
+    // core[impl phase.run.pwd]
+    // core[impl phase.run.env]
+    pub fn run(&self) -> Result<PhaseOutcome, Error> {
+        if self.cmd.is_empty() {
+            return Err(Error::EmptyCommand);
+        }
+
+        let working_dir = File::new(self.root, &self.pwd).resolve();
+
+        let start = std::time::Instant::now();
+        let output = std::process::Command::new(&self.cmd[0])
+            .args(&self.cmd[1..])
+            .current_dir(&working_dir)
+            .envs(&self.env)
+            .output()?;
+        let duration = start.elapsed();
+
+        Ok(PhaseOutcome {
+            stdout: output.stdout,
+            stderr: output.stderr,
+            exit_code: output.status.code().unwrap_or(-1),
+            duration,
+        })
     }
 }
 
@@ -164,5 +213,95 @@ mod tests {
             duration: std::time::Duration::from_millis(50),
         };
         assert_eq!(outcome.exit_code(), 1);
+    }
+
+    // core[verify phase.run]
+    #[test]
+    fn phase_run_executes_command() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = TestRoot(dir.path().to_path_buf());
+        let phase = Phase {
+            cmd: vec!["echo".into(), "hello".into()],
+            pwd: crate::file::Twig::new(PathBuf::from(".")).unwrap(),
+            ..make_phase(&root)
+        };
+        let outcome = phase.run().unwrap();
+        assert_eq!(outcome.exit_code(), 0);
+        assert_eq!(String::from_utf8_lossy(outcome.stdout()).trim(), "hello");
+    }
+
+    // core[verify phase.run]
+    // core[verify phase.out.exit]
+    #[test]
+    fn phase_run_nonzero_exit_is_ok() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = TestRoot(dir.path().to_path_buf());
+        let phase = Phase {
+            cmd: vec!["sh".into(), "-c".into(), "exit 42".into()],
+            pwd: crate::file::Twig::new(PathBuf::from(".")).unwrap(),
+            ..make_phase(&root)
+        };
+        let outcome = phase.run().unwrap();
+        assert_eq!(outcome.exit_code(), 42);
+    }
+
+    // core[verify phase.run.pwd]
+    #[test]
+    fn phase_run_uses_pwd() {
+        let dir = tempfile::tempdir().unwrap();
+        let sub = dir.path().join("subdir");
+        std::fs::create_dir_all(&sub).unwrap();
+        let root = TestRoot(dir.path().to_path_buf());
+        let phase = Phase {
+            cmd: vec!["pwd".into()],
+            pwd: crate::file::Twig::new(PathBuf::from("subdir")).unwrap(),
+            ..make_phase(&root)
+        };
+        let outcome = phase.run().unwrap();
+        let out = String::from_utf8_lossy(outcome.stdout());
+        assert!(out.trim().ends_with("subdir"), "pwd should end with subdir, got: {out}");
+    }
+
+    // core[verify phase.run.env]
+    #[test]
+    fn phase_run_applies_env() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = TestRoot(dir.path().to_path_buf());
+        let phase = Phase {
+            cmd: vec!["sh".into(), "-c".into(), "echo $MY_VAR".into()],
+            pwd: crate::file::Twig::new(PathBuf::from(".")).unwrap(),
+            env: HashMap::from([("MY_VAR".into(), "hello_env".into())]),
+            ..make_phase(&root)
+        };
+        let outcome = phase.run().unwrap();
+        assert_eq!(String::from_utf8_lossy(outcome.stdout()).trim(), "hello_env");
+    }
+
+    // core[verify phase.out.stdio]
+    #[test]
+    fn phase_run_captures_stderr() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = TestRoot(dir.path().to_path_buf());
+        let phase = Phase {
+            cmd: vec!["sh".into(), "-c".into(), "echo err >&2".into()],
+            pwd: crate::file::Twig::new(PathBuf::from(".")).unwrap(),
+            ..make_phase(&root)
+        };
+        let outcome = phase.run().unwrap();
+        assert_eq!(String::from_utf8_lossy(outcome.stderr()).trim(), "err");
+    }
+
+    // core[verify phase.out.duration]
+    #[test]
+    fn phase_run_records_duration() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = TestRoot(dir.path().to_path_buf());
+        let phase = Phase {
+            cmd: vec!["sleep".into(), "0.05".into()],
+            pwd: crate::file::Twig::new(PathBuf::from(".")).unwrap(),
+            ..make_phase(&root)
+        };
+        let outcome = phase.run().unwrap();
+        assert!(outcome.duration() >= std::time::Duration::from_millis(40));
     }
 }
