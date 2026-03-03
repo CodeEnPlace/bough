@@ -3,7 +3,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 use crate::languages::driver_for;
-use crate::source::{SourceFile, Span};
+use crate::source::{MutationSourceFile, Span};
 
 use tree_sitter::{Parser, StreamingIterator};
 
@@ -63,7 +63,7 @@ pub enum MutationKind {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, HashInto)]
 pub struct Mutant {
-    pub src: SourceFile,
+    pub src: MutationSourceFile,
     pub span: Span,
     pub kind: MutationKind,
 }
@@ -110,7 +110,7 @@ impl bough_typed_hash::TypedHashable for MutationResult {
     type Hash = MutationHash;
 }
 
-pub fn find_mutants(file: &SourceFile, content: &str) -> Vec<Mutant> {
+pub fn find_mutants(file: &MutationSourceFile, content: &str) -> Vec<Mutant> {
     let driver = driver_for(file.language);
     let mut parser = Parser::new();
     parser
@@ -126,7 +126,7 @@ pub fn find_mutants(file: &SourceFile, content: &str) -> Vec<Mutant> {
     loop {
         let node = cursor.node();
 
-        if let Some((kind, span)) = driver.mutation_kind_for_node(node, bytes, file) {
+        if let Some((kind, span)) = driver.mutation_kind_for_node(node, bytes, &file.file) {
             mutants.push(Mutant {
                 src: file.clone(),
                 span,
@@ -209,12 +209,14 @@ pub fn apply_mutation(content: &str, span: &Span, replacement: &str) -> String {
 mod tests {
     use super::*;
     use crate::languages::LanguageId;
-    use crate::source::SourceFile;
+    use crate::source::{MutationSourceFile, SourceFile};
     use std::path::PathBuf;
 
-    fn src(content: &str) -> (SourceFile, String) {
-        let file =
-            SourceFile::from_content(PathBuf::from("test.js"), content, LanguageId::Javascript);
+    fn src(content: &str) -> (MutationSourceFile, String) {
+        let file = MutationSourceFile::new(
+            SourceFile::new(PathBuf::from("test.js")),
+            LanguageId::Javascript,
+        );
         (file, content.to_string())
     }
 
@@ -264,11 +266,11 @@ mod tests {
         assert!(replacements.contains(&"||"));
     }
 
-    fn src_on_disk(content: &str) -> (SourceFile, String, tempfile::TempDir) {
+    fn src_on_disk(content: &str) -> (MutationSourceFile, String, tempfile::TempDir) {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("test.js");
         std::fs::write(&path, content).unwrap();
-        let file = SourceFile::from_content(path, content, LanguageId::Javascript);
+        let file = MutationSourceFile::new(SourceFile::new(path), LanguageId::Javascript);
         (file, content.to_string(), dir)
     }
 

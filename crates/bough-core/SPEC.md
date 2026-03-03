@@ -128,6 +128,18 @@ A Mutation can only be applied to a file in a workspace dir
 core[mut.undo]
 Mutation::undo should reset the workspace to the pre-mutation state, so Workspace::validate_unchanged() succeeds again.
 
+core[mut.by-lang]
+A config can specify multiple languages to produce mutations for
+
+core[mut.by-lang.files]
+Files sourced are configured using the same schema as overall source files, but do not nescisarily match the same files
+
+core[mut.by-lang.files.only-one]
+No file can be matched by multiple languages
+
+core[mut.by-lang.files.in-source]
+It is an error for a language config to mutate a file that is not included in SourceDir::all_files
+
 ### MutationResult
 
 core[mut-res.role]
