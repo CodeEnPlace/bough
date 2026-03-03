@@ -506,7 +506,7 @@ mod tests {
         assert_eq!(conditions.len(), 1);
         let span = conditions[0].span();
         let condition_text = &js[span.start().byte()..span.end().byte()];
-        assert!(condition_text.contains("i < 10"), "condition should contain 'i < 10', got: {condition_text}");
+        assert_eq!(condition_text, "i < 10");
     }
 
     // core[verify mutant.iter.find.js.binary.add]
