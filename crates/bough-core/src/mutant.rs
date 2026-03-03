@@ -69,17 +69,36 @@ impl<'a> Mutant<'a> {
 // core[impl mutant.hash.lang]
 // core[impl mutant.hash.twig]
 // core[impl mutant.hash.file]
+// core[impl mutant.hash.span]
 impl HashInto for Mutant<'_> {
     fn hash_into(&self, state: &mut bough_typed_hash::ShaState) -> Result<(), std::io::Error> {
         self.lang.hash_into(state)?;
         self.twig.path().as_os_str().as_encoded_bytes().hash_into(state)?;
         crate::file::File::new(self.base, self.twig).hash_into(state)?;
+        self.span.hash_into(state)?;
         Ok(())
     }
 }
 
 impl TypedHashable for Mutant<'_> {
     type Hash = MutantHash;
+}
+
+impl HashInto for Span {
+    fn hash_into(&self, state: &mut bough_typed_hash::ShaState) -> Result<(), std::io::Error> {
+        self.start.hash_into(state)?;
+        self.end.hash_into(state)?;
+        Ok(())
+    }
+}
+
+impl HashInto for Point {
+    fn hash_into(&self, state: &mut bough_typed_hash::ShaState) -> Result<(), std::io::Error> {
+        self.line.hash_into(state)?;
+        self.col.hash_into(state)?;
+        self.byte.hash_into(state)?;
+        Ok(())
+    }
 }
 
 // core[impl span.point]
@@ -666,6 +685,24 @@ mod tests {
             LanguageId::Javascript, &base2, &twig,
             MutantKind::StatementBlock,
             Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
+        );
+        assert_ne!(hash_mutant(&m1), hash_mutant(&m2));
+    }
+
+    // core[verify mutant.hash.span]
+    #[test]
+    fn mutant_hash_includes_span() {
+        let (_dir, base) = make_base();
+        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
+        let m1 = Mutant::new(
+            LanguageId::Javascript, &base, &twig,
+            MutantKind::StatementBlock,
+            Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
+        );
+        let m2 = Mutant::new(
+            LanguageId::Javascript, &base, &twig,
+            MutantKind::StatementBlock,
+            Span::new(Point::new(5, 3, 40), Point::new(8, 0, 70)),
         );
         assert_ne!(hash_mutant(&m1), hash_mutant(&m2));
     }
