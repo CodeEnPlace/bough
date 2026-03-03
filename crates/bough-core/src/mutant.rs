@@ -208,13 +208,25 @@ impl LanguageDriver for JavascriptDriver {
     fn check_node(
         &self,
         node: &tree_sitter::Node<'_>,
-        _file_content: &[u8],
+        file_content: &[u8],
     ) -> Option<(MutantKind, Span)> {
         match node.kind() {
             "statement_block" => Some((MutantKind::StatementBlock, span_from_node(node))),
             "if_statement" | "while_statement" | "for_statement" => {
                 let condition = node.child_by_field_name("condition")?;
                 Some((MutantKind::Condition, span_from_node(&condition)))
+            }
+            // core[impl mutant.iter.find.js.binary.add]
+            // core[impl mutant.iter.find.js.binary.sub]
+            "binary_expression" => {
+                let op_node = node.child_by_field_name("operator")?;
+                let op_text = op_node.utf8_text(file_content).ok()?;
+                let kind = match op_text {
+                    "+" => BinaryOpMutationKind::Add,
+                    "-" => BinaryOpMutationKind::Sub,
+                    _ => return None,
+                };
+                Some((MutantKind::BinaryOp(kind), span_from_node(node)))
             }
             _ => None,
         }
@@ -495,6 +507,55 @@ mod tests {
         let span = conditions[0].span();
         let condition_text = &js[span.start().byte()..span.end().byte()];
         assert!(condition_text.contains("i < 10"), "condition should contain 'i < 10', got: {condition_text}");
+    }
+
+    // core[verify mutant.iter.find.js.binary.add]
+    #[test]
+    fn js_finds_add_binary_op() {
+        let js = "const x = a + b;";
+        let (_dir, base) = make_js_base(js);
+        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
+        let mutants: Vec<_> = MutantsIter::new(LanguageId::Javascript, &base, &twig)
+            .unwrap()
+            .collect();
+        let adds: Vec<_> = mutants
+            .iter()
+            .filter(|m| matches!(m.kind(), MutantKind::BinaryOp(BinaryOpMutationKind::Add)))
+            .collect();
+        assert_eq!(adds.len(), 1);
+    }
+
+    // core[verify mutant.iter.find.js.binary.sub]
+    #[test]
+    fn js_finds_sub_binary_op() {
+        let js = "const x = a - b;";
+        let (_dir, base) = make_js_base(js);
+        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
+        let mutants: Vec<_> = MutantsIter::new(LanguageId::Javascript, &base, &twig)
+            .unwrap()
+            .collect();
+        let subs: Vec<_> = mutants
+            .iter()
+            .filter(|m| matches!(m.kind(), MutantKind::BinaryOp(BinaryOpMutationKind::Sub)))
+            .collect();
+        assert_eq!(subs.len(), 1);
+    }
+
+    // core[verify mutant.iter.find.js.binary.add]
+    // core[verify mutant.iter.find.js.binary.sub]
+    #[test]
+    fn js_ignores_other_binary_ops() {
+        let js = "const x = a * b;";
+        let (_dir, base) = make_js_base(js);
+        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
+        let mutants: Vec<_> = MutantsIter::new(LanguageId::Javascript, &base, &twig)
+            .unwrap()
+            .collect();
+        let binary_ops: Vec<_> = mutants
+            .iter()
+            .filter(|m| matches!(m.kind(), MutantKind::BinaryOp(_)))
+            .collect();
+        assert!(binary_ops.is_empty());
     }
 
     // core[verify span.point]
