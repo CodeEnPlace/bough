@@ -219,6 +219,21 @@ mod tests {
         assert_eq!(twigs[0].path(), Path::new("a.txt"));
     }
 
+    // core[verify file.root]
+    #[test]
+    fn validate_root_accepts_absolute_path() {
+        assert!(validate_root(&PathBuf::from("/tmp/project")).is_ok());
+    }
+
+    // core[verify file.root]
+    #[test]
+    fn validate_root_rejects_relative_path() {
+        assert!(matches!(
+            validate_root(&PathBuf::from("relative/path")),
+            Err(Error::RootMustBeAbsolute(_))
+        ));
+    }
+
     // core[verify file.twig]
     #[test]
     fn twig_accepts_relative_path() {
