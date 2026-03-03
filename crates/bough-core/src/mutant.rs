@@ -201,6 +201,9 @@ fn span_from_node(node: &tree_sitter::Node<'_>) -> Span {
 }
 
 // core[impl mutant.iter.find.js.statement]
+// core[impl mutant.iter.find.js.condition.if]
+// core[impl mutant.iter.find.js.condition.while]
+// core[impl mutant.iter.find.js.condition.for]
 impl LanguageDriver for JavascriptDriver {
     fn check_node(
         &self,
@@ -209,6 +212,10 @@ impl LanguageDriver for JavascriptDriver {
     ) -> Option<(MutantKind, Span)> {
         match node.kind() {
             "statement_block" => Some((MutantKind::StatementBlock, span_from_node(node))),
+            "if_statement" | "while_statement" | "for_statement" => {
+                let condition = node.child_by_field_name("condition")?;
+                Some((MutantKind::Condition, span_from_node(&condition)))
+            }
             _ => None,
         }
     }
@@ -437,6 +444,57 @@ mod tests {
         assert_eq!(blocks.len(), 2);
         assert_eq!(blocks[0].span().start().line(), 0);
         assert_eq!(blocks[1].span().start().line(), 1);
+    }
+
+    // core[verify mutant.iter.find.js.condition.if]
+    #[test]
+    fn js_finds_if_condition() {
+        let js = "if (x > 0) { console.log(x); }";
+        let (_dir, base) = make_js_base(js);
+        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
+        let mutants: Vec<_> = MutantsIter::new(LanguageId::Javascript, &base, &twig)
+            .unwrap()
+            .collect();
+        let conditions: Vec<_> = mutants
+            .iter()
+            .filter(|m| matches!(m.kind(), MutantKind::Condition))
+            .collect();
+        assert_eq!(conditions.len(), 1);
+    }
+
+    // core[verify mutant.iter.find.js.condition.while]
+    #[test]
+    fn js_finds_while_condition() {
+        let js = "while (i < 10) { i++; }";
+        let (_dir, base) = make_js_base(js);
+        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
+        let mutants: Vec<_> = MutantsIter::new(LanguageId::Javascript, &base, &twig)
+            .unwrap()
+            .collect();
+        let conditions: Vec<_> = mutants
+            .iter()
+            .filter(|m| matches!(m.kind(), MutantKind::Condition))
+            .collect();
+        assert_eq!(conditions.len(), 1);
+    }
+
+    // core[verify mutant.iter.find.js.condition.for]
+    #[test]
+    fn js_finds_for_condition() {
+        let js = "for (let i = 0; i < 10; i++) { console.log(i); }";
+        let (_dir, base) = make_js_base(js);
+        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
+        let mutants: Vec<_> = MutantsIter::new(LanguageId::Javascript, &base, &twig)
+            .unwrap()
+            .collect();
+        let conditions: Vec<_> = mutants
+            .iter()
+            .filter(|m| matches!(m.kind(), MutantKind::Condition))
+            .collect();
+        assert_eq!(conditions.len(), 1);
+        let span = conditions[0].span();
+        let condition_text = &js[span.start().byte()..span.end().byte()];
+        assert!(condition_text.contains("i < 10"), "condition should contain 'i < 10', got: {condition_text}");
     }
 
     // core[verify span.point]
