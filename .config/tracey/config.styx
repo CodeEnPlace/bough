@@ -1,0 +1,13 @@
+specs (
+    {
+        name bough
+        include (SPEC.md)
+        impls (
+            {
+                name rust
+                include (crates/**/*.rs)
+                exclude (target/**)
+            }
+        )
+    }
+)
