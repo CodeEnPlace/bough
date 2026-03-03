@@ -1,10 +1,9 @@
 use crate::{HashError, HashStore, TypedHash, TypedHashable};
-use serde::{Deserialize, Serialize};
 
-/// Serde intermediate for deserializing hashes without store validation.
+/// Intermediate type for deserializing hashes without store validation.
 ///
-/// `TypedHash` does not implement `Deserialize` — deserialized hashes would
-/// bypass store validation. Use `UnvalidatedHash` as the serde target, then
+/// `TypedHash` does not implement deserialization — deserialized hashes would
+/// bypass store validation. Use `UnvalidatedHash` as the target, then
 /// call [`.validate()`](UnvalidatedHash::validate) with a store.
 ///
 /// # Example
@@ -20,14 +19,19 @@ use serde::{Deserialize, Serialize};
 /// let hash = record.hash(&mut store).unwrap();
 /// let hex = hash.to_string();
 ///
-/// let unvalidated: UnvalidatedHash = serde_json::from_str(&format!("\"{hex}\"")).unwrap();
+/// let unvalidated = UnvalidatedHash::new(hex);
 /// let validated = unvalidated.validate::<Record>(&store).unwrap();
 /// assert_eq!(validated.as_bytes(), hash.as_bytes());
 /// ```
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, facet::Facet)]
+#[facet(transparent)]
 pub struct UnvalidatedHash(String);
 
 impl UnvalidatedHash {
+    pub fn new(hex: String) -> Self {
+        Self(hex)
+    }
+
     /// Validate against a store, supporting both full hex and unique prefixes.
     pub fn validate<T: TypedHashable>(
         self,

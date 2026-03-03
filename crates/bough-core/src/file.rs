@@ -1,5 +1,4 @@
 use bough_typed_hash::{HashInto, TypedHashable};
-use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
 #[derive(bough_typed_hash::TypedHash)]
@@ -23,7 +22,7 @@ pub struct File<'a, R: Root> {
 }
 
 // core[impl file.twig]
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Twig(PathBuf);
 
 impl std::fmt::Display for Error {

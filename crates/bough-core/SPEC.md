@@ -84,31 +84,62 @@ Workspace should be reated by copying the matched files of Source::all_files
 core[workspace.bind]
 `Workplace::bind(dir: PathBuf, id: &WorkspaceId) -> Result<Self, _>` creates a new struct associated with an existing directory
 
-core[workspacen.bind.validate-unchanged]
+core[workspace.bind.validate-unchanged]
 Workspace::validate_unchanged() is called after bind to ensure it has not changed
 
 core[workspace.validate-unchanged]
 Workspace::validate_unchanged() checks that list and file contents of Base::files and Workspace::files are identicall
 
-<!-- ### Source -->
+## Phase
 
-<!-- core[source.root] -->
-<!-- Source should impl Root -->
+core[phase.root]
+Phase holds &Root
 
-<!-- core[source.files] -->
-<!-- Source should include a FileSourceConfig -->
+core[phase.pwd]
+Phase holds a twig called pwd
 
-<!-- core[source.files.include] -->
-<!-- A file should be included if it matches any of the include globs -->
+core[phase.env]
+Phase holds a HashMap<String,String> of env vars to apply
 
-<!-- core[source.files.exclude] -->
-<!-- A file should be excluded if it matches any of the exclude globs -->
+core[phase.cmd]
+Phase::cmd is a Vec<String> that will be run as a sub process
 
-<!-- core[source.files.vcs-ignore] -->
-<!-- A file should be excluded if it matches any of the globs in a vcs ignore file -->
+core[phase.timeout]
+Phase::timeout is a TimeoutConfig
 
-<!-- core[source.files.iter] -->
-<!-- `SourceDir::all_files -> Iter<SourceFile>` returns an iterator overall files matched -->
+core[phase.run]
+Phase::run() -> Result<_,_> runs Phase::cmd
+
+core[phase.run.pwd]
+Phase::run runs the command in File { root, pwd }
+
+core[phase.run.env]
+Phase::run runs the command with the secified env vars
+
+core[phase.run.timeout]
+Phase::run stops the command if it extends the provided timeout
+
+core[phase.run.timeout.absolute]
+Phase::run stops the command if it extends the provided absolute timeout
+
+core[phase.run.timeout.relative]
+Phase::run takes an optional Duration. it stops the command if this Duration is defined, and it extends the provided relative `timeout * provided_duration`
+
+core[phase.out]
+`Phase::run -> Result<PhaseOutcome , _>`
+
+core[phase.out.stdio]
+PhaseOutcome should retain all stdout and stderr from the command
+
+core[phase.out.exit]
+PhaseOutcome should contain the exit code of the command, non-zero should return Ok(), not Err
+
+core[phase.out.duration]
+PhaseOutcome should contain the duration time of the command
+
+## Mutant
+
+## Mutation
 
 <!-- ### Config -->
 

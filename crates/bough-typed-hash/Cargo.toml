@@ -6,14 +6,14 @@ license.workspace = true
 
 [features]
 default = []
-disk = ["serde_json"]
+disk = ["facet-json"]
 
 [dependencies]
 sha2 = "0.10"
-serde = { version = "1", features = ["derive"] }
-serde_json = { version = "1", optional = true }
+facet = "0.44"
+facet-json = { version = "0.44", optional = true }
 bough-typed-hash-derive = { path = "../bough-typed-hash-derive" }
 
 [dev-dependencies]
-serde_json = "1"
+facet-json = "0.44"
 tempfile = "3"

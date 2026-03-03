@@ -138,7 +138,7 @@ impl<T: TypedHashable> HashStore<T> for ChainStore<'_, T> {
 
 /// File-backed hash store. Values stored as `{hash_hex}.json` in a directory.
 ///
-/// Requires the `disk` feature. Values must impl `Serialize + DeserializeOwned`.
+/// Requires the `disk` feature. Values must impl `Facet`.
 /// Scans the directory at construction to build an index. Values are lazily
 /// loaded and cached on first access via interior mutability.
 #[cfg(feature = "disk")]
@@ -154,7 +154,7 @@ struct DiskEntry<T: TypedHashable> {
 }
 
 #[cfg(feature = "disk")]
-impl<T: TypedHashable + serde::Serialize + serde::de::DeserializeOwned> DiskHashStore<T> {
+impl<T: TypedHashable + for<'a> facet::Facet<'a>> DiskHashStore<T> {
     /// Create a store backed by `dir`. Scans existing `*.json` files to build the index.
     pub fn new(dir: std::path::PathBuf) -> Self {
         let mut entries = Vec::new();
@@ -181,14 +181,14 @@ impl<T: TypedHashable + serde::Serialize + serde::de::DeserializeOwned> DiskHash
 }
 
 #[cfg(feature = "disk")]
-impl<T: TypedHashable + serde::Serialize + serde::de::DeserializeOwned> HashStore<T> for DiskHashStore<T> {
+impl<T: TypedHashable + for<'a> facet::Facet<'a>> HashStore<T> for DiskHashStore<T> {
     fn get(&self, hash: &T::Hash) -> Option<&T> {
         let mut entries = self.entries.borrow_mut();
         let idx = entries.iter().position(|e| e.hash.as_bytes() == hash.as_bytes())?;
         if entries[idx].value.is_none() {
             let path = self.hash_path(hash);
             let data = std::fs::read_to_string(&path).ok()?;
-            let value: T = serde_json::from_str(&data).ok()?;
+            let value: T = facet_json::from_str(&data).ok()?;
             entries[idx].value = Some(value);
         }
         drop(entries);
@@ -201,7 +201,7 @@ impl<T: TypedHashable + serde::Serialize + serde::de::DeserializeOwned> HashStor
     fn insert(&mut self, value: T) {
         let hash = raw_hash(&value);
         std::fs::create_dir_all(&self.dir).expect("failed to create store directory");
-        let json = serde_json::to_string_pretty(&value).expect("failed to serialize");
+        let json = facet_json::to_string(&value).expect("failed to serialize");
         std::fs::write(self.hash_path(&hash), json).expect("failed to write hash file");
         let mut entries = self.entries.borrow_mut();
         if let Some(entry) = entries.iter_mut().find(|e| e.hash.as_bytes() == hash.as_bytes()) {

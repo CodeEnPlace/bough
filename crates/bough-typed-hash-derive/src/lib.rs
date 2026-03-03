@@ -74,9 +74,7 @@ pub fn derive_hash_into(input: TokenStream) -> TokenStream {
 /// Derives a full `TypedHash` implementation on a newtype wrapping `[u8; 32]`.
 ///
 /// Generates: `TypedHash`, `HashInto`, `TypedHashable<Hash = Self>`, `Display`
-/// (hex), `Serialize` (hex string), `Debug`, `Clone`, `PartialEq`, `Eq`, `Hash`.
-///
-/// Does **not** generate `FromStr`, `From<[u8; 32]>`, or `Deserialize`.
+/// (hex), `Debug`, `Clone`, `PartialEq`, `Eq`, `Hash`.
 #[proc_macro_derive(TypedHash)]
 pub fn derive_typed_hash(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -168,11 +166,6 @@ pub fn derive_typed_hash(input: TokenStream) -> TokenStream {
             }
         }
 
-        impl serde::Serialize for #name {
-            fn serialize<S: serde::Serializer>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error> {
-                serializer.serialize_str(&self.to_string())
-            }
-        }
     };
 
     expanded.into()
