@@ -114,7 +114,7 @@ core[phase.run.pwd]
 Phase::run runs the command in File { root, pwd }
 
 core[phase.run.env]
-Phase::run runs the command with the secified env vars
+Phase::run runs the command with the specified env vars
 
 core[phase.run.timeout]
 Phase::run stops the command if it extends the provided timeout

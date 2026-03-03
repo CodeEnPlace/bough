@@ -140,47 +140,57 @@ impl Default for Config {
 
 // core[impl config.partials]
 pub struct ConfigBuilder {
-    value: toml::Value,
+    value: facet_value::Value,
     source_dir: PathBuf,
 }
 
 impl ConfigBuilder {
     pub fn new(source_dir: PathBuf) -> Self {
         Self {
-            value: toml::Value::Table(Default::default()),
+            value: facet_value::Value::from_iter(std::iter::empty::<(&str, facet_value::Value)>()),
             source_dir,
         }
     }
 
-    pub fn from_value(self, value: toml::Value) -> Self {
-        Self { value, ..self }
+    pub fn from_toml(self, toml_str: &str) -> Result<Self, ConfigError> {
+        let value: facet_value::Value = facet_toml::from_str(toml_str)
+            .map_err(|e| ConfigError::Deserialize(e.to_string()))?;
+        Ok(Self { value, ..self })
     }
 
-    pub fn override_with(mut self, patch: toml::Value) -> Self {
-        self.value = Self::deep_merge(self.value, patch);
-        self
+    pub fn override_with_toml(self, toml_str: &str) -> Result<Self, ConfigError> {
+        let patch: facet_value::Value = facet_toml::from_str(toml_str)
+            .map_err(|e| ConfigError::Deserialize(e.to_string()))?;
+        Ok(Self {
+            value: Self::deep_merge(self.value, patch),
+            ..self
+        })
     }
 
-    fn deep_merge(base: toml::Value, patch: toml::Value) -> toml::Value {
-        match (base, patch) {
-            (toml::Value::Table(mut base_map), toml::Value::Table(patch_map)) => {
-                for (k, v) in patch_map {
-                    let merged = match base_map.remove(&k) {
-                        Some(existing) => Self::deep_merge(existing, v),
-                        None => v,
+    fn deep_merge(base: facet_value::Value, patch: facet_value::Value) -> facet_value::Value {
+        match (base.as_object(), patch.as_object()) {
+            (Some(base_obj), Some(patch_obj)) => {
+                let mut merged = base_obj.clone();
+                for (k, v) in patch_obj.iter() {
+                    let merged_val = if let Some(existing) = merged.remove(k) {
+                        Self::deep_merge(existing, v.clone())
+                    } else {
+                        v.clone()
                     };
-                    base_map.insert(k, merged);
+                    merged.insert(k.clone(), merged_val);
                 }
-                toml::Value::Table(base_map)
+                facet_value::Value::from(merged)
             }
-            (_, patch) => patch,
+            _ => patch,
         }
     }
 
     // core[impl config.source-dir]
     pub fn build(self) -> Result<Config, ConfigError> {
-        let toml_str = toml::to_string(&self.value).map_err(|e| ConfigError::Serialize(e.to_string()))?;
-        let mut config: Config = facet_toml::from_str(&toml_str).map_err(|e| ConfigError::Deserialize(e.to_string()))?;
+        let json_str = facet_json::to_string(&self.value)
+            .map_err(|e| ConfigError::Serialize(e.to_string()))?;
+        let mut config: Config = facet_json::from_str(&json_str)
+            .map_err(|e| ConfigError::Deserialize(e.to_string()))?;
         config.source_dir = self.source_dir;
         Ok(config)
     }
@@ -252,8 +262,8 @@ command = "npx vitest run"
 files.include = ["src/**/*.ts"]
 "#;
 
-    fn toml_to_value(s: &str) -> toml::Value {
-        toml::from_str(s).unwrap()
+    fn builder_from(s: &str) -> ConfigBuilder {
+        ConfigBuilder::new(PathBuf::new()).from_toml(s).unwrap()
     }
 
     #[test]
@@ -306,9 +316,9 @@ files.include = ["src/**/*.ts"]
     }
 
     fn build_with_override(base: &str, patch: &str) -> Config {
-        ConfigBuilder::new(PathBuf::new())
-            .from_value(toml_to_value(base))
-            .override_with(toml_to_value(patch))
+        builder_from(base)
+            .override_with_toml(patch)
+            .unwrap()
             .build()
             .unwrap()
     }
@@ -373,8 +383,7 @@ files.include = ["src/**/*.ts"]
     #[test]
     fn project_bough_config_parses() {
         let toml_str = include_str!("../../../bough.config.toml");
-        ConfigBuilder::new(PathBuf::new())
-            .from_value(toml_to_value(toml_str))
+        builder_from(toml_str)
             .build()
             .expect("bough.config.toml should parse without errors or invariant violations");
     }
