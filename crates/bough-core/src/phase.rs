@@ -367,6 +367,7 @@ mod tests {
         assert!(outcome.duration() >= std::time::Duration::from_millis(40));
     }
 
+    // core[verify phase.run.timeout]
     // core[verify phase.run.timeout.absolute]
     #[test]
     fn phase_run_kills_on_absolute_timeout() {
