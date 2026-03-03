@@ -32,7 +32,10 @@ struct Span {
     end: Point,
 }
 
-struct Point {
+// core[impl point.line]
+// core[impl point.col]
+// core[impl point.byte]
+pub struct Point {
     line: usize,
     col: usize,
     byte: usize,
@@ -99,5 +102,49 @@ impl LanguageDriver for TypescriptDriver {
         file_content: &[u8],
     ) -> Option<(MutantKind, Span)> {
         todo!()
+    }
+}
+
+impl Point {
+    pub fn new(line: usize, col: usize, byte: usize) -> Self {
+        Self { line, col, byte }
+    }
+
+    pub fn line(&self) -> usize {
+        self.line
+    }
+
+    pub fn col(&self) -> usize {
+        self.col
+    }
+
+    pub fn byte(&self) -> usize {
+        self.byte
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // core[verify point.line]
+    #[test]
+    fn point_line() {
+        let p = Point::new(10, 5, 42);
+        assert_eq!(p.line(), 10);
+    }
+
+    // core[verify point.col]
+    #[test]
+    fn point_col() {
+        let p = Point::new(10, 5, 42);
+        assert_eq!(p.col(), 5);
+    }
+
+    // core[verify point.byte]
+    #[test]
+    fn point_byte() {
+        let p = Point::new(10, 5, 42);
+        assert_eq!(p.byte(), 42);
     }
 }
