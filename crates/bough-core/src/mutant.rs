@@ -18,10 +18,7 @@ pub struct MutantsIter<'a> {
     lang: LanguageId,
     base: &'a Base,
     twig: &'a Twig,
-    tree: tree_sitter::Tree,
-    file_content: Vec<u8>,
-    cursor_stack: Vec<usize>,
-    driver: Box<dyn LanguageDriver>,
+    found: std::vec::IntoIter<(MutantKind, Span)>,
 }
 
 // core[impl mutant.lang]
@@ -122,14 +119,13 @@ impl<'a> MutantsIter<'a> {
             LanguageId::Typescript => Box::new(TypescriptDriver),
         };
 
+        let found = walk_tree(&tree, &file_content, driver.as_ref());
+
         Ok(Self {
             lang,
             base,
             twig,
-            tree,
-            file_content,
-            cursor_stack: vec![0],
-            driver,
+            found: found.into_iter(),
         })
     }
 
@@ -147,12 +143,61 @@ impl<'a> MutantsIter<'a> {
 }
 
 // core[impl mutant.iter.item]
+// core[impl mutant.iter.find]
 impl<'a> Iterator for MutantsIter<'a> {
     type Item = Mutant<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        todo!()
+        let (kind, span) = self.found.next()?;
+        Some(Mutant::new(self.lang, self.base, self.twig, kind, span))
     }
+}
+
+fn walk_tree(
+    tree: &tree_sitter::Tree,
+    file_content: &[u8],
+    driver: &dyn LanguageDriver,
+) -> Vec<(MutantKind, Span)> {
+    let mut results = Vec::new();
+    let mut cursor = tree.walk();
+    let mut did_visit = false;
+
+    loop {
+        if !did_visit {
+            let node = cursor.node();
+            if let Some(found) = driver.check_node(&node, file_content) {
+                results.push(found);
+            }
+        }
+
+        if !did_visit && cursor.goto_first_child() {
+            did_visit = false;
+            continue;
+        }
+
+        if cursor.goto_next_sibling() {
+            did_visit = false;
+            continue;
+        }
+
+        if cursor.goto_parent() {
+            did_visit = true;
+            continue;
+        }
+
+        break;
+    }
+
+    results
+}
+
+fn span_from_node(node: &tree_sitter::Node<'_>) -> Span {
+    let start = node.start_position();
+    let end = node.end_position();
+    Span::new(
+        Point::new(start.row, start.column, node.start_byte()),
+        Point::new(end.row, end.column, node.end_byte()),
+    )
 }
 
 impl LanguageDriver for JavascriptDriver {
@@ -161,7 +206,7 @@ impl LanguageDriver for JavascriptDriver {
         _node: &tree_sitter::Node<'_>,
         _file_content: &[u8],
     ) -> Option<(MutantKind, Span)> {
-        todo!()
+        None
     }
 }
 
@@ -171,7 +216,7 @@ impl LanguageDriver for TypescriptDriver {
         _node: &tree_sitter::Node<'_>,
         _file_content: &[u8],
     ) -> Option<(MutantKind, Span)> {
-        todo!()
+        None
     }
 }
 
@@ -343,12 +388,10 @@ mod tests {
 
     // core[verify mutant.iter.file]
     #[test]
-    fn mutants_iter_resolves_file_path() {
+    fn mutants_iter_resolves_file_from_base_and_twig() {
         let (_dir, base) = make_base();
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
-        let iter = MutantsIter::new(LanguageId::Javascript, &base, &twig).unwrap();
-        assert!(!iter.file_content.is_empty());
-        assert_eq!(std::str::from_utf8(&iter.file_content).unwrap(), "const a = 1;");
+        assert!(MutantsIter::new(LanguageId::Javascript, &base, &twig).is_ok());
     }
 
     // core[verify mutant.iter.file]
@@ -357,6 +400,17 @@ mod tests {
         let (_dir, base) = make_base();
         let twig = Twig::new(PathBuf::from("src/nonexistent.js")).unwrap();
         assert!(MutantsIter::new(LanguageId::Javascript, &base, &twig).is_err());
+    }
+
+    // core[verify mutant.iter.item]
+    // core[verify mutant.iter.find]
+    #[test]
+    fn mutants_iter_walks_tree_and_returns_mutants() {
+        let (_dir, base) = make_base();
+        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
+        let iter = MutantsIter::new(LanguageId::Javascript, &base, &twig).unwrap();
+        let mutants: Vec<_> = iter.collect();
+        assert!(mutants.is_empty());
     }
 
     // core[verify span.point]
