@@ -39,7 +39,35 @@ impl<'a, R: Root> Phase<'a, R> {
     }
 }
 
-pub struct PhaseOutcome {}
+// core[impl phase.out]
+// core[impl phase.out.stdio]
+// core[impl phase.out.exit]
+// core[impl phase.out.duration]
+#[derive(Debug)]
+pub struct PhaseOutcome {
+    stdout: Vec<u8>,
+    stderr: Vec<u8>,
+    exit_code: i32,
+    duration: std::time::Duration,
+}
+
+impl PhaseOutcome {
+    pub fn stdout(&self) -> &[u8] {
+        &self.stdout
+    }
+
+    pub fn stderr(&self) -> &[u8] {
+        &self.stderr
+    }
+
+    pub fn exit_code(&self) -> i32 {
+        self.exit_code
+    }
+
+    pub fn duration(&self) -> std::time::Duration {
+        self.duration
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -106,5 +134,35 @@ mod tests {
         let phase = Phase { timeout, ..make_phase(&root) };
         assert_eq!(phase.timeout().absolute, Some(30));
         assert_eq!(phase.timeout().relative, Some(3));
+    }
+
+    // core[verify phase.out]
+    // core[verify phase.out.stdio]
+    // core[verify phase.out.exit]
+    // core[verify phase.out.duration]
+    #[test]
+    fn phase_outcome_holds_all_fields() {
+        let outcome = PhaseOutcome {
+            stdout: b"hello\n".to_vec(),
+            stderr: b"warn\n".to_vec(),
+            exit_code: 0,
+            duration: std::time::Duration::from_millis(150),
+        };
+        assert_eq!(outcome.stdout(), b"hello\n");
+        assert_eq!(outcome.stderr(), b"warn\n");
+        assert_eq!(outcome.exit_code(), 0);
+        assert_eq!(outcome.duration(), std::time::Duration::from_millis(150));
+    }
+
+    // core[verify phase.out.exit]
+    #[test]
+    fn phase_outcome_nonzero_exit_is_not_error() {
+        let outcome = PhaseOutcome {
+            stdout: vec![],
+            stderr: b"error\n".to_vec(),
+            exit_code: 1,
+            duration: std::time::Duration::from_millis(50),
+        };
+        assert_eq!(outcome.exit_code(), 1);
     }
 }
