@@ -79,12 +79,15 @@ impl LanguageDriver for JavascriptDriver {
 
 #[cfg(test)]
 mod tests {
-    use crate::{BinaryOpKind, MutationKind, SourceFile, apply_mutation, find_mutants, generate_mutations};
+    use crate::{BinaryOpKind, MutationKind, MutationSourceFile, SourceFile, apply_mutation, find_mutants, generate_mutations};
     use crate::languages::LanguageId;
     use std::path::PathBuf;
 
-    fn src(content: &str) -> (SourceFile, String) {
-        let file = SourceFile::from_content(PathBuf::from("test.js"), content, LanguageId::Javascript);
+    fn src(content: &str) -> (MutationSourceFile, String) {
+        let file = MutationSourceFile::new(
+            SourceFile::new(PathBuf::from("test.js")),
+            LanguageId::Javascript,
+        );
         (file, content.to_string())
     }
 

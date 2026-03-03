@@ -103,6 +103,7 @@ pub struct Config {
     pub(crate) init: Option<PhaseConfig>,
     pub(crate) reset: Option<PhaseConfig>,
     pub(crate) test: Option<PhaseConfig>,
+    pub(crate) files: FileSourceConfig,
     #[serde(default)]
     pub(crate) mutate: HashMap<LanguageId, MutateLanguageConfig>,
 }
@@ -193,6 +194,7 @@ impl Default for Config {
             init: None,
             reset: None,
             test: None,
+            files: FileSourceConfig::default(),
             mutate: HashMap::new(),
         }
     }
