@@ -1,17 +1,20 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
+use crate::config::TimeoutConfig;
 use crate::file::{Root, Twig};
 
 // core[impl phase.root]
 // core[impl phase.pwd]
 // core[impl phase.env]
 // core[impl phase.cmd]
+// core[impl phase.timeout]
 pub struct Phase<'a, R: Root> {
     root: &'a R,
     pwd: Twig,
     env: HashMap<String, String>,
     cmd: Vec<String>,
+    timeout: TimeoutConfig,
 }
 
 impl<'a, R: Root> Phase<'a, R> {
@@ -29,6 +32,10 @@ impl<'a, R: Root> Phase<'a, R> {
 
     pub fn cmd(&self) -> &[String] {
         &self.cmd
+    }
+
+    pub fn timeout(&self) -> &TimeoutConfig {
+        &self.timeout
     }
 }
 
@@ -52,6 +59,7 @@ mod tests {
             pwd: crate::file::Twig::new(PathBuf::from("src")).unwrap(),
             env: HashMap::new(),
             cmd: vec!["echo".into(), "hello".into()],
+            timeout: TimeoutConfig::default(),
         }
     }
 
@@ -88,5 +96,15 @@ mod tests {
         let cmd = vec!["npx".into(), "vitest".into(), "run".into()];
         let phase = Phase { cmd, ..make_phase(&root) };
         assert_eq!(phase.cmd(), &["npx", "vitest", "run"]);
+    }
+
+    // core[verify phase.timeout]
+    #[test]
+    fn phase_holds_timeout() {
+        let root = TestRoot(PathBuf::from("/tmp/project"));
+        let timeout = TimeoutConfig { absolute: Some(30), relative: Some(3) };
+        let phase = Phase { timeout, ..make_phase(&root) };
+        assert_eq!(phase.timeout().absolute, Some(30));
+        assert_eq!(phase.timeout().relative, Some(3));
     }
 }
