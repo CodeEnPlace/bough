@@ -52,7 +52,10 @@ impl<'a, R: Root> File<'a, R> {
     }
 
     // core[impl file.transplant]
-    pub fn transplant<'b, S: Root>(&self, root: &'b S) -> File<'b, S> where 'a: 'b {
+    pub fn transplant<'b, S: Root>(&self, root: &'b S) -> File<'b, S>
+    where
+        'a: 'b,
+    {
         File {
             root,
             twig: self.twig,
@@ -90,40 +93,6 @@ fn validate_root(path: &PathBuf) -> Result<(), Error> {
         return Err(Error::RootMustBeAbsolute(path.clone()));
     }
     Ok(())
-}
-
-// core[impl file.source]
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct Source(PathBuf);
-
-impl Source {
-    pub fn new(path: PathBuf) -> Result<Self, Error> {
-        validate_root(&path)?;
-        Ok(Self(path))
-    }
-}
-
-impl Root for Source {
-    fn path(&self) -> &Path {
-        &self.0
-    }
-}
-
-// core[impl file.workspace]
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct Workspace(PathBuf);
-
-impl Workspace {
-    pub fn new(path: PathBuf) -> Result<Self, Error> {
-        validate_root(&path)?;
-        Ok(Self(path))
-    }
-}
-
-impl Root for Workspace {
-    fn path(&self) -> &Path {
-        &self.0
-    }
 }
 
 // core[impl file.files.config]
@@ -200,7 +169,9 @@ impl FilesIter {
             })
             .collect();
 
-        Self { twigs: twigs.into_iter() }
+        Self {
+            twigs: twigs.into_iter(),
+        }
     }
 }
 
@@ -247,40 +218,6 @@ mod tests {
         let twigs: Vec<_> = FilesIter::new(&root, &config).collect();
         assert_eq!(twigs.len(), 1);
         assert_eq!(twigs[0].path(), Path::new("a.txt"));
-    }
-
-    // core[verify file.source]
-    #[test]
-    fn source_accepts_absolute_path() {
-        let root = Source::new(PathBuf::from("/tmp/project")).unwrap();
-        assert_eq!(root.path(), Path::new("/tmp/project"));
-    }
-
-    // core[verify file.source]
-    // core[verify file.root]
-    #[test]
-    fn source_rejects_relative_path() {
-        assert!(matches!(
-            Source::new(PathBuf::from("relative/path")),
-            Err(Error::RootMustBeAbsolute(_))
-        ));
-    }
-
-    // core[verify file.workspace]
-    #[test]
-    fn workspace_accepts_absolute_path() {
-        let root = Workspace::new(PathBuf::from("/tmp/workspace")).unwrap();
-        assert_eq!(root.path(), Path::new("/tmp/workspace"));
-    }
-
-    // core[verify file.workspace]
-    // core[verify file.root]
-    #[test]
-    fn workspace_rejects_relative_path() {
-        assert!(matches!(
-            Workspace::new(PathBuf::from("relative/path")),
-            Err(Error::RootMustBeAbsolute(_))
-        ));
     }
 
     // core[verify file.twig]
@@ -379,10 +316,10 @@ mod tests {
             ..Default::default()
         };
         let twigs = sorted_twigs(&root, &config);
-        assert_eq!(twigs, vec![
-            PathBuf::from("src/index.js"),
-            PathBuf::from("src/utils.js"),
-        ]);
+        assert_eq!(
+            twigs,
+            vec![PathBuf::from("src/index.js"), PathBuf::from("src/utils.js"),]
+        );
     }
 
     // core[verify file.files.iter.include]
@@ -396,11 +333,14 @@ mod tests {
             ..Default::default()
         };
         let twigs = sorted_twigs(&root, &config);
-        assert_eq!(twigs, vec![
-            PathBuf::from("README.md"),
-            PathBuf::from("src/index.js"),
-            PathBuf::from("src/utils.js"),
-        ]);
+        assert_eq!(
+            twigs,
+            vec![
+                PathBuf::from("README.md"),
+                PathBuf::from("src/index.js"),
+                PathBuf::from("src/utils.js"),
+            ]
+        );
     }
 
     // core[verify file.files.iter.exclude]
@@ -415,11 +355,14 @@ mod tests {
             ..Default::default()
         };
         let twigs = sorted_twigs(&root, &config);
-        assert_eq!(twigs, vec![
-            PathBuf::from("src/index.js"),
-            PathBuf::from("src/utils.js"),
-            PathBuf::from("test/index.test.js"),
-        ]);
+        assert_eq!(
+            twigs,
+            vec![
+                PathBuf::from("src/index.js"),
+                PathBuf::from("src/utils.js"),
+                PathBuf::from("test/index.test.js"),
+            ]
+        );
     }
 
     // core[verify file.files.iter.vcs-ignore]
@@ -436,11 +379,14 @@ mod tests {
             ..Default::default()
         };
         let twigs = sorted_twigs(&root, &config);
-        assert_eq!(twigs, vec![
-            PathBuf::from("src/index.js"),
-            PathBuf::from("src/utils.js"),
-            PathBuf::from("test/index.test.js"),
-        ]);
+        assert_eq!(
+            twigs,
+            vec![
+                PathBuf::from("src/index.js"),
+                PathBuf::from("src/utils.js"),
+                PathBuf::from("test/index.test.js"),
+            ]
+        );
     }
 
     // core[verify file.transplant]
