@@ -27,9 +27,24 @@ struct Mutant<'a> {
     span: Span,
 }
 
-struct Span {
+// core[impl span.point]
+pub struct Span {
     start: Point,
     end: Point,
+}
+
+impl Span {
+    pub fn new(start: Point, end: Point) -> Self {
+        Self { start, end }
+    }
+
+    pub fn start(&self) -> &Point {
+        &self.start
+    }
+
+    pub fn end(&self) -> &Point {
+        &self.end
+    }
 }
 
 // core[impl point.line]
@@ -146,5 +161,17 @@ mod tests {
     fn point_byte() {
         let p = Point::new(10, 5, 42);
         assert_eq!(p.byte(), 42);
+    }
+
+    // core[verify span.point]
+    #[test]
+    fn span_composed_of_two_points() {
+        let start = Point::new(1, 0, 0);
+        let end = Point::new(5, 10, 50);
+        let span = Span::new(start, end);
+        assert_eq!(span.start().line(), 1);
+        assert_eq!(span.start().col(), 0);
+        assert_eq!(span.end().line(), 5);
+        assert_eq!(span.end().byte(), 50);
     }
 }
