@@ -1,5 +1,0 @@
-parallelism = 2
-ordering = "random"
-
-[myrunner.test]
-commands = ["npm test"]
