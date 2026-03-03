@@ -55,6 +55,7 @@ impl SourceDir {
     // core[impl source.files.iter]
     pub fn all_files(&self) -> Result<Vec<SourceFile>, Error> {
         let mut files = Vec::new();
+        // core[impl source.files.exclude]
         let exclude_patterns: Vec<glob::Pattern> = self
             .files_config
             .exclude
@@ -205,6 +206,18 @@ files.include = ["src/**/*.js"]
         assert!(!paths.is_empty());
         assert!(paths.iter().all(|p| p.to_string_lossy().contains(".test.")));
         assert!(!paths.iter().any(|p| p.ends_with("index.js")));
+    }
+
+    // core[verify source.files.exclude]
+    #[test]
+    fn exclude_glob_removes_files() {
+        let tmp = setup_vitest_js();
+        let config = build_files_config(tmp.path().to_path_buf());
+        let sd = SourceDir::new(&config).unwrap();
+        let files = sd.all_files().unwrap();
+        let paths: Vec<_> = files.iter().map(|f| f.path.clone()).collect();
+        assert!(paths.iter().any(|p| p.ends_with("index.js")));
+        assert!(!paths.iter().any(|p| p.to_string_lossy().contains(".test.")));
     }
 
     // core[verify source.files.iter]
