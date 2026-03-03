@@ -19,6 +19,26 @@ File::resolve joins root and twig to create the fully resolved path
 core[file.transplant]
 `File::transplant(&self, root: &Root) -> Self` replace root
 
+### Source
+
+core[source.root]
+Source should impl Root
+
+core[source.files]
+Source should include a FileSourceConfig
+
+core[source.files.include]
+A file should be included if it matches any of the include globs
+
+core[source.files.exclude]
+A file should be excluded if it matches any of the exclude globs
+
+core[source.files.vcs-ignore]
+A file should be excluded if it matches any of the globs in a vcs ignore file
+
+core[source.files.iter]
+`SourceDir::all_files -> Iter<SourceFile>` returns an iterator overall files matched
+
 ### Config
 
 core[config.partials]
@@ -55,26 +75,6 @@ The bough dir may be outside the source dir
 
 core[session.bough-dir.impure]
 The bough dir may be touched or altered, even if it exists inside the source dir
-
-### Source
-
-core[source]
-SourceDir struct exists as a handle for a directory
-
-core[source.new]
-`SourceDir::new(config: &Config) -> Result<Self, _>`
-
-core[source.files.include]
-A file should be included if it matches any of the include globs
-
-core[source.files.exclude]
-A file should be excluded if it matches any of the exclude globs
-
-core[source.files.vcs-ignore]
-A file should be excluded if it matches any of the globs in a vcs ignore file
-
-core[source.files.iter]
-`SourceDir::all_files -> Iter<SourceFile>` returns an iterator overall files matched
 
 ### Workspace
 
