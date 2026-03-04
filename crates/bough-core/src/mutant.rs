@@ -2,6 +2,8 @@ use bough_typed_hash::{HashInto, TypedHashable};
 use crate::{LanguageId, base::Base, file::Twig};
 
 trait LanguageDriver {
+    fn ts_language(&self) -> tree_sitter::Language;
+
     fn check_node(
         &self,
         node: &tree_sitter::Node<'_>,
@@ -175,18 +177,14 @@ impl<'a> MutantsIter<'a> {
         let file_path = crate::file::File::new(base, twig).resolve();
         let file_content = std::fs::read(&file_path)?;
 
-        let mut parser = tree_sitter::Parser::new();
-        let ts_lang = match lang {
-            LanguageId::Javascript => tree_sitter_javascript::LANGUAGE,
-            LanguageId::Typescript => tree_sitter_typescript::LANGUAGE_TYPESCRIPT,
-        };
-        parser.set_language(&ts_lang.into()).expect("language grammar should load");
-        let tree = parser.parse(&file_content, None).expect("parse should succeed");
-
         let driver: Box<dyn LanguageDriver> = match lang {
             LanguageId::Javascript => Box::new(JavascriptDriver),
             LanguageId::Typescript => Box::new(TypescriptDriver),
         };
+
+        let mut parser = tree_sitter::Parser::new();
+        parser.set_language(&driver.ts_language()).expect("language grammar should load");
+        let tree = parser.parse(&file_content, None).expect("parse should succeed");
 
         let found = walk_tree(&tree, &file_content, driver.as_ref());
 
@@ -274,6 +272,10 @@ fn span_from_node(node: &tree_sitter::Node<'_>) -> Span {
 // core[impl mutant.iter.find.js.condition.while]
 // core[impl mutant.iter.find.js.condition.for]
 impl LanguageDriver for JavascriptDriver {
+    fn ts_language(&self) -> tree_sitter::Language {
+        tree_sitter_javascript::LANGUAGE.into()
+    }
+
     fn check_node(
         &self,
         node: &tree_sitter::Node<'_>,
@@ -303,6 +305,10 @@ impl LanguageDriver for JavascriptDriver {
 }
 
 impl LanguageDriver for TypescriptDriver {
+    fn ts_language(&self) -> tree_sitter::Language {
+        tree_sitter_typescript::LANGUAGE_TYPESCRIPT.into()
+    }
+
     fn check_node(
         &self,
         _node: &tree_sitter::Node<'_>,
