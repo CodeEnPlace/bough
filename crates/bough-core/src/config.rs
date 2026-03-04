@@ -11,7 +11,19 @@ pub enum Outcome {
     Caught,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Facet, clap::ValueEnum, bough_typed_hash::HashInto)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    PartialOrd,
+    Ord,
+    Facet,
+    clap::ValueEnum,
+    bough_typed_hash::HashInto,
+)]
 #[facet(rename_all = "lowercase")]
 #[repr(u8)]
 pub enum LanguageId {
@@ -59,8 +71,8 @@ pub enum OrderingConfig {
 
 #[derive(Debug, Clone, PartialEq, Facet)]
 pub struct TestIdsConfig {
-    pub(crate) get_all: String,
-    pub(crate) get_failed: String,
+    pub(crate) get_all: PhaseConfig,
+    pub(crate) get_failed: PhaseConfig,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Facet)]
@@ -104,7 +116,6 @@ pub struct Config {
     pub(crate) ordering: OrderingConfig,
     #[facet(default = Outcome::Caught)]
     pub(crate) treat_timeouts_as: Outcome,
-    pub(crate) test_ids: Option<TestIdsConfig>,
     pub(crate) pwd: Option<PathBuf>,
     #[facet(default)]
     pub(crate) timeout: TimeoutConfig,
@@ -112,6 +123,7 @@ pub struct Config {
     pub(crate) init: Option<PhaseConfig>,
     pub(crate) reset: Option<PhaseConfig>,
     pub(crate) test: Option<PhaseConfig>,
+    pub(crate) test_ids: Option<TestIdsConfig>,
     #[facet(default)]
     pub(crate) files: FileSourceConfig,
     pub(crate) mutate: HashMap<LanguageId, MutateLanguageConfig>,
@@ -153,14 +165,14 @@ impl ConfigBuilder {
     }
 
     pub fn from_toml(self, toml_str: &str) -> Result<Self, ConfigError> {
-        let value: facet_value::Value = facet_toml::from_str(toml_str)
-            .map_err(|e| ConfigError::Deserialize(e.to_string()))?;
+        let value: facet_value::Value =
+            facet_toml::from_str(toml_str).map_err(|e| ConfigError::Deserialize(e.to_string()))?;
         Ok(Self { value, ..self })
     }
 
     pub fn override_with_toml(self, toml_str: &str) -> Result<Self, ConfigError> {
-        let patch: facet_value::Value = facet_toml::from_str(toml_str)
-            .map_err(|e| ConfigError::Deserialize(e.to_string()))?;
+        let patch: facet_value::Value =
+            facet_toml::from_str(toml_str).map_err(|e| ConfigError::Deserialize(e.to_string()))?;
         Ok(Self {
             value: Self::deep_merge(self.value, patch),
             ..self
@@ -189,8 +201,8 @@ impl ConfigBuilder {
     pub fn build(self) -> Result<Config, ConfigError> {
         let json_str = facet_json::to_string(&self.value)
             .map_err(|e| ConfigError::Serialize(e.to_string()))?;
-        let mut config: Config = facet_json::from_str(&json_str)
-            .map_err(|e| ConfigError::Deserialize(e.to_string()))?;
+        let mut config: Config =
+            facet_json::from_str(&json_str).map_err(|e| ConfigError::Deserialize(e.to_string()))?;
         config.source_dir = self.source_dir;
         Ok(config)
     }
@@ -268,7 +280,8 @@ files.include = ["src/**/*.ts"]
 
     #[test]
     fn deserialize_ideal_config() {
-        let config: Config = facet_toml::from_str(IDEAL_CONFIG).expect("failed to parse ideal config");
+        let config: Config =
+            facet_toml::from_str(IDEAL_CONFIG).expect("failed to parse ideal config");
 
         assert_eq!(config.threads, 1);
         assert_eq!(config.bough_dir, PathBuf::from("./.bough"));

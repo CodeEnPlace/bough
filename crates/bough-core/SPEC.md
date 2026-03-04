@@ -46,6 +46,12 @@ Base::files -> FilesIter
 core[base.mutant_files]
 Base::mutant_files(language_id: &LanguageId) -> FilesIter
 
+core[base.mutants]
+Base::mutants(language_id: &LanguageId) -> MutantsIter
+
+core[base.mutations]
+Base::mutations(language_id: &LanguageId) -> MutationsIter
+
 ## Workspace
 
 core[workspace.root]
@@ -89,9 +95,6 @@ core[workspace.bind]
 
 core[workspace.bind.validate-unchanged]
 Workspace::validate_unchanged() is called after bind to ensure it has not changed
-
-core[workspace.bind.validate-unchanged.set_active]
-if Workspace::validate_unchanged() finds 1 single active Mutation, bind should set it as the Workspace's active Mutation
 
 core[workspace.validate-unchanged]
 Workspace::validate_unchanged() checks that list and file contents of Base::files and Workspace::files are identicall
