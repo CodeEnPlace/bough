@@ -1,21 +1,26 @@
 use crate::{LanguageId, base::Base, file::Twig};
 
 trait LanguageDriver {
-    fn next_mutant(
+    fn check_node(
         &self,
-        node: tree_sitter::Node<'_>,
+        node: &tree_sitter::Node<'_>,
         file_content: &[u8],
     ) -> Option<(MutantKind, Span)>;
 }
 
-struct JavascriptDriver {}
-struct TypescriptDriver {}
+struct JavascriptDriver;
+struct TypescriptDriver;
 
-struct MutantsIter<'a> {
+// core[impl mutant.iter.twig]
+// core[impl mutant.iter.base]
+// core[impl mutant.iter.lang]
+pub struct MutantsIter<'a> {
     lang: LanguageId,
     base: &'a Base,
     twig: &'a Twig,
-    current_node: tree_sitter::Node<'a>,
+    tree: tree_sitter::Tree,
+    file_content: Vec<u8>,
+    cursor_stack: Vec<usize>,
     driver: Box<dyn LanguageDriver>,
 }
 
@@ -99,20 +104,49 @@ pub enum MutantKind {
 }
 
 impl<'a> MutantsIter<'a> {
-    fn new(lang: LanguageId, base: &'a Base, twig: &'a Twig) -> Self {
-        Self {
+    pub fn new(lang: LanguageId, base: &'a Base, twig: &'a Twig) -> std::io::Result<Self> {
+        // core[impl mutant.iter.file]
+        let file_path = crate::file::File::new(base, twig).resolve();
+        let file_content = std::fs::read(&file_path)?;
+
+        let mut parser = tree_sitter::Parser::new();
+        let ts_lang = match lang {
+            LanguageId::Javascript => tree_sitter_javascript::LANGUAGE,
+            LanguageId::Typescript => tree_sitter_typescript::LANGUAGE_TYPESCRIPT,
+        };
+        parser.set_language(&ts_lang.into()).expect("language grammar should load");
+        let tree = parser.parse(&file_content, None).expect("parse should succeed");
+
+        let driver: Box<dyn LanguageDriver> = match lang {
+            LanguageId::Javascript => Box::new(JavascriptDriver),
+            LanguageId::Typescript => Box::new(TypescriptDriver),
+        };
+
+        Ok(Self {
             lang,
             base,
             twig,
-            driver: (match lang {
-                LanguageId::Javascript => Box::new(JavascriptDriver::new()),
-                LanguageId::Typescript => Box::new(TypescriptDriver::new()),
-            }),
-            current_node: todo!(),
-        }
+            tree,
+            file_content,
+            cursor_stack: vec![0],
+            driver,
+        })
+    }
+
+    pub fn lang(&self) -> LanguageId {
+        self.lang
+    }
+
+    pub fn base(&self) -> &Base {
+        self.base
+    }
+
+    pub fn twig(&self) -> &Twig {
+        self.twig
     }
 }
 
+// core[impl mutant.iter.item]
 impl<'a> Iterator for MutantsIter<'a> {
     type Item = Mutant<'a>;
 
@@ -121,31 +155,21 @@ impl<'a> Iterator for MutantsIter<'a> {
     }
 }
 
-impl JavascriptDriver {
-    fn new() -> Self {
-        Self {}
-    }
-}
-impl TypescriptDriver {
-    fn new() -> Self {
-        Self {}
-    }
-}
 impl LanguageDriver for JavascriptDriver {
-    fn next_mutant(
+    fn check_node(
         &self,
-        node: tree_sitter::Node<'_>,
-        file_content: &[u8],
+        _node: &tree_sitter::Node<'_>,
+        _file_content: &[u8],
     ) -> Option<(MutantKind, Span)> {
         todo!()
     }
 }
 
 impl LanguageDriver for TypescriptDriver {
-    fn next_mutant(
+    fn check_node(
         &self,
-        node: tree_sitter::Node<'_>,
-        file_content: &[u8],
+        _node: &tree_sitter::Node<'_>,
+        _file_content: &[u8],
     ) -> Option<(MutantKind, Span)> {
         todo!()
     }
@@ -288,6 +312,51 @@ mod tests {
         );
         assert_eq!(m.span().start().line(), 3);
         assert_eq!(m.span().end().byte(), 60);
+    }
+
+    // core[verify mutant.iter.twig]
+    #[test]
+    fn mutants_iter_holds_twig() {
+        let (_dir, base) = make_base();
+        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
+        let iter = MutantsIter::new(LanguageId::Javascript, &base, &twig).unwrap();
+        assert_eq!(iter.twig().path(), std::path::Path::new("src/a.js"));
+    }
+
+    // core[verify mutant.iter.base]
+    #[test]
+    fn mutants_iter_holds_base() {
+        let (_dir, base) = make_base();
+        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
+        let iter = MutantsIter::new(LanguageId::Javascript, &base, &twig).unwrap();
+        assert_eq!(iter.base().path(), base.path());
+    }
+
+    // core[verify mutant.iter.lang]
+    #[test]
+    fn mutants_iter_owns_lang() {
+        let (_dir, base) = make_base();
+        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
+        let iter = MutantsIter::new(LanguageId::Javascript, &base, &twig).unwrap();
+        assert_eq!(iter.lang(), LanguageId::Javascript);
+    }
+
+    // core[verify mutant.iter.file]
+    #[test]
+    fn mutants_iter_resolves_file_path() {
+        let (_dir, base) = make_base();
+        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
+        let iter = MutantsIter::new(LanguageId::Javascript, &base, &twig).unwrap();
+        assert!(!iter.file_content.is_empty());
+        assert_eq!(std::str::from_utf8(&iter.file_content).unwrap(), "const a = 1;");
+    }
+
+    // core[verify mutant.iter.file]
+    #[test]
+    fn mutants_iter_errors_on_missing_file() {
+        let (_dir, base) = make_base();
+        let twig = Twig::new(PathBuf::from("src/nonexistent.js")).unwrap();
+        assert!(MutantsIter::new(LanguageId::Javascript, &base, &twig).is_err());
     }
 
     // core[verify span.point]
