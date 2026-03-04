@@ -110,14 +110,16 @@ impl<'a> Workspace<'a> {
     }
 
     // core[impl workspace.bind]
-    // core[impl workspacen.bind.validate-unchanged]
+    // core[impl workspace.bind.validate-unchanged]
     pub fn bind(dir: PathBuf, id: &WorkspaceId, base: &'a Base) -> Result<Self, Error> {
         let root = dir.join("work").join(id.as_str());
-        Ok(Self {
+        let ws = Self {
             id: id.clone(),
             root,
             base,
-        })
+        };
+        ws.validate_unchanged()?;
+        Ok(ws)
     }
 
     // core[impl workspace.id.get]
@@ -293,15 +295,27 @@ mod tests {
         assert!(ws.validate_unchanged().is_err());
     }
 
-    // core[verify workspacen.bind.validate-unchanged]
+    // core[verify workspace.bind.validate-unchanged]
     #[test]
-    fn bind_then_validate_unchanged() {
+    fn bind_validates_unchanged_on_creation() {
         let (_base_dir, base) = make_base();
         let ws_dir = tempfile::tempdir().unwrap();
         let ws = Workspace::new(ws_dir.path().to_path_buf(), &base).unwrap();
         let id = ws.id().clone();
-        let bound = Workspace::bind(ws_dir.path().to_path_buf(), &id, &base).unwrap();
-        bound.validate_unchanged().unwrap();
+        let bound = Workspace::bind(ws_dir.path().to_path_buf(), &id, &base);
+        assert!(bound.is_ok());
+    }
+
+    // core[verify workspace.bind.validate-unchanged]
+    #[test]
+    fn bind_fails_when_workspace_modified() {
+        let (_base_dir, base) = make_base();
+        let ws_dir = tempfile::tempdir().unwrap();
+        let ws = Workspace::new(ws_dir.path().to_path_buf(), &base).unwrap();
+        let id = ws.id().clone();
+        std::fs::write(ws.path().join("src/a.js"), "MUTATED").unwrap();
+        let result = Workspace::bind(ws_dir.path().to_path_buf(), &id, &base);
+        assert!(result.is_err());
     }
 
     // core[verify workspace.root]
