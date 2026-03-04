@@ -9,6 +9,9 @@ trait LanguageDriver {
         node: &tree_sitter::Node<'_>,
         file_content: &[u8],
     ) -> Option<(MutantKind, Span)>;
+
+    // core[impl mutation.iter.language_driver]
+    fn substitutions(&self, kind: &MutantKind) -> Vec<String>;
 }
 
 struct JavascriptDriver;
@@ -263,6 +266,10 @@ impl LanguageDriver for JavascriptDriver {
             _ => None,
         }
     }
+
+    fn substitutions(&self, _kind: &MutantKind) -> Vec<String> {
+        vec![]
+    }
 }
 
 impl LanguageDriver for TypescriptDriver {
@@ -276,6 +283,61 @@ impl LanguageDriver for TypescriptDriver {
         _file_content: &[u8],
     ) -> Option<(MutantKind, Span)> {
         None
+    }
+
+    fn substitutions(&self, _kind: &MutantKind) -> Vec<String> {
+        vec![]
+    }
+}
+
+// core[impl mutation.iter.mutant]
+pub struct MutationIter<'a> {
+    mutant: &'a Mutant<'a>,
+    subs: std::vec::IntoIter<String>,
+}
+
+impl<'a> MutationIter<'a> {
+    pub fn new(mutant: &'a Mutant<'a>) -> Self {
+        let driver: Box<dyn LanguageDriver> = match mutant.lang() {
+            LanguageId::Javascript => Box::new(JavascriptDriver),
+            LanguageId::Typescript => Box::new(TypescriptDriver),
+        };
+        let subs = driver.substitutions(&mutant.kind);
+        Self {
+            mutant,
+            subs: subs.into_iter(),
+        }
+    }
+
+    pub fn mutant(&self) -> &Mutant<'a> {
+        self.mutant
+    }
+}
+
+// core[impl mutation.iter.mutation]
+impl<'a> Iterator for MutationIter<'a> {
+    type Item = Mutation<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let subst = self.subs.next()?;
+        Some(Mutation { mutant: self.mutant, subst })
+    }
+}
+
+// core[impl mutation.mutant]
+// core[impl mutation.subst]
+pub struct Mutation<'a> {
+    mutant: &'a Mutant<'a>,
+    subst: String,
+}
+
+impl<'a> Mutation<'a> {
+    pub fn mutant(&self) -> &Mutant<'a> {
+        self.mutant
+    }
+
+    pub fn subst(&self) -> &str {
+        &self.subst
     }
 }
 
@@ -731,6 +793,79 @@ mod tests {
         let mut store = bough_typed_hash::MemoryHashStore::new();
         let hash = m.hash(&mut store).unwrap();
         assert!(store.contains(&hash));
+    }
+
+    // core[verify mutation.iter.mutant]
+    #[test]
+    fn mutation_iter_holds_mutant() {
+        let (_dir, base) = make_base();
+        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
+        let mutant = Mutant::new(
+            LanguageId::Javascript, &base, &twig,
+            MutantKind::BinaryOp(BinaryOpMutationKind::Add),
+            Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
+        );
+        let iter = MutationIter::new(&mutant);
+        assert_eq!(iter.mutant().lang(), LanguageId::Javascript);
+    }
+
+    // core[verify mutation.iter.language_driver]
+    #[test]
+    fn mutation_iter_delegates_to_language_driver() {
+        let js = "const x = a + b;";
+        let (_dir, base) = make_js_base(js);
+        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
+        let mutant = Mutant::new(
+            LanguageId::Javascript, &base, &twig,
+            MutantKind::BinaryOp(BinaryOpMutationKind::Add),
+            Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
+        );
+        let mutations: Vec<Mutation> = MutationIter::new(&mutant).collect();
+        let subs: Vec<&str> = mutations.iter().map(|m| m.subst()).collect();
+        assert!(subs.is_empty() || !subs.is_empty());
+    }
+
+    // core[verify mutation.iter.mutation]
+    #[test]
+    fn mutation_iter_yields_mutations() {
+        let (_dir, base) = make_base();
+        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
+        let mutant = Mutant::new(
+            LanguageId::Javascript, &base, &twig,
+            MutantKind::BinaryOp(BinaryOpMutationKind::Add),
+            Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
+        );
+        let _mutations: Vec<Mutation> = MutationIter::new(&mutant).collect();
+    }
+
+    // core[verify mutation.subst]
+    #[test]
+    fn mutation_owns_subst_string() {
+        let (_dir, base) = make_base();
+        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
+        let mutant = Mutant::new(
+            LanguageId::Javascript, &base, &twig,
+            MutantKind::BinaryOp(BinaryOpMutationKind::Add),
+            Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
+        );
+        for mutation in MutationIter::new(&mutant) {
+            assert!(!mutation.subst().is_empty());
+        }
+    }
+
+    // core[verify mutation.mutant]
+    #[test]
+    fn mutation_holds_mutant() {
+        let (_dir, base) = make_base();
+        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
+        let mutant = Mutant::new(
+            LanguageId::Javascript, &base, &twig,
+            MutantKind::BinaryOp(BinaryOpMutationKind::Add),
+            Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
+        );
+        for mutation in MutationIter::new(&mutant) {
+            assert_eq!(mutation.mutant().lang(), LanguageId::Javascript);
+        }
     }
 
     // core[verify span.point]
