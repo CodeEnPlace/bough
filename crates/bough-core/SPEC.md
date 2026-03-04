@@ -207,6 +207,24 @@ Point::col is a usize representing the col of the file it points to
 core[point.byte]
 Point::byte is a usize representing the byte of the file it points to
 
+core[mutant.hash.typed-hashable]
+Mutant should impl TypedHashable
+
+core[mutant.hash.lang]
+Mutant hash should include lang
+
+core[mutant.hash.twig]
+Mutant hash should include twig
+
+core[mutant.hash.file]
+Mutant hash should include the contents of its base + twig File
+
+core[mutant.hash.span]
+Mutant hash should include span
+
+core[mutant.hash.kind]
+Mutant hash should include kind
+
 <!-- ### Config -->
 
 <!-- core[config.partials] -->
