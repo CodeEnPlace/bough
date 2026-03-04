@@ -1,21 +1,9 @@
+pub mod mutation;
+pub(crate) mod language;
+
 use bough_typed_hash::{HashInto, TypedHashable};
 use crate::{LanguageId, base::Base, file::Twig};
-
-trait LanguageDriver {
-    fn ts_language(&self) -> tree_sitter::Language;
-
-    fn check_node(
-        &self,
-        node: &tree_sitter::Node<'_>,
-        file_content: &[u8],
-    ) -> Option<(MutantKind, Span)>;
-
-    // core[impl mutation.iter.language_driver]
-    fn substitutions(&self, kind: &MutantKind) -> Vec<String>;
-}
-
-struct JavascriptDriver;
-struct TypescriptDriver;
+use language::{LanguageDriver, driver_for_lang};
 
 // core[impl mutant.iter.twig]
 // core[impl mutant.iter.base]
@@ -29,9 +17,6 @@ pub struct MutantsIter<'a> {
 
 #[derive(bough_typed_hash::TypedHash)]
 pub struct MutantHash([u8; 32]);
-
-#[derive(bough_typed_hash::TypedHash)]
-pub struct MutationHash([u8; 32]);
 
 // core[impl mutant.lang]
 // core[impl mutant.base]
@@ -126,6 +111,24 @@ pub struct Point {
     byte: usize,
 }
 
+impl Point {
+    pub fn new(line: usize, col: usize, byte: usize) -> Self {
+        Self { line, col, byte }
+    }
+
+    pub fn line(&self) -> usize {
+        self.line
+    }
+
+    pub fn col(&self) -> usize {
+        self.col
+    }
+
+    pub fn byte(&self) -> usize {
+        self.byte
+    }
+}
+
 #[derive(Clone, bough_typed_hash::HashInto)]
 pub enum BinaryOpMutationKind {
     Add,
@@ -145,10 +148,7 @@ impl<'a> MutantsIter<'a> {
         let file_path = crate::file::File::new(base, twig).resolve();
         let file_content = std::fs::read(&file_path)?;
 
-        let driver: Box<dyn LanguageDriver> = match lang {
-            LanguageId::Javascript => Box::new(JavascriptDriver),
-            LanguageId::Typescript => Box::new(TypescriptDriver),
-        };
+        let driver = driver_for_lang(lang);
 
         let mut parser = tree_sitter::Parser::new();
         parser.set_language(&driver.ts_language()).expect("language grammar should load");
@@ -226,7 +226,7 @@ fn walk_tree(
     results
 }
 
-fn span_from_node(node: &tree_sitter::Node<'_>) -> Span {
+pub(crate) fn span_from_node(node: &tree_sitter::Node<'_>) -> Span {
     let start = node.start_position();
     let end = node.end_position();
     Span::new(
@@ -235,186 +235,9 @@ fn span_from_node(node: &tree_sitter::Node<'_>) -> Span {
     )
 }
 
-// core[impl mutant.iter.find.js.statement]
-// core[impl mutant.iter.find.js.condition.if]
-// core[impl mutant.iter.find.js.condition.while]
-// core[impl mutant.iter.find.js.condition.for]
-impl LanguageDriver for JavascriptDriver {
-    fn ts_language(&self) -> tree_sitter::Language {
-        tree_sitter_javascript::LANGUAGE.into()
-    }
-
-    fn check_node(
-        &self,
-        node: &tree_sitter::Node<'_>,
-        file_content: &[u8],
-    ) -> Option<(MutantKind, Span)> {
-        match node.kind() {
-            "statement_block" => Some((MutantKind::StatementBlock, span_from_node(node))),
-            "if_statement" | "while_statement" | "for_statement" => {
-                let condition = node.child_by_field_name("condition")?;
-                Some((MutantKind::Condition, span_from_node(&condition)))
-            }
-            // core[impl mutant.iter.find.js.binary.add]
-            // core[impl mutant.iter.find.js.binary.sub]
-            "binary_expression" => {
-                let op_node = node.child_by_field_name("operator")?;
-                let op_text = op_node.utf8_text(file_content).ok()?;
-                let kind = match op_text {
-                    "+" => BinaryOpMutationKind::Add,
-                    "-" => BinaryOpMutationKind::Sub,
-                    _ => return None,
-                };
-                Some((MutantKind::BinaryOp(kind), span_from_node(node)))
-            }
-            _ => None,
-        }
-    }
-
-    // core[impl mutation.subst.js.add.sub]
-    // core[impl mutation.subst.js.add.mul]
-    fn substitutions(&self, kind: &MutantKind) -> Vec<String> {
-        match kind {
-            MutantKind::BinaryOp(BinaryOpMutationKind::Add) => vec!["-".into(), "*".into()],
-            MutantKind::BinaryOp(BinaryOpMutationKind::Sub) => vec!["+".into(), "*".into()],
-            // core[impl mutation.subst.js.statement]
-            MutantKind::StatementBlock => vec!["{}".into()],
-            // core[impl mutation.subst.js.cond.true]
-            // core[impl mutation.subst.js.cond.false]
-            MutantKind::Condition => vec!["true".into(), "false".into()],
-        }
-    }
-}
-
-impl LanguageDriver for TypescriptDriver {
-    fn ts_language(&self) -> tree_sitter::Language {
-        tree_sitter_typescript::LANGUAGE_TYPESCRIPT.into()
-    }
-
-    fn check_node(
-        &self,
-        _node: &tree_sitter::Node<'_>,
-        _file_content: &[u8],
-    ) -> Option<(MutantKind, Span)> {
-        None
-    }
-
-    // core[impl mutation.iter.invalid]
-    fn substitutions(&self, _kind: &MutantKind) -> Vec<String> {
-        vec![]
-    }
-}
-
-// core[impl mutation.iter.mutant]
-pub struct MutationIter<'a> {
-    mutant: &'a Mutant<'a>,
-    subs: std::vec::IntoIter<String>,
-}
-
-impl<'a> MutationIter<'a> {
-    pub fn new(mutant: &'a Mutant<'a>) -> Self {
-        let driver: Box<dyn LanguageDriver> = match mutant.lang() {
-            LanguageId::Javascript => Box::new(JavascriptDriver),
-            LanguageId::Typescript => Box::new(TypescriptDriver),
-        };
-        let subs = driver.substitutions(&mutant.kind);
-        Self {
-            mutant,
-            subs: subs.into_iter(),
-        }
-    }
-
-    pub fn mutant(&self) -> &Mutant<'a> {
-        self.mutant
-    }
-}
-
-// core[impl mutation.iter.mutation]
-impl<'a> Iterator for MutationIter<'a> {
-    type Item = Mutation<'a>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let subst = self.subs.next()?;
-        Some(Mutation { mutant: self.mutant, subst })
-    }
-}
-
-// core[impl mutation.mutant]
-// core[impl mutation.subst]
-#[derive(Clone)]
-pub struct Mutation<'a> {
-    mutant: &'a Mutant<'a>,
-    subst: String,
-}
-
-impl<'a> Mutation<'a> {
-    pub fn mutant(&self) -> &Mutant<'a> {
-        self.mutant
-    }
-
-    pub fn subst(&self) -> &str {
-        &self.subst
-    }
-}
-
-// core[impl mutation.hash.typed-hashable]
-impl TypedHashable for Mutation<'_> {
-    type Hash = MutationHash;
-}
-
-// core[impl mutation.hash.mutant]
-// core[impl mutation.hash.subst]
-impl HashInto for Mutation<'_> {
-    fn hash_into(&self, state: &mut bough_typed_hash::ShaState) -> Result<(), std::io::Error> {
-        self.mutant.hash_into(state)?;
-        self.subst.hash_into(state)?;
-        Ok(())
-    }
-}
-
-impl Point {
-    pub fn new(line: usize, col: usize, byte: usize) -> Self {
-        Self { line, col, byte }
-    }
-
-    pub fn line(&self) -> usize {
-        self.line
-    }
-
-    pub fn col(&self) -> usize {
-        self.col
-    }
-
-    pub fn byte(&self) -> usize {
-        self.byte
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    // core[verify point.line]
-    #[test]
-    fn point_line() {
-        let p = Point::new(10, 5, 42);
-        assert_eq!(p.line(), 10);
-    }
-
-    // core[verify point.col]
-    #[test]
-    fn point_col() {
-        let p = Point::new(10, 5, 42);
-        assert_eq!(p.col(), 5);
-    }
-
-    // core[verify point.byte]
-    #[test]
-    fn point_byte() {
-        let p = Point::new(10, 5, 42);
-        assert_eq!(p.byte(), 42);
-    }
-
     use crate::base::Base;
     use crate::config::FileSourceConfig;
     use crate::file::Root;
@@ -437,6 +260,27 @@ mod tests {
         )
         .unwrap();
         (dir, base)
+    }
+
+    // core[verify point.line]
+    #[test]
+    fn point_line() {
+        let p = Point::new(10, 5, 42);
+        assert_eq!(p.line(), 10);
+    }
+
+    // core[verify point.col]
+    #[test]
+    fn point_col() {
+        let p = Point::new(10, 5, 42);
+        assert_eq!(p.col(), 5);
+    }
+
+    // core[verify point.byte]
+    #[test]
+    fn point_byte() {
+        let p = Point::new(10, 5, 42);
+        assert_eq!(p.byte(), 42);
     }
 
     // core[verify mutant.lang]
@@ -857,226 +701,6 @@ mod tests {
         let mut store = bough_typed_hash::MemoryHashStore::new();
         let hash = m.hash(&mut store).unwrap();
         assert!(store.contains(&hash));
-    }
-
-    // core[verify mutation.iter.mutant]
-    #[test]
-    fn mutation_iter_holds_mutant() {
-        let (_dir, base) = make_base();
-        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
-        let mutant = Mutant::new(
-            LanguageId::Javascript, &base, &twig,
-            MutantKind::BinaryOp(BinaryOpMutationKind::Add),
-            Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
-        );
-        let iter = MutationIter::new(&mutant);
-        assert_eq!(iter.mutant().lang(), LanguageId::Javascript);
-    }
-
-    // core[verify mutation.iter.language_driver]
-    #[test]
-    fn mutation_iter_delegates_to_language_driver() {
-        let js = "const x = a + b;";
-        let (_dir, base) = make_js_base(js);
-        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
-        let mutant = Mutant::new(
-            LanguageId::Javascript, &base, &twig,
-            MutantKind::BinaryOp(BinaryOpMutationKind::Add),
-            Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
-        );
-        let mutations: Vec<Mutation> = MutationIter::new(&mutant).collect();
-        let subs: Vec<&str> = mutations.iter().map(|m| m.subst()).collect();
-        assert!(subs.is_empty() || !subs.is_empty());
-    }
-
-    // core[verify mutation.iter.mutation]
-    #[test]
-    fn mutation_iter_yields_mutations() {
-        let (_dir, base) = make_base();
-        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
-        let mutant = Mutant::new(
-            LanguageId::Javascript, &base, &twig,
-            MutantKind::BinaryOp(BinaryOpMutationKind::Add),
-            Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
-        );
-        let _mutations: Vec<Mutation> = MutationIter::new(&mutant).collect();
-    }
-
-    // core[verify mutation.subst]
-    #[test]
-    fn mutation_owns_subst_string() {
-        let (_dir, base) = make_base();
-        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
-        let mutant = Mutant::new(
-            LanguageId::Javascript, &base, &twig,
-            MutantKind::BinaryOp(BinaryOpMutationKind::Add),
-            Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
-        );
-        for mutation in MutationIter::new(&mutant) {
-            assert!(!mutation.subst().is_empty());
-        }
-    }
-
-    // core[verify mutation.mutant]
-    #[test]
-    fn mutation_holds_mutant() {
-        let (_dir, base) = make_base();
-        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
-        let mutant = Mutant::new(
-            LanguageId::Javascript, &base, &twig,
-            MutantKind::BinaryOp(BinaryOpMutationKind::Add),
-            Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
-        );
-        for mutation in MutationIter::new(&mutant) {
-            assert_eq!(mutation.mutant().lang(), LanguageId::Javascript);
-        }
-    }
-
-    // core[verify mutation.iter.invalid]
-    #[test]
-    fn mutation_iter_invalid_mutant_produces_no_mutations() {
-        let (_dir, base) = make_base();
-        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
-        let mutant = Mutant::new(
-            LanguageId::Typescript, &base, &twig,
-            MutantKind::BinaryOp(BinaryOpMutationKind::Add),
-            Span::new(Point::new(0, 0, 0), Point::new(0, 5, 5)),
-        );
-        let mutations: Vec<Mutation> = MutationIter::new(&mutant).collect();
-        assert!(mutations.is_empty());
-    }
-
-    // core[verify mutation.subst.js.cond.false]
-    #[test]
-    fn js_condition_mutant_has_false_substitution() {
-        let js = "if (x > 0) { console.log(x); }";
-        let (_dir, base) = make_js_base(js);
-        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
-        let mutant = Mutant::new(
-            LanguageId::Javascript, &base, &twig,
-            MutantKind::Condition,
-            Span::new(Point::new(0, 3, 3), Point::new(0, 10, 10)),
-        );
-        let subs: Vec<String> = MutationIter::new(&mutant).map(|m| m.subst().to_string()).collect();
-        assert!(subs.contains(&"false".to_string()));
-    }
-
-    // core[verify mutation.subst.js.cond.true]
-    #[test]
-    fn js_condition_mutant_has_true_substitution() {
-        let js = "if (x > 0) { console.log(x); }";
-        let (_dir, base) = make_js_base(js);
-        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
-        let mutant = Mutant::new(
-            LanguageId::Javascript, &base, &twig,
-            MutantKind::Condition,
-            Span::new(Point::new(0, 3, 3), Point::new(0, 10, 10)),
-        );
-        let subs: Vec<String> = MutationIter::new(&mutant).map(|m| m.subst().to_string()).collect();
-        assert!(subs.contains(&"true".to_string()));
-    }
-
-    // core[verify mutation.subst.js.statement]
-    #[test]
-    fn js_statement_mutant_has_empty_block_substitution() {
-        let js = "function foo() { return 1; }";
-        let (_dir, base) = make_js_base(js);
-        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
-        let mutant = Mutant::new(
-            LanguageId::Javascript, &base, &twig,
-            MutantKind::StatementBlock,
-            Span::new(Point::new(0, 15, 15), Point::new(0, 28, 28)),
-        );
-        let subs: Vec<String> = MutationIter::new(&mutant).map(|m| m.subst().to_string()).collect();
-        assert!(subs.contains(&"{}".to_string()));
-    }
-
-    // core[verify mutation.subst.js.add.mul]
-    #[test]
-    fn js_add_mutant_has_mul_substitution() {
-        let js = "const x = a + b;";
-        let (_dir, base) = make_js_base(js);
-        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
-        let mutant = Mutant::new(
-            LanguageId::Javascript, &base, &twig,
-            MutantKind::BinaryOp(BinaryOpMutationKind::Add),
-            Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
-        );
-        let subs: Vec<String> = MutationIter::new(&mutant).map(|m| m.subst().to_string()).collect();
-        assert!(subs.contains(&"*".to_string()));
-    }
-
-    // core[verify mutation.subst.js.add.sub]
-    #[test]
-    fn js_add_mutant_has_sub_substitution() {
-        let js = "const x = a + b;";
-        let (_dir, base) = make_js_base(js);
-        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
-        let mutant = Mutant::new(
-            LanguageId::Javascript, &base, &twig,
-            MutantKind::BinaryOp(BinaryOpMutationKind::Add),
-            Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
-        );
-        let subs: Vec<String> = MutationIter::new(&mutant).map(|m| m.subst().to_string()).collect();
-        assert!(subs.contains(&"-".to_string()));
-    }
-
-    fn hash_mutation(mutation: &Mutation<'_>) -> [u8; 32] {
-        use bough_typed_hash::sha2::Digest;
-        let mut state = bough_typed_hash::ShaState::new();
-        mutation.hash_into(&mut state).unwrap();
-        state.finalize().into()
-    }
-
-    // core[verify mutation.hash.typed-hashable]
-    #[test]
-    fn mutation_produces_typed_hash() {
-        let (_dir, base) = make_base();
-        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
-        let mutant = Mutant::new(
-            LanguageId::Javascript, &base, &twig,
-            MutantKind::BinaryOp(BinaryOpMutationKind::Add),
-            Span::new(Point::new(0, 0, 0), Point::new(0, 10, 10)),
-        );
-        let mutation = Mutation { mutant: &mutant, subst: "-".into() };
-        let mut store = bough_typed_hash::MemoryHashStore::new();
-        let hash = mutation.hash(&mut store).unwrap();
-        assert!(store.contains(&hash));
-    }
-
-    // core[verify mutation.hash.mutant]
-    #[test]
-    fn mutation_hash_includes_mutant() {
-        let (_dir, base) = make_base();
-        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
-        let m1 = Mutant::new(
-            LanguageId::Javascript, &base, &twig,
-            MutantKind::BinaryOp(BinaryOpMutationKind::Add),
-            Span::new(Point::new(0, 0, 0), Point::new(0, 10, 10)),
-        );
-        let m2 = Mutant::new(
-            LanguageId::Javascript, &base, &twig,
-            MutantKind::Condition,
-            Span::new(Point::new(0, 0, 0), Point::new(0, 10, 10)),
-        );
-        let mut1 = Mutation { mutant: &m1, subst: "-".into() };
-        let mut2 = Mutation { mutant: &m2, subst: "-".into() };
-        assert_ne!(hash_mutation(&mut1), hash_mutation(&mut2));
-    }
-
-    // core[verify mutation.hash.subst]
-    #[test]
-    fn mutation_hash_includes_subst() {
-        let (_dir, base) = make_base();
-        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
-        let m = Mutant::new(
-            LanguageId::Javascript, &base, &twig,
-            MutantKind::BinaryOp(BinaryOpMutationKind::Add),
-            Span::new(Point::new(0, 0, 0), Point::new(0, 10, 10)),
-        );
-        let mut1 = Mutation { mutant: &m, subst: "-".into() };
-        let mut2 = Mutation { mutant: &m, subst: "*".into() };
-        assert_ne!(hash_mutation(&mut1), hash_mutation(&mut2));
     }
 
     // core[verify span.point]
