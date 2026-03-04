@@ -1,5 +1,5 @@
 use crate::base::Base;
-use crate::file::{File, FilesIter, Root};
+use crate::file::{File, FilesIter, Root, Twig};
 use crate::mutant::mutation::Mutation;
 use std::path::{Path, PathBuf};
 
@@ -81,6 +81,7 @@ pub struct Workspace<'a> {
     id: WorkspaceId,
     root: PathBuf,
     base: &'a Base,
+    active: Option<Twig>,
 }
 
 impl<'a> Workspace<'a> {
@@ -107,7 +108,7 @@ impl<'a> Workspace<'a> {
             std::fs::copy(&src, &dst)?;
         }
 
-        Ok(Self { id, root, base })
+        Ok(Self { id, root, base, active: None })
     }
 
     // core[impl workspace.bind]
@@ -118,6 +119,7 @@ impl<'a> Workspace<'a> {
             id: id.clone(),
             root,
             base,
+            active: None,
         };
         ws.validate_unchanged()?;
         Ok(ws)
@@ -133,6 +135,7 @@ impl<'a> Workspace<'a> {
     }
 
     // core[impl workspace.write_mutant]
+    // core[impl workspace.write_mutant.set-active]
     pub fn write_mutant(&mut self, mutation: &Mutation<'_>) -> Result<(), Error> {
         let mutant = mutation.mutant();
         let base_file = File::new(self.base, mutant.twig()).resolve();
@@ -146,7 +149,12 @@ impl<'a> Workspace<'a> {
         mutated.extend_from_slice(&content[end..]);
         let ws_file = self.root.join(mutant.twig().path());
         std::fs::write(&ws_file, &mutated)?;
+        self.active = Some(mutant.twig().clone());
         Ok(())
+    }
+
+    pub fn active(&self) -> Option<&Twig> {
+        self.active.as_ref()
     }
 
     // core[impl workspace.files]
@@ -392,6 +400,25 @@ mod tests {
         ws.write_mutant(&mutation).unwrap();
         let result = std::fs::read_to_string(ws.path().join("src/a.js")).unwrap();
         assert_eq!(result, "const x = a - b;");
+    }
+
+    // core[verify workspace.write_mutant.set-active]
+    #[test]
+    fn write_mutant_sets_active() {
+        let js = "const x = a + b;";
+        let (_base_dir, base) = make_js_base(js);
+        let ws_dir = tempfile::tempdir().unwrap();
+        let mut ws = Workspace::new(ws_dir.path().to_path_buf(), &base).unwrap();
+        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
+        let mutant = Mutant::new(
+            LanguageId::Javascript, &base, &twig,
+            MutantKind::BinaryOp(BinaryOpMutationKind::Add),
+            Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
+        );
+        let mutation = Mutation { mutant: &mutant, subst: "a - b".to_string() };
+        assert!(ws.active().is_none());
+        ws.write_mutant(&mutation).unwrap();
+        assert!(ws.active().is_some());
     }
 
     // core[verify workspace.files]
