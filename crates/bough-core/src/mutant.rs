@@ -88,47 +88,8 @@ impl TypedHashable for Mutant<'_> {
     type Hash = MutantHash;
 }
 
-impl HashInto for Span {
-    fn hash_into(&self, state: &mut bough_typed_hash::ShaState) -> Result<(), std::io::Error> {
-        self.start.hash_into(state)?;
-        self.end.hash_into(state)?;
-        Ok(())
-    }
-}
-
-impl HashInto for Point {
-    fn hash_into(&self, state: &mut bough_typed_hash::ShaState) -> Result<(), std::io::Error> {
-        self.line.hash_into(state)?;
-        self.col.hash_into(state)?;
-        self.byte.hash_into(state)?;
-        Ok(())
-    }
-}
-
-impl HashInto for MutantKind {
-    fn hash_into(&self, state: &mut bough_typed_hash::ShaState) -> Result<(), std::io::Error> {
-        match self {
-            MutantKind::StatementBlock => 0u32.hash_into(state),
-            MutantKind::Condition => 1u32.hash_into(state),
-            MutantKind::BinaryOp(op) => {
-                2u32.hash_into(state)?;
-                op.hash_into(state)
-            }
-        }
-    }
-}
-
-impl HashInto for BinaryOpMutationKind {
-    fn hash_into(&self, state: &mut bough_typed_hash::ShaState) -> Result<(), std::io::Error> {
-        match self {
-            BinaryOpMutationKind::Add => 0u32.hash_into(state),
-            BinaryOpMutationKind::Sub => 1u32.hash_into(state),
-        }
-    }
-}
-
 // core[impl span.point]
-#[derive(Clone)]
+#[derive(Clone, bough_typed_hash::HashInto)]
 pub struct Span {
     start: Point,
     end: Point,
@@ -151,20 +112,20 @@ impl Span {
 // core[impl point.line]
 // core[impl point.col]
 // core[impl point.byte]
-#[derive(Clone)]
+#[derive(Clone, bough_typed_hash::HashInto)]
 pub struct Point {
     line: usize,
     col: usize,
     byte: usize,
 }
 
-#[derive(Clone)]
+#[derive(Clone, bough_typed_hash::HashInto)]
 pub enum BinaryOpMutationKind {
     Add,
     Sub,
 }
 
-#[derive(Clone)]
+#[derive(Clone, bough_typed_hash::HashInto)]
 pub enum MutantKind {
     StatementBlock,
     Condition,
