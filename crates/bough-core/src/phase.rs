@@ -1,12 +1,15 @@
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use crate::file::{Root, Twig};
 
 // core[impl phase.root]
 // core[impl phase.pwd]
+// core[impl phase.env]
 pub struct Phase<'a, R: Root> {
     root: &'a R,
     pwd: Twig,
+    env: HashMap<String, String>,
 }
 
 impl<'a, R: Root> Phase<'a, R> {
@@ -16,6 +19,10 @@ impl<'a, R: Root> Phase<'a, R> {
 
     pub fn pwd(&self) -> &Twig {
         &self.pwd
+    }
+
+    pub fn env(&self) -> &HashMap<String, String> {
+        &self.env
     }
 }
 
@@ -33,12 +40,19 @@ mod tests {
         }
     }
 
+    fn make_phase<'a>(root: &'a TestRoot) -> Phase<'a, TestRoot> {
+        Phase {
+            root,
+            pwd: crate::file::Twig::new(PathBuf::from("src")).unwrap(),
+            env: HashMap::new(),
+        }
+    }
+
     // core[verify phase.root]
     #[test]
     fn phase_holds_root() {
         let root = TestRoot(PathBuf::from("/tmp/project"));
-        let pwd = crate::file::Twig::new(PathBuf::from("src")).unwrap();
-        let phase = Phase { root: &root, pwd };
+        let phase = make_phase(&root);
         assert_eq!(phase.root().path(), Path::new("/tmp/project"));
     }
 
@@ -47,7 +61,16 @@ mod tests {
     fn phase_holds_pwd_twig() {
         let root = TestRoot(PathBuf::from("/tmp/project"));
         let pwd = crate::file::Twig::new(PathBuf::from("src/test")).unwrap();
-        let phase = Phase { root: &root, pwd };
+        let phase = Phase { pwd, ..make_phase(&root) };
         assert_eq!(phase.pwd().path(), Path::new("src/test"));
+    }
+
+    // core[verify phase.env]
+    #[test]
+    fn phase_holds_env_vars() {
+        let root = TestRoot(PathBuf::from("/tmp/project"));
+        let env = HashMap::from([("NODE_ENV".into(), "test".into())]);
+        let phase = Phase { env, ..make_phase(&root) };
+        assert_eq!(phase.env()["NODE_ENV"], "test");
     }
 }
