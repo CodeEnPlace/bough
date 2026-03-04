@@ -2,7 +2,6 @@ use std::collections::HashMap;
 #[cfg(test)]
 use std::path::{Path, PathBuf};
 
-use crate::config::TimeoutConfig;
 use crate::file::{File, Root, Twig};
 
 #[derive(Debug)]
@@ -38,7 +37,8 @@ pub struct Phase<'a, R: Root> {
     pwd: Twig,
     env: HashMap<String, String>,
     cmd: Vec<String>,
-    timeout: TimeoutConfig,
+    timeout_absolute: Option<u64>,
+    timeout_relative: Option<u64>,
 }
 
 impl<'a, R: Root> Phase<'a, R> {
@@ -58,8 +58,12 @@ impl<'a, R: Root> Phase<'a, R> {
         &self.cmd
     }
 
-    pub fn timeout(&self) -> &TimeoutConfig {
-        &self.timeout
+    pub fn timeout_absolute(&self) -> Option<u64> {
+        self.timeout_absolute
+    }
+
+    pub fn timeout_relative(&self) -> Option<u64> {
+        self.timeout_relative
     }
 
     // core[impl phase.run]
@@ -129,13 +133,13 @@ impl<'a, R: Root> Phase<'a, R> {
     }
 
     fn effective_timeout(&self, reference_duration: Option<std::time::Duration>) -> Option<std::time::Duration> {
-        let absolute = self.timeout.absolute.map(std::time::Duration::from_secs);
-        let relative = match (self.timeout.relative, reference_duration) {
+        let absolute = self.timeout_absolute.map(std::time::Duration::from_secs);
+        let relative = match (self.timeout_relative, reference_duration) {
             (Some(multiplier), Some(ref_dur)) => Some(ref_dur * multiplier as u32),
             _ => None,
         };
         match (absolute, relative) {
-            (Some(a), Some(r)) => Some(a.min(r)),
+            (Some(a), Some(r)) => Some(std::time::Duration::min(a, r)),
             (Some(a), None) => Some(a),
             (None, Some(r)) => Some(r),
             (None, None) => None,
@@ -196,7 +200,8 @@ mod tests {
             pwd: crate::file::Twig::new(PathBuf::from("src")).unwrap(),
             env: HashMap::new(),
             cmd: vec!["echo".into(), "hello".into()],
-            timeout: TimeoutConfig::default(),
+            timeout_absolute: None,
+            timeout_relative: None,
         }
     }
 
@@ -239,10 +244,9 @@ mod tests {
     #[test]
     fn phase_holds_timeout() {
         let root = TestRoot(PathBuf::from("/tmp/project"));
-        let timeout = TimeoutConfig { absolute: Some(30), relative: Some(3) };
-        let phase = Phase { timeout, ..make_phase(&root) };
-        assert_eq!(phase.timeout().absolute, Some(30));
-        assert_eq!(phase.timeout().relative, Some(3));
+        let phase = Phase { timeout_absolute: Some(30), timeout_relative: Some(3), ..make_phase(&root) };
+        assert_eq!(phase.timeout_absolute(), Some(30));
+        assert_eq!(phase.timeout_relative(), Some(3));
     }
 
     // core[verify phase.out]
@@ -376,7 +380,7 @@ mod tests {
         let phase = Phase {
             cmd: vec!["sleep".into(), "10".into()],
             pwd: crate::file::Twig::new(PathBuf::from(".")).unwrap(),
-            timeout: TimeoutConfig { absolute: Some(1), relative: None },
+            timeout_absolute: Some(1), timeout_relative: None,
             ..make_phase(&root)
         };
         let outcome = phase.run(None).unwrap();
@@ -392,7 +396,7 @@ mod tests {
         let phase = Phase {
             cmd: vec!["echo".into(), "fast".into()],
             pwd: crate::file::Twig::new(PathBuf::from(".")).unwrap(),
-            timeout: TimeoutConfig { absolute: Some(10), relative: None },
+            timeout_absolute: Some(10), timeout_relative: None,
             ..make_phase(&root)
         };
         let outcome = phase.run(None).unwrap();
@@ -408,7 +412,7 @@ mod tests {
         let phase = Phase {
             cmd: vec!["sleep".into(), "10".into()],
             pwd: crate::file::Twig::new(PathBuf::from(".")).unwrap(),
-            timeout: TimeoutConfig { absolute: None, relative: Some(2) },
+            timeout_absolute: None, timeout_relative: Some(2),
             ..make_phase(&root)
         };
         let ref_dur = std::time::Duration::from_millis(500);
@@ -425,7 +429,7 @@ mod tests {
         let phase = Phase {
             cmd: vec!["echo".into(), "ok".into()],
             pwd: crate::file::Twig::new(PathBuf::from(".")).unwrap(),
-            timeout: TimeoutConfig { absolute: None, relative: Some(2) },
+            timeout_absolute: None, timeout_relative: Some(2),
             ..make_phase(&root)
         };
         let outcome = phase.run(None).unwrap();

@@ -1,5 +1,5 @@
-use crate::config::{FileSourceConfig, LanguageId};
-use crate::file::{Error, FilesIter, Root};
+use crate::LanguageId;
+use crate::file::{Error, FilesIter, Root, Twig};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
@@ -7,44 +7,49 @@ use std::path::{Path, PathBuf};
 #[derive(Debug, Clone, PartialEq)]
 pub struct Base {
     root: PathBuf,
-    files_config: FileSourceConfig,
-    mutant_files_configs: HashMap<LanguageId, FileSourceConfig>,
+    twigs: Vec<Twig>,
+    mutant_twigs: HashMap<LanguageId, Vec<Twig>>,
 }
 
 impl Base {
-    pub fn new(root: PathBuf, files_config: FileSourceConfig) -> Result<Self, Error> {
-        crate::file::validate_root(&root)?;
-        Ok(Self {
-            root,
-            files_config,
-            mutant_files_configs: HashMap::new(),
-        })
-    }
-
-    pub fn with_mutant_files_configs(
+    pub fn new(
         root: PathBuf,
-        files_config: FileSourceConfig,
-        mutant_files_configs: HashMap<LanguageId, FileSourceConfig>,
+        files: FilesIter,
     ) -> Result<Self, Error> {
         crate::file::validate_root(&root)?;
         Ok(Self {
             root,
-            files_config,
-            mutant_files_configs,
+            twigs: files.collect(),
+            mutant_twigs: HashMap::new(),
+        })
+    }
+
+    pub fn with_mutant_files(
+        root: PathBuf,
+        files: FilesIter,
+        mutant_files: HashMap<LanguageId, FilesIter>,
+    ) -> Result<Self, Error> {
+        crate::file::validate_root(&root)?;
+        Ok(Self {
+            root,
+            twigs: files.collect(),
+            mutant_twigs: mutant_files.into_iter().map(|(k, v)| (k, v.collect())).collect(),
         })
     }
 
     // core[impl base.files]
-    pub fn files(&self) -> FilesIter {
-        FilesIter::new(self, &self.files_config)
+    pub fn files(&self) -> impl Iterator<Item = Twig> + '_ {
+        self.twigs.iter().cloned()
     }
 
     // core[impl base.mutant_files]
-    pub fn mutant_files(&self, language_id: &LanguageId) -> FilesIter {
-        match self.mutant_files_configs.get(language_id) {
-            Some(config) => FilesIter::new(self, config),
-            None => FilesIter::new(self, &FileSourceConfig::default()),
-        }
+    pub fn mutant_files(&self, language_id: &LanguageId) -> impl Iterator<Item = Twig> + '_ {
+        self.mutant_twigs
+            .get(language_id)
+            .map(|v| v.as_slice())
+            .unwrap_or(&[])
+            .iter()
+            .cloned()
     }
 }
 
@@ -58,10 +63,19 @@ impl Root for Base {
 mod tests {
     use super::*;
 
+    use crate::file::FilesIter;
+
+    fn files_for(root: &Path, include: &[String]) -> FilesIter {
+        FilesIter::new(root, include, &[], &[])
+    }
+
     // core[verify base.root]
     #[test]
     fn base_impls_root() {
-        let base = Base::new(PathBuf::from("/tmp/project"), FileSourceConfig::default()).unwrap();
+        let base = Base::new(
+            PathBuf::from("/tmp/project"),
+            files_for(Path::new("/tmp/project"), &[]),
+        ).unwrap();
         assert_eq!(base.path(), Path::new("/tmp/project"));
     }
 
@@ -69,7 +83,7 @@ mod tests {
     #[test]
     fn base_rejects_relative_path() {
         assert!(matches!(
-            Base::new(PathBuf::from("relative"), FileSourceConfig::default()),
+            Base::new(PathBuf::from("relative"), files_for(Path::new("relative"), &[])),
             Err(Error::RootMustBeAbsolute(_))
         ));
     }
@@ -82,40 +96,32 @@ mod tests {
         std::fs::write(dir.path().join("src/a.js"), "js").unwrap();
         std::fs::write(dir.path().join("src/b.ts"), "ts").unwrap();
 
-        let mut lang_configs = std::collections::HashMap::new();
-        lang_configs.insert(
-            crate::config::LanguageId::Javascript,
-            FileSourceConfig {
-                include: vec!["src/**/*.js".into()],
-                ..Default::default()
-            },
+        let root = dir.path();
+        let mut lang_files = std::collections::HashMap::new();
+        lang_files.insert(
+            crate::LanguageId::Javascript,
+            files_for(root, &["src/**/*.js".into()]),
         );
-        lang_configs.insert(
-            crate::config::LanguageId::Typescript,
-            FileSourceConfig {
-                include: vec!["src/**/*.ts".into()],
-                ..Default::default()
-            },
+        lang_files.insert(
+            crate::LanguageId::Typescript,
+            files_for(root, &["src/**/*.ts".into()]),
         );
 
-        let base = Base::with_mutant_files_configs(
-            dir.path().to_path_buf(),
-            FileSourceConfig {
-                include: vec!["src/**/*".into()],
-                ..Default::default()
-            },
-            lang_configs,
+        let base = Base::with_mutant_files(
+            root.to_path_buf(),
+            files_for(root, &["src/**/*".into()]),
+            lang_files,
         )
         .unwrap();
 
         let js_twigs: Vec<_> = base
-            .mutant_files(&crate::config::LanguageId::Javascript)
+            .mutant_files(&crate::LanguageId::Javascript)
             .collect();
         assert_eq!(js_twigs.len(), 1);
         assert_eq!(js_twigs[0].path(), Path::new("src/a.js"));
 
         let ts_twigs: Vec<_> = base
-            .mutant_files(&crate::config::LanguageId::Typescript)
+            .mutant_files(&crate::LanguageId::Typescript)
             .collect();
         assert_eq!(ts_twigs.len(), 1);
         assert_eq!(ts_twigs[0].path(), Path::new("src/b.ts"));
@@ -128,10 +134,7 @@ mod tests {
         std::fs::write(dir.path().join("a.txt"), "content").unwrap();
         let base = Base::new(
             dir.path().to_path_buf(),
-            FileSourceConfig {
-                include: vec!["*.txt".into()],
-                ..Default::default()
-            },
+            files_for(dir.path(), &["*.txt".into()]),
         )
         .unwrap();
         let twigs: Vec<_> = base.files().collect();

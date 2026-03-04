@@ -74,8 +74,7 @@ mod tests {
     use bough_typed_hash::HashStore;
     use crate::mutant::{Span, Point, MutantKind, BinaryOpMutationKind};
     use crate::base::Base;
-    use crate::config::FileSourceConfig;
-    use crate::file::Twig;
+    use crate::file::{FilesIter, Twig};
     use std::path::PathBuf;
 
     fn make_base() -> (tempfile::TempDir, Base) {
@@ -88,10 +87,7 @@ mod tests {
         std::fs::write(dir.path().join("src/a.js"), content).unwrap();
         let base = Base::new(
             dir.path().to_path_buf(),
-            FileSourceConfig {
-                include: vec!["src/**/*.js".into()],
-                ..Default::default()
-            },
+            FilesIter::new(dir.path(), &["src/**/*.js".into()], &[], &[]),
         )
         .unwrap();
         (dir, base)

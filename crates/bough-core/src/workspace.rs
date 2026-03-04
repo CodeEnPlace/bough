@@ -1,5 +1,5 @@
 use crate::base::Base;
-use crate::file::{File, FilesIter, Root};
+use crate::file::{File, Root, Twig};
 use crate::mutant::Mutant;
 use crate::mutant::mutation::Mutation;
 use std::path::{Path, PathBuf};
@@ -198,7 +198,7 @@ impl<'a> Workspace<'a> {
     }
 
     // core[impl workspace.files]
-    pub fn files(&self) -> FilesIter {
+    pub fn files(&self) -> impl Iterator<Item = Twig> + '_ {
         self.base.files()
     }
 
@@ -233,7 +233,7 @@ impl Root for Workspace<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::FileSourceConfig;
+    use crate::file::FilesIter;
 
     fn make_base() -> (tempfile::TempDir, Base) {
         let dir = tempfile::tempdir().unwrap();
@@ -242,10 +242,7 @@ mod tests {
         std::fs::write(dir.path().join("src/b.js"), "const b = 2;").unwrap();
         let base = Base::new(
             dir.path().to_path_buf(),
-            FileSourceConfig {
-                include: vec!["src/**/*.js".into()],
-                ..Default::default()
-            },
+            FilesIter::new(dir.path(), &["src/**/*.js".into()], &[], &[]),
         )
         .unwrap();
         (dir, base)
@@ -413,10 +410,7 @@ mod tests {
         std::fs::write(dir.path().join("src/a.js"), content).unwrap();
         let base = Base::new(
             dir.path().to_path_buf(),
-            FileSourceConfig {
-                include: vec!["src/**/*.js".into()],
-                ..Default::default()
-            },
+            FilesIter::new(dir.path(), &["src/**/*.js".into()], &[], &[]),
         )
         .unwrap();
         (dir, base)
