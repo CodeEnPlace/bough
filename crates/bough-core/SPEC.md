@@ -184,6 +184,18 @@ MutantIter impls Iter<Item=Mutant>
 core[mutant.iter.find]
 MutantIter uses its driver to walk its file and find all mutants we support
 
+core[mutant.iter.skip.kind]
+MutantIter should be configureable to skip all mutants of specific kinds
+
+core[mutant.iter.skip.kind.multiple]
+it should be possible to skip multiple kinds of mutant
+
+core[mutant.iter.skip.query]
+MutantIter should be configureable to skip all mutants that match a specified ts lisp-style query
+
+core[mutant.iter.skip.query.multiple]
+it should be possible provide multiple skip ts queries
+
 core[mutant.iter.find.js.statement]
 MutantIter finds javascript statement blocks
 
