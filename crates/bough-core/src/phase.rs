@@ -6,10 +6,12 @@ use crate::file::{Root, Twig};
 // core[impl phase.root]
 // core[impl phase.pwd]
 // core[impl phase.env]
+// core[impl phase.cmd]
 pub struct Phase<'a, R: Root> {
     root: &'a R,
     pwd: Twig,
     env: HashMap<String, String>,
+    cmd: Vec<String>,
 }
 
 impl<'a, R: Root> Phase<'a, R> {
@@ -23,6 +25,10 @@ impl<'a, R: Root> Phase<'a, R> {
 
     pub fn env(&self) -> &HashMap<String, String> {
         &self.env
+    }
+
+    pub fn cmd(&self) -> &[String] {
+        &self.cmd
     }
 }
 
@@ -45,6 +51,7 @@ mod tests {
             root,
             pwd: crate::file::Twig::new(PathBuf::from("src")).unwrap(),
             env: HashMap::new(),
+            cmd: vec!["echo".into(), "hello".into()],
         }
     }
 
@@ -72,5 +79,14 @@ mod tests {
         let env = HashMap::from([("NODE_ENV".into(), "test".into())]);
         let phase = Phase { env, ..make_phase(&root) };
         assert_eq!(phase.env()["NODE_ENV"], "test");
+    }
+
+    // core[verify phase.cmd]
+    #[test]
+    fn phase_holds_cmd() {
+        let root = TestRoot(PathBuf::from("/tmp/project"));
+        let cmd = vec!["npx".into(), "vitest".into(), "run".into()];
+        let phase = Phase { cmd, ..make_phase(&root) };
+        assert_eq!(phase.cmd(), &["npx", "vitest", "run"]);
     }
 }
