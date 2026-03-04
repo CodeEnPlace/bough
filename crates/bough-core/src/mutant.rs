@@ -30,6 +30,9 @@ pub struct MutantsIter<'a> {
 #[derive(bough_typed_hash::TypedHash)]
 pub struct MutantHash([u8; 32]);
 
+#[derive(bough_typed_hash::TypedHash)]
+pub struct MutationHash([u8; 32]);
+
 // core[impl mutant.lang]
 // core[impl mutant.base]
 // core[impl mutant.twig]
@@ -338,6 +341,7 @@ impl<'a> Iterator for MutationIter<'a> {
 
 // core[impl mutation.mutant]
 // core[impl mutation.subst]
+#[derive(Clone)]
 pub struct Mutation<'a> {
     mutant: &'a Mutant<'a>,
     subst: String,
@@ -351,6 +355,11 @@ impl<'a> Mutation<'a> {
     pub fn subst(&self) -> &str {
         &self.subst
     }
+}
+
+// core[impl mutation.hash.typed-hashable]
+impl TypedHashable for Mutation<'_> {
+    type Hash = MutationHash;
 }
 
 // core[impl mutation.hash.mutant]
@@ -1017,6 +1026,22 @@ mod tests {
         let mut state = bough_typed_hash::ShaState::new();
         mutation.hash_into(&mut state).unwrap();
         state.finalize().into()
+    }
+
+    // core[verify mutation.hash.typed-hashable]
+    #[test]
+    fn mutation_produces_typed_hash() {
+        let (_dir, base) = make_base();
+        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
+        let mutant = Mutant::new(
+            LanguageId::Javascript, &base, &twig,
+            MutantKind::BinaryOp(BinaryOpMutationKind::Add),
+            Span::new(Point::new(0, 0, 0), Point::new(0, 10, 10)),
+        );
+        let mutation = Mutation { mutant: &mutant, subst: "-".into() };
+        let mut store = bough_typed_hash::MemoryHashStore::new();
+        let hash = mutation.hash(&mut store).unwrap();
+        assert!(store.contains(&hash));
     }
 
     // core[verify mutation.hash.mutant]
