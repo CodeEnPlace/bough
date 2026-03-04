@@ -102,41 +102,44 @@ pub struct FilesIter {
 }
 
 impl FilesIter {
-    pub fn new<R: Root>(root: &R, config: &crate::config::FileSourceConfig) -> Self {
-        let root = root.path();
+    pub fn new(
+        root: &Path,
+        include: &[String],
+        exclude: &[String],
+        ignore_files: &[PathBuf],
+    ) -> Self {
+        let root = root;
 
         // core[impl file.files.iter.include]
-        let mut included: Vec<PathBuf> = config
-            .include
+        let mut included: Vec<PathBuf> = include
             .iter()
             .filter_map(|pattern| {
                 let abs_pattern = root.join(pattern).to_string_lossy().to_string();
                 glob::glob(&abs_pattern).ok()
             })
             .flatten()
-            .filter_map(|r| r.ok())
-            .filter(|p| p.is_file())
+            .filter_map(|r: Result<PathBuf, _>| r.ok())
+            .filter(|p: &PathBuf| p.is_file())
             .collect();
 
         included.sort();
         included.dedup();
 
         // core[impl file.files.iter.vcs-ignore]
-        let ignore_patterns: Vec<glob::Pattern> = config
-            .ignore_files
+        let ignore_patterns: Vec<glob::Pattern> = ignore_files
             .iter()
             .filter_map(|path| std::fs::read_to_string(path).ok())
-            .flat_map(|contents| {
+            .flat_map(|contents: String| {
                 let root = root.to_path_buf();
                 contents
                     .lines()
-                    .filter(|l| !l.trim().is_empty() && !l.starts_with('#'))
-                    .flat_map(|l| {
+                    .filter(|l: &&str| !l.trim().is_empty() && !l.starts_with('#'))
+                    .flat_map(|l: &str| {
                         let trimmed = l.trim().trim_end_matches('/');
                         let with_glob = format!("{trimmed}/**");
                         [trimmed.to_string(), with_glob]
                     })
-                    .filter_map(move |entry| {
+                    .filter_map(move |entry: String| {
                         let abs = root.join("**").join(&entry).to_string_lossy().to_string();
                         glob::Pattern::new(&abs).ok()
                     })
@@ -145,8 +148,7 @@ impl FilesIter {
             .collect();
 
         // core[impl file.files.iter.exclude]
-        let exclude_patterns: Vec<glob::Pattern> = config
-            .exclude
+        let exclude_patterns: Vec<glob::Pattern> = exclude
             .iter()
             .filter_map(|pattern| {
                 let abs = root.join(pattern).to_string_lossy().to_string();
@@ -210,11 +212,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         std::fs::write(dir.path().join("a.txt"), "content").unwrap();
         let root = TestRoot::new(dir.path());
-        let config = crate::config::FileSourceConfig {
-            include: vec!["*.txt".into()],
-            ..Default::default()
-        };
-        let twigs: Vec<_> = FilesIter::new(&root, &config).collect();
+        let twigs: Vec<_> = FilesIter::new(root.path(), &["*.txt".into()], &[], &[]).collect();
         assert_eq!(twigs.len(), 1);
         assert_eq!(twigs[0].path(), Path::new("a.txt"));
     }
@@ -310,8 +308,8 @@ mod tests {
         }
     }
 
-    fn sorted_twigs(root: &TestRoot, config: &crate::config::FileSourceConfig) -> Vec<PathBuf> {
-        let mut twigs: Vec<PathBuf> = FilesIter::new(root, config)
+    fn sorted_twigs(root: &TestRoot, include: &[String], exclude: &[String], ignore_files: &[PathBuf]) -> Vec<PathBuf> {
+        let mut twigs: Vec<PathBuf> = FilesIter::new(root.path(), include, exclude, ignore_files)
             .map(|t| t.path().to_path_buf())
             .collect();
         twigs.sort();
@@ -325,11 +323,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         make_test_tree(dir.path());
         let root = TestRoot::new(dir.path());
-        let config = crate::config::FileSourceConfig {
-            include: vec!["src/**/*.js".into()],
-            ..Default::default()
-        };
-        let twigs = sorted_twigs(&root, &config);
+        let twigs = sorted_twigs(&root, &["src/**/*.js".into()], &[], &[]);
         assert_eq!(
             twigs,
             vec![PathBuf::from("src/index.js"), PathBuf::from("src/utils.js"),]
@@ -342,11 +336,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         make_test_tree(dir.path());
         let root = TestRoot::new(dir.path());
-        let config = crate::config::FileSourceConfig {
-            include: vec!["src/**/*.js".into(), "**/*.md".into()],
-            ..Default::default()
-        };
-        let twigs = sorted_twigs(&root, &config);
+        let twigs = sorted_twigs(&root, &["src/**/*.js".into(), "**/*.md".into()], &[], &[]);
         assert_eq!(
             twigs,
             vec![
@@ -363,12 +353,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         make_test_tree(dir.path());
         let root = TestRoot::new(dir.path());
-        let config = crate::config::FileSourceConfig {
-            include: vec!["**/*.js".into()],
-            exclude: vec!["build/**".into()],
-            ..Default::default()
-        };
-        let twigs = sorted_twigs(&root, &config);
+        let twigs = sorted_twigs(&root, &["**/*.js".into()], &["build/**".into()], &[]);
         assert_eq!(
             twigs,
             vec![
@@ -387,12 +372,7 @@ mod tests {
         let ignore_path = dir.path().join(".gitignore");
         std::fs::write(&ignore_path, "build/\n").unwrap();
         let root = TestRoot::new(dir.path());
-        let config = crate::config::FileSourceConfig {
-            include: vec!["**/*.js".into()],
-            ignore_files: vec![ignore_path],
-            ..Default::default()
-        };
-        let twigs = sorted_twigs(&root, &config);
+        let twigs = sorted_twigs(&root, &["**/*.js".into()], &[], &[ignore_path]);
         assert_eq!(
             twigs,
             vec![

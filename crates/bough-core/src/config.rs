@@ -21,14 +21,17 @@ pub enum Outcome {
     PartialOrd,
     Ord,
     Facet,
+    clap::ValueEnum,
     bough_typed_hash::HashInto,
 )]
 #[facet(rename_all = "lowercase")]
 #[repr(u8)]
 pub enum LanguageId {
     #[facet(rename = "js")]
+    #[value(alias = "js")]
     Javascript,
     #[facet(rename = "ts")]
+    #[value(alias = "ts")]
     Typescript,
 }
 
@@ -54,7 +57,7 @@ pub struct TimeoutConfig {
     pub(crate) relative: Option<u64>,
 }
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Facet)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Facet, clap::ValueEnum)]
 #[facet(rename_all = "lowercase")]
 #[repr(u8)]
 pub enum OrderingConfig {
@@ -102,13 +105,12 @@ pub enum MutantSkipConfig {
 }
 
 #[derive(Debug, Clone, PartialEq, Facet)]
-#[facet(default)]
 pub struct Config {
     #[facet(default = 1u32)]
     pub(crate) threads: u32,
     #[facet(default = PathBuf::from("./.bough"))]
     pub(crate) bough_dir: PathBuf,
-    #[facet(default = PathBuf::new())]
+    #[facet(skip, default = PathBuf::new())]
     pub(crate) source_dir: PathBuf,
     #[facet(default)]
     pub(crate) ordering: OrderingConfig,
@@ -117,7 +119,6 @@ pub struct Config {
     pub(crate) pwd: Option<PathBuf>,
     #[facet(default)]
     pub(crate) timeout: TimeoutConfig,
-    #[facet(default)]
     pub(crate) env: HashMap<String, String>,
     pub(crate) init: Option<PhaseConfig>,
     pub(crate) reset: Option<PhaseConfig>,
@@ -125,7 +126,6 @@ pub struct Config {
     pub(crate) test_ids: Option<TestIdsConfig>,
     #[facet(default)]
     pub(crate) files: FileSourceConfig,
-    #[facet(default)]
     pub(crate) mutate: HashMap<LanguageId, MutateLanguageConfig>,
 }
 
@@ -150,29 +150,80 @@ impl Default for Config {
     }
 }
 
-pub struct TomlFormat;
+// core[impl config.partials]
+pub struct ConfigBuilder {
+    value: facet_value::Value,
+    source_dir: PathBuf,
+}
 
-impl figue::ConfigFormat for TomlFormat {
-    fn extensions(&self) -> &[&str] {
-        &["toml"]
+impl ConfigBuilder {
+    pub fn new(source_dir: PathBuf) -> Self {
+        Self {
+            value: facet_value::Value::from_iter(std::iter::empty::<(&str, facet_value::Value)>()),
+            source_dir,
+        }
     }
 
-    fn parse(&self, contents: &str) -> Result<figue::ConfigValue, figue::ConfigFormatError> {
-        let value: facet_value::Value = facet_toml::from_str(contents)
-            .map_err(|e| figue::ConfigFormatError::new(e.to_string()))?;
-        let json_str = facet_json::to_string(&value)
-            .map_err(|e| figue::ConfigFormatError::new(e.to_string()))?;
-        figue::JsonFormat
-            .parse(&json_str)
-            .map_err(|e| figue::ConfigFormatError::new(e.to_string()))
+    pub fn from_toml(self, toml_str: &str) -> Result<Self, ConfigError> {
+        let value: facet_value::Value =
+            facet_toml::from_str(toml_str).map_err(|e| ConfigError::Deserialize(e.to_string()))?;
+        Ok(Self { value, ..self })
+    }
+
+    pub fn override_with_toml(self, toml_str: &str) -> Result<Self, ConfigError> {
+        let patch: facet_value::Value =
+            facet_toml::from_str(toml_str).map_err(|e| ConfigError::Deserialize(e.to_string()))?;
+        Ok(Self {
+            value: Self::deep_merge(self.value, patch),
+            ..self
+        })
+    }
+
+    fn deep_merge(base: facet_value::Value, patch: facet_value::Value) -> facet_value::Value {
+        match (base.as_object(), patch.as_object()) {
+            (Some(base_obj), Some(patch_obj)) => {
+                let mut merged = base_obj.clone();
+                for (k, v) in patch_obj.iter() {
+                    let merged_val = if let Some(existing) = merged.remove(k) {
+                        Self::deep_merge(existing, v.clone())
+                    } else {
+                        v.clone()
+                    };
+                    merged.insert(k.clone(), merged_val);
+                }
+                facet_value::Value::from(merged)
+            }
+            _ => patch,
+        }
+    }
+
+    // core[impl config.source-dir]
+    pub fn build(self) -> Result<Config, ConfigError> {
+        let json_str = facet_json::to_string(&self.value)
+            .map_err(|e| ConfigError::Serialize(e.to_string()))?;
+        let mut config: Config =
+            facet_json::from_str(&json_str).map_err(|e| ConfigError::Deserialize(e.to_string()))?;
+        config.source_dir = self.source_dir;
+        Ok(config)
     }
 }
 
-#[derive(Debug, Facet)]
-pub struct Args {
-    #[facet(figue::config)]
-    pub config: Config,
+#[derive(Debug)]
+pub enum ConfigError {
+    Deserialize(String),
+    Serialize(String),
 }
+
+impl std::fmt::Display for ConfigError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ConfigError::Deserialize(e) => write!(f, "failed to deserialize config: {e}"),
+            ConfigError::Serialize(e) => write!(f, "failed to serialize config: {e}"),
+        }
+    }
+}
+
+impl std::error::Error for ConfigError {}
 
 #[cfg(test)]
 mod tests {
@@ -223,26 +274,14 @@ command = "npx vitest run"
 files.include = ["src/**/*.ts"]
 "#;
 
-    fn parse_toml(s: &str) -> Config {
-        facet_toml::from_str(s).expect("failed to parse toml")
-    }
-
-    fn parse_with_cli(toml: &str, cli_args: &[&str]) -> Args {
-        let config = figue::builder::<Args>()
-            .unwrap()
-            .file(|f| f.format(TomlFormat).content(toml, "config.toml"))
-            .cli(|cli| cli.args(cli_args.iter().copied()))
-            .build();
-        figue::Driver::new(config)
-            .run()
-            .into_result()
-            .unwrap()
-            .value
+    fn builder_from(s: &str) -> ConfigBuilder {
+        ConfigBuilder::new(PathBuf::new()).from_toml(s).unwrap()
     }
 
     #[test]
     fn deserialize_ideal_config() {
-        let config = parse_toml(IDEAL_CONFIG);
+        let config: Config =
+            facet_toml::from_str(IDEAL_CONFIG).expect("failed to parse ideal config");
 
         assert_eq!(config.threads, 1);
         assert_eq!(config.bough_dir, PathBuf::from("./.bough"));
@@ -267,7 +306,8 @@ files.include = ["src/**/*.ts"]
 
     #[test]
     fn deserialize_minimal_config() {
-        let config = parse_toml(MINIMAL_CONFIG);
+        let config: Config =
+            facet_toml::from_str(MINIMAL_CONFIG).expect("failed to parse minimal config");
 
         assert_eq!(config.threads, 1);
         assert_eq!(config.bough_dir, PathBuf::from("./.bough"));
@@ -288,75 +328,76 @@ files.include = ["src/**/*.ts"]
         assert!(ts_mutate.mutants.skip.is_empty());
     }
 
+    fn build_with_override(base: &str, patch: &str) -> Config {
+        builder_from(base)
+            .override_with_toml(patch)
+            .unwrap()
+            .build()
+            .unwrap()
+    }
+
+    // core[verify config.partials]
+    #[test]
+    fn override_scalar() {
+        let config = build_with_override("", "threads = 4");
+        assert_eq!(config.threads, 4);
+    }
+
+    // core[verify config.partials]
+    #[test]
+    fn override_bough_dir() {
+        let config = build_with_override(IDEAL_CONFIG, r#"bough_dir = "/override""#);
+        assert_eq!(config.bough_dir, PathBuf::from("/override"));
+    }
+
+    // core[verify config.partials]
+    #[test]
+    fn override_vec_replaces() {
+        let config = build_with_override(
+            MINIMAL_CONFIG,
+            r#"
+            [test]
+            command = "npm test"
+            "#,
+        );
+        assert_eq!(config.test.as_ref().unwrap().command, "npm test");
+    }
+
+    // core[verify config.partials]
+    #[test]
+    fn override_map_adds() {
+        let config = build_with_override(
+            MINIMAL_CONFIG,
+            r#"
+            [test.env]
+            FOO = "bar"
+            "#,
+        );
+        assert_eq!(config.test.as_ref().unwrap().env["FOO"], "bar");
+    }
+
+    // core[verify config.partials]
+    #[test]
+    fn override_deep_merge_phase() {
+        let config = build_with_override(IDEAL_CONFIG, r#"treat_timeouts_as = "Caught""#);
+        assert_eq!(config.treat_timeouts_as, Outcome::Caught);
+        assert!(config.init.is_some());
+    }
+
     #[test]
     fn defaults_are_sane() {
-        let config = parse_toml("");
+        let config: Config = facet_toml::from_str("").expect("empty config should parse");
         assert_eq!(config.threads, 1);
         assert_eq!(config.bough_dir, PathBuf::from("./.bough"));
         assert!(config.init.is_none() && config.reset.is_none() && config.test.is_none());
     }
 
+    // core[verify config.source-dir]
     #[test]
     fn project_bough_config_parses() {
         let toml_str = include_str!("../../../bough.config.toml");
-        parse_toml(toml_str);
-    }
-
-    #[test]
-    fn figue_defaults_only() {
-        let config = figue::builder::<Args>()
-            .unwrap()
-            .cli(|cli| cli.args(std::iter::empty::<&str>()))
-            .build();
-        let result = figue::Driver::new(config).run().into_result();
-        assert!(result.is_ok(), "figue defaults failed: {:?}", result.err());
-    }
-
-    // core[verify config.partials]
-    #[test]
-    fn cli_override_shallow_scalar() {
-        let args = parse_with_cli("", &["--config.threads", "4"]);
-        assert_eq!(args.config.threads, 4);
-    }
-
-    // core[verify config.partials]
-    #[test]
-    fn cli_override_shallow_path() {
-        let args = parse_with_cli(IDEAL_CONFIG, &["--config.bough-dir", "/override"]);
-        assert_eq!(args.config.bough_dir, PathBuf::from("/override"));
-    }
-
-    // core[verify config.partials]
-    #[test]
-    fn cli_override_shallow_enum() {
-        let args = parse_with_cli(IDEAL_CONFIG, &["--config.ordering", "alphabetical"]);
-        assert_eq!(args.config.ordering, OrderingConfig::Alphabetical);
-    }
-
-    // core[verify config.partials]
-    #[test]
-    fn cli_override_deep_nested_command() {
-        let args = parse_with_cli(MINIMAL_CONFIG, &["--config.test.command", "npm test"]);
-        assert_eq!(args.config.test.as_ref().unwrap().command, "npm test");
-    }
-
-    // core[verify config.partials]
-    #[test]
-    fn cli_override_deep_timeout() {
-        let args = parse_with_cli(
-            IDEAL_CONFIG,
-            &["--config.test.timeout.absolute", "60"],
-        );
-        assert_eq!(args.config.test.as_ref().unwrap().timeout.absolute, Some(60));
-        assert_eq!(args.config.test.as_ref().unwrap().timeout.relative, Some(3));
-    }
-
-    // core[verify config.partials]
-    #[test]
-    fn cli_override_preserves_unrelated_fields() {
-        let args = parse_with_cli(IDEAL_CONFIG, &["--config.threads", "8"]);
-        assert_eq!(args.config.threads, 8);
-        assert!(args.config.init.is_some());
-        assert_eq!(args.config.ordering, OrderingConfig::Alphabetical);
+        builder_from(toml_str)
+            .build()
+            .expect("bough.config.toml should parse without errors or invariant violations");
     }
 }

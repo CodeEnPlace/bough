@@ -1,8 +1,26 @@
 pub mod base;
-pub mod config;
 pub mod file;
 pub mod mutant;
 pub mod phase;
 pub mod workspace;
 
-pub use config::{LanguageId, Outcome};
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    PartialOrd,
+    Ord,
+    facet::Facet,
+    bough_typed_hash::HashInto,
+)]
+#[facet(rename_all = "lowercase")]
+#[repr(u8)]
+pub enum LanguageId {
+    #[facet(rename = "js")]
+    Javascript,
+    #[facet(rename = "ts")]
+    Typescript,
+}
