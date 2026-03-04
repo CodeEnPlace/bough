@@ -7,8 +7,8 @@ use std::path::{Path, PathBuf};
 #[derive(Debug, Clone, PartialEq)]
 pub struct Base {
     root: PathBuf,
-    twigs: Vec<Twig>,
-    mutant_twigs: HashMap<LanguageId, Vec<Twig>>,
+    files: FilesIter,
+    mutant_files: HashMap<LanguageId, FilesIter>,
 }
 
 impl Base {
@@ -19,37 +19,26 @@ impl Base {
         crate::file::validate_root(&root)?;
         Ok(Self {
             root,
-            twigs: files.collect(),
-            mutant_twigs: HashMap::new(),
+            files,
+            mutant_files: HashMap::new(),
         })
     }
 
-    pub fn with_mutant_files(
-        root: PathBuf,
-        files: FilesIter,
-        mutant_files: HashMap<LanguageId, FilesIter>,
-    ) -> Result<Self, Error> {
-        crate::file::validate_root(&root)?;
-        Ok(Self {
-            root,
-            twigs: files.collect(),
-            mutant_twigs: mutant_files.into_iter().map(|(k, v)| (k, v.collect())).collect(),
-        })
+    pub fn add_mutator(&mut self, language_id: LanguageId, files: FilesIter) {
+        self.mutant_files.insert(language_id, files);
     }
 
     // core[impl base.files]
     pub fn files(&self) -> impl Iterator<Item = Twig> + '_ {
-        self.twigs.iter().cloned()
+        self.files.iter()
     }
 
     // core[impl base.mutant_files]
     pub fn mutant_files(&self, language_id: &LanguageId) -> impl Iterator<Item = Twig> + '_ {
-        self.mutant_twigs
+        self.mutant_files
             .get(language_id)
-            .map(|v| v.as_slice())
-            .unwrap_or(&[])
-            .iter()
-            .cloned()
+            .into_iter()
+            .flat_map(|f| f.iter())
     }
 }
 
@@ -97,22 +86,13 @@ mod tests {
         std::fs::write(dir.path().join("src/b.ts"), "ts").unwrap();
 
         let root = dir.path();
-        let mut lang_files = std::collections::HashMap::new();
-        lang_files.insert(
-            crate::LanguageId::Javascript,
-            files_for(root, &["src/**/*.js".into()]),
-        );
-        lang_files.insert(
-            crate::LanguageId::Typescript,
-            files_for(root, &["src/**/*.ts".into()]),
-        );
-
-        let base = Base::with_mutant_files(
+        let mut base = Base::new(
             root.to_path_buf(),
             files_for(root, &["src/**/*".into()]),
-            lang_files,
         )
         .unwrap();
+        base.add_mutator(crate::LanguageId::Javascript, files_for(root, &["src/**/*.js".into()]));
+        base.add_mutator(crate::LanguageId::Typescript, files_for(root, &["src/**/*.ts".into()]));
 
         let js_twigs: Vec<_> = base
             .mutant_files(&crate::LanguageId::Javascript)
