@@ -272,6 +272,8 @@ impl LanguageDriver for JavascriptDriver {
     fn substitutions(&self, kind: &MutantKind) -> Vec<String> {
         match kind {
             MutantKind::BinaryOp(BinaryOpMutationKind::Add) => vec!["-".into(), "*".into()],
+            // core[impl mutation.subst.js.statement]
+            MutantKind::StatementBlock => vec!["{}".into()],
             _ => vec![],
         }
     }
@@ -871,6 +873,21 @@ mod tests {
         for mutation in MutationIter::new(&mutant) {
             assert_eq!(mutation.mutant().lang(), LanguageId::Javascript);
         }
+    }
+
+    // core[verify mutation.subst.js.statement]
+    #[test]
+    fn js_statement_mutant_has_empty_block_substitution() {
+        let js = "function foo() { return 1; }";
+        let (_dir, base) = make_js_base(js);
+        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
+        let mutant = Mutant::new(
+            LanguageId::Javascript, &base, &twig,
+            MutantKind::StatementBlock,
+            Span::new(Point::new(0, 15, 15), Point::new(0, 28, 28)),
+        );
+        let subs: Vec<String> = MutationIter::new(&mutant).map(|m| m.subst().to_string()).collect();
+        assert!(subs.contains(&"{}".to_string()));
     }
 
     // core[verify mutation.subst.js.add.mul]
