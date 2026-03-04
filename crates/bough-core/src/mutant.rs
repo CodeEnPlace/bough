@@ -353,6 +353,16 @@ impl<'a> Mutation<'a> {
     }
 }
 
+// core[impl mutation.hash.mutant]
+// core[impl mutation.hash.subst]
+impl HashInto for Mutation<'_> {
+    fn hash_into(&self, state: &mut bough_typed_hash::ShaState) -> Result<(), std::io::Error> {
+        self.mutant.hash_into(state)?;
+        self.subst.hash_into(state)?;
+        Ok(())
+    }
+}
+
 impl Point {
     pub fn new(line: usize, col: usize, byte: usize) -> Self {
         Self { line, col, byte }
@@ -1000,6 +1010,48 @@ mod tests {
         );
         let subs: Vec<String> = MutationIter::new(&mutant).map(|m| m.subst().to_string()).collect();
         assert!(subs.contains(&"-".to_string()));
+    }
+
+    fn hash_mutation(mutation: &Mutation<'_>) -> [u8; 32] {
+        use bough_typed_hash::sha2::Digest;
+        let mut state = bough_typed_hash::ShaState::new();
+        mutation.hash_into(&mut state).unwrap();
+        state.finalize().into()
+    }
+
+    // core[verify mutation.hash.mutant]
+    #[test]
+    fn mutation_hash_includes_mutant() {
+        let (_dir, base) = make_base();
+        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
+        let m1 = Mutant::new(
+            LanguageId::Javascript, &base, &twig,
+            MutantKind::BinaryOp(BinaryOpMutationKind::Add),
+            Span::new(Point::new(0, 0, 0), Point::new(0, 10, 10)),
+        );
+        let m2 = Mutant::new(
+            LanguageId::Javascript, &base, &twig,
+            MutantKind::Condition,
+            Span::new(Point::new(0, 0, 0), Point::new(0, 10, 10)),
+        );
+        let mut1 = Mutation { mutant: &m1, subst: "-".into() };
+        let mut2 = Mutation { mutant: &m2, subst: "-".into() };
+        assert_ne!(hash_mutation(&mut1), hash_mutation(&mut2));
+    }
+
+    // core[verify mutation.hash.subst]
+    #[test]
+    fn mutation_hash_includes_subst() {
+        let (_dir, base) = make_base();
+        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
+        let m = Mutant::new(
+            LanguageId::Javascript, &base, &twig,
+            MutantKind::BinaryOp(BinaryOpMutationKind::Add),
+            Span::new(Point::new(0, 0, 0), Point::new(0, 10, 10)),
+        );
+        let mut1 = Mutation { mutant: &m, subst: "-".into() };
+        let mut2 = Mutation { mutant: &m, subst: "*".into() };
+        assert_ne!(hash_mutation(&mut1), hash_mutation(&mut2));
     }
 
     // core[verify span.point]
