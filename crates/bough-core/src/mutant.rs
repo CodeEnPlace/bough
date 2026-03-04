@@ -71,6 +71,7 @@ impl<'a> Mutant<'a> {
 }
 
 // core[impl mutant.hash.typed-hashable]
+// core[impl mutant.hash.base]
 // core[impl mutant.hash.lang]
 // core[impl mutant.hash.twig]
 // core[impl mutant.hash.file]
@@ -674,6 +675,39 @@ mod tests {
         let mut state = bough_typed_hash::ShaState::new();
         mutant.hash_into(&mut state).unwrap();
         state.finalize().into()
+    }
+
+    // core[verify mutant.hash.base]
+    #[test]
+    fn mutant_hash_excludes_base() {
+        let dir1 = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(dir1.path().join("src")).unwrap();
+        std::fs::write(dir1.path().join("src/a.js"), "const a = 1;").unwrap();
+        let base1 = Base::new(
+            dir1.path().to_path_buf(),
+            FileSourceConfig { include: vec!["src/**/*.js".into()], ..Default::default() },
+        ).unwrap();
+
+        let dir2 = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(dir2.path().join("src")).unwrap();
+        std::fs::write(dir2.path().join("src/a.js"), "const a = 1;").unwrap();
+        let base2 = Base::new(
+            dir2.path().to_path_buf(),
+            FileSourceConfig { include: vec!["src/**/*.js".into()], ..Default::default() },
+        ).unwrap();
+
+        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
+        let m1 = Mutant::new(
+            LanguageId::Javascript, &base1, &twig,
+            MutantKind::StatementBlock,
+            Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
+        );
+        let m2 = Mutant::new(
+            LanguageId::Javascript, &base2, &twig,
+            MutantKind::StatementBlock,
+            Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
+        );
+        assert_eq!(hash_mutant(&m1), hash_mutant(&m2));
     }
 
     // core[verify mutant.hash.lang]
