@@ -43,6 +43,9 @@ Base impls Root
 core[base.files]
 Base::files -> FilesIter
 
+core[base.mutant_files]
+Base::mutant_files(language_id: &LanguageId) -> FilesIter
+
 ## Workspace
 
 core[workspace.root]
@@ -108,7 +111,7 @@ core[phase.timeout]
 Phase::timeout is a TimeoutConfig
 
 core[phase.run]
-Phase::run() -> Result<_,_> runs Phase::cmd
+`Phase::run() -> Result<_,_>` runs Phase::cmd
 
 core[phase.run.pwd]
 Phase::run runs the command in File { root, pwd }
@@ -137,9 +140,72 @@ PhaseOutcome should contain the exit code of the command, non-zero should return
 core[phase.out.duration]
 PhaseOutcome should contain the duration time of the command
 
+## MutantsIter
+
+core[mutant.iter.twig]
+MutantsIter holds &Twig
+
+core[mutant.iter.base]
+MutantIter holds &Base
+
+core[mutant.iter.file]
+MutantIter uses twig and base to create an absolute path for the file it will generate mutants for
+
+core[mutant.iter.lang]
+MutantIter owns LanguageId
+
+core[mutant.iter.item]
+MutantIter impls Iter<Item=Mutant>
+
+core[mutant.iter.find]
+MutantIter uses its driver to walk its file and find all mutants we support
+
+core[mutant.iter.find.js.statement]
+MutantIter finds javascript statement blocks
+
+core[mutant.iter.find.js.condition.if]
+MutantIter finds javascript conditions of if statements
+
+core[mutant.iter.find.js.condition.while]
+MutantIter finds javascript conditions of while statements
+
+core[mutant.iter.find.js.condition.for]
+MutantIter finds javascript conditions of for statements
+
+core[mutant.iter.find.js.binary.add]
+MutantIter finds javascript add binary ops
+
+core[mutant.iter.find.js.binary.sub]
+MutantIter finds javascript subtract binary ops
+
 ## Mutant
 
-## Mutation
+core[mutant.lang]
+Mutant owns LanguageId
+
+core[mutant.base]
+Mutant holds &Base
+
+core[mutant.twig]
+Mutant holds &Twig
+
+core[mutant.kind]
+Mutant owns MutantKind
+
+core[mutant.span]
+Mutant owns Span
+
+core[span.point]
+Span is composed of two Points
+
+core[point.line]
+Point::line is a usize representing the line of the file it points to
+
+core[point.col]
+Point::col is a usize representing the col of the file it points to
+
+core[point.byte]
+Point::byte is a usize representing the byte of the file it points to
 
 <!-- ### Config -->
 
