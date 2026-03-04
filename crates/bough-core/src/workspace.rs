@@ -1,7 +1,25 @@
 use crate::base::Base;
-use crate::file::{File, FilesIter, Root, Twig};
+use crate::file::{File, FilesIter, Root};
+use crate::mutant::Mutant;
 use crate::mutant::mutation::Mutation;
 use std::path::{Path, PathBuf};
+
+// core[impl workspace.active]
+#[derive(Debug, Clone, PartialEq)]
+pub struct ActiveMutation<'a> {
+    mutant: Mutant<'a>,
+    mutation: Mutation<'a>,
+}
+
+impl<'a> ActiveMutation<'a> {
+    pub fn mutant(&self) -> &Mutant<'a> {
+        &self.mutant
+    }
+
+    pub fn mutation(&self) -> &Mutation<'a> {
+        &self.mutation
+    }
+}
 
 #[derive(Debug)]
 pub enum Error {
@@ -85,7 +103,7 @@ pub struct Workspace<'a> {
     id: WorkspaceId,
     root: PathBuf,
     base: &'a Base,
-    active: Option<Twig>,
+    active: Option<ActiveMutation<'a>>,
 }
 
 impl<'a> Workspace<'a> {
@@ -141,7 +159,7 @@ impl<'a> Workspace<'a> {
     // core[impl workspace.write_mutant]
     // core[impl workspace.write_mutant.set-active]
     // core[impl workspace.write_mutant.set-active.only-one]
-    pub fn write_mutant(&mut self, mutation: &Mutation<'_>) -> Result<(), Error> {
+    pub fn write_mutant(&mut self, mutation: &Mutation<'a>) -> Result<(), Error> {
         if self.active.is_some() {
             return Err(Error::AlreadyActive);
         }
@@ -157,21 +175,25 @@ impl<'a> Workspace<'a> {
         mutated.extend_from_slice(&content[end..]);
         let ws_file = self.root.join(mutant.twig().path());
         std::fs::write(&ws_file, &mutated)?;
-        self.active = Some(mutant.twig().clone());
+        self.active = Some(ActiveMutation {
+            mutant: mutation.mutant().clone(),
+            mutation: mutation.clone(),
+        });
         Ok(())
     }
 
     // core[impl workspace.revert_mutant]
     // core[impl workspace.revert_mutant.active]
     pub fn revert_mutant(&mut self) -> Result<(), Error> {
-        let twig = self.active.take().ok_or(Error::NotActive)?;
-        let src = File::new(self.base, &twig).resolve();
+        let active = self.active.take().ok_or(Error::NotActive)?;
+        let twig = active.mutant().twig();
+        let src = File::new(self.base, twig).resolve();
         let dst = self.root.join(twig.path());
         std::fs::copy(&src, &dst)?;
         Ok(())
     }
 
-    pub fn active(&self) -> Option<&Twig> {
+    pub fn active(&self) -> Option<&ActiveMutation<'a>> {
         self.active.as_ref()
     }
 
@@ -479,6 +501,15 @@ mod tests {
         ws.write_mutant(&mutation).unwrap();
         let result = ws.write_mutant(&mutation);
         assert!(result.is_err());
+    }
+
+    // core[verify workspace.active]
+    #[test]
+    fn workspace_active_is_none_initially() {
+        let (_base_dir, base) = make_base();
+        let ws_dir = tempfile::tempdir().unwrap();
+        let ws = Workspace::new(ws_dir.path().to_path_buf(), &base).unwrap();
+        assert!(ws.active().is_none());
     }
 
     // core[verify workspace.write_mutant.set-active]

@@ -37,7 +37,7 @@ impl<'a> Iterator for MutationIter<'a> {
 
 // core[impl mutation.mutant]
 // core[impl mutation.subst]
-#[derive(Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Mutation<'a> {
     pub(crate) mutant: &'a Mutant<'a>,
     pub(crate) subst: String,
