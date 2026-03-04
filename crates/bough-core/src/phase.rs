@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+#[cfg(test)]
 use std::path::{Path, PathBuf};
 
 use crate::config::TimeoutConfig;
@@ -64,27 +65,81 @@ impl<'a, R: Root> Phase<'a, R> {
     // core[impl phase.run]
     // core[impl phase.run.pwd]
     // core[impl phase.run.env]
-    pub fn run(&self) -> Result<PhaseOutcome, Error> {
+    // core[impl phase.run.timeout]
+    // core[impl phase.run.timeout.absolute]
+    // core[impl phase.run.timeout.relative]
+    pub fn run(&self, reference_duration: Option<std::time::Duration>) -> Result<PhaseOutcome, Error> {
+        use wait_timeout::ChildExt;
+
         if self.cmd.is_empty() {
             return Err(Error::EmptyCommand);
         }
 
         let working_dir = File::new(self.root, &self.pwd).resolve();
 
+        let effective_timeout = self.effective_timeout(reference_duration);
+
         let start = std::time::Instant::now();
-        let output = std::process::Command::new(&self.cmd[0])
+        let mut child = std::process::Command::new(&self.cmd[0])
             .args(&self.cmd[1..])
             .current_dir(&working_dir)
             .envs(&self.env)
-            .output()?;
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .spawn()?;
+
+        let timed_out = if let Some(timeout) = effective_timeout {
+            match child.wait_timeout(timeout)? {
+                Some(_status) => false,
+                None => {
+                    child.kill()?;
+                    child.wait()?;
+                    true
+                }
+            }
+        } else {
+            child.wait()?;
+            false
+        };
+
         let duration = start.elapsed();
 
+        let mut stdout = Vec::new();
+        let mut stderr = Vec::new();
+        if let Some(mut out) = child.stdout.take() {
+            std::io::Read::read_to_end(&mut out, &mut stdout)?;
+        }
+        if let Some(mut err) = child.stderr.take() {
+            std::io::Read::read_to_end(&mut err, &mut stderr)?;
+        }
+
+        let exit_code = if timed_out {
+            -1
+        } else {
+            child.try_wait()?.and_then(|s| s.code()).unwrap_or(-1)
+        };
+
         Ok(PhaseOutcome {
-            stdout: output.stdout,
-            stderr: output.stderr,
-            exit_code: output.status.code().unwrap_or(-1),
+            stdout,
+            stderr,
+            exit_code,
             duration,
+            timed_out,
         })
+    }
+
+    fn effective_timeout(&self, reference_duration: Option<std::time::Duration>) -> Option<std::time::Duration> {
+        let absolute = self.timeout.absolute.map(std::time::Duration::from_secs);
+        let relative = match (self.timeout.relative, reference_duration) {
+            (Some(multiplier), Some(ref_dur)) => Some(ref_dur * multiplier as u32),
+            _ => None,
+        };
+        match (absolute, relative) {
+            (Some(a), Some(r)) => Some(a.min(r)),
+            (Some(a), None) => Some(a),
+            (None, Some(r)) => Some(r),
+            (None, None) => None,
+        }
     }
 }
 
@@ -98,6 +153,7 @@ pub struct PhaseOutcome {
     stderr: Vec<u8>,
     exit_code: i32,
     duration: std::time::Duration,
+    timed_out: bool,
 }
 
 impl PhaseOutcome {
@@ -115,6 +171,10 @@ impl PhaseOutcome {
 
     pub fn duration(&self) -> std::time::Duration {
         self.duration
+    }
+
+    pub fn timed_out(&self) -> bool {
+        self.timed_out
     }
 }
 
@@ -196,6 +256,7 @@ mod tests {
             stderr: b"warn\n".to_vec(),
             exit_code: 0,
             duration: std::time::Duration::from_millis(150),
+            timed_out: false,
         };
         assert_eq!(outcome.stdout(), b"hello\n");
         assert_eq!(outcome.stderr(), b"warn\n");
@@ -211,6 +272,7 @@ mod tests {
             stderr: b"error\n".to_vec(),
             exit_code: 1,
             duration: std::time::Duration::from_millis(50),
+            timed_out: false,
         };
         assert_eq!(outcome.exit_code(), 1);
     }
@@ -225,7 +287,7 @@ mod tests {
             pwd: crate::file::Twig::new(PathBuf::from(".")).unwrap(),
             ..make_phase(&root)
         };
-        let outcome = phase.run().unwrap();
+        let outcome = phase.run(None).unwrap();
         assert_eq!(outcome.exit_code(), 0);
         assert_eq!(String::from_utf8_lossy(outcome.stdout()).trim(), "hello");
     }
@@ -241,7 +303,7 @@ mod tests {
             pwd: crate::file::Twig::new(PathBuf::from(".")).unwrap(),
             ..make_phase(&root)
         };
-        let outcome = phase.run().unwrap();
+        let outcome = phase.run(None).unwrap();
         assert_eq!(outcome.exit_code(), 42);
     }
 
@@ -257,7 +319,7 @@ mod tests {
             pwd: crate::file::Twig::new(PathBuf::from("subdir")).unwrap(),
             ..make_phase(&root)
         };
-        let outcome = phase.run().unwrap();
+        let outcome = phase.run(None).unwrap();
         let out = String::from_utf8_lossy(outcome.stdout());
         assert!(out.trim().ends_with("subdir"), "pwd should end with subdir, got: {out}");
     }
@@ -273,7 +335,7 @@ mod tests {
             env: HashMap::from([("MY_VAR".into(), "hello_env".into())]),
             ..make_phase(&root)
         };
-        let outcome = phase.run().unwrap();
+        let outcome = phase.run(None).unwrap();
         assert_eq!(String::from_utf8_lossy(outcome.stdout()).trim(), "hello_env");
     }
 
@@ -287,7 +349,7 @@ mod tests {
             pwd: crate::file::Twig::new(PathBuf::from(".")).unwrap(),
             ..make_phase(&root)
         };
-        let outcome = phase.run().unwrap();
+        let outcome = phase.run(None).unwrap();
         assert_eq!(String::from_utf8_lossy(outcome.stderr()).trim(), "err");
     }
 
@@ -301,7 +363,72 @@ mod tests {
             pwd: crate::file::Twig::new(PathBuf::from(".")).unwrap(),
             ..make_phase(&root)
         };
-        let outcome = phase.run().unwrap();
+        let outcome = phase.run(None).unwrap();
         assert!(outcome.duration() >= std::time::Duration::from_millis(40));
+    }
+
+    // core[verify phase.run.timeout.absolute]
+    #[test]
+    fn phase_run_kills_on_absolute_timeout() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = TestRoot(dir.path().to_path_buf());
+        let phase = Phase {
+            cmd: vec!["sleep".into(), "10".into()],
+            pwd: crate::file::Twig::new(PathBuf::from(".")).unwrap(),
+            timeout: TimeoutConfig { absolute: Some(1), relative: None },
+            ..make_phase(&root)
+        };
+        let outcome = phase.run(None).unwrap();
+        assert!(outcome.timed_out());
+        assert!(outcome.duration() < std::time::Duration::from_secs(5));
+    }
+
+    // core[verify phase.run.timeout.absolute]
+    #[test]
+    fn phase_run_no_timeout_when_command_finishes_in_time() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = TestRoot(dir.path().to_path_buf());
+        let phase = Phase {
+            cmd: vec!["echo".into(), "fast".into()],
+            pwd: crate::file::Twig::new(PathBuf::from(".")).unwrap(),
+            timeout: TimeoutConfig { absolute: Some(10), relative: None },
+            ..make_phase(&root)
+        };
+        let outcome = phase.run(None).unwrap();
+        assert!(!outcome.timed_out());
+        assert_eq!(outcome.exit_code(), 0);
+    }
+
+    // core[verify phase.run.timeout.relative]
+    #[test]
+    fn phase_run_kills_on_relative_timeout() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = TestRoot(dir.path().to_path_buf());
+        let phase = Phase {
+            cmd: vec!["sleep".into(), "10".into()],
+            pwd: crate::file::Twig::new(PathBuf::from(".")).unwrap(),
+            timeout: TimeoutConfig { absolute: None, relative: Some(2) },
+            ..make_phase(&root)
+        };
+        let ref_dur = std::time::Duration::from_millis(500);
+        let outcome = phase.run(Some(ref_dur)).unwrap();
+        assert!(outcome.timed_out());
+        assert!(outcome.duration() < std::time::Duration::from_secs(5));
+    }
+
+    // core[verify phase.run.timeout.relative]
+    #[test]
+    fn phase_run_relative_timeout_ignored_without_reference() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = TestRoot(dir.path().to_path_buf());
+        let phase = Phase {
+            cmd: vec!["echo".into(), "ok".into()],
+            pwd: crate::file::Twig::new(PathBuf::from(".")).unwrap(),
+            timeout: TimeoutConfig { absolute: None, relative: Some(2) },
+            ..make_phase(&root)
+        };
+        let outcome = phase.run(None).unwrap();
+        assert!(!outcome.timed_out());
+        assert_eq!(outcome.exit_code(), 0);
     }
 }
