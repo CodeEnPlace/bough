@@ -90,6 +90,9 @@ core[workspace.bind]
 core[workspace.bind.validate-unchanged]
 Workspace::validate_unchanged() is called after bind to ensure it has not changed
 
+core[workspace.bind.validate-unchanged.set_active]
+if Workspace::validate_unchanged() finds 1 single active Mutation, it should be set as the Workspace's active Mutation
+
 core[workspace.validate-unchanged]
 Workspace::validate_unchanged() checks that list and file contents of Base::files and Workspace::files are identicall
 
