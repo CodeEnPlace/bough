@@ -15,6 +15,8 @@ pub struct TwigMutantsIter<'a> {
     cursor: tree_sitter::TreeCursor<'static>,
     did_visit: bool,
     started: bool,
+    skip_kinds: Vec<MutantKind>,
+    skip_queries: Vec<tree_sitter::Query>,
 }
 
 #[derive(bough_typed_hash::TypedHash)]
@@ -194,6 +196,8 @@ impl<'a> TwigMutantsIter<'a> {
             cursor,
             did_visit: false,
             started: false,
+            skip_kinds: Vec::new(),
+            skip_queries: Vec::new(),
         })
     }
 
@@ -207,6 +211,18 @@ impl<'a> TwigMutantsIter<'a> {
 
     pub fn twig(&self) -> &Twig {
         self.twig
+    }
+
+    // core[impl mutant.twig-iter.skip.kind]
+    // core[impl mutant.twig-iter.skip.kind.multiple]
+    pub fn with_skip_kind(mut self, kind: MutantKind) -> Self {
+        todo!()
+    }
+
+    // core[impl mutant.twig-iter.skip.query]
+    // core[impl mutant.twig-iter.skip.query.multiple]
+    pub fn with_skip_query(self, query: &str) -> Self {
+        todo!()
     }
 }
 
@@ -766,5 +782,88 @@ mod tests {
         assert_eq!(span.start().col(), 0);
         assert_eq!(span.end().line(), 5);
         assert_eq!(span.end().byte(), 50);
+    }
+
+    // core[verify mutant.twig-iter.skip.kind]
+    #[test]
+    fn skip_kind_filters_matching_mutants() {
+        // "function foo() { return a + b; }" produces: StatementBlock, BinaryOp(Add)
+        let js = "function foo() { return a + b; }";
+        let (_dir, base) = make_js_base(js);
+        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
+        let mutants: Vec<_> = TwigMutantsIter::new(LanguageId::Javascript, &base, &twig)
+            .unwrap()
+            .with_skip_kind(MutantKind::StatementBlock)
+            .collect();
+        assert_eq!(mutants.len(), 1);
+        assert_eq!(
+            *mutants[0].kind(),
+            MutantKind::BinaryOp(BinaryOpMutationKind::Add),
+        );
+    }
+
+    // core[verify mutant.twig-iter.skip.kind.multiple]
+    #[test]
+    fn skip_kind_multiple_filters_all_specified_kinds() {
+        // "function foo() { if (x) { return a + b; } }" produces:
+        //   StatementBlock (outer), Condition, StatementBlock (inner), BinaryOp(Add)
+        let js = "function foo() { if (x) { return a + b; } }";
+        let (_dir, base) = make_js_base(js);
+        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
+        let mutants: Vec<_> = TwigMutantsIter::new(LanguageId::Javascript, &base, &twig)
+            .unwrap()
+            .with_skip_kind(MutantKind::StatementBlock)
+            .with_skip_kind(MutantKind::Condition)
+            .collect();
+        assert_eq!(mutants.len(), 1);
+        assert_eq!(
+            *mutants[0].kind(),
+            MutantKind::BinaryOp(BinaryOpMutationKind::Add),
+        );
+    }
+
+    // core[verify mutant.twig-iter.skip.query]
+    #[test]
+    fn skip_query_filters_matching_nodes() {
+        // "const x = a + b; const y = a - b;" produces: BinaryOp(Add), BinaryOp(Sub)
+        // skip query targeting "+" operator removes only the Add
+        let js = "const x = a + b; const y = a - b;";
+        let (_dir, base) = make_js_base(js);
+        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
+        let filtered: Vec<_> = TwigMutantsIter::new(LanguageId::Javascript, &base, &twig)
+            .unwrap()
+            .with_skip_query("(binary_expression operator: \"+\") @skip")
+            .collect();
+        assert_eq!(filtered.len(), 1);
+        assert_eq!(
+            *filtered[0].kind(),
+            MutantKind::BinaryOp(BinaryOpMutationKind::Sub),
+        );
+    }
+
+    // core[verify mutant.twig-iter.skip.query.multiple]
+    #[test]
+    fn skip_query_multiple_filters_union() {
+        // "const x = a + b; const y = a - b;" produces: BinaryOp(Add), BinaryOp(Sub)
+        // skip query for add filters the Add, skip query for sub filters the Sub
+        let js = "const x = a + b; const y = a - b;";
+        let (_dir, base) = make_js_base(js);
+        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
+        let filtered_one: Vec<_> = TwigMutantsIter::new(LanguageId::Javascript, &base, &twig)
+            .unwrap()
+            .with_skip_query("(binary_expression operator: \"+\") @skip")
+            .collect();
+        assert_eq!(filtered_one.len(), 1);
+        assert_eq!(
+            *filtered_one[0].kind(),
+            MutantKind::BinaryOp(BinaryOpMutationKind::Sub),
+        );
+
+        let filtered_both: Vec<_> = TwigMutantsIter::new(LanguageId::Javascript, &base, &twig)
+            .unwrap()
+            .with_skip_query("(binary_expression operator: \"+\") @skip")
+            .with_skip_query("(binary_expression operator: \"-\") @skip")
+            .collect();
+        assert!(filtered_both.is_empty());
     }
 }
