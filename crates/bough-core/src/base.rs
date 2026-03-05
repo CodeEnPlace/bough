@@ -1,5 +1,5 @@
 use crate::LanguageId;
-use crate::file::{Error, FilesIter, Root, Twig};
+use crate::file::{Error, TwigsIter, Root, Twig};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
@@ -7,14 +7,14 @@ use std::path::{Path, PathBuf};
 #[derive(Debug, Clone, PartialEq)]
 pub struct Base {
     root: PathBuf,
-    files: FilesIter,
-    mutant_files: HashMap<LanguageId, FilesIter>,
+    files: TwigsIter,
+    mutant_files: HashMap<LanguageId, TwigsIter>,
 }
 
 impl Base {
     pub fn new(
         root: PathBuf,
-        files: FilesIter,
+        files: TwigsIter,
     ) -> Result<Self, Error> {
         crate::file::validate_root(&root)?;
         Ok(Self {
@@ -24,7 +24,7 @@ impl Base {
         })
     }
 
-    pub fn add_mutator(&mut self, language_id: LanguageId, files: FilesIter) {
+    pub fn add_mutator(&mut self, language_id: LanguageId, files: TwigsIter) {
         self.mutant_files.insert(language_id, files);
     }
 
@@ -52,10 +52,10 @@ impl Root for Base {
 mod tests {
     use super::*;
 
-    use crate::file::FilesIter;
+    use crate::file::TwigsIter;
 
-    fn files_for(root: &Path, include: &[String]) -> FilesIter {
-        FilesIter::new(root, include, &[], &[])
+    fn files_for(root: &Path, include: &[String]) -> TwigsIter {
+        TwigsIter::new(root, include, &[], &[])
     }
 
     // core[verify base.root]

@@ -18,13 +18,13 @@ core[file.transplant]
 `File::transplant(&self, root: &Root) -> Self` replace root
 
 core[file.files.config]
-FilesIter holds a ref to FileSourceConfig
+TwigsIter holds a ref to FileSourceConfig
 
 core[file.files.root]
-FilesIter holds a ref to a Root
+TwigsIter holds a ref to a Root
 
 core[file.files.iter]
-FilesIter iterates Twigs
+TwigsIter iterates Twigs
 
 core[file.files.iter.include]
 A file should be included if it matches any of the include globs
@@ -41,10 +41,10 @@ core[base.root]
 Base impls Root
 
 core[base.files]
-Base::files -> FilesIter
+Base::files -> TwigsIter
 
 core[base.mutant_files]
-Base::mutant_files(language_id: &LanguageId) -> FilesIter
+Base::mutant_files(language_id: &LanguageId) -> TwigsIter
 
 core[base.mutants]
 Base::mutants(language_id: &LanguageId) -> MutantsIter
@@ -61,7 +61,7 @@ core[workspace.base]
 Workspace holds &Base
 
 core[workspace.files]
-Workspace::files -> FilesIter
+Workspace::files -> TwigsIter
 
 core[workspace.is-handle]
 Workspace struct exists as a handle for a directory

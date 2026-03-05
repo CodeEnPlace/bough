@@ -76,7 +76,7 @@ impl HashInto for Mutation<'_> {
 mod tests {
     use super::*;
     use crate::base::Base;
-    use crate::file::{FilesIter, Twig};
+    use crate::file::{TwigsIter, Twig};
     use crate::mutant::{BinaryOpMutationKind, MutantKind, Point, Span};
     use bough_typed_hash::HashStore;
     use std::path::PathBuf;
@@ -91,7 +91,7 @@ mod tests {
         std::fs::write(dir.path().join("src/a.js"), content).unwrap();
         let base = Base::new(
             dir.path().to_path_buf(),
-            FilesIter::new(dir.path(), &["src/**/*.js".into()], &[], &[]),
+            TwigsIter::new(dir.path(), &["src/**/*.js".into()], &[], &[]),
         )
         .unwrap();
         (dir, base)

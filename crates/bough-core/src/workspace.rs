@@ -241,7 +241,7 @@ impl Root for Workspace<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::file::FilesIter;
+    use crate::file::TwigsIter;
 
     fn make_base() -> (tempfile::TempDir, Base) {
         let dir = tempfile::tempdir().unwrap();
@@ -250,7 +250,7 @@ mod tests {
         std::fs::write(dir.path().join("src/b.js"), "const b = 2;").unwrap();
         let base = Base::new(
             dir.path().to_path_buf(),
-            FilesIter::new(dir.path(), &["src/**/*.js".into()], &[], &[]),
+            TwigsIter::new(dir.path(), &["src/**/*.js".into()], &[], &[]),
         )
         .unwrap();
         (dir, base)
@@ -418,7 +418,7 @@ mod tests {
         std::fs::write(dir.path().join("src/a.js"), content).unwrap();
         let base = Base::new(
             dir.path().to_path_buf(),
-            FilesIter::new(dir.path(), &["src/**/*.js".into()], &[], &[]),
+            TwigsIter::new(dir.path(), &["src/**/*.js".into()], &[], &[]),
         )
         .unwrap();
         (dir, base)

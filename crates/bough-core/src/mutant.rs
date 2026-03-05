@@ -256,7 +256,7 @@ pub(crate) fn span_from_node(node: &tree_sitter::Node<'_>) -> Span {
 mod tests {
     use super::*;
     use crate::base::Base;
-    use crate::file::{FilesIter, Root};
+    use crate::file::{TwigsIter, Root};
     use std::path::PathBuf;
 
     fn make_base() -> (tempfile::TempDir, Base) {
@@ -269,7 +269,7 @@ mod tests {
         std::fs::write(dir.path().join("src/a.js"), content).unwrap();
         let base = Base::new(
             dir.path().to_path_buf(),
-            FilesIter::new(dir.path(), &["src/**/*.js".into()], &[], &[]),
+            TwigsIter::new(dir.path(), &["src/**/*.js".into()], &[], &[]),
         )
         .unwrap();
         (dir, base)
@@ -561,7 +561,7 @@ mod tests {
         std::fs::write(dir1.path().join("src/a.js"), "const a = 1;").unwrap();
         let base1 = Base::new(
             dir1.path().to_path_buf(),
-            FilesIter::new(dir1.path(), &["src/**/*.js".into()], &[], &[]),
+            TwigsIter::new(dir1.path(), &["src/**/*.js".into()], &[], &[]),
         )
         .unwrap();
 
@@ -570,7 +570,7 @@ mod tests {
         std::fs::write(dir2.path().join("src/a.js"), "const a = 1;").unwrap();
         let base2 = Base::new(
             dir2.path().to_path_buf(),
-            FilesIter::new(dir2.path(), &["src/**/*.js".into()], &[], &[]),
+            TwigsIter::new(dir2.path(), &["src/**/*.js".into()], &[], &[]),
         )
         .unwrap();
 
@@ -623,7 +623,7 @@ mod tests {
         std::fs::write(dir.path().join("src/b.js"), "const a = 1;").unwrap();
         let base = Base::new(
             dir.path().to_path_buf(),
-            FilesIter::new(dir.path(), &["src/**/*.js".into()], &[], &[]),
+            TwigsIter::new(dir.path(), &["src/**/*.js".into()], &[], &[]),
         )
         .unwrap();
         let twig_a = Twig::new(PathBuf::from("src/a.js")).unwrap();
@@ -653,7 +653,7 @@ mod tests {
         std::fs::write(dir1.path().join("src/a.js"), "const a = 1;").unwrap();
         let base1 = Base::new(
             dir1.path().to_path_buf(),
-            FilesIter::new(dir1.path(), &["src/**/*.js".into()], &[], &[]),
+            TwigsIter::new(dir1.path(), &["src/**/*.js".into()], &[], &[]),
         )
         .unwrap();
 
@@ -662,7 +662,7 @@ mod tests {
         std::fs::write(dir2.path().join("src/a.js"), "const b = 2;").unwrap();
         let base2 = Base::new(
             dir2.path().to_path_buf(),
-            FilesIter::new(dir2.path(), &["src/**/*.js".into()], &[], &[]),
+            TwigsIter::new(dir2.path(), &["src/**/*.js".into()], &[], &[]),
         )
         .unwrap();
 

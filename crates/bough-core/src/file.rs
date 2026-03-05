@@ -98,11 +98,11 @@ pub(crate) fn validate_root(path: &PathBuf) -> Result<(), Error> {
 // core[impl file.files.root]
 // core[impl file.files.iter]
 #[derive(Debug, Clone, PartialEq)]
-pub struct FilesIter {
+pub struct TwigsIter {
     twigs: Vec<Twig>,
 }
 
-impl FilesIter {
+impl TwigsIter {
     pub fn new(
         root: &Path,
         include: &[String],
@@ -179,7 +179,7 @@ impl FilesIter {
     }
 }
 
-impl IntoIterator for FilesIter {
+impl IntoIterator for TwigsIter {
     type Item = Twig;
     type IntoIter = std::vec::IntoIter<Twig>;
 
@@ -216,7 +216,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         std::fs::write(dir.path().join("a.txt"), "content").unwrap();
         let root = TestRoot::new(dir.path());
-        let twigs: Vec<_> = FilesIter::new(root.path(), &["*.txt".into()], &[], &[]).into_iter().collect();
+        let twigs: Vec<_> = TwigsIter::new(root.path(), &["*.txt".into()], &[], &[]).into_iter().collect();
         assert_eq!(twigs.len(), 1);
         assert_eq!(twigs[0].path(), Path::new("a.txt"));
     }
@@ -313,7 +313,7 @@ mod tests {
     }
 
     fn sorted_twigs(root: &TestRoot, include: &[String], exclude: &[String], ignore_files: &[PathBuf]) -> Vec<PathBuf> {
-        let mut twigs: Vec<PathBuf> = FilesIter::new(root.path(), include, exclude, ignore_files)
+        let mut twigs: Vec<PathBuf> = TwigsIter::new(root.path(), include, exclude, ignore_files)
             .into_iter()
             .map(|t| t.path().to_path_buf())
             .collect();
