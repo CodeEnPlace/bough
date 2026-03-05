@@ -29,12 +29,12 @@ impl Base {
     }
 
     // core[impl base.files]
-    pub fn files(&self) -> impl Iterator<Item = Twig> + '_ {
+    pub fn files(&self) -> impl Iterator<Item = &Twig> + '_ {
         self.files.iter()
     }
 
     // core[impl base.mutant_files]
-    pub fn mutant_files(&self, language_id: &LanguageId) -> impl Iterator<Item = Twig> + '_ {
+    pub fn mutant_files(&self, language_id: &LanguageId) -> impl Iterator<Item = &Twig> + '_ {
         self.mutant_files
             .get(language_id)
             .into_iter()
