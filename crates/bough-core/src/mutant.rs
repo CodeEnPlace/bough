@@ -7,10 +7,10 @@ use tree_sitter::StreamingIterator;
 // core[impl mutant.twig-iter.twig]
 // core[impl mutant.twig-iter.base]
 // core[impl mutant.twig-iter.lang]
-pub struct TwigMutantsIter<'a> {
+pub struct TwigMutantsIter<'a, 't> {
     lang: LanguageId,
     base: &'a Base,
-    twig: &'a Twig,
+    twig: &'t Twig,
     driver: Box<dyn LanguageDriver>,
     file_content: Vec<u8>,
     tree: tree_sitter::Tree,
@@ -39,13 +39,7 @@ pub struct Mutant<'a> {
 }
 
 impl<'a> Mutant<'a> {
-    pub fn new(
-        lang: LanguageId,
-        base: &'a Base,
-        twig: Twig,
-        kind: MutantKind,
-        span: Span,
-    ) -> Self {
+    pub fn new(lang: LanguageId, base: &'a Base, twig: Twig, kind: MutantKind, span: Span) -> Self {
         Self {
             lang,
             base,
@@ -164,8 +158,8 @@ pub enum MutantKind {
     BinaryOp(BinaryOpMutationKind),
 }
 
-impl<'a> TwigMutantsIter<'a> {
-    pub fn new(lang: LanguageId, base: &'a Base, twig: &'a Twig) -> std::io::Result<Self> {
+impl<'a, 't> TwigMutantsIter<'a, 't> {
+    pub fn new(lang: LanguageId, base: &'a Base, twig: &'t Twig) -> std::io::Result<Self> {
         // core[impl mutant.twig-iter.file]
         let file_path = crate::file::File::new(base, twig).resolve();
         let file_content = std::fs::read(&file_path)?;
@@ -235,7 +229,7 @@ impl<'a> TwigMutantsIter<'a> {
 // core[impl mutant.twig-iter]
 // core[impl mutant.twig-iter.item]
 // core[impl mutant.twig-iter.find]
-impl<'a> Iterator for TwigMutantsIter<'a> {
+impl<'a, 't> Iterator for TwigMutantsIter<'a, 't> {
     type Item = Mutant<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -270,24 +264,40 @@ impl<'a> Iterator for TwigMutantsIter<'a> {
                 }) {
                     continue;
                 }
-                return Some(Mutant::new(self.lang, self.base, self.twig.clone(), kind, span));
+                return Some(Mutant::new(
+                    self.lang,
+                    self.base,
+                    self.twig.clone(),
+                    kind,
+                    span,
+                ));
             }
         }
     }
 }
 
+// core[impl mutant.twigs-iter.base]
+// core[impl mutant.twigs-iter.twigs-iter]
+// core[impl mutant.twigs-iter.lang]
 pub struct TwigsMutantsIter<'a> {
     lang: LanguageId,
     base: &'a Base,
     twigs_iter: TwigsIter,
     skip_kinds: Vec<MutantKind>,
     skip_queries: Vec<String>,
-    current: Option<TwigMutantsIter<'a>>,
+    buffer: std::collections::VecDeque<Mutant<'a>>,
 }
 
 impl<'a> TwigsMutantsIter<'a> {
     pub fn new(lang: LanguageId, base: &'a Base, twigs_iter: TwigsIter) -> Self {
-        todo!()
+        Self {
+            lang,
+            base,
+            twigs_iter,
+            skip_kinds: Vec::new(),
+            skip_queries: Vec::new(),
+            buffer: std::collections::VecDeque::new(),
+        }
     }
 
     pub fn lang(&self) -> LanguageId {
@@ -302,20 +312,59 @@ impl<'a> TwigsMutantsIter<'a> {
         &self.twigs_iter
     }
 
+    // core[impl mutant.twigs-iter.skip.kind]
+    // core[impl mutant.twigs-iter.skip.kind.multiple]
     pub fn with_skip_kind(mut self, kind: MutantKind) -> Self {
-        todo!()
+        self.skip_kinds.push(kind);
+        self
     }
 
+    // core[impl mutant.twigs-iter.skip.query]
+    // core[impl mutant.twigs-iter.skip.query.multiple]
     pub fn with_skip_query(mut self, query: &str) -> Self {
-        todo!()
+        self.skip_queries.push(query.to_string());
+        self
+    }
+
+    // core[impl mutant.twigs-iter.delegates]
+    // core[impl mutant.twigs-iter.find.js.statement]
+    // core[impl mutant.twigs-iter.find.js.condition.if]
+    // core[impl mutant.twigs-iter.find.js.condition.while]
+    // core[impl mutant.twigs-iter.find.js.condition.for]
+    // core[impl mutant.twigs-iter.find.js.binary.add]
+    // core[impl mutant.twigs-iter.find.js.binary.sub]
+    fn fill_buffer(&mut self) -> bool {
+        while let Some(twig) = self.twigs_iter.next() {
+            let iter = match TwigMutantsIter::new(self.lang, self.base, &twig) {
+                Ok(iter) => iter,
+                Err(_) => continue,
+            };
+            let mut iter = self
+                .skip_kinds
+                .iter()
+                .fold(iter, |it, kind| it.with_skip_kind(kind.clone()));
+            for query in &self.skip_queries {
+                iter = iter.with_skip_query(query);
+            }
+            let mutants: Vec<_> = iter.collect();
+            if !mutants.is_empty() {
+                self.buffer.extend(mutants);
+                return true;
+            }
+        }
+        false
     }
 }
 
+// core[impl mutant.twigs-iter]
 impl<'a> Iterator for TwigsMutantsIter<'a> {
     type Item = Mutant<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        todo!()
+        if self.buffer.is_empty() {
+            self.fill_buffer();
+        }
+        self.buffer.pop_front()
     }
 }
 
@@ -971,8 +1020,10 @@ mod tests {
         let twigs = TwigsIter::new(_dir.path()).with_include_glob("src/**/*.js");
         let mutants: Vec<_> = TwigsMutantsIter::new(LanguageId::Javascript, &base, twigs).collect();
         assert_eq!(mutants.len(), 2);
-        let twigs_seen: std::collections::HashSet<_> =
-            mutants.iter().map(|m| m.twig().path().to_path_buf()).collect();
+        let twigs_seen: std::collections::HashSet<_> = mutants
+            .iter()
+            .map(|m| m.twig().path().to_path_buf())
+            .collect();
         assert!(twigs_seen.contains(&PathBuf::from("src/a.js")));
         assert!(twigs_seen.contains(&PathBuf::from("src/b.js")));
     }
@@ -996,9 +1047,7 @@ mod tests {
     // core[verify mutant.twigs-iter.find.js.condition.if]
     #[test]
     fn twigs_iter_finds_js_if_condition() {
-        let (_dir, base) = make_multi_js_base(&[
-            ("src/a.js", "if (x > 0) { console.log(x); }"),
-        ]);
+        let (_dir, base) = make_multi_js_base(&[("src/a.js", "if (x > 0) { console.log(x); }")]);
         let twigs = TwigsIter::new(_dir.path()).with_include_glob("src/**/*.js");
         let conditions: Vec<_> = TwigsMutantsIter::new(LanguageId::Javascript, &base, twigs)
             .filter(|m| matches!(m.kind(), MutantKind::Condition))
@@ -1009,9 +1058,7 @@ mod tests {
     // core[verify mutant.twigs-iter.find.js.condition.while]
     #[test]
     fn twigs_iter_finds_js_while_condition() {
-        let (_dir, base) = make_multi_js_base(&[
-            ("src/a.js", "while (i < 10) { i++; }"),
-        ]);
+        let (_dir, base) = make_multi_js_base(&[("src/a.js", "while (i < 10) { i++; }")]);
         let twigs = TwigsIter::new(_dir.path()).with_include_glob("src/**/*.js");
         let conditions: Vec<_> = TwigsMutantsIter::new(LanguageId::Javascript, &base, twigs)
             .filter(|m| matches!(m.kind(), MutantKind::Condition))
@@ -1022,9 +1069,10 @@ mod tests {
     // core[verify mutant.twigs-iter.find.js.condition.for]
     #[test]
     fn twigs_iter_finds_js_for_condition() {
-        let (_dir, base) = make_multi_js_base(&[
-            ("src/a.js", "for (let i = 0; i < 10; i++) { console.log(i); }"),
-        ]);
+        let (_dir, base) = make_multi_js_base(&[(
+            "src/a.js",
+            "for (let i = 0; i < 10; i++) { console.log(i); }",
+        )]);
         let twigs = TwigsIter::new(_dir.path()).with_include_glob("src/**/*.js");
         let conditions: Vec<_> = TwigsMutantsIter::new(LanguageId::Javascript, &base, twigs)
             .filter(|m| matches!(m.kind(), MutantKind::Condition))
@@ -1035,9 +1083,7 @@ mod tests {
     // core[verify mutant.twigs-iter.find.js.binary.add]
     #[test]
     fn twigs_iter_finds_js_add_binary_op() {
-        let (_dir, base) = make_multi_js_base(&[
-            ("src/a.js", "const x = a + b;"),
-        ]);
+        let (_dir, base) = make_multi_js_base(&[("src/a.js", "const x = a + b;")]);
         let twigs = TwigsIter::new(_dir.path()).with_include_glob("src/**/*.js");
         let adds: Vec<_> = TwigsMutantsIter::new(LanguageId::Javascript, &base, twigs)
             .filter(|m| matches!(m.kind(), MutantKind::BinaryOp(BinaryOpMutationKind::Add)))
@@ -1048,9 +1094,7 @@ mod tests {
     // core[verify mutant.twigs-iter.find.js.binary.sub]
     #[test]
     fn twigs_iter_finds_js_sub_binary_op() {
-        let (_dir, base) = make_multi_js_base(&[
-            ("src/a.js", "const x = a - b;"),
-        ]);
+        let (_dir, base) = make_multi_js_base(&[("src/a.js", "const x = a - b;")]);
         let twigs = TwigsIter::new(_dir.path()).with_include_glob("src/**/*.js");
         let subs: Vec<_> = TwigsMutantsIter::new(LanguageId::Javascript, &base, twigs)
             .filter(|m| matches!(m.kind(), MutantKind::BinaryOp(BinaryOpMutationKind::Sub)))
@@ -1061,9 +1105,7 @@ mod tests {
     // core[verify mutant.twigs-iter.skip.kind]
     #[test]
     fn twigs_iter_skip_kind_filters_matching() {
-        let (_dir, base) = make_multi_js_base(&[
-            ("src/a.js", "function foo() { return a + b; }"),
-        ]);
+        let (_dir, base) = make_multi_js_base(&[("src/a.js", "function foo() { return a + b; }")]);
         let twigs = TwigsIter::new(_dir.path()).with_include_glob("src/**/*.js");
         let mutants: Vec<_> = TwigsMutantsIter::new(LanguageId::Javascript, &base, twigs)
             .with_skip_kind(MutantKind::StatementBlock)
@@ -1078,9 +1120,8 @@ mod tests {
     // core[verify mutant.twigs-iter.skip.kind.multiple]
     #[test]
     fn twigs_iter_skip_kind_multiple() {
-        let (_dir, base) = make_multi_js_base(&[
-            ("src/a.js", "function foo() { if (x) { return a + b; } }"),
-        ]);
+        let (_dir, base) =
+            make_multi_js_base(&[("src/a.js", "function foo() { if (x) { return a + b; } }")]);
         let twigs = TwigsIter::new(_dir.path()).with_include_glob("src/**/*.js");
         let mutants: Vec<_> = TwigsMutantsIter::new(LanguageId::Javascript, &base, twigs)
             .with_skip_kind(MutantKind::StatementBlock)
@@ -1096,9 +1137,7 @@ mod tests {
     // core[verify mutant.twigs-iter.skip.query]
     #[test]
     fn twigs_iter_skip_query_filters_matching() {
-        let (_dir, base) = make_multi_js_base(&[
-            ("src/a.js", "const x = a + b; const y = a - b;"),
-        ]);
+        let (_dir, base) = make_multi_js_base(&[("src/a.js", "const x = a + b; const y = a - b;")]);
         let twigs = TwigsIter::new(_dir.path()).with_include_glob("src/**/*.js");
         let filtered: Vec<_> = TwigsMutantsIter::new(LanguageId::Javascript, &base, twigs)
             .with_skip_query("(binary_expression operator: \"+\") @skip")
@@ -1113,9 +1152,7 @@ mod tests {
     // core[verify mutant.twigs-iter.skip.query.multiple]
     #[test]
     fn twigs_iter_skip_query_multiple() {
-        let (_dir, base) = make_multi_js_base(&[
-            ("src/a.js", "const x = a + b; const y = a - b;"),
-        ]);
+        let (_dir, base) = make_multi_js_base(&[("src/a.js", "const x = a + b; const y = a - b;")]);
         let twigs = TwigsIter::new(_dir.path()).with_include_glob("src/**/*.js");
         let filtered: Vec<_> = TwigsMutantsIter::new(LanguageId::Javascript, &base, twigs)
             .with_skip_query("(binary_expression operator: \"+\") @skip")
