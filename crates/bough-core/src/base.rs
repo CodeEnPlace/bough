@@ -1,6 +1,6 @@
 use crate::LanguageId;
 use crate::file::{Error, Root, Twig};
-use crate::twig::TwigsIter;
+use crate::twig::{TwigsIter, TwigsIterBuilder};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
@@ -8,16 +8,16 @@ use std::path::{Path, PathBuf};
 #[derive(Debug, Clone, PartialEq)]
 pub struct Base {
     root: PathBuf,
-    files: Vec<Twig>,
+    files: TwigsIterBuilder,
     mutant_files: HashMap<LanguageId, Vec<Twig>>,
 }
 
 impl Base {
-    pub fn new(root: PathBuf, files: TwigsIter) -> Result<Self, Error> {
+    pub fn new(root: PathBuf, files: TwigsIterBuilder) -> Result<Self, Error> {
         crate::file::validate_root(&root)?;
         Ok(Self {
             root,
-            files: files.collect(),
+            files,
             mutant_files: HashMap::new(),
         })
     }
@@ -26,8 +26,8 @@ impl Base {
         self.mutant_files.insert(language_id, files.collect());
     }
 
-    pub fn twigs(&self) -> impl Iterator<Item = &Twig> + '_ {
-        self.files.iter()
+    pub fn twigs<'a>(&'a self) -> impl Iterator<Item = Twig> + 'a {
+        self.files.clone().build(self)
     }
 
     // pub fn mutants(&self) -> impl Iterator<Item = &Mutant> + '_ {
@@ -51,23 +51,19 @@ mod tests {
     use crate::file::TestRoot;
     use crate::twig::TwigsIterBuilder;
 
-    fn files_for(root: &impl Root, include: &[&str]) -> TwigsIter {
+    fn files_for(root: &impl Root, include: &[&str]) -> TwigsIterBuilder {
         let mut builder = TwigsIterBuilder::new();
         for glob in include {
             builder = builder.with_include_glob(glob);
         }
-        builder.build(root)
+        builder
     }
 
     // core[verify base.root]
     #[test]
     fn base_impls_root() {
         let root = TestRoot::new("/tmp/project");
-        let base = Base::new(
-            PathBuf::from("/tmp/project"),
-            files_for(&root, &[]),
-        )
-        .unwrap();
+        let base = Base::new(PathBuf::from("/tmp/project"), files_for(&root, &[])).unwrap();
         assert_eq!(base.path(), Path::new("/tmp/project"));
     }
 
@@ -76,10 +72,7 @@ mod tests {
     fn base_rejects_relative_path() {
         let root = TestRoot::new("relative");
         assert!(matches!(
-            Base::new(
-                PathBuf::from("relative"),
-                files_for(&root, &[])
-            ),
+            Base::new(PathBuf::from("relative"), files_for(&root, &[])),
             Err(Error::RootMustBeAbsolute(_))
         ));
     }

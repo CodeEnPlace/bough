@@ -20,7 +20,7 @@ impl Twig {
 
 // core[impl twig.iter.root]
 // core[impl twig.iter]
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct TwigsIterBuilder {
     // core[impl twig.iter.include]
     include: Vec<String>,

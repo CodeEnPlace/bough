@@ -340,12 +340,11 @@ mod tests {
 
     fn make_js_base(content: &str) -> (tempfile::TempDir, Base) {
         let dir = tempfile::tempdir().unwrap();
-        let root = TestRoot::new(dir.path());
         std::fs::create_dir_all(dir.path().join("src")).unwrap();
         std::fs::write(dir.path().join("src/a.js"), content).unwrap();
         let base = Base::new(
             dir.path().to_path_buf(),
-            TwigsIterBuilder::new().with_include_glob("src/**/*.js").build(&root),
+            TwigsIterBuilder::new().with_include_glob("src/**/*.js"),
         )
         .unwrap();
         (dir, base)
@@ -741,22 +740,20 @@ mod tests {
     #[test]
     fn based_mutant_hash_excludes_base() {
         let dir1 = tempfile::tempdir().unwrap();
-        let root1 = TestRoot::new(dir1.path());
         std::fs::create_dir_all(dir1.path().join("src")).unwrap();
         std::fs::write(dir1.path().join("src/a.js"), "const a = 1;").unwrap();
         let base1 = Base::new(
             dir1.path().to_path_buf(),
-            TwigsIterBuilder::new().with_include_glob("src/**/*.js").build(&root1),
+            TwigsIterBuilder::new().with_include_glob("src/**/*.js"),
         )
         .unwrap();
 
         let dir2 = tempfile::tempdir().unwrap();
-        let root2 = TestRoot::new(dir2.path());
         std::fs::create_dir_all(dir2.path().join("src")).unwrap();
         std::fs::write(dir2.path().join("src/a.js"), "const a = 1;").unwrap();
         let base2 = Base::new(
             dir2.path().to_path_buf(),
-            TwigsIterBuilder::new().with_include_glob("src/**/*.js").build(&root2),
+            TwigsIterBuilder::new().with_include_glob("src/**/*.js"),
         )
         .unwrap();
 
@@ -776,22 +773,22 @@ mod tests {
     #[test]
     fn based_mutant_hash_includes_file_contents() {
         let dir1 = tempfile::tempdir().unwrap();
-        let root1 = TestRoot::new(dir1.path());
         std::fs::create_dir_all(dir1.path().join("src")).unwrap();
         std::fs::write(dir1.path().join("src/a.js"), "const a = 1;").unwrap();
         let base1 = Base::new(
             dir1.path().to_path_buf(),
-            TwigsIterBuilder::new().with_include_glob("src/**/*.js").build(&root1),
+            TwigsIterBuilder::new()
+                .with_include_glob("src/**/*.js")
         )
         .unwrap();
 
         let dir2 = tempfile::tempdir().unwrap();
-        let root2 = TestRoot::new(dir2.path());
         std::fs::create_dir_all(dir2.path().join("src")).unwrap();
         std::fs::write(dir2.path().join("src/a.js"), "const b = 2;").unwrap();
         let base2 = Base::new(
             dir2.path().to_path_buf(),
-            TwigsIterBuilder::new().with_include_glob("src/**/*.js").build(&root2),
+            TwigsIterBuilder::new()
+                .with_include_glob("src/**/*.js")
         )
         .unwrap();
 
@@ -921,7 +918,6 @@ mod tests {
 
     fn make_multi_js_base(files: &[(&str, &str)]) -> (tempfile::TempDir, Base) {
         let dir = tempfile::tempdir().unwrap();
-        let root = TestRoot::new(dir.path());
         std::fs::create_dir_all(dir.path().join("src")).unwrap();
         for (name, content) in files {
             let path = dir.path().join(name);
@@ -930,7 +926,8 @@ mod tests {
         }
         let base = Base::new(
             dir.path().to_path_buf(),
-            TwigsIterBuilder::new().with_include_glob("src/**/*.js").build(&root),
+            TwigsIterBuilder::new()
+                .with_include_glob("src/**/*.js")
         )
         .unwrap();
         (dir, base)
