@@ -10,6 +10,7 @@ pub enum Error {
     DirAlreadyExists(PathBuf),
     Io(std::io::Error),
     Unchanged(String),
+    AlreadyActive,
 }
 
 impl std::fmt::Display for Error {
@@ -20,6 +21,7 @@ impl std::fmt::Display for Error {
             Error::DirAlreadyExists(p) => write!(f, "workspace dir already exists: {}", p.display()),
             Error::Io(e) => write!(f, "io error: {e}"),
             Error::Unchanged(msg) => write!(f, "workspace changed: {msg}"),
+            Error::AlreadyActive => write!(f, "workspace already has an active mutant"),
         }
     }
 }
@@ -136,7 +138,11 @@ impl<'a> Workspace<'a> {
 
     // core[impl workspace.write_mutant]
     // core[impl workspace.write_mutant.set-active]
+    // core[impl workspace.write_mutant.set-active.only-one]
     pub fn write_mutant(&mut self, mutation: &Mutation<'_>) -> Result<(), Error> {
+        if self.active.is_some() {
+            return Err(Error::AlreadyActive);
+        }
         let mutant = mutation.mutant();
         let base_file = File::new(self.base, mutant.twig()).resolve();
         let content = std::fs::read(&base_file)?;
@@ -400,6 +406,25 @@ mod tests {
         ws.write_mutant(&mutation).unwrap();
         let result = std::fs::read_to_string(ws.path().join("src/a.js")).unwrap();
         assert_eq!(result, "const x = a - b;");
+    }
+
+    // core[verify workspace.write_mutant.set-active.only-one]
+    #[test]
+    fn write_mutant_errors_if_already_active() {
+        let js = "const x = a + b;";
+        let (_base_dir, base) = make_js_base(js);
+        let ws_dir = tempfile::tempdir().unwrap();
+        let mut ws = Workspace::new(ws_dir.path().to_path_buf(), &base).unwrap();
+        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
+        let mutant = Mutant::new(
+            LanguageId::Javascript, &base, &twig,
+            MutantKind::BinaryOp(BinaryOpMutationKind::Add),
+            Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
+        );
+        let mutation = Mutation { mutant: &mutant, subst: "a - b".to_string() };
+        ws.write_mutant(&mutation).unwrap();
+        let result = ws.write_mutant(&mutation);
+        assert!(result.is_err());
     }
 
     // core[verify workspace.write_mutant.set-active]
