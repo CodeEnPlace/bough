@@ -6,17 +6,17 @@ use std::path::{Path, PathBuf};
 
 // core[impl workspace.active]
 #[derive(Debug, Clone, PartialEq)]
-pub struct ActiveMutation<'a> {
+pub struct ActiveMutation {
     mutant: Mutant,
-    mutation: Mutation<'a>,
+    mutation: Mutation,
 }
 
-impl<'a> ActiveMutation<'a> {
+impl ActiveMutation {
     pub fn mutant(&self) -> &Mutant {
         &self.mutant
     }
 
-    pub fn mutation(&self) -> &Mutation<'a> {
+    pub fn mutation(&self) -> &Mutation {
         &self.mutation
     }
 }
@@ -105,7 +105,7 @@ pub struct Workspace<'a> {
     id: WorkspaceId,
     root: PathBuf,
     base: &'a Base,
-    active: Option<ActiveMutation<'a>>,
+    active: Option<ActiveMutation>,
 }
 
 impl<'a> Workspace<'a> {
@@ -166,7 +166,7 @@ impl<'a> Workspace<'a> {
     // core[impl workspace.write_mutant]
     // core[impl workspace.write_mutant.set-active]
     // core[impl workspace.write_mutant.set-active.only-one]
-    pub fn write_mutant(&mut self, mutation: &Mutation<'a>) -> Result<(), Error> {
+    pub fn write_mutant(&mut self, mutation: &Mutation) -> Result<(), Error> {
         if self.active.is_some() {
             return Err(Error::AlreadyActive);
         }
@@ -200,7 +200,7 @@ impl<'a> Workspace<'a> {
         Ok(())
     }
 
-    pub fn active(&self) -> Option<&ActiveMutation<'a>> {
+    pub fn active(&self) -> Option<&ActiveMutation> {
         self.active.as_ref()
     }
 
@@ -440,7 +440,7 @@ mod tests {
             Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
         );
         let mutation = Mutation {
-            mutant: &mutant,
+            mutant: mutant.clone(),
             subst: "a - b".to_string(),
         };
         ws.write_mutant(&mutation).unwrap();
@@ -463,7 +463,7 @@ mod tests {
             Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
         );
         let mutation = Mutation {
-            mutant: &mutant,
+            mutant: mutant.clone(),
             subst: "a - b".to_string(),
         };
         ws.write_mutant(&mutation).unwrap();
@@ -487,7 +487,7 @@ mod tests {
             Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
         );
         let mutation = Mutation {
-            mutant: &mutant,
+            mutant: mutant.clone(),
             subst: "a - b".to_string(),
         };
         ws.write_mutant(&mutation).unwrap();
@@ -513,7 +513,7 @@ mod tests {
             Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
         );
         let mutation = Mutation {
-            mutant: &mutant,
+            mutant: mutant.clone(),
             subst: "a - b".to_string(),
         };
         ws.write_mutant(&mutation).unwrap();
@@ -545,7 +545,7 @@ mod tests {
             Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
         );
         let mutation = Mutation {
-            mutant: &mutant,
+            mutant: mutant.clone(),
             subst: "a - b".to_string(),
         };
         assert!(ws.active().is_none());
