@@ -1,4 +1,4 @@
-pub use crate::twig::{Twig, TwigsIter};
+pub use crate::twig::Twig;
 use bough_typed_hash::{HashInto, TypedHashable};
 use std::path::{Path, PathBuf};
 

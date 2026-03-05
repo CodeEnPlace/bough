@@ -1,5 +1,4 @@
 use crate::language::{LanguageDriver, driver_for_lang};
-use crate::twig::TwigsIter;
 use crate::{LanguageId, base::Base, file::Twig};
 use bough_typed_hash::{HashInto, TypedHashable};
 use tree_sitter::StreamingIterator;

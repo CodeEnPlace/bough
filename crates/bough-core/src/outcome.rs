@@ -1,4 +1,3 @@
-use bough_typed_hash::{HashInto, TypedHashable};
 use facet::Facet;
 
 use crate::mutation::Mutation;
