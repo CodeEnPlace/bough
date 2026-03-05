@@ -1,9 +1,6 @@
-pub mod mutation;
-pub(crate) mod language;
-
-use bough_typed_hash::{HashInto, TypedHashable};
+use crate::language::{LanguageDriver, driver_for_lang};
 use crate::{LanguageId, base::Base, file::Twig};
-use language::{LanguageDriver, driver_for_lang};
+use bough_typed_hash::{HashInto, TypedHashable};
 
 // core[impl mutant.iter.twig]
 // core[impl mutant.iter.base]
@@ -33,8 +30,20 @@ pub struct Mutant<'a> {
 }
 
 impl<'a> Mutant<'a> {
-    pub fn new(lang: LanguageId, base: &'a Base, twig: &'a Twig, kind: MutantKind, span: Span) -> Self {
-        Self { lang, base, twig, kind, span }
+    pub fn new(
+        lang: LanguageId,
+        base: &'a Base,
+        twig: &'a Twig,
+        kind: MutantKind,
+        span: Span,
+    ) -> Self {
+        Self {
+            lang,
+            base,
+            twig,
+            kind,
+            span,
+        }
     }
 
     pub fn lang(&self) -> LanguageId {
@@ -68,7 +77,11 @@ impl<'a> Mutant<'a> {
 impl HashInto for Mutant<'_> {
     fn hash_into(&self, state: &mut bough_typed_hash::ShaState) -> Result<(), std::io::Error> {
         self.lang.hash_into(state)?;
-        self.twig.path().as_os_str().as_encoded_bytes().hash_into(state)?;
+        self.twig
+            .path()
+            .as_os_str()
+            .as_encoded_bytes()
+            .hash_into(state)?;
         crate::file::File::new(self.base, self.twig).hash_into(state)?;
         self.span.hash_into(state)?;
         self.kind.hash_into(state)?;
@@ -151,8 +164,12 @@ impl<'a> MutantsIter<'a> {
         let driver = driver_for_lang(lang);
 
         let mut parser = tree_sitter::Parser::new();
-        parser.set_language(&driver.ts_language()).expect("language grammar should load");
-        let tree = parser.parse(&file_content, None).expect("parse should succeed");
+        parser
+            .set_language(&driver.ts_language())
+            .expect("language grammar should load");
+        let tree = parser
+            .parse(&file_content, None)
+            .expect("parse should succeed");
 
         let found = walk_tree(&tree, &file_content, driver.as_ref());
 
@@ -545,7 +562,8 @@ mod tests {
         let base1 = Base::new(
             dir1.path().to_path_buf(),
             FilesIter::new(dir1.path(), &["src/**/*.js".into()], &[], &[]),
-        ).unwrap();
+        )
+        .unwrap();
 
         let dir2 = tempfile::tempdir().unwrap();
         std::fs::create_dir_all(dir2.path().join("src")).unwrap();
@@ -553,16 +571,21 @@ mod tests {
         let base2 = Base::new(
             dir2.path().to_path_buf(),
             FilesIter::new(dir2.path(), &["src/**/*.js".into()], &[], &[]),
-        ).unwrap();
+        )
+        .unwrap();
 
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let m1 = Mutant::new(
-            LanguageId::Javascript, &base1, &twig,
+            LanguageId::Javascript,
+            &base1,
+            &twig,
             MutantKind::StatementBlock,
             Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
         );
         let m2 = Mutant::new(
-            LanguageId::Javascript, &base2, &twig,
+            LanguageId::Javascript,
+            &base2,
+            &twig,
             MutantKind::StatementBlock,
             Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
         );
@@ -575,12 +598,16 @@ mod tests {
         let (_dir, base) = make_base();
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let m1 = Mutant::new(
-            LanguageId::Javascript, &base, &twig,
+            LanguageId::Javascript,
+            &base,
+            &twig,
             MutantKind::StatementBlock,
             Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
         );
         let m2 = Mutant::new(
-            LanguageId::Typescript, &base, &twig,
+            LanguageId::Typescript,
+            &base,
+            &twig,
             MutantKind::StatementBlock,
             Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
         );
@@ -597,16 +624,21 @@ mod tests {
         let base = Base::new(
             dir.path().to_path_buf(),
             FilesIter::new(dir.path(), &["src/**/*.js".into()], &[], &[]),
-        ).unwrap();
+        )
+        .unwrap();
         let twig_a = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let twig_b = Twig::new(PathBuf::from("src/b.js")).unwrap();
         let m1 = Mutant::new(
-            LanguageId::Javascript, &base, &twig_a,
+            LanguageId::Javascript,
+            &base,
+            &twig_a,
             MutantKind::StatementBlock,
             Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
         );
         let m2 = Mutant::new(
-            LanguageId::Javascript, &base, &twig_b,
+            LanguageId::Javascript,
+            &base,
+            &twig_b,
             MutantKind::StatementBlock,
             Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
         );
@@ -622,7 +654,8 @@ mod tests {
         let base1 = Base::new(
             dir1.path().to_path_buf(),
             FilesIter::new(dir1.path(), &["src/**/*.js".into()], &[], &[]),
-        ).unwrap();
+        )
+        .unwrap();
 
         let dir2 = tempfile::tempdir().unwrap();
         std::fs::create_dir_all(dir2.path().join("src")).unwrap();
@@ -630,16 +663,21 @@ mod tests {
         let base2 = Base::new(
             dir2.path().to_path_buf(),
             FilesIter::new(dir2.path(), &["src/**/*.js".into()], &[], &[]),
-        ).unwrap();
+        )
+        .unwrap();
 
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let m1 = Mutant::new(
-            LanguageId::Javascript, &base1, &twig,
+            LanguageId::Javascript,
+            &base1,
+            &twig,
             MutantKind::StatementBlock,
             Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
         );
         let m2 = Mutant::new(
-            LanguageId::Javascript, &base2, &twig,
+            LanguageId::Javascript,
+            &base2,
+            &twig,
             MutantKind::StatementBlock,
             Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
         );
@@ -652,12 +690,16 @@ mod tests {
         let (_dir, base) = make_base();
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let m1 = Mutant::new(
-            LanguageId::Javascript, &base, &twig,
+            LanguageId::Javascript,
+            &base,
+            &twig,
             MutantKind::StatementBlock,
             Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
         );
         let m2 = Mutant::new(
-            LanguageId::Javascript, &base, &twig,
+            LanguageId::Javascript,
+            &base,
+            &twig,
             MutantKind::StatementBlock,
             Span::new(Point::new(5, 3, 40), Point::new(8, 0, 70)),
         );
@@ -670,12 +712,16 @@ mod tests {
         let (_dir, base) = make_base();
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let m1 = Mutant::new(
-            LanguageId::Javascript, &base, &twig,
+            LanguageId::Javascript,
+            &base,
+            &twig,
             MutantKind::StatementBlock,
             Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
         );
         let m2 = Mutant::new(
-            LanguageId::Javascript, &base, &twig,
+            LanguageId::Javascript,
+            &base,
+            &twig,
             MutantKind::Condition,
             Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
         );

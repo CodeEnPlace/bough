@@ -1,7 +1,7 @@
 use crate::base::Base;
 use crate::file::{File, Root, Twig};
 use crate::mutant::Mutant;
-use crate::mutant::mutation::Mutation;
+use crate::mutation::Mutation;
 use std::path::{Path, PathBuf};
 
 // core[impl workspace.active]
@@ -37,7 +37,9 @@ impl std::fmt::Display for Error {
         match self {
             Error::File(e) => write!(f, "{e}"),
             Error::IdParse(s) => write!(f, "invalid workspace id: {s}"),
-            Error::DirAlreadyExists(p) => write!(f, "workspace dir already exists: {}", p.display()),
+            Error::DirAlreadyExists(p) => {
+                write!(f, "workspace dir already exists: {}", p.display())
+            }
             Error::Io(e) => write!(f, "io error: {e}"),
             Error::Unchanged(msg) => write!(f, "workspace changed: {msg}"),
             Error::AlreadyActive => write!(f, "workspace already has an active mutant"),
@@ -130,7 +132,12 @@ impl<'a> Workspace<'a> {
             std::fs::copy(&src, &dst)?;
         }
 
-        Ok(Self { id, root, base, active: None })
+        Ok(Self {
+            id,
+            root,
+            base,
+            active: None,
+        })
     }
 
     // core[impl workspace.bind]
@@ -210,8 +217,9 @@ impl<'a> Workspace<'a> {
 
             let base_contents = std::fs::read(&base_file)
                 .map_err(|e| Error::Unchanged(format!("base read {}: {e}", base_file.display())))?;
-            let ws_contents = std::fs::read(&ws_file)
-                .map_err(|e| Error::Unchanged(format!("workspace read {}: {e}", ws_file.display())))?;
+            let ws_contents = std::fs::read(&ws_file).map_err(|e| {
+                Error::Unchanged(format!("workspace read {}: {e}", ws_file.display()))
+            })?;
 
             if base_contents != ws_contents {
                 return Err(Error::Unchanged(format!(
@@ -400,9 +408,9 @@ mod tests {
     }
 
     use crate::LanguageId;
-    use crate::mutant::{Mutant, MutantKind, BinaryOpMutationKind, Span, Point};
-    use crate::mutant::mutation::Mutation;
     use crate::file::Twig;
+    use crate::mutant::{BinaryOpMutationKind, Mutant, MutantKind, Point, Span};
+    use crate::mutation::Mutation;
 
     fn make_js_base(content: &str) -> (tempfile::TempDir, Base) {
         let dir = tempfile::tempdir().unwrap();
@@ -425,12 +433,17 @@ mod tests {
         let mut ws = Workspace::new(ws_dir.path().to_path_buf(), &base).unwrap();
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let mutant = Mutant::new(
-            LanguageId::Javascript, &base, &twig,
+            LanguageId::Javascript,
+            &base,
+            &twig,
             MutantKind::BinaryOp(BinaryOpMutationKind::Add),
             // "a + b" is bytes 10..15
             Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
         );
-        let mutation = Mutation { mutant: &mutant, subst: "a - b".to_string() };
+        let mutation = Mutation {
+            mutant: &mutant,
+            subst: "a - b".to_string(),
+        };
         ws.write_mutant(&mutation).unwrap();
         let result = std::fs::read_to_string(ws.path().join("src/a.js")).unwrap();
         assert_eq!(result, "const x = a - b;");
@@ -445,11 +458,16 @@ mod tests {
         let mut ws = Workspace::new(ws_dir.path().to_path_buf(), &base).unwrap();
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let mutant = Mutant::new(
-            LanguageId::Javascript, &base, &twig,
+            LanguageId::Javascript,
+            &base,
+            &twig,
             MutantKind::BinaryOp(BinaryOpMutationKind::Add),
             Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
         );
-        let mutation = Mutation { mutant: &mutant, subst: "a - b".to_string() };
+        let mutation = Mutation {
+            mutant: &mutant,
+            subst: "a - b".to_string(),
+        };
         ws.write_mutant(&mutation).unwrap();
         assert!(ws.active().is_some());
         ws.revert_mutant().unwrap();
@@ -465,11 +483,16 @@ mod tests {
         let mut ws = Workspace::new(ws_dir.path().to_path_buf(), &base).unwrap();
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let mutant = Mutant::new(
-            LanguageId::Javascript, &base, &twig,
+            LanguageId::Javascript,
+            &base,
+            &twig,
             MutantKind::BinaryOp(BinaryOpMutationKind::Add),
             Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
         );
-        let mutation = Mutation { mutant: &mutant, subst: "a - b".to_string() };
+        let mutation = Mutation {
+            mutant: &mutant,
+            subst: "a - b".to_string(),
+        };
         ws.write_mutant(&mutation).unwrap();
         let mutated = std::fs::read_to_string(ws.path().join("src/a.js")).unwrap();
         assert_eq!(mutated, "const x = a - b;");
@@ -487,11 +510,16 @@ mod tests {
         let mut ws = Workspace::new(ws_dir.path().to_path_buf(), &base).unwrap();
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let mutant = Mutant::new(
-            LanguageId::Javascript, &base, &twig,
+            LanguageId::Javascript,
+            &base,
+            &twig,
             MutantKind::BinaryOp(BinaryOpMutationKind::Add),
             Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
         );
-        let mutation = Mutation { mutant: &mutant, subst: "a - b".to_string() };
+        let mutation = Mutation {
+            mutant: &mutant,
+            subst: "a - b".to_string(),
+        };
         ws.write_mutant(&mutation).unwrap();
         let result = ws.write_mutant(&mutation);
         assert!(result.is_err());
@@ -515,11 +543,16 @@ mod tests {
         let mut ws = Workspace::new(ws_dir.path().to_path_buf(), &base).unwrap();
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let mutant = Mutant::new(
-            LanguageId::Javascript, &base, &twig,
+            LanguageId::Javascript,
+            &base,
+            &twig,
             MutantKind::BinaryOp(BinaryOpMutationKind::Add),
             Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
         );
-        let mutation = Mutation { mutant: &mutant, subst: "a - b".to_string() };
+        let mutation = Mutation {
+            mutant: &mutant,
+            subst: "a - b".to_string(),
+        };
         assert!(ws.active().is_none());
         ws.write_mutant(&mutation).unwrap();
         assert!(ws.active().is_some());
@@ -533,6 +566,9 @@ mod tests {
         let ws = Workspace::new(ws_dir.path().to_path_buf(), &base).unwrap();
         let mut twigs: Vec<_> = ws.files().map(|t| t.path().to_path_buf()).collect();
         twigs.sort();
-        assert_eq!(twigs, vec![PathBuf::from("src/a.js"), PathBuf::from("src/b.js")]);
+        assert_eq!(
+            twigs,
+            vec![PathBuf::from("src/a.js"), PathBuf::from("src/b.js")]
+        );
     }
 }

@@ -1,6 +1,8 @@
 pub mod base;
 pub mod file;
+pub(crate) mod language;
 pub mod mutant;
+pub mod mutation;
 pub mod phase;
 pub mod workspace;
 
