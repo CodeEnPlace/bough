@@ -47,19 +47,19 @@ impl TwigsIterBuilder {
     }
 
     // core[impl twig.iter.new]
-    pub fn build(self, root: &impl Root) -> TwigsIter {
-        let root = root.path().to_path_buf();
+    pub fn build<'a, R: Root>(self, root: &'a R) -> TwigsIter<'a, R> {
+        let root_path = root.path();
         let include = self
             .include
             .iter()
-            .filter_map(|p| glob::Pattern::new(&root.join(p).to_string_lossy()).ok())
+            .filter_map(|p| glob::Pattern::new(&root_path.join(p).to_string_lossy()).ok())
             .collect();
         let exclude = self
             .exclude
             .iter()
-            .filter_map(|p| glob::Pattern::new(&root.join(p).to_string_lossy()).ok())
+            .filter_map(|p| glob::Pattern::new(&root_path.join(p).to_string_lossy()).ok())
             .collect();
-        let walker = walkdir::WalkDir::new(&root).sort_by_file_name().into_iter();
+        let walker = walkdir::WalkDir::new(root_path).sort_by_file_name().into_iter();
         TwigsIter {
             root,
             include,
@@ -69,14 +69,14 @@ impl TwigsIterBuilder {
     }
 }
 
-pub struct TwigsIter {
-    root: PathBuf,
+pub struct TwigsIter<'a, R: Root> {
+    root: &'a R,
     include: Vec<glob::Pattern>,
     exclude: Vec<glob::Pattern>,
     walker: walkdir::IntoIter,
 }
 
-impl Iterator for TwigsIter {
+impl<R: Root> Iterator for TwigsIter<'_, R> {
     type Item = Twig;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -99,7 +99,7 @@ impl Iterator for TwigsIter {
                 continue;
             }
 
-            let rel = path.strip_prefix(&self.root).ok()?;
+            let rel = path.strip_prefix(self.root.path()).ok()?;
             return Twig::new(rel.to_path_buf()).ok();
         }
     }
@@ -157,7 +157,7 @@ mod tests {
         }
     }
 
-    fn sorted_twigs(iter: TwigsIter) -> Vec<PathBuf> {
+    fn sorted_twigs(iter: TwigsIter<impl Root>) -> Vec<PathBuf> {
         let mut twigs: Vec<PathBuf> = iter.map(|t| t.path().to_path_buf()).collect();
         twigs.sort();
         twigs
