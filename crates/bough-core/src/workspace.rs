@@ -162,6 +162,7 @@ impl<'a> Workspace<'a> {
     }
 
     // core[impl workspace.revert_mutant]
+    // core[impl workspace.revert_mutant.active]
     pub fn revert_mutant(&mut self) -> Result<(), Error> {
         let twig = self.active.take().ok_or(Error::NotActive)?;
         let src = File::new(self.base, &twig).resolve();
@@ -417,6 +418,26 @@ mod tests {
         ws.write_mutant(&mutation).unwrap();
         let result = std::fs::read_to_string(ws.path().join("src/a.js")).unwrap();
         assert_eq!(result, "const x = a - b;");
+    }
+
+    // core[verify workspace.revert_mutant.active]
+    #[test]
+    fn revert_mutant_clears_active() {
+        let js = "const x = a + b;";
+        let (_base_dir, base) = make_js_base(js);
+        let ws_dir = tempfile::tempdir().unwrap();
+        let mut ws = Workspace::new(ws_dir.path().to_path_buf(), &base).unwrap();
+        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
+        let mutant = Mutant::new(
+            LanguageId::Javascript, &base, &twig,
+            MutantKind::BinaryOp(BinaryOpMutationKind::Add),
+            Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
+        );
+        let mutation = Mutation { mutant: &mutant, subst: "a - b".to_string() };
+        ws.write_mutant(&mutation).unwrap();
+        assert!(ws.active().is_some());
+        ws.revert_mutant().unwrap();
+        assert!(ws.active().is_none());
     }
 
     // core[verify workspace.revert_mutant]
