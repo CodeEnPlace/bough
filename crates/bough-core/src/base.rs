@@ -1,6 +1,6 @@
 use crate::LanguageId;
 use crate::file::{Error, Root, Twig};
-use crate::twig::{TwigsIter, TwigsIterBuilder};
+use crate::twig::TwigsIter;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
@@ -48,21 +48,24 @@ impl Root for Base {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::file::TestRoot;
+    use crate::twig::TwigsIterBuilder;
 
-    fn files_for(root: &Path, include: &[&str]) -> TwigsIter {
-        let mut builder = TwigsIterBuilder::new(root);
+    fn files_for(root: &impl Root, include: &[&str]) -> TwigsIter {
+        let mut builder = TwigsIterBuilder::new();
         for glob in include {
             builder = builder.with_include_glob(glob);
         }
-        builder.build()
+        builder.build(root)
     }
 
     // core[verify base.root]
     #[test]
     fn base_impls_root() {
+        let root = TestRoot::new("/tmp/project");
         let base = Base::new(
             PathBuf::from("/tmp/project"),
-            files_for(Path::new("/tmp/project"), &[]),
+            files_for(&root, &[]),
         )
         .unwrap();
         assert_eq!(base.path(), Path::new("/tmp/project"));
@@ -71,10 +74,11 @@ mod tests {
     // core[verify base.root]
     #[test]
     fn base_rejects_relative_path() {
+        let root = TestRoot::new("relative");
         assert!(matches!(
             Base::new(
                 PathBuf::from("relative"),
-                files_for(Path::new("relative"), &[])
+                files_for(&root, &[])
             ),
             Err(Error::RootMustBeAbsolute(_))
         ));

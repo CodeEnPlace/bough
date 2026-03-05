@@ -1,4 +1,4 @@
-use crate::file::Error;
+use crate::file::{Error, Root};
 use std::path::{Path, PathBuf};
 
 // core[impl file.twig]
@@ -20,49 +20,50 @@ impl Twig {
 
 // core[impl twig.iter.root]
 // core[impl twig.iter]
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct TwigsIterBuilder {
-    root: PathBuf,
     // core[impl twig.iter.include]
-    include: Vec<glob::Pattern>,
+    include: Vec<String>,
     // core[impl twig.iter.exclude]
-    exclude: Vec<glob::Pattern>,
+    exclude: Vec<String>,
 }
 
 impl TwigsIterBuilder {
-    pub fn new(root: &Path) -> Self {
+    pub fn new() -> Self {
         Self {
-            root: root.to_path_buf(),
             include: Vec::new(),
             exclude: Vec::new(),
         }
     }
 
     pub fn with_include_glob(mut self, pattern: &str) -> Self {
-        let abs = self.root.join(pattern).to_string_lossy().to_string();
-        if let Ok(p) = glob::Pattern::new(&abs) {
-            self.include.push(p);
-        }
+        self.include.push(pattern.to_string());
         self
     }
 
     pub fn with_exclude_glob(mut self, pattern: &str) -> Self {
-        let abs = self.root.join(pattern).to_string_lossy().to_string();
-        if let Ok(p) = glob::Pattern::new(&abs) {
-            self.exclude.push(p);
-        }
+        self.exclude.push(pattern.to_string());
         self
     }
 
     // core[impl twig.iter.new]
-    pub fn build(self) -> TwigsIter {
-        let walker = walkdir::WalkDir::new(&self.root)
-            .sort_by_file_name()
-            .into_iter();
+    pub fn build(self, root: &impl Root) -> TwigsIter {
+        let root = root.path().to_path_buf();
+        let include = self
+            .include
+            .iter()
+            .filter_map(|p| glob::Pattern::new(&root.join(p).to_string_lossy()).ok())
+            .collect();
+        let exclude = self
+            .exclude
+            .iter()
+            .filter_map(|p| glob::Pattern::new(&root.join(p).to_string_lossy()).ok())
+            .collect();
+        let walker = walkdir::WalkDir::new(&root).sort_by_file_name().into_iter();
         TwigsIter {
-            root: self.root,
-            include: self.include,
-            exclude: self.exclude,
+            root,
+            include,
+            exclude,
             walker,
         }
     }
@@ -107,6 +108,7 @@ impl Iterator for TwigsIter {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::file::TestRoot;
 
     // core[verify file.twig]
     #[test]
@@ -130,10 +132,11 @@ mod tests {
     #[test]
     fn iter_takes_root_and_yields_twigs() {
         let dir = tempfile::tempdir().unwrap();
+        let root = TestRoot::new(dir.path());
         std::fs::write(dir.path().join("a.txt"), "content").unwrap();
-        let twigs: Vec<_> = TwigsIterBuilder::new(dir.path())
+        let twigs: Vec<_> = TwigsIterBuilder::new()
             .with_include_glob("*.txt")
-            .build()
+            .build(&root)
             .collect();
         assert_eq!(twigs.len(), 1);
         assert_eq!(twigs[0].path(), Path::new("a.txt"));
@@ -165,11 +168,12 @@ mod tests {
     #[test]
     fn iter_includes_matching_files() {
         let dir = tempfile::tempdir().unwrap();
+        let root = TestRoot::new(dir.path());
         make_test_tree(dir.path());
         let twigs = sorted_twigs(
-            TwigsIterBuilder::new(dir.path())
+            TwigsIterBuilder::new()
                 .with_include_glob("src/**/*.js")
-                .build(),
+                .build(&root),
         );
         assert_eq!(
             twigs,
@@ -181,12 +185,13 @@ mod tests {
     #[test]
     fn iter_includes_multiple_globs() {
         let dir = tempfile::tempdir().unwrap();
+        let root = TestRoot::new(dir.path());
         make_test_tree(dir.path());
         let twigs = sorted_twigs(
-            TwigsIterBuilder::new(dir.path())
+            TwigsIterBuilder::new()
                 .with_include_glob("src/**/*.js")
                 .with_include_glob("**/*.md")
-                .build(),
+                .build(&root),
         );
         assert_eq!(
             twigs,
@@ -202,8 +207,9 @@ mod tests {
     #[test]
     fn iter_empty_include_yields_nothing() {
         let dir = tempfile::tempdir().unwrap();
+        let root = TestRoot::new(dir.path());
         make_test_tree(dir.path());
-        let twigs: Vec<_> = TwigsIterBuilder::new(dir.path()).build().collect();
+        let twigs: Vec<_> = TwigsIterBuilder::new().build(&root).collect();
         assert!(twigs.is_empty());
     }
 
@@ -211,12 +217,13 @@ mod tests {
     #[test]
     fn iter_excludes_matching_files() {
         let dir = tempfile::tempdir().unwrap();
+        let root = TestRoot::new(dir.path());
         make_test_tree(dir.path());
         let twigs = sorted_twigs(
-            TwigsIterBuilder::new(dir.path())
+            TwigsIterBuilder::new()
                 .with_include_glob("**/*.js")
                 .with_exclude_glob("build/**")
-                .build(),
+                .build(&root),
         );
         assert_eq!(
             twigs,
