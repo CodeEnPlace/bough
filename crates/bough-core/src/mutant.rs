@@ -268,9 +268,10 @@ impl LanguageDriver for JavascriptDriver {
     }
 
     // core[impl mutation.subst.js.add.sub]
+    // core[impl mutation.subst.js.add.mul]
     fn substitutions(&self, kind: &MutantKind) -> Vec<String> {
         match kind {
-            MutantKind::BinaryOp(BinaryOpMutationKind::Add) => vec!["-".into()],
+            MutantKind::BinaryOp(BinaryOpMutationKind::Add) => vec!["-".into(), "*".into()],
             _ => vec![],
         }
     }
@@ -870,6 +871,21 @@ mod tests {
         for mutation in MutationIter::new(&mutant) {
             assert_eq!(mutation.mutant().lang(), LanguageId::Javascript);
         }
+    }
+
+    // core[verify mutation.subst.js.add.mul]
+    #[test]
+    fn js_add_mutant_has_mul_substitution() {
+        let js = "const x = a + b;";
+        let (_dir, base) = make_js_base(js);
+        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
+        let mutant = Mutant::new(
+            LanguageId::Javascript, &base, &twig,
+            MutantKind::BinaryOp(BinaryOpMutationKind::Add),
+            Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
+        );
+        let subs: Vec<String> = MutationIter::new(&mutant).map(|m| m.subst().to_string()).collect();
+        assert!(subs.contains(&"*".to_string()));
     }
 
     // core[verify mutation.subst.js.add.sub]
