@@ -331,7 +331,7 @@ mod tests {
     use super::*;
     use crate::base::Base;
     use crate::file::Root;
-    use crate::twig::TwigsIter;
+    use crate::twig::TwigsIterBuilder;
     use std::path::PathBuf;
 
     fn make_base() -> (tempfile::TempDir, Base) {
@@ -344,7 +344,7 @@ mod tests {
         std::fs::write(dir.path().join("src/a.js"), content).unwrap();
         let base = Base::new(
             dir.path().to_path_buf(),
-            TwigsIter::new(dir.path()).with_include_glob("src/**/*.js"),
+            TwigsIterBuilder::new(dir.path()).with_include_glob("src/**/*.js").build(),
         )
         .unwrap();
         (dir, base)
@@ -744,7 +744,7 @@ mod tests {
         std::fs::write(dir1.path().join("src/a.js"), "const a = 1;").unwrap();
         let base1 = Base::new(
             dir1.path().to_path_buf(),
-            TwigsIter::new(dir1.path()).with_include_glob("src/**/*.js"),
+            TwigsIterBuilder::new(dir1.path()).with_include_glob("src/**/*.js").build(),
         )
         .unwrap();
 
@@ -753,7 +753,7 @@ mod tests {
         std::fs::write(dir2.path().join("src/a.js"), "const a = 1;").unwrap();
         let base2 = Base::new(
             dir2.path().to_path_buf(),
-            TwigsIter::new(dir2.path()).with_include_glob("src/**/*.js"),
+            TwigsIterBuilder::new(dir2.path()).with_include_glob("src/**/*.js").build(),
         )
         .unwrap();
 
@@ -777,7 +777,7 @@ mod tests {
         std::fs::write(dir1.path().join("src/a.js"), "const a = 1;").unwrap();
         let base1 = Base::new(
             dir1.path().to_path_buf(),
-            TwigsIter::new(dir1.path()).with_include_glob("src/**/*.js"),
+            TwigsIterBuilder::new(dir1.path()).with_include_glob("src/**/*.js").build(),
         )
         .unwrap();
 
@@ -786,7 +786,7 @@ mod tests {
         std::fs::write(dir2.path().join("src/a.js"), "const b = 2;").unwrap();
         let base2 = Base::new(
             dir2.path().to_path_buf(),
-            TwigsIter::new(dir2.path()).with_include_glob("src/**/*.js"),
+            TwigsIterBuilder::new(dir2.path()).with_include_glob("src/**/*.js").build(),
         )
         .unwrap();
 
@@ -924,7 +924,7 @@ mod tests {
         }
         let base = Base::new(
             dir.path().to_path_buf(),
-            TwigsIter::new(dir.path()).with_include_glob("src/**/*.js"),
+            TwigsIterBuilder::new(dir.path()).with_include_glob("src/**/*.js").build(),
         )
         .unwrap();
         (dir, base)

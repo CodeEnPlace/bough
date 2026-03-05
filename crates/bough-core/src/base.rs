@@ -1,6 +1,6 @@
 use crate::LanguageId;
 use crate::file::{Error, Root, Twig};
-use crate::twig::TwigsIter;
+use crate::twig::{TwigsIter, TwigsIterBuilder};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
@@ -50,11 +50,11 @@ mod tests {
     use super::*;
 
     fn files_for(root: &Path, include: &[&str]) -> TwigsIter {
-        let mut iter = TwigsIter::new(root);
+        let mut builder = TwigsIterBuilder::new(root);
         for glob in include {
-            iter = iter.with_include_glob(glob);
+            builder = builder.with_include_glob(glob);
         }
-        iter
+        builder.build()
     }
 
     // core[verify base.root]
