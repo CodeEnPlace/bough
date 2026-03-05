@@ -9,7 +9,12 @@ pub struct TwigMutantsIter<'a> {
     lang: LanguageId,
     base: &'a Base,
     twig: &'a Twig,
-    found: std::vec::IntoIter<(MutantKind, Span)>,
+    driver: Box<dyn LanguageDriver>,
+    file_content: Vec<u8>,
+    tree: tree_sitter::Tree,
+    cursor: tree_sitter::TreeCursor<'static>,
+    did_visit: bool,
+    started: bool,
 }
 
 #[derive(bough_typed_hash::TypedHash)]
@@ -171,13 +176,24 @@ impl<'a> TwigMutantsIter<'a> {
             .parse(&file_content, None)
             .expect("parse should succeed");
 
-        let found = walk_tree(&tree, &file_content, driver.as_ref());
+        // SAFETY: we store the Tree alongside the TreeCursor and never move or drop
+        // the Tree while the cursor is alive. The cursor is invalidated before the tree.
+        let cursor = unsafe {
+            std::mem::transmute::<tree_sitter::TreeCursor<'_>, tree_sitter::TreeCursor<'static>>(
+                tree.walk(),
+            )
+        };
 
         Ok(Self {
             lang,
             base,
             twig,
-            found: found.into_iter(),
+            driver,
+            file_content,
+            tree,
+            cursor,
+            did_visit: false,
+            started: false,
         })
     }
 
@@ -200,47 +216,47 @@ impl<'a> Iterator for TwigMutantsIter<'a> {
     type Item = Mutant<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let (kind, span) = self.found.next()?;
-        Some(Mutant::new(self.lang, self.base, self.twig, kind, span))
-    }
-}
-
-fn walk_tree(
-    tree: &tree_sitter::Tree,
-    file_content: &[u8],
-    driver: &dyn LanguageDriver,
-) -> Vec<(MutantKind, Span)> {
-    let mut results = Vec::new();
-    let mut cursor = tree.walk();
-    let mut did_visit = false;
-
-    loop {
-        if !did_visit {
-            let node = cursor.node();
-            if let Some(found) = driver.check_node(&node, file_content) {
-                results.push(found);
+        loop {
+            if !self.started {
+                self.started = true;
+                let node = self.cursor.node();
+                if let Some((kind, span)) =
+                    self.driver.check_node(&node, &self.file_content)
+                {
+                    return Some(Mutant::new(self.lang, self.base, self.twig, kind, span));
+                }
             }
-        }
 
-        if !did_visit && cursor.goto_first_child() {
-            did_visit = false;
-            continue;
-        }
+            if !self.did_visit && self.cursor.goto_first_child() {
+                self.did_visit = false;
+                let node = self.cursor.node();
+                if let Some((kind, span)) =
+                    self.driver.check_node(&node, &self.file_content)
+                {
+                    return Some(Mutant::new(self.lang, self.base, self.twig, kind, span));
+                }
+                continue;
+            }
 
-        if cursor.goto_next_sibling() {
-            did_visit = false;
-            continue;
-        }
+            if self.cursor.goto_next_sibling() {
+                self.did_visit = false;
+                let node = self.cursor.node();
+                if let Some((kind, span)) =
+                    self.driver.check_node(&node, &self.file_content)
+                {
+                    return Some(Mutant::new(self.lang, self.base, self.twig, kind, span));
+                }
+                continue;
+            }
 
-        if cursor.goto_parent() {
-            did_visit = true;
-            continue;
-        }
+            if self.cursor.goto_parent() {
+                self.did_visit = true;
+                continue;
+            }
 
-        break;
+            return None;
+        }
     }
-
-    results
 }
 
 pub(crate) fn span_from_node(node: &tree_sitter::Node<'_>) -> Span {
