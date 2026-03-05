@@ -1,6 +1,7 @@
 use crate::language::{LanguageDriver, driver_for_lang};
 use crate::{LanguageId, base::Base, file::Twig};
 use bough_typed_hash::{HashInto, TypedHashable};
+use tree_sitter::StreamingIterator;
 
 // core[impl mutant.twig-iter.twig]
 // core[impl mutant.twig-iter.base]
@@ -216,13 +217,17 @@ impl<'a> TwigMutantsIter<'a> {
     // core[impl mutant.twig-iter.skip.kind]
     // core[impl mutant.twig-iter.skip.kind.multiple]
     pub fn with_skip_kind(mut self, kind: MutantKind) -> Self {
-        todo!()
+        self.skip_kinds.push(kind);
+        self
     }
 
     // core[impl mutant.twig-iter.skip.query]
     // core[impl mutant.twig-iter.skip.query.multiple]
-    pub fn with_skip_query(self, query: &str) -> Self {
-        todo!()
+    pub fn with_skip_query(mut self, query: &str) -> Self {
+        let q = tree_sitter::Query::new(&self.driver.ts_language(), query)
+            .expect("skip query should be valid");
+        self.skip_queries.push(q);
+        self
     }
 }
 
@@ -234,38 +239,38 @@ impl<'a> Iterator for TwigMutantsIter<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
-            if !self.started {
+            let node = if !self.started {
                 self.started = true;
-                let node = self.cursor.node();
-                if let Some((kind, span)) = self.driver.check_node(&node, &self.file_content) {
-                    return Some(Mutant::new(self.lang, self.base, self.twig, kind, span));
-                }
-            }
-
-            if !self.did_visit && self.cursor.goto_first_child() {
+                Some(self.cursor.node())
+            } else if !self.did_visit && self.cursor.goto_first_child() {
                 self.did_visit = false;
-                let node = self.cursor.node();
-                if let Some((kind, span)) = self.driver.check_node(&node, &self.file_content) {
-                    return Some(Mutant::new(self.lang, self.base, self.twig, kind, span));
-                }
-                continue;
-            }
-
-            if self.cursor.goto_next_sibling() {
+                Some(self.cursor.node())
+            } else if self.cursor.goto_next_sibling() {
                 self.did_visit = false;
-                let node = self.cursor.node();
-                if let Some((kind, span)) = self.driver.check_node(&node, &self.file_content) {
-                    return Some(Mutant::new(self.lang, self.base, self.twig, kind, span));
-                }
-                continue;
-            }
-
-            if self.cursor.goto_parent() {
+                Some(self.cursor.node())
+            } else if self.cursor.goto_parent() {
                 self.did_visit = true;
-                continue;
-            }
+                None
+            } else {
+                return None;
+            };
 
-            return None;
+            let Some(node) = node else { continue };
+
+            if let Some((kind, span)) = self.driver.check_node(&node, &self.file_content) {
+                if self.skip_kinds.contains(&kind) {
+                    continue;
+                }
+                if self.skip_queries.iter().any(|q| {
+                    let mut qc = tree_sitter::QueryCursor::new();
+                    qc.matches(q, node, self.file_content.as_slice())
+                        .next()
+                        .is_some()
+                }) {
+                    continue;
+                }
+                return Some(Mutant::new(self.lang, self.base, self.twig, kind, span));
+            }
         }
     }
 }
@@ -442,6 +447,7 @@ mod tests {
         assert!(TwigMutantsIter::new(LanguageId::Javascript, &base, &twig).is_err());
     }
 
+    // core[verify mutant.twig-iter]
     // core[verify mutant.twig-iter.item]
     // core[verify mutant.twig-iter.find]
     #[test]
