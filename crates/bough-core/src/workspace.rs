@@ -7,12 +7,12 @@ use std::path::{Path, PathBuf};
 // core[impl workspace.active]
 #[derive(Debug, Clone, PartialEq)]
 pub struct ActiveMutation<'a> {
-    mutant: Mutant<'a>,
+    mutant: Mutant,
     mutation: Mutation<'a>,
 }
 
 impl<'a> ActiveMutation<'a> {
-    pub fn mutant(&self) -> &Mutant<'a> {
+    pub fn mutant(&self) -> &Mutant {
         &self.mutant
     }
 
@@ -434,7 +434,6 @@ mod tests {
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let mutant = Mutant::new(
             LanguageId::Javascript,
-            &base,
             twig.clone(),
             MutantKind::BinaryOp(BinaryOpMutationKind::Add),
             // "a + b" is bytes 10..15
@@ -459,7 +458,6 @@ mod tests {
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let mutant = Mutant::new(
             LanguageId::Javascript,
-            &base,
             twig.clone(),
             MutantKind::BinaryOp(BinaryOpMutationKind::Add),
             Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
@@ -484,7 +482,6 @@ mod tests {
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let mutant = Mutant::new(
             LanguageId::Javascript,
-            &base,
             twig.clone(),
             MutantKind::BinaryOp(BinaryOpMutationKind::Add),
             Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
@@ -511,7 +508,6 @@ mod tests {
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let mutant = Mutant::new(
             LanguageId::Javascript,
-            &base,
             twig.clone(),
             MutantKind::BinaryOp(BinaryOpMutationKind::Add),
             Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
@@ -544,7 +540,6 @@ mod tests {
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let mutant = Mutant::new(
             LanguageId::Javascript,
-            &base,
             twig.clone(),
             MutantKind::BinaryOp(BinaryOpMutationKind::Add),
             Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
