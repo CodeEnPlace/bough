@@ -57,7 +57,7 @@ core[mutant.twigs-iter.base]
 TwigsMutantsIter holds &Base
 
 core[mutant.twigs-iter.twigs-iter]
-TwigsMutantsIter holds &TwigsItter
+TwigsMutantsIter holds TwigsIter
 
 core[mutant.twigs-iter.delegates]
 TwigsMutantsIter constructs a TwigMutantsIter for each Twig in TwigsIter, and delegates most functionality to that sub iter.
