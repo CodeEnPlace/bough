@@ -11,6 +11,7 @@ pub enum Error {
     Io(std::io::Error),
     Unchanged(String),
     AlreadyActive,
+    NotActive,
 }
 
 impl std::fmt::Display for Error {
@@ -22,6 +23,7 @@ impl std::fmt::Display for Error {
             Error::Io(e) => write!(f, "io error: {e}"),
             Error::Unchanged(msg) => write!(f, "workspace changed: {msg}"),
             Error::AlreadyActive => write!(f, "workspace already has an active mutant"),
+            Error::NotActive => write!(f, "workspace has no active mutant to revert"),
         }
     }
 }
@@ -156,6 +158,15 @@ impl<'a> Workspace<'a> {
         let ws_file = self.root.join(mutant.twig().path());
         std::fs::write(&ws_file, &mutated)?;
         self.active = Some(mutant.twig().clone());
+        Ok(())
+    }
+
+    // core[impl workspace.revert_mutant]
+    pub fn revert_mutant(&mut self) -> Result<(), Error> {
+        let twig = self.active.take().ok_or(Error::NotActive)?;
+        let src = File::new(self.base, &twig).resolve();
+        let dst = self.root.join(twig.path());
+        std::fs::copy(&src, &dst)?;
         Ok(())
     }
 
@@ -406,6 +417,28 @@ mod tests {
         ws.write_mutant(&mutation).unwrap();
         let result = std::fs::read_to_string(ws.path().join("src/a.js")).unwrap();
         assert_eq!(result, "const x = a - b;");
+    }
+
+    // core[verify workspace.revert_mutant]
+    #[test]
+    fn revert_mutant_restores_original_file() {
+        let js = "const x = a + b;";
+        let (_base_dir, base) = make_js_base(js);
+        let ws_dir = tempfile::tempdir().unwrap();
+        let mut ws = Workspace::new(ws_dir.path().to_path_buf(), &base).unwrap();
+        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
+        let mutant = Mutant::new(
+            LanguageId::Javascript, &base, &twig,
+            MutantKind::BinaryOp(BinaryOpMutationKind::Add),
+            Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
+        );
+        let mutation = Mutation { mutant: &mutant, subst: "a - b".to_string() };
+        ws.write_mutant(&mutation).unwrap();
+        let mutated = std::fs::read_to_string(ws.path().join("src/a.js")).unwrap();
+        assert_eq!(mutated, "const x = a - b;");
+        ws.revert_mutant().unwrap();
+        let reverted = std::fs::read_to_string(ws.path().join("src/a.js")).unwrap();
+        assert_eq!(reverted, js);
     }
 
     // core[verify workspace.write_mutant.set-active.only-one]
