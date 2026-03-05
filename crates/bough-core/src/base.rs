@@ -13,10 +13,7 @@ pub struct Base {
 }
 
 impl Base {
-    pub fn new(
-        root: PathBuf,
-        files: TwigsIter,
-    ) -> Result<Self, Error> {
+    pub fn new(root: PathBuf, files: TwigsIter) -> Result<Self, Error> {
         crate::file::validate_root(&root)?;
         Ok(Self {
             root,
@@ -29,18 +26,17 @@ impl Base {
         self.mutant_files.insert(language_id, files.collect());
     }
 
-    // core[impl base.files]
-    pub fn files(&self) -> impl Iterator<Item = &Twig> + '_ {
+    pub fn twigs(&self) -> impl Iterator<Item = &Twig> + '_ {
         self.files.iter()
     }
 
-    // core[impl base.mutant_files]
-    pub fn mutant_files(&self, language_id: &LanguageId) -> impl Iterator<Item = &Twig> + '_ {
-        self.mutant_files
-            .get(language_id)
-            .into_iter()
-            .flat_map(|f| f.iter())
-    }
+    // pub fn mutants(&self) -> impl Iterator<Item = &Mutant> + '_ {
+    //     self.files.iter().flat_map(|twig)
+    // }
+
+    // pub fn mutations(&self) -> impl Iterator<Item = &Mutation> + '_ {
+    //     todo!()
+    // }
 }
 
 impl Root for Base {
@@ -67,7 +63,8 @@ mod tests {
         let base = Base::new(
             PathBuf::from("/tmp/project"),
             files_for(Path::new("/tmp/project"), &[]),
-        ).unwrap();
+        )
+        .unwrap();
         assert_eq!(base.path(), Path::new("/tmp/project"));
     }
 
@@ -75,53 +72,11 @@ mod tests {
     #[test]
     fn base_rejects_relative_path() {
         assert!(matches!(
-            Base::new(PathBuf::from("relative"), files_for(Path::new("relative"), &[])),
+            Base::new(
+                PathBuf::from("relative"),
+                files_for(Path::new("relative"), &[])
+            ),
             Err(Error::RootMustBeAbsolute(_))
         ));
-    }
-
-    // core[verify base.mutant_files]
-    #[test]
-    fn base_mutant_files_returns_language_specific_iter() {
-        let dir = tempfile::tempdir().unwrap();
-        std::fs::create_dir_all(dir.path().join("src")).unwrap();
-        std::fs::write(dir.path().join("src/a.js"), "js").unwrap();
-        std::fs::write(dir.path().join("src/b.ts"), "ts").unwrap();
-
-        let root = dir.path();
-        let mut base = Base::new(
-            root.to_path_buf(),
-            files_for(root, &["src/**/*"]),
-        )
-        .unwrap();
-        base.add_mutator(crate::LanguageId::Javascript, files_for(root, &["src/**/*.js"]));
-        base.add_mutator(crate::LanguageId::Typescript, files_for(root, &["src/**/*.ts"]));
-
-        let js_twigs: Vec<_> = base
-            .mutant_files(&crate::LanguageId::Javascript)
-            .collect();
-        assert_eq!(js_twigs.len(), 1);
-        assert_eq!(js_twigs[0].path(), Path::new("src/a.js"));
-
-        let ts_twigs: Vec<_> = base
-            .mutant_files(&crate::LanguageId::Typescript)
-            .collect();
-        assert_eq!(ts_twigs.len(), 1);
-        assert_eq!(ts_twigs[0].path(), Path::new("src/b.ts"));
-    }
-
-    // core[verify base.files]
-    #[test]
-    fn base_files_returns_iter() {
-        let dir = tempfile::tempdir().unwrap();
-        std::fs::write(dir.path().join("a.txt"), "content").unwrap();
-        let base = Base::new(
-            dir.path().to_path_buf(),
-            files_for(dir.path(), &["*.txt"]),
-        )
-        .unwrap();
-        let twigs: Vec<_> = base.files().collect();
-        assert_eq!(twigs.len(), 1);
-        assert_eq!(twigs[0].path(), Path::new("a.txt"));
     }
 }

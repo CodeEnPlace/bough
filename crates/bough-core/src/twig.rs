@@ -32,9 +32,7 @@ pub struct TwigsIter {
 
 impl TwigsIter {
     pub fn new(root: &Path) -> Self {
-        let walker = walkdir::WalkDir::new(root)
-            .sort_by_file_name()
-            .into_iter();
+        let walker = walkdir::WalkDir::new(root).sort_by_file_name().into_iter();
         Self {
             root: root.to_path_buf(),
             include: Vec::new(),
@@ -150,9 +148,7 @@ mod tests {
     fn iter_includes_matching_files() {
         let dir = tempfile::tempdir().unwrap();
         make_test_tree(dir.path());
-        let twigs = sorted_twigs(
-            TwigsIter::new(dir.path()).with_include_glob("src/**/*.js"),
-        );
+        let twigs = sorted_twigs(TwigsIter::new(dir.path()).with_include_glob("src/**/*.js"));
         assert_eq!(
             twigs,
             vec![PathBuf::from("src/index.js"), PathBuf::from("src/utils.js")]

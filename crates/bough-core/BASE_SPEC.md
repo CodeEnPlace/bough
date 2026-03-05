@@ -3,9 +3,6 @@
 core[base.root]
 Base impls Root
 
-core[base.files]
-Base::files -> TwigsIter
-
 core[base.mutant_files]
 `Base::mutant_files(language_id: &LanguageId) -> TwigsIter`
 
