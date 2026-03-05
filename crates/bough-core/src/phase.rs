@@ -1,6 +1,6 @@
-use std::collections::HashMap;
 #[cfg(test)]
 use std::path::{Path, PathBuf};
+use std::{collections::HashMap, time::Duration};
 
 use crate::file::{File, Root, Twig};
 
@@ -37,8 +37,8 @@ pub struct Phase<'a, R: Root> {
     pwd: Twig,
     env: HashMap<String, String>,
     cmd: Vec<String>,
-    timeout_absolute: Option<u64>,
-    timeout_relative: Option<u64>,
+    timeout_absolute: Option<Duration>,
+    timeout_relative: Option<f64>,
 }
 
 impl<'a, R: Root> Phase<'a, R> {
@@ -58,11 +58,11 @@ impl<'a, R: Root> Phase<'a, R> {
         &self.cmd
     }
 
-    pub fn timeout_absolute(&self) -> Option<u64> {
+    pub fn timeout_absolute(&self) -> Option<Duration> {
         self.timeout_absolute
     }
 
-    pub fn timeout_relative(&self) -> Option<u64> {
+    pub fn timeout_relative(&self) -> Option<f64> {
         self.timeout_relative
     }
 
@@ -72,7 +72,10 @@ impl<'a, R: Root> Phase<'a, R> {
     // core[impl phase.run.timeout]
     // core[impl phase.run.timeout.absolute]
     // core[impl phase.run.timeout.relative]
-    pub fn run(&self, reference_duration: Option<std::time::Duration>) -> Result<PhaseOutcome, Error> {
+    pub fn run(
+        &self,
+        reference_duration: Option<std::time::Duration>,
+    ) -> Result<PhaseOutcome, Error> {
         use wait_timeout::ChildExt;
 
         if self.cmd.is_empty() {
@@ -132,8 +135,11 @@ impl<'a, R: Root> Phase<'a, R> {
         })
     }
 
-    fn effective_timeout(&self, reference_duration: Option<std::time::Duration>) -> Option<std::time::Duration> {
-        let absolute = self.timeout_absolute.map(std::time::Duration::from_secs);
+    fn effective_timeout(
+        &self,
+        reference_duration: Option<std::time::Duration>,
+    ) -> Option<std::time::Duration> {
+        let absolute = self.timeout_absolute;
         let relative = match (self.timeout_relative, reference_duration) {
             (Some(multiplier), Some(ref_dur)) => Some(ref_dur * multiplier as u32),
             _ => None,
@@ -218,7 +224,10 @@ mod tests {
     fn phase_holds_pwd_twig() {
         let root = TestRoot(PathBuf::from("/tmp/project"));
         let pwd = crate::file::Twig::new(PathBuf::from("src/test")).unwrap();
-        let phase = Phase { pwd, ..make_phase(&root) };
+        let phase = Phase {
+            pwd,
+            ..make_phase(&root)
+        };
         assert_eq!(phase.pwd().path(), Path::new("src/test"));
     }
 
@@ -227,7 +236,10 @@ mod tests {
     fn phase_holds_env_vars() {
         let root = TestRoot(PathBuf::from("/tmp/project"));
         let env = HashMap::from([("NODE_ENV".into(), "test".into())]);
-        let phase = Phase { env, ..make_phase(&root) };
+        let phase = Phase {
+            env,
+            ..make_phase(&root)
+        };
         assert_eq!(phase.env()["NODE_ENV"], "test");
     }
 
@@ -236,7 +248,10 @@ mod tests {
     fn phase_holds_cmd() {
         let root = TestRoot(PathBuf::from("/tmp/project"));
         let cmd = vec!["npx".into(), "vitest".into(), "run".into()];
-        let phase = Phase { cmd, ..make_phase(&root) };
+        let phase = Phase {
+            cmd,
+            ..make_phase(&root)
+        };
         assert_eq!(phase.cmd(), &["npx", "vitest", "run"]);
     }
 
@@ -244,9 +259,13 @@ mod tests {
     #[test]
     fn phase_holds_timeout() {
         let root = TestRoot(PathBuf::from("/tmp/project"));
-        let phase = Phase { timeout_absolute: Some(30), timeout_relative: Some(3), ..make_phase(&root) };
-        assert_eq!(phase.timeout_absolute(), Some(30));
-        assert_eq!(phase.timeout_relative(), Some(3));
+        let phase = Phase {
+            timeout_absolute: Some(Duration::from_secs(30)),
+            timeout_relative: Some(3.0),
+            ..make_phase(&root)
+        };
+        assert_eq!(phase.timeout_absolute(), Some(Duration::from_secs(30)));
+        assert_eq!(phase.timeout_relative(), Some(3.0));
     }
 
     // core[verify phase.out]
@@ -325,7 +344,10 @@ mod tests {
         };
         let outcome = phase.run(None).unwrap();
         let out = String::from_utf8_lossy(outcome.stdout());
-        assert!(out.trim().ends_with("subdir"), "pwd should end with subdir, got: {out}");
+        assert!(
+            out.trim().ends_with("subdir"),
+            "pwd should end with subdir, got: {out}"
+        );
     }
 
     // core[verify phase.run.env]
@@ -340,7 +362,10 @@ mod tests {
             ..make_phase(&root)
         };
         let outcome = phase.run(None).unwrap();
-        assert_eq!(String::from_utf8_lossy(outcome.stdout()).trim(), "hello_env");
+        assert_eq!(
+            String::from_utf8_lossy(outcome.stdout()).trim(),
+            "hello_env"
+        );
     }
 
     // core[verify phase.out.stdio]
@@ -380,7 +405,8 @@ mod tests {
         let phase = Phase {
             cmd: vec!["sleep".into(), "10".into()],
             pwd: crate::file::Twig::new(PathBuf::from(".")).unwrap(),
-            timeout_absolute: Some(1), timeout_relative: None,
+            timeout_absolute: Some(Duration::from_millis(100)),
+            timeout_relative: None,
             ..make_phase(&root)
         };
         let outcome = phase.run(None).unwrap();
@@ -396,7 +422,8 @@ mod tests {
         let phase = Phase {
             cmd: vec!["echo".into(), "fast".into()],
             pwd: crate::file::Twig::new(PathBuf::from(".")).unwrap(),
-            timeout_absolute: Some(10), timeout_relative: None,
+            timeout_absolute: Some(Duration::from_millis(100)),
+            timeout_relative: None,
             ..make_phase(&root)
         };
         let outcome = phase.run(None).unwrap();
@@ -412,7 +439,8 @@ mod tests {
         let phase = Phase {
             cmd: vec!["sleep".into(), "10".into()],
             pwd: crate::file::Twig::new(PathBuf::from(".")).unwrap(),
-            timeout_absolute: None, timeout_relative: Some(2),
+            timeout_absolute: None,
+            timeout_relative: Some(2.0),
             ..make_phase(&root)
         };
         let ref_dur = std::time::Duration::from_millis(500);
@@ -429,7 +457,8 @@ mod tests {
         let phase = Phase {
             cmd: vec!["echo".into(), "ok".into()],
             pwd: crate::file::Twig::new(PathBuf::from(".")).unwrap(),
-            timeout_absolute: None, timeout_relative: Some(2),
+            timeout_absolute: None,
+            timeout_relative: Some(2.0),
             ..make_phase(&root)
         };
         let outcome = phase.run(None).unwrap();

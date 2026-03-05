@@ -5,7 +5,7 @@ use bough_typed_hash::{HashInto, TypedHashable};
 // core[impl mutant.iter.twig]
 // core[impl mutant.iter.base]
 // core[impl mutant.iter.lang]
-pub struct MutantsIter<'a> {
+pub struct TwigMutantsIter<'a> {
     lang: LanguageId,
     base: &'a Base,
     twig: &'a Twig,
@@ -155,7 +155,7 @@ pub enum MutantKind {
     BinaryOp(BinaryOpMutationKind),
 }
 
-impl<'a> MutantsIter<'a> {
+impl<'a> TwigMutantsIter<'a> {
     pub fn new(lang: LanguageId, base: &'a Base, twig: &'a Twig) -> std::io::Result<Self> {
         // core[impl mutant.iter.file]
         let file_path = crate::file::File::new(base, twig).resolve();
@@ -196,7 +196,7 @@ impl<'a> MutantsIter<'a> {
 
 // core[impl mutant.iter.item]
 // core[impl mutant.iter.find]
-impl<'a> Iterator for MutantsIter<'a> {
+impl<'a> Iterator for TwigMutantsIter<'a> {
     type Item = Mutant<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -256,7 +256,7 @@ pub(crate) fn span_from_node(node: &tree_sitter::Node<'_>) -> Span {
 mod tests {
     use super::*;
     use crate::base::Base;
-    use crate::file::{TwigsIter, Root};
+    use crate::file::{Root, TwigsIter};
     use std::path::PathBuf;
 
     fn make_base() -> (tempfile::TempDir, Base) {
@@ -377,7 +377,7 @@ mod tests {
     fn mutants_iter_holds_twig() {
         let (_dir, base) = make_base();
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
-        let iter = MutantsIter::new(LanguageId::Javascript, &base, &twig).unwrap();
+        let iter = TwigMutantsIter::new(LanguageId::Javascript, &base, &twig).unwrap();
         assert_eq!(iter.twig().path(), std::path::Path::new("src/a.js"));
     }
 
@@ -386,7 +386,7 @@ mod tests {
     fn mutants_iter_holds_base() {
         let (_dir, base) = make_base();
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
-        let iter = MutantsIter::new(LanguageId::Javascript, &base, &twig).unwrap();
+        let iter = TwigMutantsIter::new(LanguageId::Javascript, &base, &twig).unwrap();
         assert_eq!(iter.base().path(), base.path());
     }
 
@@ -395,7 +395,7 @@ mod tests {
     fn mutants_iter_owns_lang() {
         let (_dir, base) = make_base();
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
-        let iter = MutantsIter::new(LanguageId::Javascript, &base, &twig).unwrap();
+        let iter = TwigMutantsIter::new(LanguageId::Javascript, &base, &twig).unwrap();
         assert_eq!(iter.lang(), LanguageId::Javascript);
     }
 
@@ -404,7 +404,7 @@ mod tests {
     fn mutants_iter_resolves_file_from_base_and_twig() {
         let (_dir, base) = make_base();
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
-        assert!(MutantsIter::new(LanguageId::Javascript, &base, &twig).is_ok());
+        assert!(TwigMutantsIter::new(LanguageId::Javascript, &base, &twig).is_ok());
     }
 
     // core[verify mutant.iter.file]
@@ -412,7 +412,7 @@ mod tests {
     fn mutants_iter_errors_on_missing_file() {
         let (_dir, base) = make_base();
         let twig = Twig::new(PathBuf::from("src/nonexistent.js")).unwrap();
-        assert!(MutantsIter::new(LanguageId::Javascript, &base, &twig).is_err());
+        assert!(TwigMutantsIter::new(LanguageId::Javascript, &base, &twig).is_err());
     }
 
     // core[verify mutant.iter.item]
@@ -421,7 +421,7 @@ mod tests {
     fn mutants_iter_walks_tree_and_returns_mutants() {
         let (_dir, base) = make_js_base("const a = 1;");
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
-        let iter = MutantsIter::new(LanguageId::Javascript, &base, &twig).unwrap();
+        let iter = TwigMutantsIter::new(LanguageId::Javascript, &base, &twig).unwrap();
         let mutants: Vec<_> = iter.collect();
         assert!(mutants.is_empty());
     }
@@ -432,7 +432,7 @@ mod tests {
         let js = "function foo() { return 1; }\nfunction bar() { return 2; }";
         let (_dir, base) = make_js_base(js);
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
-        let mutants: Vec<_> = MutantsIter::new(LanguageId::Javascript, &base, &twig)
+        let mutants: Vec<_> = TwigMutantsIter::new(LanguageId::Javascript, &base, &twig)
             .unwrap()
             .collect();
         let blocks: Vec<_> = mutants
@@ -450,7 +450,7 @@ mod tests {
         let js = "if (x > 0) { console.log(x); }";
         let (_dir, base) = make_js_base(js);
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
-        let mutants: Vec<_> = MutantsIter::new(LanguageId::Javascript, &base, &twig)
+        let mutants: Vec<_> = TwigMutantsIter::new(LanguageId::Javascript, &base, &twig)
             .unwrap()
             .collect();
         let conditions: Vec<_> = mutants
@@ -466,7 +466,7 @@ mod tests {
         let js = "while (i < 10) { i++; }";
         let (_dir, base) = make_js_base(js);
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
-        let mutants: Vec<_> = MutantsIter::new(LanguageId::Javascript, &base, &twig)
+        let mutants: Vec<_> = TwigMutantsIter::new(LanguageId::Javascript, &base, &twig)
             .unwrap()
             .collect();
         let conditions: Vec<_> = mutants
@@ -482,7 +482,7 @@ mod tests {
         let js = "for (let i = 0; i < 10; i++) { console.log(i); }";
         let (_dir, base) = make_js_base(js);
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
-        let mutants: Vec<_> = MutantsIter::new(LanguageId::Javascript, &base, &twig)
+        let mutants: Vec<_> = TwigMutantsIter::new(LanguageId::Javascript, &base, &twig)
             .unwrap()
             .collect();
         let conditions: Vec<_> = mutants
@@ -501,7 +501,7 @@ mod tests {
         let js = "const x = a + b;";
         let (_dir, base) = make_js_base(js);
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
-        let mutants: Vec<_> = MutantsIter::new(LanguageId::Javascript, &base, &twig)
+        let mutants: Vec<_> = TwigMutantsIter::new(LanguageId::Javascript, &base, &twig)
             .unwrap()
             .collect();
         let adds: Vec<_> = mutants
@@ -517,7 +517,7 @@ mod tests {
         let js = "const x = a - b;";
         let (_dir, base) = make_js_base(js);
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
-        let mutants: Vec<_> = MutantsIter::new(LanguageId::Javascript, &base, &twig)
+        let mutants: Vec<_> = TwigMutantsIter::new(LanguageId::Javascript, &base, &twig)
             .unwrap()
             .collect();
         let subs: Vec<_> = mutants
@@ -534,7 +534,7 @@ mod tests {
         let js = "const x = a * b;";
         let (_dir, base) = make_js_base(js);
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
-        let mutants: Vec<_> = MutantsIter::new(LanguageId::Javascript, &base, &twig)
+        let mutants: Vec<_> = TwigMutantsIter::new(LanguageId::Javascript, &base, &twig)
             .unwrap()
             .collect();
         let binary_ops: Vec<_> = mutants
