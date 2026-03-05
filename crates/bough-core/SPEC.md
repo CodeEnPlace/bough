@@ -265,6 +265,9 @@ If the js Mutant was for a condition, there should be a Mutation to replace it w
 core[mutation.subst.js.cond.false]
 If the js Mutant was for a condition, there should be a Mutation to replace it with 'false'
 
+core[mutation.hash.typed-hashable]
+Mutant should impl TypedHashable
+
 core[mutation.hash.mutant]
 Mutation hash should include Mutant
 
