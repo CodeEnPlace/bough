@@ -274,6 +274,8 @@ impl LanguageDriver for JavascriptDriver {
             MutantKind::BinaryOp(BinaryOpMutationKind::Add) => vec!["-".into(), "*".into()],
             // core[impl mutation.subst.js.statement]
             MutantKind::StatementBlock => vec!["{}".into()],
+            // core[impl mutation.subst.js.cond.true]
+            MutantKind::Condition => vec!["true".into()],
             _ => vec![],
         }
     }
@@ -873,6 +875,21 @@ mod tests {
         for mutation in MutationIter::new(&mutant) {
             assert_eq!(mutation.mutant().lang(), LanguageId::Javascript);
         }
+    }
+
+    // core[verify mutation.subst.js.cond.true]
+    #[test]
+    fn js_condition_mutant_has_true_substitution() {
+        let js = "if (x > 0) { console.log(x); }";
+        let (_dir, base) = make_js_base(js);
+        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
+        let mutant = Mutant::new(
+            LanguageId::Javascript, &base, &twig,
+            MutantKind::Condition,
+            Span::new(Point::new(0, 3, 3), Point::new(0, 10, 10)),
+        );
+        let subs: Vec<String> = MutationIter::new(&mutant).map(|m| m.subst().to_string()).collect();
+        assert!(subs.contains(&"true".to_string()));
     }
 
     // core[verify mutation.subst.js.statement]
