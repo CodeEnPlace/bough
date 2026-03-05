@@ -295,6 +295,7 @@ impl LanguageDriver for TypescriptDriver {
         None
     }
 
+    // core[impl mutation.iter.invalid]
     fn substitutions(&self, _kind: &MutantKind) -> Vec<String> {
         vec![]
     }
@@ -876,6 +877,20 @@ mod tests {
         for mutation in MutationIter::new(&mutant) {
             assert_eq!(mutation.mutant().lang(), LanguageId::Javascript);
         }
+    }
+
+    // core[verify mutation.iter.invalid]
+    #[test]
+    fn mutation_iter_invalid_mutant_produces_no_mutations() {
+        let (_dir, base) = make_base();
+        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
+        let mutant = Mutant::new(
+            LanguageId::Typescript, &base, &twig,
+            MutantKind::BinaryOp(BinaryOpMutationKind::Add),
+            Span::new(Point::new(0, 0, 0), Point::new(0, 5, 5)),
+        );
+        let mutations: Vec<Mutation> = MutationIter::new(&mutant).collect();
+        assert!(mutations.is_empty());
     }
 
     // core[verify mutation.subst.js.cond.false]
