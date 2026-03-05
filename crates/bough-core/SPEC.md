@@ -210,6 +210,9 @@ Point::byte is a usize representing the byte of the file it points to
 core[mutant.hash.typed-hashable]
 Mutant should impl TypedHashable
 
+core[mutant.hash.base]
+Mutant hash MUST NOT include base, if two identical files exist in two different bases, their mutant should hash to the same value
+
 core[mutant.hash.lang]
 Mutant hash should include lang
 
@@ -261,6 +264,12 @@ If the js Mutant was for a condition, there should be a Mutation to replace it w
 
 core[mutation.subst.js.cond.false]
 If the js Mutant was for a condition, there should be a Mutation to replace it with 'false'
+
+core[mutation.hash.mutant]
+Mutation hash should include Mutant
+
+core[mutation.hash.subst]
+Mutation hash should include subst
 
 <!-- ### Config -->
 

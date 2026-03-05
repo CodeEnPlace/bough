@@ -272,12 +272,12 @@ impl LanguageDriver for JavascriptDriver {
     fn substitutions(&self, kind: &MutantKind) -> Vec<String> {
         match kind {
             MutantKind::BinaryOp(BinaryOpMutationKind::Add) => vec!["-".into(), "*".into()],
+            MutantKind::BinaryOp(BinaryOpMutationKind::Sub) => vec!["+".into(), "*".into()],
             // core[impl mutation.subst.js.statement]
             MutantKind::StatementBlock => vec!["{}".into()],
             // core[impl mutation.subst.js.cond.true]
             // core[impl mutation.subst.js.cond.false]
             MutantKind::Condition => vec!["true".into(), "false".into()],
-            _ => vec![],
         }
     }
 }
