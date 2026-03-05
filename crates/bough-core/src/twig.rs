@@ -18,9 +18,8 @@ impl Twig {
     }
 }
 
-// core[impl file.files.config]
-// core[impl file.files.root]
-// core[impl file.files.iter]
+// core[impl twig.iter.root]
+// core[impl twig.iter]
 #[derive(Debug, Clone, PartialEq)]
 pub struct TwigsIter {
     twigs: Vec<Twig>,
@@ -35,7 +34,7 @@ impl TwigsIter {
     ) -> Self {
         let root = root;
 
-        // core[impl file.files.iter.include]
+        // core[impl twig.iter.include.match]
         let mut included: Vec<PathBuf> = include
             .iter()
             .filter_map(|pattern| {
@@ -50,7 +49,7 @@ impl TwigsIter {
         included.sort();
         included.dedup();
 
-        // core[impl file.files.iter.vcs-ignore]
+        //
         let ignore_patterns: Vec<glob::Pattern> = ignore_files
             .iter()
             .filter_map(|path| std::fs::read_to_string(path).ok())
@@ -72,7 +71,7 @@ impl TwigsIter {
             })
             .collect();
 
-        // core[impl file.files.iter.exclude]
+        // core[impl twig.iter.exclude.match]
         let exclude_patterns: Vec<glob::Pattern> = exclude
             .iter()
             .filter_map(|pattern| {
@@ -151,9 +150,9 @@ mod tests {
         ));
     }
 
-    // core[verify file.files.config]
-    // core[verify file.files.root]
-    // core[verify file.files.iter]
+    // core[verify twig.iter.root]
+    // core[verify twig.iter.new]
+    // core[verify twig.iter]
     #[test]
     fn files_iter_takes_root_and_config() {
         let dir = tempfile::tempdir().unwrap();
@@ -187,8 +186,8 @@ mod tests {
         twigs
     }
 
-    // core[verify file.files.iter]
-    // core[verify file.files.iter.include]
+    // core[verify twig.iter]
+    // core[verify twig.iter.include.match]
     #[test]
     fn iter_includes_matching_files() {
         let dir = tempfile::tempdir().unwrap();
@@ -201,7 +200,7 @@ mod tests {
         );
     }
 
-    // core[verify file.files.iter.include]
+    // core[verify twig.iter.include.match]
     #[test]
     fn iter_includes_multiple_globs() {
         let dir = tempfile::tempdir().unwrap();
@@ -218,7 +217,7 @@ mod tests {
         );
     }
 
-    // core[verify file.files.iter.exclude]
+    // core[verify twig.iter.exclude.match]
     #[test]
     fn iter_excludes_matching_files() {
         let dir = tempfile::tempdir().unwrap();
@@ -235,7 +234,7 @@ mod tests {
         );
     }
 
-    // core[verify file.files.iter.vcs-ignore]
+    // removed - vcs-ignore no longer a spec
     #[test]
     fn iter_respects_vcs_ignore() {
         let dir = tempfile::tempdir().unwrap();
