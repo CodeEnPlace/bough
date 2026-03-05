@@ -78,7 +78,7 @@ mod tests {
     use crate::base::Base;
     use crate::file::Twig;
     use crate::mutant::{BinaryOpMutationKind, MutantKind, Point, Span};
-    use crate::twig::TwigsIter;
+    use crate::twig::TwigsIterBuilder;
     use bough_typed_hash::HashStore;
     use std::path::PathBuf;
 
@@ -92,7 +92,7 @@ mod tests {
         std::fs::write(dir.path().join("src/a.js"), content).unwrap();
         let base = Base::new(
             dir.path().to_path_buf(),
-            TwigsIter::new(dir.path()).with_include_glob("src/**/*.js"),
+            TwigsIterBuilder::new(dir.path()).with_include_glob("src/**/*.js").build(),
         )
         .unwrap();
         (dir, base)
@@ -368,7 +368,7 @@ mod tests {
         }
         let base = Base::new(
             dir.path().to_path_buf(),
-            TwigsIter::new(dir.path()).with_include_glob("src/**/*.js"),
+            TwigsIterBuilder::new(dir.path()).with_include_glob("src/**/*.js").build(),
         )
         .unwrap();
         (dir, base)

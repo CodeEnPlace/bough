@@ -241,6 +241,7 @@ impl Root for Workspace<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::twig::TwigsIterBuilder;
 
     fn make_base() -> (tempfile::TempDir, Base) {
         let dir = tempfile::tempdir().unwrap();
@@ -249,7 +250,7 @@ mod tests {
         std::fs::write(dir.path().join("src/b.js"), "const b = 2;").unwrap();
         let base = Base::new(
             dir.path().to_path_buf(),
-            TwigsIter::new(dir.path()).with_include_glob("src/**/*.js"),
+            TwigsIterBuilder::new(dir.path()).with_include_glob("src/**/*.js").build(),
         )
         .unwrap();
         (dir, base)
@@ -410,7 +411,6 @@ mod tests {
     use crate::file::Twig;
     use crate::mutant::{BinaryOpMutationKind, Mutant, MutantKind, Point, Span};
     use crate::mutation::Mutation;
-    use crate::twig::TwigsIter;
 
     fn make_js_base(content: &str) -> (tempfile::TempDir, Base) {
         let dir = tempfile::tempdir().unwrap();
@@ -418,7 +418,7 @@ mod tests {
         std::fs::write(dir.path().join("src/a.js"), content).unwrap();
         let base = Base::new(
             dir.path().to_path_buf(),
-            TwigsIter::new(dir.path()).with_include_glob("src/**/*.js"),
+            TwigsIterBuilder::new(dir.path()).with_include_glob("src/**/*.js").build(),
         )
         .unwrap();
         (dir, base)
