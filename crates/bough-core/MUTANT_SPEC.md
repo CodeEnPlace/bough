@@ -7,7 +7,7 @@ core[mutant.base]
 Mutant holds &Base
 
 core[mutant.twig]
-Mutant holds &Twig
+Mutant owns Twig
 
 core[mutant.kind]
 Mutant owns MutantKind
@@ -47,4 +47,3 @@ Mutant hash should include span
 
 core[mutant.hash.kind]
 Mutant hash should include kind
-
