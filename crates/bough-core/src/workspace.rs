@@ -1,5 +1,6 @@
 use crate::base::Base;
 use crate::file::{File, FilesIter, Root};
+use crate::mutant::mutation::Mutation;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug)]
@@ -129,6 +130,23 @@ impl<'a> Workspace<'a> {
 
     pub fn base(&self) -> &Base {
         self.base
+    }
+
+    // core[impl workspace.write_mutant]
+    pub fn write_mutant(&mut self, mutation: &Mutation<'_>) -> Result<(), Error> {
+        let mutant = mutation.mutant();
+        let base_file = File::new(self.base, mutant.twig()).resolve();
+        let content = std::fs::read(&base_file)?;
+        let span = mutant.span();
+        let start = span.start().byte();
+        let end = span.end().byte();
+        let mut mutated = Vec::with_capacity(content.len());
+        mutated.extend_from_slice(&content[..start]);
+        mutated.extend_from_slice(mutation.subst().as_bytes());
+        mutated.extend_from_slice(&content[end..]);
+        let ws_file = self.root.join(mutant.twig().path());
+        std::fs::write(&ws_file, &mutated)?;
+        Ok(())
     }
 
     // core[impl workspace.files]
@@ -334,6 +352,46 @@ mod tests {
         let ws_dir = tempfile::tempdir().unwrap();
         let ws = Workspace::new(ws_dir.path().to_path_buf(), &base).unwrap();
         assert_eq!(ws.base().path(), base.path());
+    }
+
+    use crate::LanguageId;
+    use crate::mutant::{Mutant, MutantKind, BinaryOpMutationKind, Span, Point};
+    use crate::mutant::mutation::Mutation;
+    use crate::file::Twig;
+
+    fn make_js_base(content: &str) -> (tempfile::TempDir, Base) {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(dir.path().join("src")).unwrap();
+        std::fs::write(dir.path().join("src/a.js"), content).unwrap();
+        let base = Base::new(
+            dir.path().to_path_buf(),
+            FileSourceConfig {
+                include: vec!["src/**/*.js".into()],
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        (dir, base)
+    }
+
+    // core[verify workspace.write_mutant]
+    #[test]
+    fn write_mutant_applies_substitution_to_workspace_file() {
+        let js = "const x = a + b;";
+        let (_base_dir, base) = make_js_base(js);
+        let ws_dir = tempfile::tempdir().unwrap();
+        let mut ws = Workspace::new(ws_dir.path().to_path_buf(), &base).unwrap();
+        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
+        let mutant = Mutant::new(
+            LanguageId::Javascript, &base, &twig,
+            MutantKind::BinaryOp(BinaryOpMutationKind::Add),
+            // "a + b" is bytes 10..15
+            Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
+        );
+        let mutation = Mutation { mutant: &mutant, subst: "a - b".to_string() };
+        ws.write_mutant(&mutation).unwrap();
+        let result = std::fs::read_to_string(ws.path().join("src/a.js")).unwrap();
+        assert_eq!(result, "const x = a - b;");
     }
 
     // core[verify workspace.files]
