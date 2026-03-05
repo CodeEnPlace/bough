@@ -210,6 +210,7 @@ impl<'a> TwigMutantsIter<'a> {
     }
 }
 
+// core[impl mutant.twig-iter]
 // core[impl mutant.twig-iter.item]
 // core[impl mutant.twig-iter.find]
 impl<'a> Iterator for TwigMutantsIter<'a> {
