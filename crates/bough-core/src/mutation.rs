@@ -91,7 +91,7 @@ mod tests {
         std::fs::write(dir.path().join("src/a.js"), content).unwrap();
         let base = Base::new(
             dir.path().to_path_buf(),
-            TwigsIter::new(dir.path(), &["src/**/*.js".into()], &[], &[]),
+            TwigsIter::new(dir.path()).with_include_glob("src/**/*.js"),
         )
         .unwrap();
         (dir, base)
