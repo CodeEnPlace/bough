@@ -48,6 +48,53 @@ TwigMutantsIter::with_skip_query(self, query: &str) -> Self skips all mutants wh
 core[mutant.twig-iter.skip.query.multiple]
 with_skip_query can be called multiple times; a mutant is skipped if its node matches ANY of the configured skip queries
 
+## TwigsMutantsIter
+
+core[mutant.twigs-iter]
+TwigsMutantsIter impls Iterator<Item = Mutant>
+
+core[mutant.twigs-iter.base]
+TwigsMutantsIter holds &Base
+
+core[mutant.twigs-iter.twigs-iter]
+TwigsMutantsIter holds &TwigsItter
+
+core[mutant.twigs-iter.delegates]
+TwigsMutantsIter constructs a TwigMutantsIter for each Twig in TwigsIter, and delegates most functionality to that sub iter.
+
+core[mutant.twigs-iter.lang]
+TwigsMutantsIter owns LanguageId
+
+core[mutant.twigs-iter.find.js.statement]
+TwigsMutantsIter finds javascript statement blocks
+
+core[mutant.twigs-iter.find.js.condition.if]
+TwigsMutantsIter finds javascript conditions of if statements
+
+core[mutant.twigs-iter.find.js.condition.while]
+TwigsMutantsIter finds javascript conditions of while statements
+
+core[mutant.twigs-iter.find.js.condition.for]
+TwigsMutantsIter finds javascript conditions of for statements
+
+core[mutant.twigs-iter.find.js.binary.add]
+TwigsMutantsIter finds javascript add binary ops
+
+core[mutant.twigs-iter.find.js.binary.sub]
+TwigsMutantsIter finds javascript subtract binary ops
+
+core[mutant.twigs-iter.skip.kind]
+TwigsMutantsIter::with_skip_kind(self, kind: MutantKind) -> Self skips all mutants of the specified kind
+
+core[mutant.twigs-iter.skip.kind.multiple]
+with_skip_kind can be called multiple times; a mutant is skipped if its kind matches ANY of the configured skip kinds
+
+core[mutant.twigs-iter.skip.query]
+TwigsMutantsIter::with_skip_query(self, query: &str) -> Self skips all mutants whose tree-sitter node matches the provided S-expression query
+
+core[mutant.twigs-iter.skip.query.multiple]
+with_skip_query can be called multiple times; a mutant is skipped if its node matches ANY of the configured skip queries
+
 <!-- ## TwigsMutantsIter -->
 
 <!-- core[mutant.twigs-iter.twigs] -->
