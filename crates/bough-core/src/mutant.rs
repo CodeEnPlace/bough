@@ -1,4 +1,5 @@
 use crate::language::{LanguageDriver, driver_for_lang};
+use crate::twig::TwigsIter;
 use crate::{LanguageId, base::Base, file::Twig};
 use bough_typed_hash::{HashInto, TypedHashable};
 use tree_sitter::StreamingIterator;
@@ -272,6 +273,49 @@ impl<'a> Iterator for TwigMutantsIter<'a> {
                 return Some(Mutant::new(self.lang, self.base, self.twig, kind, span));
             }
         }
+    }
+}
+
+pub struct TwigsMutantsIter<'a> {
+    lang: LanguageId,
+    base: &'a Base,
+    twigs_iter: TwigsIter,
+    skip_kinds: Vec<MutantKind>,
+    skip_queries: Vec<String>,
+    current: Option<TwigMutantsIter<'a>>,
+}
+
+impl<'a> TwigsMutantsIter<'a> {
+    pub fn new(lang: LanguageId, base: &'a Base, twigs_iter: TwigsIter) -> Self {
+        todo!()
+    }
+
+    pub fn lang(&self) -> LanguageId {
+        self.lang
+    }
+
+    pub fn base(&self) -> &Base {
+        self.base
+    }
+
+    pub fn twigs_iter(&self) -> &TwigsIter {
+        &self.twigs_iter
+    }
+
+    pub fn with_skip_kind(mut self, kind: MutantKind) -> Self {
+        todo!()
+    }
+
+    pub fn with_skip_query(mut self, query: &str) -> Self {
+        todo!()
+    }
+}
+
+impl<'a> Iterator for TwigsMutantsIter<'a> {
+    type Item = Mutant<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        todo!()
     }
 }
 
@@ -871,5 +915,212 @@ mod tests {
             .with_skip_query("(binary_expression operator: \"-\") @skip")
             .collect();
         assert!(filtered_both.is_empty());
+    }
+
+    fn make_multi_js_base(files: &[(&str, &str)]) -> (tempfile::TempDir, Base) {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(dir.path().join("src")).unwrap();
+        for (name, content) in files {
+            let path = dir.path().join(name);
+            std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+            std::fs::write(&path, content).unwrap();
+        }
+        let base = Base::new(
+            dir.path().to_path_buf(),
+            TwigsIter::new(dir.path()).with_include_glob("src/**/*.js"),
+        )
+        .unwrap();
+        (dir, base)
+    }
+
+    // core[verify mutant.twigs-iter.base]
+    #[test]
+    fn twigs_iter_holds_base() {
+        let (_dir, base) = make_multi_js_base(&[("src/a.js", "const a = 1;")]);
+        let twigs = TwigsIter::new(_dir.path()).with_include_glob("src/**/*.js");
+        let iter = TwigsMutantsIter::new(LanguageId::Javascript, &base, twigs);
+        assert_eq!(iter.base().path(), base.path());
+    }
+
+    // core[verify mutant.twigs-iter.twigs-iter]
+    #[test]
+    fn twigs_iter_holds_twigs_iter() {
+        let (_dir, base) = make_multi_js_base(&[("src/a.js", "const a = 1;")]);
+        let twigs = TwigsIter::new(_dir.path()).with_include_glob("src/**/*.js");
+        let iter = TwigsMutantsIter::new(LanguageId::Javascript, &base, twigs);
+        let _ = iter.twigs_iter();
+    }
+
+    // core[verify mutant.twigs-iter.lang]
+    #[test]
+    fn twigs_iter_owns_lang() {
+        let (_dir, base) = make_multi_js_base(&[("src/a.js", "const a = 1;")]);
+        let twigs = TwigsIter::new(_dir.path()).with_include_glob("src/**/*.js");
+        let iter = TwigsMutantsIter::new(LanguageId::Javascript, &base, twigs);
+        assert_eq!(iter.lang(), LanguageId::Javascript);
+    }
+
+    // core[verify mutant.twigs-iter]
+    // core[verify mutant.twigs-iter.delegates]
+    #[test]
+    fn twigs_iter_yields_mutants_across_files() {
+        let (_dir, base) = make_multi_js_base(&[
+            ("src/a.js", "function foo() { return 1; }"),
+            ("src/b.js", "function bar() { return 2; }"),
+        ]);
+        let twigs = TwigsIter::new(_dir.path()).with_include_glob("src/**/*.js");
+        let mutants: Vec<_> = TwigsMutantsIter::new(LanguageId::Javascript, &base, twigs).collect();
+        assert_eq!(mutants.len(), 2);
+        let twigs_seen: std::collections::HashSet<_> =
+            mutants.iter().map(|m| m.twig().path().to_path_buf()).collect();
+        assert!(twigs_seen.contains(&PathBuf::from("src/a.js")));
+        assert!(twigs_seen.contains(&PathBuf::from("src/b.js")));
+    }
+
+    // core[verify mutant.twigs-iter.find.js.statement]
+    #[test]
+    fn twigs_iter_finds_js_statement_blocks() {
+        let (_dir, base) = make_multi_js_base(&[
+            ("src/a.js", "function foo() { return 1; }"),
+            ("src/b.js", "function bar() { return 2; }"),
+        ]);
+        let twigs = TwigsIter::new(_dir.path()).with_include_glob("src/**/*.js");
+        let mutants: Vec<_> = TwigsMutantsIter::new(LanguageId::Javascript, &base, twigs).collect();
+        let blocks: Vec<_> = mutants
+            .iter()
+            .filter(|m| matches!(m.kind(), MutantKind::StatementBlock))
+            .collect();
+        assert_eq!(blocks.len(), 2);
+    }
+
+    // core[verify mutant.twigs-iter.find.js.condition.if]
+    #[test]
+    fn twigs_iter_finds_js_if_condition() {
+        let (_dir, base) = make_multi_js_base(&[
+            ("src/a.js", "if (x > 0) { console.log(x); }"),
+        ]);
+        let twigs = TwigsIter::new(_dir.path()).with_include_glob("src/**/*.js");
+        let conditions: Vec<_> = TwigsMutantsIter::new(LanguageId::Javascript, &base, twigs)
+            .filter(|m| matches!(m.kind(), MutantKind::Condition))
+            .collect();
+        assert_eq!(conditions.len(), 1);
+    }
+
+    // core[verify mutant.twigs-iter.find.js.condition.while]
+    #[test]
+    fn twigs_iter_finds_js_while_condition() {
+        let (_dir, base) = make_multi_js_base(&[
+            ("src/a.js", "while (i < 10) { i++; }"),
+        ]);
+        let twigs = TwigsIter::new(_dir.path()).with_include_glob("src/**/*.js");
+        let conditions: Vec<_> = TwigsMutantsIter::new(LanguageId::Javascript, &base, twigs)
+            .filter(|m| matches!(m.kind(), MutantKind::Condition))
+            .collect();
+        assert_eq!(conditions.len(), 1);
+    }
+
+    // core[verify mutant.twigs-iter.find.js.condition.for]
+    #[test]
+    fn twigs_iter_finds_js_for_condition() {
+        let (_dir, base) = make_multi_js_base(&[
+            ("src/a.js", "for (let i = 0; i < 10; i++) { console.log(i); }"),
+        ]);
+        let twigs = TwigsIter::new(_dir.path()).with_include_glob("src/**/*.js");
+        let conditions: Vec<_> = TwigsMutantsIter::new(LanguageId::Javascript, &base, twigs)
+            .filter(|m| matches!(m.kind(), MutantKind::Condition))
+            .collect();
+        assert_eq!(conditions.len(), 1);
+    }
+
+    // core[verify mutant.twigs-iter.find.js.binary.add]
+    #[test]
+    fn twigs_iter_finds_js_add_binary_op() {
+        let (_dir, base) = make_multi_js_base(&[
+            ("src/a.js", "const x = a + b;"),
+        ]);
+        let twigs = TwigsIter::new(_dir.path()).with_include_glob("src/**/*.js");
+        let adds: Vec<_> = TwigsMutantsIter::new(LanguageId::Javascript, &base, twigs)
+            .filter(|m| matches!(m.kind(), MutantKind::BinaryOp(BinaryOpMutationKind::Add)))
+            .collect();
+        assert_eq!(adds.len(), 1);
+    }
+
+    // core[verify mutant.twigs-iter.find.js.binary.sub]
+    #[test]
+    fn twigs_iter_finds_js_sub_binary_op() {
+        let (_dir, base) = make_multi_js_base(&[
+            ("src/a.js", "const x = a - b;"),
+        ]);
+        let twigs = TwigsIter::new(_dir.path()).with_include_glob("src/**/*.js");
+        let subs: Vec<_> = TwigsMutantsIter::new(LanguageId::Javascript, &base, twigs)
+            .filter(|m| matches!(m.kind(), MutantKind::BinaryOp(BinaryOpMutationKind::Sub)))
+            .collect();
+        assert_eq!(subs.len(), 1);
+    }
+
+    // core[verify mutant.twigs-iter.skip.kind]
+    #[test]
+    fn twigs_iter_skip_kind_filters_matching() {
+        let (_dir, base) = make_multi_js_base(&[
+            ("src/a.js", "function foo() { return a + b; }"),
+        ]);
+        let twigs = TwigsIter::new(_dir.path()).with_include_glob("src/**/*.js");
+        let mutants: Vec<_> = TwigsMutantsIter::new(LanguageId::Javascript, &base, twigs)
+            .with_skip_kind(MutantKind::StatementBlock)
+            .collect();
+        assert_eq!(mutants.len(), 1);
+        assert_eq!(
+            *mutants[0].kind(),
+            MutantKind::BinaryOp(BinaryOpMutationKind::Add),
+        );
+    }
+
+    // core[verify mutant.twigs-iter.skip.kind.multiple]
+    #[test]
+    fn twigs_iter_skip_kind_multiple() {
+        let (_dir, base) = make_multi_js_base(&[
+            ("src/a.js", "function foo() { if (x) { return a + b; } }"),
+        ]);
+        let twigs = TwigsIter::new(_dir.path()).with_include_glob("src/**/*.js");
+        let mutants: Vec<_> = TwigsMutantsIter::new(LanguageId::Javascript, &base, twigs)
+            .with_skip_kind(MutantKind::StatementBlock)
+            .with_skip_kind(MutantKind::Condition)
+            .collect();
+        assert_eq!(mutants.len(), 1);
+        assert_eq!(
+            *mutants[0].kind(),
+            MutantKind::BinaryOp(BinaryOpMutationKind::Add),
+        );
+    }
+
+    // core[verify mutant.twigs-iter.skip.query]
+    #[test]
+    fn twigs_iter_skip_query_filters_matching() {
+        let (_dir, base) = make_multi_js_base(&[
+            ("src/a.js", "const x = a + b; const y = a - b;"),
+        ]);
+        let twigs = TwigsIter::new(_dir.path()).with_include_glob("src/**/*.js");
+        let filtered: Vec<_> = TwigsMutantsIter::new(LanguageId::Javascript, &base, twigs)
+            .with_skip_query("(binary_expression operator: \"+\") @skip")
+            .collect();
+        assert_eq!(filtered.len(), 1);
+        assert_eq!(
+            *filtered[0].kind(),
+            MutantKind::BinaryOp(BinaryOpMutationKind::Sub),
+        );
+    }
+
+    // core[verify mutant.twigs-iter.skip.query.multiple]
+    #[test]
+    fn twigs_iter_skip_query_multiple() {
+        let (_dir, base) = make_multi_js_base(&[
+            ("src/a.js", "const x = a + b; const y = a - b;"),
+        ]);
+        let twigs = TwigsIter::new(_dir.path()).with_include_glob("src/**/*.js");
+        let filtered: Vec<_> = TwigsMutantsIter::new(LanguageId::Javascript, &base, twigs)
+            .with_skip_query("(binary_expression operator: \"+\") @skip")
+            .with_skip_query("(binary_expression operator: \"-\") @skip")
+            .collect();
+        assert!(filtered.is_empty());
     }
 }
