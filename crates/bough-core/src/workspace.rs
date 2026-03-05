@@ -205,7 +205,7 @@ impl<'a> Workspace<'a> {
     }
 
     // core[impl workspace.files]
-    pub fn files(&self) -> impl Iterator<Item = Twig> + '_ {
+    pub fn files(&self) -> impl Iterator<Item = &Twig> + '_ {
         self.base.files()
     }
 
