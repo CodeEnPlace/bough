@@ -274,6 +274,21 @@ Mutation hash should include Mutant
 core[mutation.hash.subst]
 Mutation hash should include subst
 
+core[workspace.write_mutant]
+`Workspace::write(&mut self, ws: &Mutant) -> Result<(), _>` writes the mutated file to the coresponding file in the specified workspace
+
+core[workspace.write_mutant.set-active]
+`Workspace::write` sets the provided mutant as it's "active" mutant
+
+core[workspace.write_mutant.set-active.only-one]
+Workspace can only have one active mutant, trying to set multiple results in an error
+
+core[workspace.revert_mutant]
+`Workspace::revert(&mut self, ws: &Mutant) -> Result<(), _>` reverts the mutated file in the workspace so it is identical to the file in the Base
+
+core[workspace.revert_mutant.active]
+`Workspace::revert` clears the active mutant
+
 <!-- ### Config -->
 
 <!-- core[config.partials] -->
