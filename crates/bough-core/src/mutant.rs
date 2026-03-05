@@ -269,7 +269,7 @@ mod tests {
         std::fs::write(dir.path().join("src/a.js"), content).unwrap();
         let base = Base::new(
             dir.path().to_path_buf(),
-            TwigsIter::new(dir.path(), &["src/**/*.js".into()], &[], &[]),
+            TwigsIter::new(dir.path()).with_include_glob("src/**/*.js"),
         )
         .unwrap();
         (dir, base)
@@ -561,7 +561,7 @@ mod tests {
         std::fs::write(dir1.path().join("src/a.js"), "const a = 1;").unwrap();
         let base1 = Base::new(
             dir1.path().to_path_buf(),
-            TwigsIter::new(dir1.path(), &["src/**/*.js".into()], &[], &[]),
+            TwigsIter::new(dir1.path()).with_include_glob("src/**/*.js"),
         )
         .unwrap();
 
@@ -570,7 +570,7 @@ mod tests {
         std::fs::write(dir2.path().join("src/a.js"), "const a = 1;").unwrap();
         let base2 = Base::new(
             dir2.path().to_path_buf(),
-            TwigsIter::new(dir2.path(), &["src/**/*.js".into()], &[], &[]),
+            TwigsIter::new(dir2.path()).with_include_glob("src/**/*.js"),
         )
         .unwrap();
 
@@ -623,7 +623,7 @@ mod tests {
         std::fs::write(dir.path().join("src/b.js"), "const a = 1;").unwrap();
         let base = Base::new(
             dir.path().to_path_buf(),
-            TwigsIter::new(dir.path(), &["src/**/*.js".into()], &[], &[]),
+            TwigsIter::new(dir.path()).with_include_glob("src/**/*.js"),
         )
         .unwrap();
         let twig_a = Twig::new(PathBuf::from("src/a.js")).unwrap();
@@ -653,7 +653,7 @@ mod tests {
         std::fs::write(dir1.path().join("src/a.js"), "const a = 1;").unwrap();
         let base1 = Base::new(
             dir1.path().to_path_buf(),
-            TwigsIter::new(dir1.path(), &["src/**/*.js".into()], &[], &[]),
+            TwigsIter::new(dir1.path()).with_include_glob("src/**/*.js"),
         )
         .unwrap();
 
@@ -662,7 +662,7 @@ mod tests {
         std::fs::write(dir2.path().join("src/a.js"), "const b = 2;").unwrap();
         let base2 = Base::new(
             dir2.path().to_path_buf(),
-            TwigsIter::new(dir2.path(), &["src/**/*.js".into()], &[], &[]),
+            TwigsIter::new(dir2.path()).with_include_glob("src/**/*.js"),
         )
         .unwrap();
 
