@@ -1,5 +1,5 @@
 use super::language::driver_for_lang;
-use crate::mutant::{Mutant, TwigMutantsIter, TwigsMutantsIter};
+use crate::mutant::{Mutant, TwigMutantsIter};
 use bough_typed_hash::{HashInto, TypedHashable};
 
 #[derive(bough_typed_hash::TypedHash)]
@@ -57,74 +57,6 @@ impl Mutation {
     }
 }
 
-// core[impl mutation.twig-iter.twig-mutants-iter]
-pub struct TwigMutationsIter<'a, 't> {
-    inner: TwigMutantsIter<'a, 't>,
-    current: Option<std::vec::IntoIter<Mutation>>,
-}
-
-impl<'a, 't> TwigMutationsIter<'a, 't> {
-    pub fn new(inner: TwigMutantsIter<'a, 't>) -> Self {
-        Self {
-            inner,
-            current: None,
-        }
-    }
-}
-
-// core[impl mutation.twig-iter]
-// core[impl mutation.twig-iter.delegates]
-impl<'a, 't> Iterator for TwigMutationsIter<'a, 't> {
-    type Item = Mutation;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            if let Some(ref mut iter) = self.current {
-                if let Some(mutation) = iter.next() {
-                    return Some(mutation);
-                }
-            }
-            let based_mutant = self.inner.next()?;
-            let mutations: Vec<Mutation> = MutationIter::new(based_mutant.mutant()).collect();
-            self.current = Some(mutations.into_iter());
-        }
-    }
-}
-
-// core[impl mutation.twigs-iter.twigs-mutants-iter]
-pub struct TwigsMutationsIter<'a> {
-    inner: TwigsMutantsIter<'a>,
-    current: Option<std::vec::IntoIter<Mutation>>,
-}
-
-impl<'a> TwigsMutationsIter<'a> {
-    pub fn new(inner: TwigsMutantsIter<'a>) -> Self {
-        Self {
-            inner,
-            current: None,
-        }
-    }
-}
-
-// core[impl mutation.twigs-iter]
-// core[impl mutation.twigs-iter.delegates]
-impl<'a> Iterator for TwigsMutationsIter<'a> {
-    type Item = Mutation;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            if let Some(ref mut iter) = self.current {
-                if let Some(mutation) = iter.next() {
-                    return Some(mutation);
-                }
-            }
-            let based_mutant = self.inner.next()?;
-            let mutations: Vec<Mutation> = MutationIter::new(based_mutant.mutant()).collect();
-            self.current = Some(mutations.into_iter());
-        }
-    }
-}
-
 // core[impl mutation.hash.typed-hashable]
 impl TypedHashable for Mutation {
     type Hash = MutationHash;
@@ -144,7 +76,7 @@ impl HashInto for Mutation {
 mod tests {
     use super::*;
     use crate::base::Base;
-    use crate::file::{TwigsIter, Twig};
+    use crate::file::{Twig, TwigsIter};
     use crate::mutant::{BinaryOpMutationKind, MutantKind, Point, Span};
     use bough_typed_hash::HashStore;
     use std::path::PathBuf;
@@ -168,7 +100,7 @@ mod tests {
     // core[verify mutation.iter.mutant]
     #[test]
     fn mutation_iter_holds_mutant() {
-        let (_dir, base) = make_base();
+        let (_dir, _base) = make_base();
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let mutant = Mutant::new(
             crate::LanguageId::Javascript,
@@ -184,7 +116,7 @@ mod tests {
     #[test]
     fn mutation_iter_delegates_to_language_driver() {
         let js = "const x = a + b;";
-        let (_dir, base) = make_js_base(js);
+        let (_dir, _base) = make_js_base(js);
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let mutant = Mutant::new(
             crate::LanguageId::Javascript,
@@ -200,7 +132,7 @@ mod tests {
     // core[verify mutation.iter.mutation]
     #[test]
     fn mutation_iter_yields_mutations() {
-        let (_dir, base) = make_base();
+        let (_dir, _base) = make_base();
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let mutant = Mutant::new(
             crate::LanguageId::Javascript,
@@ -214,7 +146,7 @@ mod tests {
     // core[verify mutation.subst]
     #[test]
     fn mutation_owns_subst_string() {
-        let (_dir, base) = make_base();
+        let (_dir, _base) = make_base();
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let mutant = Mutant::new(
             crate::LanguageId::Javascript,
@@ -230,7 +162,7 @@ mod tests {
     // core[verify mutation.mutant]
     #[test]
     fn mutation_holds_mutant() {
-        let (_dir, base) = make_base();
+        let (_dir, _base) = make_base();
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let mutant = Mutant::new(
             crate::LanguageId::Javascript,
@@ -246,7 +178,7 @@ mod tests {
     // core[verify mutation.iter.invalid]
     #[test]
     fn mutation_iter_invalid_mutant_produces_no_mutations() {
-        let (_dir, base) = make_base();
+        let (_dir, _base) = make_base();
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let mutant = Mutant::new(
             crate::LanguageId::Typescript,
@@ -262,7 +194,7 @@ mod tests {
     #[test]
     fn js_condition_mutant_has_false_substitution() {
         let js = "if (x > 0) { console.log(x); }";
-        let (_dir, base) = make_js_base(js);
+        let (_dir, _base) = make_js_base(js);
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let mutant = Mutant::new(
             crate::LanguageId::Javascript,
@@ -280,7 +212,7 @@ mod tests {
     #[test]
     fn js_condition_mutant_has_true_substitution() {
         let js = "if (x > 0) { console.log(x); }";
-        let (_dir, base) = make_js_base(js);
+        let (_dir, _base) = make_js_base(js);
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let mutant = Mutant::new(
             crate::LanguageId::Javascript,
@@ -298,7 +230,7 @@ mod tests {
     #[test]
     fn js_statement_mutant_has_empty_block_substitution() {
         let js = "function foo() { return 1; }";
-        let (_dir, base) = make_js_base(js);
+        let (_dir, _base) = make_js_base(js);
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let mutant = Mutant::new(
             crate::LanguageId::Javascript,
@@ -316,7 +248,7 @@ mod tests {
     #[test]
     fn js_add_mutant_has_mul_substitution() {
         let js = "const x = a + b;";
-        let (_dir, base) = make_js_base(js);
+        let (_dir, _base) = make_js_base(js);
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let mutant = Mutant::new(
             crate::LanguageId::Javascript,
@@ -334,7 +266,7 @@ mod tests {
     #[test]
     fn js_add_mutant_has_sub_substitution() {
         let js = "const x = a + b;";
-        let (_dir, base) = make_js_base(js);
+        let (_dir, _base) = make_js_base(js);
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let mutant = Mutant::new(
             crate::LanguageId::Javascript,
@@ -358,7 +290,7 @@ mod tests {
     // core[verify mutation.hash.typed-hashable]
     #[test]
     fn mutation_produces_typed_hash() {
-        let (_dir, base) = make_base();
+        let (_dir, _base) = make_base();
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let mutant = Mutant::new(
             crate::LanguageId::Javascript,
@@ -378,7 +310,7 @@ mod tests {
     // core[verify mutation.hash.mutant]
     #[test]
     fn mutation_hash_includes_mutant() {
-        let (_dir, base) = make_base();
+        let (_dir, _base) = make_base();
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let m1 = Mutant::new(
             crate::LanguageId::Javascript,
@@ -406,7 +338,7 @@ mod tests {
     // core[verify mutation.hash.subst]
     #[test]
     fn mutation_hash_includes_subst() {
-        let (_dir, base) = make_base();
+        let (_dir, _base) = make_base();
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let m = Mutant::new(
             crate::LanguageId::Javascript,
@@ -439,73 +371,5 @@ mod tests {
         )
         .unwrap();
         (dir, base)
-    }
-
-    // core[verify mutation.twig-iter]
-    // core[verify mutation.twig-iter.delegates]
-    #[test]
-    fn twig_mutations_iter_yields_mutations_for_single_twig() {
-        let js = "function foo() { return a + b; }";
-        let (_dir, base) = make_js_base(js);
-        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
-        let inner = TwigMutantsIter::new(crate::LanguageId::Javascript, &base, &twig).unwrap();
-        let mutations: Vec<Mutation> = TwigMutationsIter::new(inner).collect();
-        let subs: Vec<&str> = mutations.iter().map(|m| m.subst()).collect();
-        assert!(subs.contains(&"{}"));
-        assert!(subs.contains(&"-"));
-        assert!(subs.contains(&"*"));
-        assert_eq!(mutations.len(), 3);
-    }
-
-    // core[verify mutation.twig-iter.twig-mutants-iter]
-    #[test]
-    fn twig_mutations_iter_holds_twig_mutants_iter() {
-        let (_dir, base) = make_base();
-        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
-        let inner = TwigMutantsIter::new(crate::LanguageId::Javascript, &base, &twig).unwrap();
-        let _iter = TwigMutationsIter::new(inner);
-    }
-
-    // core[verify mutation.twig-iter]
-    #[test]
-    fn twig_mutations_iter_empty_for_no_mutants() {
-        let (_dir, base) = make_js_base("const a = 1;");
-        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
-        let inner = TwigMutantsIter::new(crate::LanguageId::Javascript, &base, &twig).unwrap();
-        let mutations: Vec<Mutation> = TwigMutationsIter::new(inner).collect();
-        assert!(mutations.is_empty());
-    }
-
-    // core[verify mutation.twigs-iter]
-    // core[verify mutation.twigs-iter.delegates]
-    #[test]
-    fn twigs_mutations_iter_yields_mutations_across_files() {
-        let (_dir, base) = make_multi_js_base(&[
-            ("src/a.js", "function foo() { return a + b; }"),
-            ("src/b.js", "function bar() { return a - b; }"),
-        ]);
-        let twigs = TwigsIter::new(_dir.path()).with_include_glob("src/**/*.js");
-        let inner = TwigsMutantsIter::new(crate::LanguageId::Javascript, &base, twigs);
-        let mutations: Vec<Mutation> = TwigsMutationsIter::new(inner).collect();
-        assert_eq!(mutations.len(), 6);
-    }
-
-    // core[verify mutation.twigs-iter.twigs-mutants-iter]
-    #[test]
-    fn twigs_mutations_iter_holds_twigs_mutants_iter() {
-        let (_dir, base) = make_multi_js_base(&[("src/a.js", "const a = 1;")]);
-        let twigs = TwigsIter::new(_dir.path()).with_include_glob("src/**/*.js");
-        let inner = TwigsMutantsIter::new(crate::LanguageId::Javascript, &base, twigs);
-        let _iter = TwigsMutationsIter::new(inner);
-    }
-
-    // core[verify mutation.twigs-iter]
-    #[test]
-    fn twigs_mutations_iter_empty_for_no_mutants() {
-        let (_dir, base) = make_multi_js_base(&[("src/a.js", "const a = 1;")]);
-        let twigs = TwigsIter::new(_dir.path()).with_include_glob("src/**/*.js");
-        let inner = TwigsMutantsIter::new(crate::LanguageId::Javascript, &base, twigs);
-        let mutations: Vec<Mutation> = TwigsMutationsIter::new(inner).collect();
-        assert!(mutations.is_empty());
     }
 }
