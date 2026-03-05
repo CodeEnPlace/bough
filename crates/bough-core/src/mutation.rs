@@ -1,5 +1,5 @@
 use super::language::driver_for_lang;
-use crate::mutant::{Mutant, TwigMutantsIter};
+use crate::mutant::Mutant;
 use bough_typed_hash::{HashInto, TypedHashable};
 
 #[derive(bough_typed_hash::TypedHash)]
