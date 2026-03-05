@@ -205,7 +205,7 @@ impl<'a> Workspace<'a> {
     }
 
     // core[impl workspace.files]
-    pub fn files(&self) -> impl Iterator<Item = &Twig> + '_ {
+    pub fn files(&self) -> impl Iterator<Item = Twig> + '_ {
         self.base.twigs()
     }
 
@@ -246,13 +246,12 @@ mod tests {
 
     fn make_base() -> (tempfile::TempDir, Base) {
         let dir = tempfile::tempdir().unwrap();
-        let root = TestRoot::new(dir.path());
         std::fs::create_dir_all(dir.path().join("src")).unwrap();
         std::fs::write(dir.path().join("src/a.js"), "const a = 1;").unwrap();
         std::fs::write(dir.path().join("src/b.js"), "const b = 2;").unwrap();
         let base = Base::new(
             dir.path().to_path_buf(),
-            TwigsIterBuilder::new().with_include_glob("src/**/*.js").build(&root),
+            TwigsIterBuilder::new().with_include_glob("src/**/*.js"),
         )
         .unwrap();
         (dir, base)
@@ -416,12 +415,11 @@ mod tests {
 
     fn make_js_base(content: &str) -> (tempfile::TempDir, Base) {
         let dir = tempfile::tempdir().unwrap();
-        let root = TestRoot::new(dir.path());
         std::fs::create_dir_all(dir.path().join("src")).unwrap();
         std::fs::write(dir.path().join("src/a.js"), content).unwrap();
         let base = Base::new(
             dir.path().to_path_buf(),
-            TwigsIterBuilder::new().with_include_glob("src/**/*.js").build(&root),
+            TwigsIterBuilder::new().with_include_glob("src/**/*.js"),
         )
         .unwrap();
         (dir, base)
