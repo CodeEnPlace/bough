@@ -330,7 +330,8 @@ pub(crate) fn span_from_node(node: &tree_sitter::Node<'_>) -> Span {
 mod tests {
     use super::*;
     use crate::base::Base;
-    use crate::file::{Root, TwigsIter};
+    use crate::file::Root;
+    use crate::twig::TwigsIter;
     use std::path::PathBuf;
 
     fn make_base() -> (tempfile::TempDir, Base) {

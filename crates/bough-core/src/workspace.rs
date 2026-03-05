@@ -241,7 +241,6 @@ impl Root for Workspace<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::file::TwigsIter;
 
     fn make_base() -> (tempfile::TempDir, Base) {
         let dir = tempfile::tempdir().unwrap();
@@ -411,6 +410,7 @@ mod tests {
     use crate::file::Twig;
     use crate::mutant::{BinaryOpMutationKind, Mutant, MutantKind, Point, Span};
     use crate::mutation::Mutation;
+    use crate::twig::TwigsIter;
 
     fn make_js_base(content: &str) -> (tempfile::TempDir, Base) {
         let dir = tempfile::tempdir().unwrap();
