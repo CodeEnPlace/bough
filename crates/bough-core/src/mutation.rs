@@ -1,5 +1,6 @@
+use super::language::driver_for_lang;
+use crate::mutant::Mutant;
 use bough_typed_hash::{HashInto, TypedHashable};
-use super::{Mutant, language::driver_for_lang};
 
 #[derive(bough_typed_hash::TypedHash)]
 pub struct MutationHash([u8; 32]);
@@ -31,7 +32,10 @@ impl<'a> Iterator for MutationIter<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         let subst = self.subs.next()?;
-        Some(Mutation { mutant: self.mutant, subst })
+        Some(Mutation {
+            mutant: self.mutant,
+            subst,
+        })
     }
 }
 
@@ -71,10 +75,10 @@ impl HashInto for Mutation<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bough_typed_hash::HashStore;
-    use crate::mutant::{Span, Point, MutantKind, BinaryOpMutationKind};
     use crate::base::Base;
     use crate::file::{FilesIter, Twig};
+    use crate::mutant::{BinaryOpMutationKind, MutantKind, Point, Span};
+    use bough_typed_hash::HashStore;
     use std::path::PathBuf;
 
     fn make_base() -> (tempfile::TempDir, Base) {
@@ -99,7 +103,9 @@ mod tests {
         let (_dir, base) = make_base();
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let mutant = Mutant::new(
-            crate::LanguageId::Javascript, &base, &twig,
+            crate::LanguageId::Javascript,
+            &base,
+            &twig,
             MutantKind::BinaryOp(BinaryOpMutationKind::Add),
             Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
         );
@@ -114,7 +120,9 @@ mod tests {
         let (_dir, base) = make_js_base(js);
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let mutant = Mutant::new(
-            crate::LanguageId::Javascript, &base, &twig,
+            crate::LanguageId::Javascript,
+            &base,
+            &twig,
             MutantKind::BinaryOp(BinaryOpMutationKind::Add),
             Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
         );
@@ -129,7 +137,9 @@ mod tests {
         let (_dir, base) = make_base();
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let mutant = Mutant::new(
-            crate::LanguageId::Javascript, &base, &twig,
+            crate::LanguageId::Javascript,
+            &base,
+            &twig,
             MutantKind::BinaryOp(BinaryOpMutationKind::Add),
             Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
         );
@@ -142,7 +152,9 @@ mod tests {
         let (_dir, base) = make_base();
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let mutant = Mutant::new(
-            crate::LanguageId::Javascript, &base, &twig,
+            crate::LanguageId::Javascript,
+            &base,
+            &twig,
             MutantKind::BinaryOp(BinaryOpMutationKind::Add),
             Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
         );
@@ -157,7 +169,9 @@ mod tests {
         let (_dir, base) = make_base();
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let mutant = Mutant::new(
-            crate::LanguageId::Javascript, &base, &twig,
+            crate::LanguageId::Javascript,
+            &base,
+            &twig,
             MutantKind::BinaryOp(BinaryOpMutationKind::Add),
             Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
         );
@@ -172,7 +186,9 @@ mod tests {
         let (_dir, base) = make_base();
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let mutant = Mutant::new(
-            crate::LanguageId::Typescript, &base, &twig,
+            crate::LanguageId::Typescript,
+            &base,
+            &twig,
             MutantKind::BinaryOp(BinaryOpMutationKind::Add),
             Span::new(Point::new(0, 0, 0), Point::new(0, 5, 5)),
         );
@@ -187,11 +203,15 @@ mod tests {
         let (_dir, base) = make_js_base(js);
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let mutant = Mutant::new(
-            crate::LanguageId::Javascript, &base, &twig,
+            crate::LanguageId::Javascript,
+            &base,
+            &twig,
             MutantKind::Condition,
             Span::new(Point::new(0, 3, 3), Point::new(0, 10, 10)),
         );
-        let subs: Vec<String> = MutationIter::new(&mutant).map(|m| m.subst().to_string()).collect();
+        let subs: Vec<String> = MutationIter::new(&mutant)
+            .map(|m| m.subst().to_string())
+            .collect();
         assert!(subs.contains(&"false".to_string()));
     }
 
@@ -202,11 +222,15 @@ mod tests {
         let (_dir, base) = make_js_base(js);
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let mutant = Mutant::new(
-            crate::LanguageId::Javascript, &base, &twig,
+            crate::LanguageId::Javascript,
+            &base,
+            &twig,
             MutantKind::Condition,
             Span::new(Point::new(0, 3, 3), Point::new(0, 10, 10)),
         );
-        let subs: Vec<String> = MutationIter::new(&mutant).map(|m| m.subst().to_string()).collect();
+        let subs: Vec<String> = MutationIter::new(&mutant)
+            .map(|m| m.subst().to_string())
+            .collect();
         assert!(subs.contains(&"true".to_string()));
     }
 
@@ -217,11 +241,15 @@ mod tests {
         let (_dir, base) = make_js_base(js);
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let mutant = Mutant::new(
-            crate::LanguageId::Javascript, &base, &twig,
+            crate::LanguageId::Javascript,
+            &base,
+            &twig,
             MutantKind::StatementBlock,
             Span::new(Point::new(0, 15, 15), Point::new(0, 28, 28)),
         );
-        let subs: Vec<String> = MutationIter::new(&mutant).map(|m| m.subst().to_string()).collect();
+        let subs: Vec<String> = MutationIter::new(&mutant)
+            .map(|m| m.subst().to_string())
+            .collect();
         assert!(subs.contains(&"{}".to_string()));
     }
 
@@ -232,11 +260,15 @@ mod tests {
         let (_dir, base) = make_js_base(js);
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let mutant = Mutant::new(
-            crate::LanguageId::Javascript, &base, &twig,
+            crate::LanguageId::Javascript,
+            &base,
+            &twig,
             MutantKind::BinaryOp(BinaryOpMutationKind::Add),
             Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
         );
-        let subs: Vec<String> = MutationIter::new(&mutant).map(|m| m.subst().to_string()).collect();
+        let subs: Vec<String> = MutationIter::new(&mutant)
+            .map(|m| m.subst().to_string())
+            .collect();
         assert!(subs.contains(&"*".to_string()));
     }
 
@@ -247,11 +279,15 @@ mod tests {
         let (_dir, base) = make_js_base(js);
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let mutant = Mutant::new(
-            crate::LanguageId::Javascript, &base, &twig,
+            crate::LanguageId::Javascript,
+            &base,
+            &twig,
             MutantKind::BinaryOp(BinaryOpMutationKind::Add),
             Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
         );
-        let subs: Vec<String> = MutationIter::new(&mutant).map(|m| m.subst().to_string()).collect();
+        let subs: Vec<String> = MutationIter::new(&mutant)
+            .map(|m| m.subst().to_string())
+            .collect();
         assert!(subs.contains(&"-".to_string()));
     }
 
@@ -268,11 +304,16 @@ mod tests {
         let (_dir, base) = make_base();
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let mutant = Mutant::new(
-            crate::LanguageId::Javascript, &base, &twig,
+            crate::LanguageId::Javascript,
+            &base,
+            &twig,
             MutantKind::BinaryOp(BinaryOpMutationKind::Add),
             Span::new(Point::new(0, 0, 0), Point::new(0, 10, 10)),
         );
-        let mutation = Mutation { mutant: &mutant, subst: "-".into() };
+        let mutation = Mutation {
+            mutant: &mutant,
+            subst: "-".into(),
+        };
         let mut store = bough_typed_hash::MemoryHashStore::new();
         let hash = mutation.hash(&mut store).unwrap();
         assert!(store.contains(&hash));
@@ -284,17 +325,27 @@ mod tests {
         let (_dir, base) = make_base();
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let m1 = Mutant::new(
-            crate::LanguageId::Javascript, &base, &twig,
+            crate::LanguageId::Javascript,
+            &base,
+            &twig,
             MutantKind::BinaryOp(BinaryOpMutationKind::Add),
             Span::new(Point::new(0, 0, 0), Point::new(0, 10, 10)),
         );
         let m2 = Mutant::new(
-            crate::LanguageId::Javascript, &base, &twig,
+            crate::LanguageId::Javascript,
+            &base,
+            &twig,
             MutantKind::Condition,
             Span::new(Point::new(0, 0, 0), Point::new(0, 10, 10)),
         );
-        let mut1 = Mutation { mutant: &m1, subst: "-".into() };
-        let mut2 = Mutation { mutant: &m2, subst: "-".into() };
+        let mut1 = Mutation {
+            mutant: &m1,
+            subst: "-".into(),
+        };
+        let mut2 = Mutation {
+            mutant: &m2,
+            subst: "-".into(),
+        };
         assert_ne!(hash_mutation(&mut1), hash_mutation(&mut2));
     }
 
@@ -304,12 +355,20 @@ mod tests {
         let (_dir, base) = make_base();
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let m = Mutant::new(
-            crate::LanguageId::Javascript, &base, &twig,
+            crate::LanguageId::Javascript,
+            &base,
+            &twig,
             MutantKind::BinaryOp(BinaryOpMutationKind::Add),
             Span::new(Point::new(0, 0, 0), Point::new(0, 10, 10)),
         );
-        let mut1 = Mutation { mutant: &m, subst: "-".into() };
-        let mut2 = Mutation { mutant: &m, subst: "*".into() };
+        let mut1 = Mutation {
+            mutant: &m,
+            subst: "-".into(),
+        };
+        let mut2 = Mutation {
+            mutant: &m,
+            subst: "*".into(),
+        };
         assert_ne!(hash_mutation(&mut1), hash_mutation(&mut2));
     }
 }
