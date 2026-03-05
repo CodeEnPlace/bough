@@ -123,7 +123,7 @@ impl<'a> Workspace<'a> {
 
         std::fs::create_dir_all(&root)?;
 
-        for twig in base.files() {
+        for twig in base.twigs() {
             let src = File::new(base, &twig).resolve();
             let dst = root.join(twig.path());
             if let Some(parent) = dst.parent() {
@@ -206,7 +206,7 @@ impl<'a> Workspace<'a> {
 
     // core[impl workspace.files]
     pub fn files(&self) -> impl Iterator<Item = &Twig> + '_ {
-        self.base.files()
+        self.base.twigs()
     }
 
     // core[impl workspace.validate-unchanged]
