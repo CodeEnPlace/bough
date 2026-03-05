@@ -1,7 +1,8 @@
 use crate::LanguageId;
 use crate::file::{Error, Root, Twig};
 use crate::mutant::{BasedMutant, TwigMutantsIter};
-use crate::twig::{TwigsIter, TwigsIterBuilder};
+use crate::mutation::{Mutation, MutationIter};
+use crate::twig::TwigsIterBuilder;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
@@ -51,12 +52,10 @@ impl Base {
         })
     }
 
-    pub fn mutations(&self) -> impl Iterator<Item = std::io::Result<Mutation<'_>>> + '_ {
-        self.mutant_twigs().flat_map(|(language_id, twig)| {
-            match TwigMutantsIter::new(language_id, self, &twig) {
-                Ok(iter) => iter.map(Ok).collect::<Vec<_>>(),
-                Err(e) => vec![Err(e)],
-            }
+    pub fn mutations(&self) -> impl Iterator<Item = std::io::Result<Mutation>> + '_ {
+        self.mutants().flat_map(|r| match r {
+            Ok(bm) => MutationIter::new(bm.mutant()).map(Ok).collect::<Vec<_>>(),
+            Err(e) => vec![Err(e)],
         })
     }
 }
@@ -70,10 +69,9 @@ impl Root for Base {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::file::TestRoot;
     use crate::twig::TwigsIterBuilder;
 
-    fn files_for(root: &impl Root, include: &[&str]) -> TwigsIterBuilder {
+    fn files_for(include: &[&str]) -> TwigsIterBuilder {
         let mut builder = TwigsIterBuilder::new();
         for glob in include {
             builder = builder.with_include_glob(glob);
@@ -84,17 +82,15 @@ mod tests {
     // core[verify base.root]
     #[test]
     fn base_impls_root() {
-        let root = TestRoot::new("/tmp/project");
-        let base = Base::new(PathBuf::from("/tmp/project"), files_for(&root, &[])).unwrap();
+        let base = Base::new(PathBuf::from("/tmp/project"), files_for(&[])).unwrap();
         assert_eq!(base.path(), Path::new("/tmp/project"));
     }
 
     // core[verify base.root]
     #[test]
     fn base_rejects_relative_path() {
-        let root = TestRoot::new("relative");
         assert!(matches!(
-            Base::new(PathBuf::from("relative"), files_for(&root, &[])),
+            Base::new(PathBuf::from("relative"), files_for(&[])),
             Err(Error::RootMustBeAbsolute(_))
         ));
     }
