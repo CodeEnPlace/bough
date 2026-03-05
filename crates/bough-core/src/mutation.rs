@@ -76,7 +76,7 @@ impl HashInto for Mutation {
 mod tests {
     use super::*;
     use crate::base::Base;
-    use crate::file::Twig;
+    use crate::file::{TestRoot, Twig};
     use crate::mutant::{BinaryOpMutationKind, MutantKind, Point, Span};
     use crate::twig::TwigsIterBuilder;
     use bough_typed_hash::HashStore;
@@ -88,11 +88,12 @@ mod tests {
 
     fn make_js_base(content: &str) -> (tempfile::TempDir, Base) {
         let dir = tempfile::tempdir().unwrap();
+        let root = TestRoot::new(dir.path());
         std::fs::create_dir_all(dir.path().join("src")).unwrap();
         std::fs::write(dir.path().join("src/a.js"), content).unwrap();
         let base = Base::new(
             dir.path().to_path_buf(),
-            TwigsIterBuilder::new(dir.path()).with_include_glob("src/**/*.js").build(),
+            TwigsIterBuilder::new().with_include_glob("src/**/*.js").build(&root),
         )
         .unwrap();
         (dir, base)
@@ -360,6 +361,7 @@ mod tests {
 
     fn make_multi_js_base(files: &[(&str, &str)]) -> (tempfile::TempDir, Base) {
         let dir = tempfile::tempdir().unwrap();
+        let root = TestRoot::new(dir.path());
         std::fs::create_dir_all(dir.path().join("src")).unwrap();
         for (name, content) in files {
             let path = dir.path().join(name);
@@ -368,7 +370,7 @@ mod tests {
         }
         let base = Base::new(
             dir.path().to_path_buf(),
-            TwigsIterBuilder::new(dir.path()).with_include_glob("src/**/*.js").build(),
+            TwigsIterBuilder::new().with_include_glob("src/**/*.js").build(&root),
         )
         .unwrap();
         (dir, base)

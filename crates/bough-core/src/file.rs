@@ -79,24 +79,29 @@ pub(crate) fn validate_root(path: &PathBuf) -> Result<(), Error> {
 }
 
 #[cfg(test)]
+#[derive(Debug, Clone, PartialEq)]
+pub struct TestRoot(PathBuf);
+
+#[cfg(test)]
+impl TestRoot {
+    pub fn new(path: impl Into<PathBuf>) -> Self {
+        Self(path.into())
+    }
+}
+
+#[cfg(test)]
+impl Root for TestRoot {
+    fn path(&self) -> &Path {
+        &self.0
+    }
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use bough_typed_hash::sha2::Digest;
 
-    #[derive(Debug, Clone, PartialEq)]
-    struct TestRoot(PathBuf);
-
-    impl TestRoot {
-        fn new(path: impl Into<PathBuf>) -> Self {
-            Self(path.into())
-        }
-    }
-
-    impl Root for TestRoot {
-        fn path(&self) -> &Path {
-            &self.0
-        }
-    }
+    use super::TestRoot;
 
     // core[verify file.root]
     #[test]
