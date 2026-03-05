@@ -40,13 +40,13 @@ core[mutant.twig-iter.skip.kind]
 TwigMutantsIter::with_skip_kind(self, kind: MutantKind) -> Self skips all mutants of the specified kind
 
 core[mutant.twig-iter.skip.kind.multiple]
-withskip_kind can be called multiple times; a mutant is skipped if its kind matches ANY of the configured skip kinds
+with_skip_kind can be called multiple times; a mutant is skipped if its kind matches ANY of the configured skip kinds
 
 core[mutant.twig-iter.skip.query]
 TwigMutantsIter::with_skip_query(self, query: &str) -> Self skips all mutants whose tree-sitter node matches the provided S-expression query
 
 core[mutant.twig-iter.skip.query.multiple]
-withskip_query can be called multiple times; a mutant is skipped if its node matches ANY of the configured skip queries
+with_skip_query can be called multiple times; a mutant is skipped if its node matches ANY of the configured skip queries
 
 <!-- ## TwigsMutantsIter -->
 
