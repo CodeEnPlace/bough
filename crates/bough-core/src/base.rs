@@ -1,5 +1,6 @@
 use crate::LanguageId;
 use crate::file::{Error, Root, Twig};
+use crate::mutant::{BasedMutant, TwigMutantsIter};
 use crate::twig::{TwigsIter, TwigsIterBuilder};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -9,7 +10,7 @@ use std::path::{Path, PathBuf};
 pub struct Base {
     root: PathBuf,
     files: TwigsIterBuilder,
-    mutant_files: HashMap<LanguageId, Vec<Twig>>,
+    mutant_files: HashMap<LanguageId, TwigsIterBuilder>,
 }
 
 impl Base {
@@ -22,21 +23,42 @@ impl Base {
         })
     }
 
-    pub fn add_mutator(&mut self, language_id: LanguageId, files: TwigsIter) {
-        self.mutant_files.insert(language_id, files.collect());
+    pub fn add_mutator(&mut self, language_id: LanguageId, files: TwigsIterBuilder) {
+        self.mutant_files.insert(language_id, files);
     }
 
     pub fn twigs<'a>(&'a self) -> impl Iterator<Item = Twig> + 'a {
         self.files.clone().build(self)
     }
 
-    // pub fn mutants(&self) -> impl Iterator<Item = &Mutant> + '_ {
-    //     self.files.iter().flat_map(|twig)
-    // }
+    pub fn mutant_twigs(&self) -> impl Iterator<Item = (LanguageId, Twig)> + '_ {
+        self.mutant_files
+            .iter()
+            .flat_map(|(language_id, twigs_iter_builder)| {
+                twigs_iter_builder
+                    .clone()
+                    .build(self)
+                    .map(|twig| (language_id.clone(), twig))
+            })
+    }
 
-    // pub fn mutations(&self) -> impl Iterator<Item = &Mutation> + '_ {
-    //     todo!()
-    // }
+    pub fn mutants(&self) -> impl Iterator<Item = std::io::Result<BasedMutant<'_>>> + '_ {
+        self.mutant_twigs().flat_map(|(language_id, twig)| {
+            match TwigMutantsIter::new(language_id, self, &twig) {
+                Ok(iter) => iter.map(Ok).collect::<Vec<_>>(),
+                Err(e) => vec![Err(e)],
+            }
+        })
+    }
+
+    pub fn mutations(&self) -> impl Iterator<Item = std::io::Result<Mutation<'_>>> + '_ {
+        self.mutant_twigs().flat_map(|(language_id, twig)| {
+            match TwigMutantsIter::new(language_id, self, &twig) {
+                Ok(iter) => iter.map(Ok).collect::<Vec<_>>(),
+                Err(e) => vec![Err(e)],
+            }
+        })
+    }
 }
 
 impl Root for Base {

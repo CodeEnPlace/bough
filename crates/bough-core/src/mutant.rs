@@ -330,7 +330,7 @@ pub(crate) fn span_from_node(node: &tree_sitter::Node<'_>) -> Span {
 mod tests {
     use super::*;
     use crate::base::Base;
-    use crate::file::{Root, TestRoot};
+    use crate::file::Root;
     use crate::twig::TwigsIterBuilder;
     use std::path::PathBuf;
 

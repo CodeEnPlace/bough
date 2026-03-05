@@ -241,7 +241,6 @@ impl Root for Workspace<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::file::TestRoot;
     use crate::twig::TwigsIterBuilder;
 
     fn make_base() -> (tempfile::TempDir, Base) {

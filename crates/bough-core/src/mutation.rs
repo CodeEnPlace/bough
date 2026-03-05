@@ -76,7 +76,7 @@ impl HashInto for Mutation {
 mod tests {
     use super::*;
     use crate::base::Base;
-    use crate::file::{TestRoot, Twig};
+    use crate::file::Twig;
     use crate::mutant::{BinaryOpMutationKind, MutantKind, Point, Span};
     use crate::twig::TwigsIterBuilder;
     use bough_typed_hash::HashStore;
