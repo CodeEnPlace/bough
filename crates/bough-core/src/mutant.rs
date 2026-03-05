@@ -2,9 +2,9 @@ use crate::language::{LanguageDriver, driver_for_lang};
 use crate::{LanguageId, base::Base, file::Twig};
 use bough_typed_hash::{HashInto, TypedHashable};
 
-// core[impl mutant.iter.twig]
-// core[impl mutant.iter.base]
-// core[impl mutant.iter.lang]
+// core[impl mutant.twig-iter.twig]
+// core[impl mutant.twig-iter.base]
+// core[impl mutant.twig-iter.lang]
 pub struct TwigMutantsIter<'a> {
     lang: LanguageId,
     base: &'a Base,
@@ -162,7 +162,7 @@ pub enum MutantKind {
 
 impl<'a> TwigMutantsIter<'a> {
     pub fn new(lang: LanguageId, base: &'a Base, twig: &'a Twig) -> std::io::Result<Self> {
-        // core[impl mutant.iter.file]
+        // core[impl mutant.twig-iter.file]
         let file_path = crate::file::File::new(base, twig).resolve();
         let file_content = std::fs::read(&file_path)?;
 
@@ -210,8 +210,8 @@ impl<'a> TwigMutantsIter<'a> {
     }
 }
 
-// core[impl mutant.iter.item]
-// core[impl mutant.iter.find]
+// core[impl mutant.twig-iter.item]
+// core[impl mutant.twig-iter.find]
 impl<'a> Iterator for TwigMutantsIter<'a> {
     type Item = Mutant<'a>;
 
@@ -220,9 +220,7 @@ impl<'a> Iterator for TwigMutantsIter<'a> {
             if !self.started {
                 self.started = true;
                 let node = self.cursor.node();
-                if let Some((kind, span)) =
-                    self.driver.check_node(&node, &self.file_content)
-                {
+                if let Some((kind, span)) = self.driver.check_node(&node, &self.file_content) {
                     return Some(Mutant::new(self.lang, self.base, self.twig, kind, span));
                 }
             }
@@ -230,9 +228,7 @@ impl<'a> Iterator for TwigMutantsIter<'a> {
             if !self.did_visit && self.cursor.goto_first_child() {
                 self.did_visit = false;
                 let node = self.cursor.node();
-                if let Some((kind, span)) =
-                    self.driver.check_node(&node, &self.file_content)
-                {
+                if let Some((kind, span)) = self.driver.check_node(&node, &self.file_content) {
                     return Some(Mutant::new(self.lang, self.base, self.twig, kind, span));
                 }
                 continue;
@@ -241,9 +237,7 @@ impl<'a> Iterator for TwigMutantsIter<'a> {
             if self.cursor.goto_next_sibling() {
                 self.did_visit = false;
                 let node = self.cursor.node();
-                if let Some((kind, span)) =
-                    self.driver.check_node(&node, &self.file_content)
-                {
+                if let Some((kind, span)) = self.driver.check_node(&node, &self.file_content) {
                     return Some(Mutant::new(self.lang, self.base, self.twig, kind, span));
                 }
                 continue;
@@ -388,7 +382,7 @@ mod tests {
         assert_eq!(m.span().end().byte(), 60);
     }
 
-    // core[verify mutant.iter.twig]
+    // core[verify mutant.twig-iter.twig]
     #[test]
     fn mutants_iter_holds_twig() {
         let (_dir, base) = make_base();
@@ -397,7 +391,7 @@ mod tests {
         assert_eq!(iter.twig().path(), std::path::Path::new("src/a.js"));
     }
 
-    // core[verify mutant.iter.base]
+    // core[verify mutant.twig-iter.base]
     #[test]
     fn mutants_iter_holds_base() {
         let (_dir, base) = make_base();
@@ -406,7 +400,7 @@ mod tests {
         assert_eq!(iter.base().path(), base.path());
     }
 
-    // core[verify mutant.iter.lang]
+    // core[verify mutant.twig-iter.lang]
     #[test]
     fn mutants_iter_owns_lang() {
         let (_dir, base) = make_base();
@@ -415,7 +409,7 @@ mod tests {
         assert_eq!(iter.lang(), LanguageId::Javascript);
     }
 
-    // core[verify mutant.iter.file]
+    // core[verify mutant.twig-iter.file]
     #[test]
     fn mutants_iter_resolves_file_from_base_and_twig() {
         let (_dir, base) = make_base();
@@ -423,7 +417,7 @@ mod tests {
         assert!(TwigMutantsIter::new(LanguageId::Javascript, &base, &twig).is_ok());
     }
 
-    // core[verify mutant.iter.file]
+    // core[verify mutant.twig-iter.file]
     #[test]
     fn mutants_iter_errors_on_missing_file() {
         let (_dir, base) = make_base();
@@ -431,8 +425,8 @@ mod tests {
         assert!(TwigMutantsIter::new(LanguageId::Javascript, &base, &twig).is_err());
     }
 
-    // core[verify mutant.iter.item]
-    // core[verify mutant.iter.find]
+    // core[verify mutant.twig-iter.item]
+    // core[verify mutant.twig-iter.find]
     #[test]
     fn mutants_iter_walks_tree_and_returns_mutants() {
         let (_dir, base) = make_js_base("const a = 1;");
@@ -442,7 +436,7 @@ mod tests {
         assert!(mutants.is_empty());
     }
 
-    // core[verify mutant.iter.find.js.statement]
+    // core[verify mutant.twig-iter.find.js.statement]
     #[test]
     fn js_finds_statement_blocks() {
         let js = "function foo() { return 1; }\nfunction bar() { return 2; }";
@@ -460,7 +454,7 @@ mod tests {
         assert_eq!(blocks[1].span().start().line(), 1);
     }
 
-    // core[verify mutant.iter.find.js.condition.if]
+    // core[verify mutant.twig-iter.find.js.condition.if]
     #[test]
     fn js_finds_if_condition() {
         let js = "if (x > 0) { console.log(x); }";
@@ -476,7 +470,7 @@ mod tests {
         assert_eq!(conditions.len(), 1);
     }
 
-    // core[verify mutant.iter.find.js.condition.while]
+    // core[verify mutant.twig-iter.find.js.condition.while]
     #[test]
     fn js_finds_while_condition() {
         let js = "while (i < 10) { i++; }";
@@ -492,7 +486,7 @@ mod tests {
         assert_eq!(conditions.len(), 1);
     }
 
-    // core[verify mutant.iter.find.js.condition.for]
+    // core[verify mutant.twig-iter.find.js.condition.for]
     #[test]
     fn js_finds_for_condition() {
         let js = "for (let i = 0; i < 10; i++) { console.log(i); }";
@@ -511,7 +505,7 @@ mod tests {
         assert_eq!(condition_text, "i < 10");
     }
 
-    // core[verify mutant.iter.find.js.binary.add]
+    // core[verify mutant.twig-iter.find.js.binary.add]
     #[test]
     fn js_finds_add_binary_op() {
         let js = "const x = a + b;";
@@ -527,7 +521,7 @@ mod tests {
         assert_eq!(adds.len(), 1);
     }
 
-    // core[verify mutant.iter.find.js.binary.sub]
+    // core[verify mutant.twig-iter.find.js.binary.sub]
     #[test]
     fn js_finds_sub_binary_op() {
         let js = "const x = a - b;";
@@ -543,8 +537,8 @@ mod tests {
         assert_eq!(subs.len(), 1);
     }
 
-    // core[verify mutant.iter.find.js.binary.add]
-    // core[verify mutant.iter.find.js.binary.sub]
+    // core[verify mutant.twig-iter.find.js.binary.add]
+    // core[verify mutant.twig-iter.find.js.binary.sub]
     #[test]
     fn js_ignores_other_binary_ops() {
         let js = "const x = a * b;";
