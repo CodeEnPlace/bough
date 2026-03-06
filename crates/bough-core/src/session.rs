@@ -136,6 +136,7 @@ mod tests {
         state_dir: PathBuf,
         langs: Vec<LanguageId>,
         lang_includes: Vec<String>,
+        workers_count: u64,
     }
 
     impl Config for MinimalConfig {
@@ -168,7 +169,7 @@ mod tests {
         }
 
         fn get_workers_count(&self) -> u64 {
-            todo!()
+            self.workers_count
         }
     }
 
@@ -179,6 +180,7 @@ mod tests {
             state_dir: dir.join("bough"),
             langs: vec![LanguageId::Javascript],
             lang_includes: vec!["src/**/*.js".to_string()],
+            workers_count: 0,
         }
     }
 
@@ -191,6 +193,7 @@ mod tests {
             state_dir: dir.path().join("state"),
             langs: vec![],
             lang_includes: vec![],
+            workers_count: 0,
         };
         let session = Session::new(config);
         assert!(session.is_ok());
@@ -205,6 +208,7 @@ mod tests {
             state_dir: dir.path().join("state"),
             langs: vec![],
             lang_includes: vec![],
+            workers_count: 0,
         };
         let session = Session::new(config);
         assert!(session.is_err());
@@ -286,6 +290,57 @@ mod tests {
         let s = state.get(&key).unwrap();
         assert!(!s.has_outcome());
         assert_eq!(s.mutation().subst(), "{}");
+    }
+
+    fn workspace_dirs(dir: &std::path::Path) -> Vec<PathBuf> {
+        let ws_dir = dir.join("bough/workspaces/work");
+        if !ws_dir.exists() {
+            return vec![];
+        }
+        let mut dirs: Vec<PathBuf> = std::fs::read_dir(&ws_dir)
+            .unwrap()
+            .flatten()
+            .map(|e| e.path())
+            .filter(|p| p.is_dir())
+            .collect();
+        dirs.sort();
+        dirs
+    }
+
+    // core[verify session.init.workspaces]
+    #[test]
+    fn session_creates_workspaces_in_state_dir() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(dir.path().join("src")).unwrap();
+        std::fs::write(dir.path().join("src/a.js"), "const x = 1;").unwrap();
+        let mut config = make_js_config(dir.path());
+        config.workers_count = 3;
+        let _session = Session::new(config).unwrap();
+        let dirs = workspace_dirs(dir.path());
+        assert_eq!(dirs.len(), 3, "expected 3 workspaces, got: {dirs:?}");
+        for d in &dirs {
+            assert!(d.join("src/a.js").exists(), "workspace should contain source files");
+        }
+    }
+
+    // core[verify session.init.workspaces.bind]
+    #[test]
+    fn session_binds_existing_workspaces() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(dir.path().join("src")).unwrap();
+        std::fs::write(dir.path().join("src/a.js"), "const x = 1;").unwrap();
+        let mut config = make_js_config(dir.path());
+        config.workers_count = 2;
+        let _session = Session::new(config).unwrap();
+        let dirs_before = workspace_dirs(dir.path());
+        assert_eq!(dirs_before.len(), 2);
+
+        let mut config2 = make_js_config(dir.path());
+        config2.workers_count = 2;
+        let _session2 = Session::new(config2).unwrap();
+        let dirs_after = workspace_dirs(dir.path());
+        assert_eq!(dirs_after.len(), 2, "should reuse existing workspaces, not create new ones");
+        assert_eq!(dirs_before, dirs_after, "workspace dirs should be the same");
     }
 
     // core[verify session.init.state.remove-stale]
