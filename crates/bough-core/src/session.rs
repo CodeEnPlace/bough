@@ -185,6 +185,58 @@ impl<C: Config> Session<C> {
         Ok(added)
     }
 
+    // bough[impl session.tend.workspaces]
+    // bough[impl session.tend.workspaces.bind]
+    // bough[impl session.tend.workspaces.bind.validate-unchanged.rm]
+    // bough[impl session.tend.workspaces.bind.validate-unchanged.forget]
+    // bough[impl session.tend.workspaces.new]
+    // bough[impl session.tend.workspaces.surplus]
+    pub fn tend_workspaces(&mut self, desired_count: usize) -> Result<Vec<WorkspaceId>, Error> {
+        let workspaces_dir = self.config.get_bough_state_dir().join("workspaces");
+
+        let existing_ids: Vec<WorkspaceId> = if workspaces_dir.join("work").exists() {
+            std::fs::read_dir(workspaces_dir.join("work"))?
+                .flatten()
+                .filter_map(|entry| {
+                    let name = entry.file_name().to_string_lossy().into_owned();
+                    WorkspaceId::parse(&name).ok()
+                })
+                .collect()
+        } else {
+            vec![]
+        };
+
+        let mut valid: Vec<WorkspaceId> = Vec::new();
+        for id in &existing_ids {
+            match Workspace::bind(workspaces_dir.clone(), id, &self.base) {
+                Ok(_ws) => valid.push(id.clone()),
+                Err(_) => {
+                    let ws_path = workspaces_dir.join("work").join(id.as_str());
+                    if ws_path.exists() {
+                        std::fs::remove_dir_all(&ws_path)?;
+                    }
+                }
+            }
+        }
+
+        if valid.len() > desired_count {
+            for id in valid.drain(desired_count..) {
+                let ws_path = workspaces_dir.join("work").join(id.as_str());
+                if ws_path.exists() {
+                    std::fs::remove_dir_all(&ws_path)?;
+                }
+            }
+        }
+
+        while valid.len() < desired_count {
+            let ws = Workspace::new(workspaces_dir.clone(), &self.base)?;
+            valid.push(ws.id().clone());
+        }
+
+        self.workspaces = valid.clone();
+        Ok(valid)
+    }
+
     // bough[impl session.tend.state.remove-stale]
     pub fn tend_remove_stale_states(&mut self) -> Result<Vec<MutationHash>, Error> {
         let mutations_in_base: HashSet<Mutation> =
@@ -528,6 +580,89 @@ mod tests {
         assert!(!added.is_empty());
         let final_count = session.get_state().keys().count();
         assert_eq!(final_count, initial_count + added.len());
+    }
+
+    // bough[verify session.tend.workspaces]
+    #[test]
+    fn tend_workspaces_returns_workspace_ids() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(dir.path().join("src")).unwrap();
+        std::fs::write(dir.path().join("src/a.js"), "const x = 1;").unwrap();
+        let mut config = make_js_config(dir.path());
+        config.workers_count = 0;
+        let mut session = Session::new(config).unwrap();
+        let ids = session.tend_workspaces(3).unwrap();
+        assert_eq!(ids.len(), 3);
+    }
+
+    // bough[verify session.tend.workspaces.bind]
+    #[test]
+    fn tend_workspaces_binds_existing() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(dir.path().join("src")).unwrap();
+        std::fs::write(dir.path().join("src/a.js"), "const x = 1;").unwrap();
+        let mut config = make_js_config(dir.path());
+        config.workers_count = 2;
+        let mut session = Session::new(config).unwrap();
+        let dirs_before = workspace_dirs(dir.path());
+        assert_eq!(dirs_before.len(), 2);
+
+        let ids = session.tend_workspaces(2).unwrap();
+        assert_eq!(ids.len(), 2);
+        let dirs_after = workspace_dirs(dir.path());
+        assert_eq!(dirs_before, dirs_after);
+    }
+
+    // bough[verify session.tend.workspaces.bind.validate-unchanged.rm]
+    // bough[verify session.tend.workspaces.bind.validate-unchanged.forget]
+    #[test]
+    fn tend_workspaces_removes_modified_workspace_from_disk() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(dir.path().join("src")).unwrap();
+        std::fs::write(dir.path().join("src/a.js"), "const x = 1;").unwrap();
+        let mut config = make_js_config(dir.path());
+        config.workers_count = 2;
+        let mut session = Session::new(config).unwrap();
+        let dirs_before = workspace_dirs(dir.path());
+        assert_eq!(dirs_before.len(), 2);
+
+        std::fs::write(dirs_before[0].join("src/a.js"), "MUTATED").unwrap();
+
+        let ids = session.tend_workspaces(2).unwrap();
+        assert_eq!(ids.len(), 2);
+        assert!(!dirs_before[0].exists(), "modified workspace dir should be removed from disk");
+    }
+
+    // bough[verify session.tend.workspaces.new]
+    #[test]
+    fn tend_workspaces_creates_new_to_reach_desired_count() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(dir.path().join("src")).unwrap();
+        std::fs::write(dir.path().join("src/a.js"), "const x = 1;").unwrap();
+        let mut config = make_js_config(dir.path());
+        config.workers_count = 1;
+        let mut session = Session::new(config).unwrap();
+        assert_eq!(workspace_dirs(dir.path()).len(), 1);
+
+        let ids = session.tend_workspaces(3).unwrap();
+        assert_eq!(ids.len(), 3);
+        assert_eq!(workspace_dirs(dir.path()).len(), 3);
+    }
+
+    // bough[verify session.tend.workspaces.surplus]
+    #[test]
+    fn tend_workspaces_removes_surplus() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(dir.path().join("src")).unwrap();
+        std::fs::write(dir.path().join("src/a.js"), "const x = 1;").unwrap();
+        let mut config = make_js_config(dir.path());
+        config.workers_count = 4;
+        let mut session = Session::new(config).unwrap();
+        assert_eq!(workspace_dirs(dir.path()).len(), 4);
+
+        let ids = session.tend_workspaces(2).unwrap();
+        assert_eq!(ids.len(), 2);
+        assert_eq!(workspace_dirs(dir.path()).len(), 2);
     }
 
     // bough[verify session.tend.state.remove-stale]
