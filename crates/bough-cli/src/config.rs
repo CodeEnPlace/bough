@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::env;
 
 use facet::Facet;
@@ -43,6 +44,16 @@ pub struct Config {
     #[facet(default = 1)]
     pub threads: u64,
 
+    pub include: Vec<String>,
+
+    pub exclude: Vec<String>,
+
+    #[facet(default)]
+    pub languages: Option<HashMap<bough_core::LanguageId, LanguageConfig>>,
+}
+
+#[derive(Facet, Debug)]
+pub struct LanguageConfig {
     pub include: Vec<String>,
 
     pub exclude: Vec<String>,
@@ -317,6 +328,39 @@ exclude = []
     }
 
     #[test]
+    fn language_config_from_toml() {
+        let toml = r#"
+include = ["src/**"]
+exclude = []
+
+[languages.js]
+include = ["**/*.js"]
+exclude = ["node_modules/**"]
+
+[languages.ts]
+include = ["**/*.ts"]
+exclude = []
+"#;
+        let cli = parse_ok(&["run"], toml);
+        let langs = cli.config.languages.as_ref().expect("languages should be Some");
+        assert_eq!(langs.len(), 2);
+
+        let js = &langs[&bough_core::LanguageId::Javascript];
+        assert_eq!(js.include, vec!["**/*.js"]);
+        assert_eq!(js.exclude, vec!["node_modules/**"]);
+
+        let ts = &langs[&bough_core::LanguageId::Typescript];
+        assert_eq!(ts.include, vec!["**/*.ts"]);
+        assert!(ts.exclude.is_empty());
+    }
+
+    #[test]
+    fn no_languages_defaults_to_none() {
+        let cli = parse_ok(&["run"], MINIMAL_TOML);
+        assert!(cli.config.languages.is_none());
+    }
+
+    #[test]
     fn json_config() {
         let json = r#"{"include": ["src/**"], "exclude": []}"#;
         let cli = try_parse_from(&["run"], Some((json, "config.json"))).expect("should parse");
@@ -345,11 +389,11 @@ impl bough_core::Config for Config {
     }
 
     fn get_base_include_globs(&self) -> impl Iterator<Item = &str> {
-        vec![].into_iter()
+        self.include.iter().map(|s| s.as_ref())
     }
 
     fn get_base_exclude_globs(&self) -> impl Iterator<Item = &str> {
-        vec![].into_iter()
+        self.exclude.iter().map(|s| s.as_ref())
     }
 
     fn get_langs(&self) -> impl Iterator<Item = bough_core::LanguageId> {
