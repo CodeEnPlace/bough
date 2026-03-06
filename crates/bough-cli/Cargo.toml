@@ -7,4 +7,5 @@ license.workspace = true
 [dependencies]
 facet = "0.44"
 facet-toml = "0.44"
+facet-yaml = "0.44"
 figue = "2"
