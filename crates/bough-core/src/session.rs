@@ -1,6 +1,7 @@
 use std::{collections::HashSet, path::PathBuf};
 
 use bough_typed_hash::TypedHashable;
+use tracing::{debug, info, warn};
 
 use crate::{
     LanguageId,
@@ -44,9 +45,11 @@ pub struct Session<C: Config> {
 impl<C: Config> Session<C> {
     // core[impl session.init]
     pub fn new(config: C) -> Result<Self, Error> {
+        info!("initializing session");
         let workspaces_dir = config.get_bough_state_dir().join("workspaces");
 
         // core[impl session.init.workspaces.bind]
+        debug!(dir = %workspaces_dir.display(), "scanning for existing workspaces");
         let existing_ids: Vec<WorkspaceId> = if workspaces_dir.join("work").exists() {
             std::fs::read_dir(workspaces_dir.join("work"))?
                 .flatten()
@@ -81,6 +84,7 @@ impl<C: Config> Session<C> {
         }
 
         let mutations_in_base: HashSet<Mutation> = base.mutations().collect::<Result<_, _>>()?;
+        debug!(count = mutations_in_base.len(), "discovered mutations in base");
 
         // core[impl session.init.state.attach]
         let mut mutations_state = FacetDiskStore::<<Mutation as TypedHashable>::Hash, State>::new(
@@ -112,6 +116,9 @@ impl<C: Config> Session<C> {
             .keys()
             .filter(|k| !hashes_in_base.contains(k))
             .collect();
+        if !stale_keys.is_empty() {
+            info!(count = stale_keys.len(), "removing stale state entries");
+        }
         for key in stale_keys {
             mutations_state.remove(&key);
         }
@@ -125,10 +132,19 @@ impl<C: Config> Session<C> {
         }
 
         let needed = (config.get_workers_count() as usize).saturating_sub(workspaces.len());
+        if needed > 0 {
+            debug!(count = needed, "creating new workspaces");
+        }
         for _ in 0..needed {
             let ws = Workspace::new(workspaces_dir.clone(), &base)?;
             workspaces.push(ws.id().clone());
         }
+
+        info!(
+            workspaces = workspaces.len(),
+            mutations = mutations_state.keys().count(),
+            "session initialized"
+        );
 
         Ok(Self {
             config,
