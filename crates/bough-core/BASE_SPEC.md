@@ -1,13 +1,13 @@
 ## Base
 
-core[base.root]
+bough[base.root]
 Base impls Root
 
-<!-- core[base.mutant_files] -->
+<!-- bough[base.mutant_files] -->
 <!-- `Base::mutant_files(language_id: &LanguageId) -> TwigsIter` -->
 
-<!-- core[base.mutants] -->
+<!-- bough[base.mutants] -->
 <!-- `Base::mutants(language_id: &LanguageId) -> TwigsMutantsIter` -->
 
-<!-- core[base.mutations] -->
+<!-- bough[base.mutations] -->
 <!-- Base::mutations(language_id: &LanguageId) -> TwigsMutationsIter -->

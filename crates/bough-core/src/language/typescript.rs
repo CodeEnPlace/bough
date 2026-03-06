@@ -18,7 +18,7 @@ impl LanguageDriver for TypescriptDriver {
         None
     }
 
-    // core[impl mutation.iter.invalid]
+    // bough[impl mutation.iter.invalid]
     fn substitutions(&self, _kind: &MutantKind) -> Vec<String> {
         vec![]
     }
