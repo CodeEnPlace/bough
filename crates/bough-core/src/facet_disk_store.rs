@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use tracing::{debug, trace, warn};
 
 // core[impl fds.type]
 pub struct FacetDiskStore<Key, Val>
@@ -20,6 +21,7 @@ where
     // core[impl fds.new.mkdir]
     // core[impl fds.live.startup]
     pub fn new(dir: PathBuf) -> Self {
+        debug!(dir = %dir.display(), "creating facet disk store");
         std::fs::create_dir_all(&dir).ok();
         Self {
             dir,
@@ -32,8 +34,21 @@ where
     // core[impl fds.live.intercepted]
     pub fn get(&self, key: &Key) -> Option<Val> {
         let path = self.dir.join(format!("{key}.json"));
-        let data = std::fs::read_to_string(path).ok()?;
-        facet_json::from_str(&data).ok()
+        trace!(key = %key, path = %path.display(), "getting from disk store");
+        let data = match std::fs::read_to_string(&path) {
+            Ok(d) => d,
+            Err(_) => {
+                trace!(key = %key, "key not found on disk");
+                return None;
+            }
+        };
+        match facet_json::from_str(&data) {
+            Ok(v) => Some(v),
+            Err(e) => {
+                warn!(key = %key, error = %e, "failed to deserialize from disk store");
+                None
+            }
+        }
     }
 
     // core[impl fds.set]
@@ -41,6 +56,7 @@ where
     pub fn set(&mut self, key: Key, val: Val) -> Result<(), std::io::Error> {
         std::fs::create_dir_all(&self.dir)?;
         let path = self.dir.join(format!("{key}.json"));
+        trace!(key = %key, path = %path.display(), "writing to disk store");
         let json = facet_json::to_string(&val)
             .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e.to_string()))?;
         std::fs::write(path, json)?;
@@ -50,6 +66,7 @@ where
     // core[impl fds.remove]
     pub fn remove(&mut self, key: &Key) -> Option<Val> {
         let path = self.dir.join(format!("{key}.json"));
+        trace!(key = %key, path = %path.display(), "removing from disk store");
         let data = std::fs::read_to_string(&path).ok()?;
         let val: Val = facet_json::from_str(&data).ok()?;
         std::fs::remove_file(path).ok()?;
