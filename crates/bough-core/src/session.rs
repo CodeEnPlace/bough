@@ -162,6 +162,29 @@ impl<C: Config> Session<C> {
         &self.base
     }
 
+    // bough[impl session.tend.state.add-missing]
+    pub fn tend_add_missing_states(&mut self) -> Result<Vec<MutationHash>, Error> {
+        let mutations_in_base: HashSet<Mutation> =
+            self.base.mutations().collect::<Result<_, _>>()?;
+        let mut hash_store = bough_typed_hash::MemoryHashStore::new();
+        let mut added = Vec::new();
+
+        for mutation in &mutations_in_base {
+            let hash = mutation
+                .hash(&mut hash_store)
+                .expect("hashing should not fail");
+            if self.mutations_state.get(&hash).is_none() {
+                let state = State::new(mutation.clone());
+                self.mutations_state
+                    .set(hash.clone(), state)
+                    .expect("writing state should not fail");
+                added.push(hash);
+            }
+        }
+
+        Ok(added)
+    }
+
     // bough[impl session.init.state.get]
     pub fn get_state(&self) -> &FacetDiskStore<MutationHash, State> {
         &self.mutations_state
@@ -428,6 +451,59 @@ mod tests {
         for id in ids {
             assert_eq!(id.as_str().len(), 8);
         }
+    }
+
+    // bough[verify session.tend.state.add-missing]
+    #[test]
+    fn tend_add_missing_states_adds_new_mutations() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(dir.path().join("src")).unwrap();
+        std::fs::write(dir.path().join("src/a.js"), "function foo() { return 1; }").unwrap();
+        let config = make_js_config(dir.path());
+        let mut session = Session::new(config).unwrap();
+        let initial_count = session.get_state().keys().count();
+        assert!(initial_count > 0);
+
+        std::fs::write(
+            dir.path().join("src/b.js"),
+            "function bar() { return 2; }",
+        )
+        .unwrap();
+
+        let mut config2 = make_js_config(dir.path());
+        config2.lang_includes = vec!["src/**/*.js".to_string()];
+        let mut session2 = Session::new(config2).unwrap();
+        let count_after = session2.get_state().keys().count();
+        assert!(count_after > initial_count);
+
+        let added = session2.tend_add_missing_states().unwrap();
+        assert!(added.is_empty(), "no new mutations since session2 was created fresh");
+    }
+
+    // bough[verify session.tend.state.add-missing]
+    #[test]
+    fn tend_add_missing_states_returns_newly_added_hashes() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(dir.path().join("src")).unwrap();
+        std::fs::write(dir.path().join("src/a.js"), "const x = 1;").unwrap();
+        let config = make_js_config(dir.path());
+        let mut session = Session::new(config).unwrap();
+        let initial_count = session.get_state().keys().count();
+
+        std::fs::write(
+            dir.path().join("src/b.js"),
+            "function bar() { return 2; }",
+        )
+        .unwrap();
+        session.base.add_mutator(
+            LanguageId::Javascript,
+            crate::twig::TwigsIterBuilder::new().with_include_glob("src/**/*.js"),
+        );
+
+        let added = session.tend_add_missing_states().unwrap();
+        assert!(!added.is_empty());
+        let final_count = session.get_state().keys().count();
+        assert_eq!(final_count, initial_count + added.len());
     }
 
     // bough[verify session.init.state.remove-stale]
