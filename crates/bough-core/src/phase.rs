@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 use std::{collections::HashMap, time::Duration};
 
 use crate::file::{File, Root, Twig};
+use tracing::{debug, info, warn};
 
 #[derive(Debug)]
 pub enum Error {
@@ -79,12 +80,19 @@ impl<'a, R: Root> Phase<'a, R> {
         use wait_timeout::ChildExt;
 
         if self.cmd.is_empty() {
+            warn!("attempted to run phase with empty command");
             return Err(Error::EmptyCommand);
         }
 
         let working_dir = File::new(self.root, &self.pwd).resolve();
-
         let effective_timeout = self.effective_timeout(reference_duration);
+
+        info!(
+            cmd = ?self.cmd,
+            pwd = %working_dir.display(),
+            timeout = ?effective_timeout,
+            "running phase"
+        );
 
         let start = std::time::Instant::now();
         let mut child = std::process::Command::new(&self.cmd[0])
@@ -125,6 +133,13 @@ impl<'a, R: Root> Phase<'a, R> {
         } else {
             child.try_wait()?.and_then(|s| s.code()).unwrap_or(-1)
         };
+
+        debug!(
+            exit_code,
+            timed_out,
+            duration_ms = duration.as_millis() as u64,
+            "phase completed"
+        );
 
         Ok(PhaseOutcome {
             stdout,
