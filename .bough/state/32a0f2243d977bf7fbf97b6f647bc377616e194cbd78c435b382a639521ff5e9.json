@@ -1,0 +1,1 @@
+{"mutation":{"mutant":{"lang":"js","twig":["examples/vitest-complex/src/validators/role.js"],"kind":"StatementBlock","span":{"start":{"line":2,"col":44,"byte":96},"end":{"line":14,"col":1,"byte":461}}},"subst":"{}"},"outcome":null}

@@ -1,0 +1,1 @@
+{"mutation":{"mutant":{"lang":"js","twig":["examples/vitest-js/get-test-ids.js"],"kind":"StatementBlock","span":{"start":{"line":6,"col":39,"byte":221},"end":{"line":11,"col":2,"byte":392}}},"subst":"{}"},"outcome":null}

@@ -1,0 +1,1 @@
+{"mutation":{"mutant":{"lang":"js","twig":["examples/vitest-complex/src/validators/role.js"],"kind":"Condition","span":{"start":{"line":7,"col":5,"byte":207},"end":{"line":7,"col":32,"byte":234}}},"subst":"true"},"outcome":null}
