@@ -80,6 +80,10 @@ impl<'a> BasedMutant<'a> {
         &self.mutant
     }
 
+    pub fn into_mutant(self) -> Mutant {
+        self.mutant
+    }
+
     pub fn base(&self) -> &Base {
         self.base
     }
