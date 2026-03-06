@@ -17,8 +17,10 @@ where
     Val: for<'a> facet::Facet<'a>,
 {
     // core[impl fds.new]
+    // core[impl fds.new.mkdir]
     // core[impl fds.live.startup]
     pub fn new(dir: PathBuf) -> Self {
+        std::fs::create_dir_all(&dir).ok();
         Self {
             dir,
             _phantom: std::marker::PhantomData,
@@ -248,6 +250,16 @@ mod tests {
         let mut store: FacetDiskStore<TestKey, TestVal> =
             FacetDiskStore::new(dir.path().to_path_buf());
         assert!(store.remove(&TestKey("nope".into())).is_none());
+    }
+
+    // core[verify fds.new.mkdir]
+    #[test]
+    fn new_creates_dir_if_missing() {
+        let dir = tempfile::tempdir().unwrap();
+        let store_dir = dir.path().join("nested/deep/store");
+        assert!(!store_dir.exists());
+        let _store: FacetDiskStore<TestKey, TestVal> = FacetDiskStore::new(store_dir.clone());
+        assert!(store_dir.exists());
     }
 
     // core[verify fds.live.startup]

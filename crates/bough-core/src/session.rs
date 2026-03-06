@@ -12,6 +12,8 @@ use crate::{
 };
 
 trait Config {
+    fn get_workers_count(&self) -> u64;
+
     fn get_bough_state_dir(&self) -> PathBuf;
     fn get_base_root_path(&self) -> PathBuf;
     fn get_base_include_globs(&self) -> impl Iterator<Item = &str>;
@@ -63,14 +65,12 @@ impl<C: Config> Session<C> {
             base.add_mutator(lang, lang_twigs_iter_builder);
         }
 
-        let mutations_in_base: HashSet<Mutation> =
-            base.mutations().collect::<Result<_, _>>()?;
+        let mutations_in_base: HashSet<Mutation> = base.mutations().collect::<Result<_, _>>()?;
 
         // core[impl session.init.state.attach]
-        let mut mutations_state =
-            FacetDiskStore::<<Mutation as TypedHashable>::Hash, State>::new(
-                config.get_bough_state_dir().join("state"),
-            );
+        let mut mutations_state = FacetDiskStore::<<Mutation as TypedHashable>::Hash, State>::new(
+            config.get_bough_state_dir().join("state"),
+        );
 
         let mut hash_store = bough_typed_hash::MemoryHashStore::new();
 
@@ -166,6 +166,10 @@ mod tests {
         fn get_bough_state_dir(&self) -> PathBuf {
             self.state_dir.clone()
         }
+
+        fn get_workers_count(&self) -> u64 {
+            todo!()
+        }
     }
 
     fn make_js_config(dir: &std::path::Path) -> MinimalConfig {
@@ -230,11 +234,7 @@ mod tests {
     fn session_creates_state_files_under_config_state_dir() {
         let dir = tempfile::tempdir().unwrap();
         std::fs::create_dir_all(dir.path().join("src")).unwrap();
-        std::fs::write(
-            dir.path().join("src/a.js"),
-            "function foo() { return 1; }",
-        )
-        .unwrap();
+        std::fs::write(dir.path().join("src/a.js"), "function foo() { return 1; }").unwrap();
         let config = make_js_config(dir.path());
         let _session = Session::new(config).unwrap();
         let sd = state_dir(dir.path());
@@ -254,11 +254,7 @@ mod tests {
     fn session_get_state_reads_back_disk_files() {
         let dir = tempfile::tempdir().unwrap();
         std::fs::create_dir_all(dir.path().join("src")).unwrap();
-        std::fs::write(
-            dir.path().join("src/a.js"),
-            "function foo() { return 1; }",
-        )
-        .unwrap();
+        std::fs::write(dir.path().join("src/a.js"), "function foo() { return 1; }").unwrap();
         let config = make_js_config(dir.path());
         let session = Session::new(config).unwrap();
         let state = session.get_state();
@@ -275,11 +271,7 @@ mod tests {
     fn session_adds_missing_mutations_as_state_files_with_null_outcome() {
         let dir = tempfile::tempdir().unwrap();
         std::fs::create_dir_all(dir.path().join("src")).unwrap();
-        std::fs::write(
-            dir.path().join("src/a.js"),
-            "function foo() { return 1; }",
-        )
-        .unwrap();
+        std::fs::write(dir.path().join("src/a.js"), "function foo() { return 1; }").unwrap();
         let config = make_js_config(dir.path());
         let session = Session::new(config).unwrap();
         let files = state_files(dir.path());

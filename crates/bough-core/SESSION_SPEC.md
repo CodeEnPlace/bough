@@ -14,3 +14,9 @@ core[session.init.state.add-missing]
 
 core[session.init.state.remove-stale]
 `Session::new` will remove any mutations_state that are missing from mutations_in_base
+
+core[session.init.workspaces]
+`Session::new` creates Config::get_workers_count workspaces in `Config::get_bough_state_dir + "/workspaces"`
+
+core[session.init.workspaces.bind]
+if some workspaces already exist in the workspace dir, they should be attached with `Workspace::bind`
