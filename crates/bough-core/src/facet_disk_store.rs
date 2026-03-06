@@ -11,32 +11,39 @@ where
     cache: HashMap<Key, Val>,
 }
 
-// core[impl fds.new]
-// core[impl fds.get]
-// core[impl fds.set]
-// core[impl fds.keys]
-// core[impl fds.files]
 impl<Key, Val> FacetDiskStore<Key, Val>
 where
     Key: for<'a> facet::Facet<'a> + std::fmt::Display + Eq + std::hash::Hash + Clone,
     Val: for<'a> facet::Facet<'a> + Clone,
 {
+    // core[impl fds.new]
     pub fn new(dir: PathBuf) -> Self {
-        todo!()
+        Self {
+            dir,
+            cache: HashMap::new(),
+        }
     }
 
+    // core[impl fds.get]
     pub fn get(&self, key: &Key) -> Option<&Val> {
-        todo!()
+        self.cache.get(key)
     }
 
+    // core[impl fds.set]
+    // core[impl fds.files]
     pub fn set(&mut self, key: Key, val: Val) -> Result<(), std::io::Error> {
-        todo!()
+        std::fs::create_dir_all(&self.dir)?;
+        let path = self.dir.join(format!("{key}.json"));
+        let json = facet_json::to_string(&val)
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e.to_string()))?;
+        std::fs::write(path, json)?;
+        self.cache.insert(key, val);
+        Ok(())
     }
 
+    // core[impl fds.keys]
     pub fn keys(&self) -> impl Iterator<Item = &Key> {
-        todo!();
-        #[allow(unreachable_code)]
-        std::iter::empty()
+        self.cache.keys()
     }
 }
 
