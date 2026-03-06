@@ -12,11 +12,22 @@ pub struct Cli {
     #[facet(args::named, args::short = 'v', args::counted, default)]
     pub verbose: u8,
 
+    #[facet(args::named, args::short = 'f', default = "terse")]
+    pub format: String,
+
     #[facet(args::subcommand)]
     pub command: Command,
 
     #[facet(args::config, args::env_prefix = "BOUGH")]
     pub config: Config,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Format {
+    Terse,
+    Verbose,
+    Markdown,
+    Json,
 }
 
 #[derive(Facet, Debug)]
@@ -27,14 +38,13 @@ pub enum Command {
         what: ShowCommand,
     },
     Run,
+    Noop,
 }
 
 #[derive(Facet, Debug)]
 #[repr(u8)]
 pub enum ShowCommand {
-    Cli,
-    Config,
-    File,
+    Files,
 }
 
 #[derive(Facet, Debug, Clone)]
@@ -75,14 +85,34 @@ pub enum Error {
     )]
     NoLanguages,
 
+    #[error("unknown format: {0}")]
+    #[diagnostic(
+        code(bough::config::unknown_format),
+        help("valid formats: terse, verbose, markdown, json")
+    )]
+    UnknownFormat(String),
+
     #[error("{0}")]
     #[diagnostic(code(bough::config::parse))]
     Parse(String),
 }
 
 impl Cli {
+    pub fn format(&self) -> Result<Format, Error> {
+        match self.format.as_str() {
+            "terse" => Ok(Format::Terse),
+            "verbose" => Ok(Format::Verbose),
+            "markdown" => Ok(Format::Markdown),
+            "json" => Ok(Format::Json),
+            other => Err(Error::UnknownFormat(other.to_string())),
+        }
+    }
+
     pub fn validate(&self) -> Vec<Error> {
         let mut errors = Vec::new();
+        if let Err(e) = self.format() {
+            errors.push(e);
+        }
         if self.config.include.is_empty() {
             errors.push(Error::EmptyInclude);
         }
@@ -302,34 +332,12 @@ exclude = []
     }
 
     #[test]
-    fn show_config_subcommand() {
-        let cli = parse_ok(&["show", "config"], MINIMAL_TOML);
+    fn show_files_subcommand() {
+        let cli = parse_ok(&["show", "files"], MINIMAL_TOML);
         assert!(matches!(
             cli.command,
             Command::Show {
-                what: ShowCommand::Config
-            }
-        ));
-    }
-
-    #[test]
-    fn show_file_subcommand() {
-        let cli = parse_ok(&["show", "file"], MINIMAL_TOML);
-        assert!(matches!(
-            cli.command,
-            Command::Show {
-                what: ShowCommand::File
-            }
-        ));
-    }
-
-    #[test]
-    fn show_cli_subcommand() {
-        let cli = parse_ok(&["show", "cli"], MINIMAL_TOML);
-        assert!(matches!(
-            cli.command,
-            Command::Show {
-                what: ShowCommand::Cli
+                what: ShowCommand::Files
             }
         ));
     }
@@ -409,14 +417,14 @@ exclude = []
     }
 
     #[test]
-    fn lang_include_globs_no_base() {
+    fn lang_include_globs_prepend_base() {
         let cli = parse_ok(&["run"], FULL_TOML);
         let globs: Vec<&str> = bough_core::Config::get_lang_include_globs(
             &cli.config,
             bough_core::LanguageId::Javascript,
         )
         .collect();
-        assert_eq!(globs, vec!["**/*.js"]);
+        assert_eq!(globs, vec!["src/**", "lib/**", "**/*.js"]);
     }
 
     #[test]
@@ -431,14 +439,14 @@ exclude = []
     }
 
     #[test]
-    fn lang_include_globs_lang_only() {
+    fn lang_include_globs_base_only_when_lang_empty() {
         let cli = parse_ok(&["run"], FULL_TOML);
         let globs: Vec<&str> = bough_core::Config::get_lang_include_globs(
             &cli.config,
             bough_core::LanguageId::Typescript,
         )
         .collect();
-        assert_eq!(globs, vec!["**/*.ts"]);
+        assert_eq!(globs, vec!["src/**", "lib/**", "**/*.ts"]);
     }
 
     #[test]
@@ -507,10 +515,16 @@ impl bough_core::Config for Config {
         &self,
         language_id: bough_core::LanguageId,
     ) -> impl Iterator<Item = &str> {
-        self.lang
-            .get(&language_id)
-            .map(|c| c.include.iter().map(|s| s.as_str()).collect::<Vec<_>>())
-            .unwrap_or_default()
+        self.include
+            .iter()
+            .map(|s| s.as_str())
+            .chain(
+                self.lang
+                    .get(&language_id)
+                    .map(|c| c.include.iter().map(|s| s.as_str()).collect::<Vec<_>>())
+                    .unwrap_or_default(),
+            )
+            .collect::<Vec<_>>()
             .into_iter()
     }
 

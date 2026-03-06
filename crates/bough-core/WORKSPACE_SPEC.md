@@ -33,8 +33,8 @@ workspace should be created inside the provided dir, in a `work` sub dir
 core[workspace.new.dir.previous]
 if the dir previously existed, that's an error
 
-core[workspace.new.from-source-files]
-Workspace should be reated by copying the matched files of Source::all_files
+core[workspace.new.from-base-files]
+Workspace should be created by copying the matched files of Base::files
 
 core[workspace.bind]
 `Workplace::bind(dir: PathBuf, id: &WorkspaceId) -> Result<Self, _>` creates a new struct associated with an existing directory
@@ -62,4 +62,3 @@ core[workspace.revert_mutant]
 
 core[workspace.revert_mutant.active]
 `Workspace::revert` clears the active mutant
-

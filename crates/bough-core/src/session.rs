@@ -84,7 +84,10 @@ impl<C: Config> Session<C> {
         }
 
         let mutations_in_base: HashSet<Mutation> = base.mutations().collect::<Result<_, _>>()?;
-        debug!(count = mutations_in_base.len(), "discovered mutations in base");
+        debug!(
+            count = mutations_in_base.len(),
+            "discovered mutations in base"
+        );
 
         // core[impl session.init.state.attach]
         let mut mutations_state = FacetDiskStore::<<Mutation as TypedHashable>::Hash, State>::new(
@@ -152,6 +155,10 @@ impl<C: Config> Session<C> {
             workspaces,
             mutations_state,
         })
+    }
+
+    pub fn base(&self) -> &Base {
+        &self.base
     }
 
     // core[impl session.init.state.get]
