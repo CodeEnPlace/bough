@@ -34,5 +34,6 @@ pub enum LanguageId {
     Typescript,
 }
 
+pub use file::File;
 pub use session::Config;
 pub use session::Session;
