@@ -221,6 +221,12 @@ pub fn resolve_root_path(config_dir: &std::path::Path, root: &str) -> std::path:
     todo!()
 }
 
+fn resolve_config_from(start: &std::path::Path) -> Option<(std::path::PathBuf, String)> {
+    find_config_candidates_from(start)
+        .into_iter()
+        .find(|(_, p)| std::path::Path::new(p).is_file())
+}
+
 pub fn resolve_config() -> Option<(std::path::PathBuf, String)> {
     env::current_dir()
         .ok()
