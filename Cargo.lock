@@ -241,10 +241,12 @@ checksum = "cf2c09e5a796b8989e7555cbe097ddd3c3ffa4c02392b9b4ad0d7cd48b1af5c2"
 dependencies = [
  "autocfg",
  "camino",
+ "chrono",
  "const-fnv1a-hash",
  "iddqd",
  "impls",
  "indexmap",
+ "uuid",
 ]
 
 [[package]]
@@ -1049,6 +1051,16 @@ dependencies = [
  "mutants",
  "proc-macro2",
  "rustc-hash",
+]
+
+[[package]]
+name = "uuid"
+version = "1.21.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b672338555252d43fd2240c714dc444b8c6fb0a5c5335e65a07bba7742735ddb"
+dependencies = [
+ "js-sys",
+ "wasm-bindgen",
 ]
 
 [[package]]

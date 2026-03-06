@@ -2,7 +2,7 @@ use crate::file::{Error, Root};
 use std::path::{Path, PathBuf};
 
 // core[impl file.twig]
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, facet::Facet)]
 pub struct Twig(PathBuf);
 
 impl Twig {

@@ -2,9 +2,6 @@ use super::language::driver_for_lang;
 use crate::mutant::Mutant;
 use bough_typed_hash::{HashInto, TypedHashable};
 
-#[derive(bough_typed_hash::TypedHash)]
-pub struct MutationHash([u8; 32]);
-
 // core[impl mutation.iter.mutant]
 pub struct MutationIter<'a> {
     mutant: &'a Mutant,
@@ -41,7 +38,7 @@ impl<'a> Iterator for MutationIter<'a> {
 
 // core[impl mutation.mutant]
 // core[impl mutation.subst]
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, facet::Facet, TypedHashable)]
 pub struct Mutation {
     pub(crate) mutant: Mutant,
     pub(crate) subst: String,
@@ -54,21 +51,6 @@ impl Mutation {
 
     pub fn subst(&self) -> &str {
         &self.subst
-    }
-}
-
-// core[impl mutation.hash.typed-hashable]
-impl TypedHashable for Mutation {
-    type Hash = MutationHash;
-}
-
-// core[impl mutation.hash.mutant]
-// core[impl mutation.hash.subst]
-impl HashInto for Mutation {
-    fn hash_into(&self, state: &mut bough_typed_hash::ShaState) -> Result<(), std::io::Error> {
-        self.mutant.hash_into(state)?;
-        self.subst.hash_into(state)?;
-        Ok(())
     }
 }
 

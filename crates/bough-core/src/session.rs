@@ -1,8 +1,14 @@
-use std::path::PathBuf;
+use std::{collections::HashSet, path::PathBuf};
 
-use crate::{LanguageId, base::Base, file::Error, twig::TwigsIterBuilder};
+use bough_typed_hash::TypedHashable;
+
+use crate::{
+    LanguageId, base::Base, facet_disk_store::FacetDiskStore, mutation::Mutation, state::State,
+    twig::TwigsIterBuilder,
+};
 
 trait Config {
+    fn get_bough_state_dir(&self) -> PathBuf;
     fn get_base_root_path(&self) -> PathBuf;
     fn get_base_include_globs(&self) -> impl Iterator<Item = &str>;
     fn get_base_exclude_globs(&self) -> impl Iterator<Item = &str>;
@@ -12,17 +18,25 @@ trait Config {
     fn get_lang_exclude_globs(&self, language_id: LanguageId) -> impl Iterator<Item = &str>;
 }
 
+pub enum Error {
+    File(crate::file::Error),
+    Io(std::io::Error),
+}
+
 pub struct TestConfig {}
 
 pub struct Session<C: Config> {
     config: C,
     base: Base,
     workspaces: Vec<Base>,
+    mutations_in_base: HashSet<Mutation>,
 }
 
 impl<C: Config> Session<C> {
     // core[impl session.init]
     pub fn new(config: C) -> Result<Self, Error> {
+        let workspaces = vec![];
+
         let mut base_twigs_iter_builder = TwigsIterBuilder::new();
         for include in config.get_base_include_globs() {
             base_twigs_iter_builder = base_twigs_iter_builder.with_include_glob(include);
@@ -44,39 +58,29 @@ impl<C: Config> Session<C> {
             base.add_mutator(lang, lang_twigs_iter_builder);
         }
 
-        let workspaces = vec![];
+        let mutations_in_base = base.mutations().collect::<Result<HashSet<_>, _>>()?;
+        let mutations_state = FacetDiskStore::<<Mutation as TypedHashable>::Hash, State>::new(
+            config.get_bough_state_dir().join("state"),
+        );
 
         Ok(Self {
             config,
             base,
             workspaces,
+            mutations_in_base,
         })
     }
 }
 
-impl Config for TestConfig {
-    fn get_base_root_path(&self) -> PathBuf {
-        todo!()
+impl From<crate::file::Error> for Error {
+    fn from(e: crate::file::Error) -> Self {
+        Error::File(e)
     }
+}
 
-    fn get_base_include_globs(&self) -> impl Iterator<Item = &str> {
-        vec![].into_iter()
-    }
-
-    fn get_base_exclude_globs(&self) -> impl Iterator<Item = &str> {
-        vec![].into_iter()
-    }
-
-    fn get_lang_include_globs(&self, language_id: LanguageId) -> impl Iterator<Item = &str> {
-        vec![].into_iter()
-    }
-
-    fn get_lang_exclude_globs(&self, language_id: LanguageId) -> impl Iterator<Item = &str> {
-        vec![].into_iter()
-    }
-
-    fn get_langs(&self) -> impl Iterator<Item = LanguageId> {
-        vec![].into_iter()
+impl From<std::io::Error> for Error {
+    fn from(e: std::io::Error) -> Self {
+        Error::Io(e)
     }
 }
 
@@ -111,6 +115,10 @@ mod tests {
 
         fn get_langs(&self) -> impl Iterator<Item = LanguageId> {
             vec![].into_iter()
+        }
+
+        fn get_bough_state_dir(&self) -> PathBuf {
+            todo!()
         }
     }
 

@@ -6,8 +6,9 @@ license.workspace = true
 
 [dependencies]
 bough-typed-hash = { path = "../bough-typed-hash" }
-facet = "0.44"
+facet = { version = "0.44", features = ["uuid", "chrono"] }
 facet-json = "0.44.1"
+chrono = "0.4.44"
 facet-toml = "0.44"
 facet-value = "0.44"
 figue = "2.0.0"
@@ -18,7 +19,6 @@ tree-sitter-javascript = "0.25"
 tree-sitter-typescript = "0.23"
 wait-timeout = "0.2"
 walkdir = "2.5.0"
-chrono = "0.4.44"
 
 [dev-dependencies]
 tempfile = "3.26"
