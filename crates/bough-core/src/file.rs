@@ -1,6 +1,7 @@
 pub use crate::twig::Twig;
 use bough_typed_hash::{HashInto, TypedHashable};
 use std::path::{Path, PathBuf};
+use tracing::trace;
 
 #[derive(bough_typed_hash::TypedHash)]
 pub struct FileHash([u8; 32]);
@@ -48,7 +49,9 @@ impl<'a, R: Root> File<'a, R> {
 
     // core[impl file.file.resolve]
     pub fn resolve(&self) -> PathBuf {
-        self.root.path().join(self.twig.path())
+        let resolved = self.root.path().join(self.twig.path());
+        trace!(path = %resolved.display(), "resolved file path");
+        resolved
     }
 
     // core[impl file.transplant]
