@@ -115,7 +115,7 @@ impl<'a> Workspace<'a> {
     // core[impl workspace.new]
     // core[impl workspace.new.dir]
     // core[impl workspace.new.dir.previous]
-    // core[impl workspace.new.from-source-files]
+    // core[impl workspace.new.from-base-files]
     pub fn new(dir: PathBuf, base: &'a Base) -> Result<Self, Error> {
         let id = WorkspaceId::generate();
         let root = dir.join("work").join(id.as_str());
@@ -338,7 +338,7 @@ mod tests {
         assert!(result.is_ok());
     }
 
-    // core[verify workspace.new.from-source-files]
+    // core[verify workspace.new.from-base-files]
     #[test]
     fn workspace_new_copies_source_files() {
         let (_base_dir, base) = make_base();
