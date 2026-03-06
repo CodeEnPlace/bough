@@ -142,6 +142,11 @@ impl<C: Config> Session<C> {
     pub fn get_state(&self) -> &FacetDiskStore<MutationHash, State> {
         &self.mutations_state
     }
+
+    // core[impl session.init.workspaces.get-ids]
+    pub fn workspace_ids(&self) -> &[WorkspaceId] {
+        &self.workspaces
+    }
 }
 
 impl From<crate::file::Error> for Error {
@@ -376,6 +381,22 @@ mod tests {
         let dirs_after = workspace_dirs(dir.path());
         assert_eq!(dirs_after.len(), 2, "should reuse existing workspaces, not create new ones");
         assert_eq!(dirs_before, dirs_after, "workspace dirs should be the same");
+    }
+
+    // core[verify session.init.workspaces.get-ids]
+    #[test]
+    fn session_workspace_ids_returns_created_ids() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(dir.path().join("src")).unwrap();
+        std::fs::write(dir.path().join("src/a.js"), "const x = 1;").unwrap();
+        let mut config = make_js_config(dir.path());
+        config.workers_count = 3;
+        let session = Session::new(config).unwrap();
+        let ids = session.workspace_ids();
+        assert_eq!(ids.len(), 3);
+        for id in ids {
+            assert_eq!(id.as_str().len(), 8);
+        }
     }
 
     // core[verify session.init.state.remove-stale]
