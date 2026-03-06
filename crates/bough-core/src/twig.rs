@@ -1,4 +1,5 @@
 use crate::file::{Error, Root};
+use ignore::overrides::OverrideBuilder;
 use std::path::{Path, PathBuf};
 use tracing::{debug, trace};
 
@@ -59,59 +60,58 @@ impl TwigsIterBuilder {
             excludes = ?self.exclude,
             "building twigs iterator"
         );
-        let include = self
-            .include
-            .iter()
-            .filter_map(|p| glob::Pattern::new(&root_path.join(p).to_string_lossy()).ok())
-            .collect();
-        let exclude = self
-            .exclude
-            .iter()
-            .filter_map(|p| glob::Pattern::new(&root_path.join(p).to_string_lossy()).ok())
-            .collect();
-        let walker = walkdir::WalkDir::new(root_path)
-            .sort_by_file_name()
-            .into_iter();
+
+        // core[impl twig.iter.include.empty]
+        if self.include.is_empty() {
+            return TwigsIter {
+                root,
+                walker: None,
+            };
+        }
+
+        let mut overrides = OverrideBuilder::new(root_path);
+        for pat in &self.include {
+            overrides.add(pat).expect("invalid include glob");
+        }
+        for pat in &self.exclude {
+            overrides
+                .add(&format!("!{pat}"))
+                .expect("invalid exclude glob");
+        }
+        let overrides = overrides.build().expect("failed to build overrides");
+
+        let walker = {
+            let mut builder = ignore::WalkBuilder::new(root_path);
+            builder
+                .standard_filters(false)
+                .overrides(overrides)
+                .sort_by_file_path(|a, b| a.cmp(b));
+            builder.build()
+        };
+
         TwigsIter {
             root,
-            include,
-            exclude,
-            walker,
+            walker: Some(walker),
         }
     }
 }
 
 pub struct TwigsIter<'a, R: Root> {
     root: &'a R,
-    include: Vec<glob::Pattern>,
-    exclude: Vec<glob::Pattern>,
-    walker: walkdir::IntoIter,
+    walker: Option<ignore::Walk>,
 }
 
 impl<R: Root> Iterator for TwigsIter<'_, R> {
     type Item = Twig;
 
     fn next(&mut self) -> Option<Self::Item> {
+        let walker = self.walker.as_mut()?;
         loop {
-            let entry = self.walker.next()?.ok()?;
-            if !entry.file_type().is_file() {
+            let entry = walker.next()?.ok()?;
+            if !entry.file_type().map_or(false, |ft| ft.is_file()) {
                 continue;
             }
-            let path = entry.path();
-            let path_str = path.to_string_lossy();
-
-            // core[impl twig.iter.include.empty]
-            // core[impl twig.iter.include.match]
-            if !self.include.iter().any(|p| p.matches(&path_str)) {
-                continue;
-            }
-
-            // core[impl twig.iter.exclude.match]
-            if self.exclude.iter().any(|p| p.matches(&path_str)) {
-                continue;
-            }
-
-            let rel = path.strip_prefix(self.root.path()).ok()?;
+            let rel = entry.path().strip_prefix(self.root.path()).ok()?;
             trace!(twig = %rel.display(), "yielding twig");
             return Twig::new(rel.to_path_buf()).ok();
         }
@@ -172,7 +172,7 @@ mod tests {
 
     fn sorted_twigs<'a, R: Root>(iter: TwigsIter<'a, R>) -> Vec<PathBuf> {
         let mut twigs: Vec<PathBuf> = iter.map(|t| t.path().to_path_buf()).collect();
-        twigs.sort();
+        // twigs.sort();
         twigs
     }
 
