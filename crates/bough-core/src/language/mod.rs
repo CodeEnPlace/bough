@@ -7,7 +7,7 @@ pub(crate) use typescript::TypescriptDriver;
 use crate::mutant::{MutantKind, Span};
 use tracing::debug;
 
-// core[impl mutation.iter.language_driver]
+// bough[impl mutation.iter.language_driver]
 pub(crate) trait LanguageDriver {
     fn ts_language(&self) -> tree_sitter::Language;
 

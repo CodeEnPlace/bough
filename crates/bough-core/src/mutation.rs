@@ -3,7 +3,7 @@ use crate::mutant::Mutant;
 use bough_typed_hash::{HashInto, TypedHashable};
 use tracing::trace;
 
-// core[impl mutation.iter.mutant]
+// bough[impl mutation.iter.mutant]
 pub struct MutationIter<'a> {
     mutant: &'a Mutant,
     subs: std::vec::IntoIter<String>,
@@ -25,7 +25,7 @@ impl<'a> MutationIter<'a> {
     }
 }
 
-// core[impl mutation.iter.mutation]
+// bough[impl mutation.iter.mutation]
 impl<'a> Iterator for MutationIter<'a> {
     type Item = Mutation;
 
@@ -38,11 +38,11 @@ impl<'a> Iterator for MutationIter<'a> {
     }
 }
 
-// core[impl mutation.mutant]
-// core[impl mutation.subst]
-// core[impl mutation.hash.typed-hashable]
-// core[impl mutation.hash.mutant]
-// core[impl mutation.hash.subst]
+// bough[impl mutation.mutant]
+// bough[impl mutation.subst]
+// bough[impl mutation.hash.typed-hashable]
+// bough[impl mutation.hash.mutant]
+// bough[impl mutation.hash.subst]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, facet::Facet, TypedHashable)]
 pub struct Mutation {
     pub(crate) mutant: Mutant,
@@ -85,7 +85,7 @@ mod tests {
         (dir, base)
     }
 
-    // core[verify mutation.iter.mutant]
+    // bough[verify mutation.iter.mutant]
     #[test]
     fn mutation_iter_holds_mutant() {
         let (_dir, _base) = make_base();
@@ -100,7 +100,7 @@ mod tests {
         assert_eq!(iter.mutant().lang(), crate::LanguageId::Javascript);
     }
 
-    // core[verify mutation.iter.language_driver]
+    // bough[verify mutation.iter.language_driver]
     #[test]
     fn mutation_iter_delegates_to_language_driver() {
         let js = "const x = a + b;";
@@ -117,7 +117,7 @@ mod tests {
         assert!(subs.is_empty() || !subs.is_empty());
     }
 
-    // core[verify mutation.iter.mutation]
+    // bough[verify mutation.iter.mutation]
     #[test]
     fn mutation_iter_yields_mutations() {
         let (_dir, _base) = make_base();
@@ -131,7 +131,7 @@ mod tests {
         let _mutations: Vec<Mutation> = MutationIter::new(&mutant).collect();
     }
 
-    // core[verify mutation.subst]
+    // bough[verify mutation.subst]
     #[test]
     fn mutation_owns_subst_string() {
         let (_dir, _base) = make_base();
@@ -147,7 +147,7 @@ mod tests {
         }
     }
 
-    // core[verify mutation.mutant]
+    // bough[verify mutation.mutant]
     #[test]
     fn mutation_holds_mutant() {
         let (_dir, _base) = make_base();
@@ -163,7 +163,7 @@ mod tests {
         }
     }
 
-    // core[verify mutation.iter.invalid]
+    // bough[verify mutation.iter.invalid]
     #[test]
     fn mutation_iter_invalid_mutant_produces_no_mutations() {
         let (_dir, _base) = make_base();
@@ -178,7 +178,7 @@ mod tests {
         assert!(mutations.is_empty());
     }
 
-    // core[verify mutation.subst.js.cond.false]
+    // bough[verify mutation.subst.js.cond.false]
     #[test]
     fn js_condition_mutant_has_false_substitution() {
         let js = "if (x > 0) { console.log(x); }";
@@ -196,7 +196,7 @@ mod tests {
         assert!(subs.contains(&"false".to_string()));
     }
 
-    // core[verify mutation.subst.js.cond.true]
+    // bough[verify mutation.subst.js.cond.true]
     #[test]
     fn js_condition_mutant_has_true_substitution() {
         let js = "if (x > 0) { console.log(x); }";
@@ -214,7 +214,7 @@ mod tests {
         assert!(subs.contains(&"true".to_string()));
     }
 
-    // core[verify mutation.subst.js.statement]
+    // bough[verify mutation.subst.js.statement]
     #[test]
     fn js_statement_mutant_has_empty_block_substitution() {
         let js = "function foo() { return 1; }";
@@ -232,7 +232,7 @@ mod tests {
         assert!(subs.contains(&"{}".to_string()));
     }
 
-    // core[verify mutation.subst.js.add.mul]
+    // bough[verify mutation.subst.js.add.mul]
     #[test]
     fn js_add_mutant_has_mul_substitution() {
         let js = "const x = a + b;";
@@ -250,7 +250,7 @@ mod tests {
         assert!(subs.contains(&"*".to_string()));
     }
 
-    // core[verify mutation.subst.js.add.sub]
+    // bough[verify mutation.subst.js.add.sub]
     #[test]
     fn js_add_mutant_has_sub_substitution() {
         let js = "const x = a + b;";
@@ -275,7 +275,7 @@ mod tests {
         state.finalize().into()
     }
 
-    // core[verify mutation.hash.typed-hashable]
+    // bough[verify mutation.hash.typed-hashable]
     #[test]
     fn mutation_produces_typed_hash() {
         let (_dir, _base) = make_base();
@@ -295,7 +295,7 @@ mod tests {
         assert!(store.contains(&hash));
     }
 
-    // core[verify mutation.hash.mutant]
+    // bough[verify mutation.hash.mutant]
     #[test]
     fn mutation_hash_includes_mutant() {
         let (_dir, _base) = make_base();
@@ -323,7 +323,7 @@ mod tests {
         assert_ne!(hash_mutation(&mut1), hash_mutation(&mut2));
     }
 
-    // core[verify mutation.hash.subst]
+    // bough[verify mutation.hash.subst]
     #[test]
     fn mutation_hash_includes_subst() {
         let (_dir, _base) = make_base();

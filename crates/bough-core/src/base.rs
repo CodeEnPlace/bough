@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use tracing::{debug, trace, warn};
 
-// core[impl base.root]
+// bough[impl base.root]
 #[derive(Debug, Clone, PartialEq)]
 pub struct Base {
     root: PathBuf,
@@ -88,14 +88,14 @@ mod tests {
         builder
     }
 
-    // core[verify base.root]
+    // bough[verify base.root]
     #[test]
     fn base_impls_root() {
         let base = Base::new(PathBuf::from("/tmp/project"), files_for(&[])).unwrap();
         assert_eq!(base.path(), Path::new("/tmp/project"));
     }
 
-    // core[verify base.root]
+    // bough[verify base.root]
     #[test]
     fn base_rejects_relative_path() {
         assert!(matches!(

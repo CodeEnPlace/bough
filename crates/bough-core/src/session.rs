@@ -43,12 +43,12 @@ pub struct Session<C: Config> {
 }
 
 impl<C: Config> Session<C> {
-    // core[impl session.init]
+    // bough[impl session.init]
     pub fn new(config: C) -> Result<Self, Error> {
         info!("initializing session");
         let workspaces_dir = config.get_bough_state_dir().join("workspaces");
 
-        // core[impl session.init.workspaces.bind]
+        // bough[impl session.init.workspaces.bind]
         debug!(dir = %workspaces_dir.display(), "scanning for existing workspaces");
         let existing_ids: Vec<WorkspaceId> = if workspaces_dir.join("work").exists() {
             std::fs::read_dir(workspaces_dir.join("work"))?
@@ -90,7 +90,7 @@ impl<C: Config> Session<C> {
             "discovered mutations in base"
         );
 
-        // core[impl session.init.state.attach]
+        // bough[impl session.init.state.attach]
         let mut mutations_state = FacetDiskStore::<<Mutation as TypedHashable>::Hash, State>::new(
             config.get_bough_state_dir().join("state"),
         );
@@ -102,7 +102,7 @@ impl<C: Config> Session<C> {
             .map(|m| m.hash(&mut hash_store).expect("hashing should not fail"))
             .collect();
 
-        // core[impl session.init.state.add-missing]
+        // bough[impl session.init.state.add-missing]
         for mutation in &mutations_in_base {
             let hash = mutation
                 .hash(&mut hash_store)
@@ -115,7 +115,7 @@ impl<C: Config> Session<C> {
             }
         }
 
-        // core[impl session.init.state.remove-stale]
+        // bough[impl session.init.state.remove-stale]
         let stale_keys: Vec<MutationHash> = mutations_state
             .keys()
             .filter(|k| !hashes_in_base.contains(k))
@@ -127,7 +127,7 @@ impl<C: Config> Session<C> {
             mutations_state.remove(&key);
         }
 
-        // core[impl session.init.workspaces]
+        // bough[impl session.init.workspaces]
         let mut workspaces: Vec<WorkspaceId> = Vec::new();
 
         for id in &existing_ids {
@@ -162,12 +162,12 @@ impl<C: Config> Session<C> {
         &self.base
     }
 
-    // core[impl session.init.state.get]
+    // bough[impl session.init.state.get]
     pub fn get_state(&self) -> &FacetDiskStore<MutationHash, State> {
         &self.mutations_state
     }
 
-    // core[impl session.init.workspaces.get-ids]
+    // bough[impl session.init.workspaces.get-ids]
     pub fn workspace_ids(&self) -> &[WorkspaceId] {
         &self.workspaces
     }
@@ -248,7 +248,7 @@ mod tests {
         }
     }
 
-    // core[verify session.init]
+    // bough[verify session.init]
     #[test]
     fn session_new_creates_session_from_config() {
         let dir = tempfile::tempdir().unwrap();
@@ -263,7 +263,7 @@ mod tests {
         assert!(session.is_ok());
     }
 
-    // core[verify session.init]
+    // bough[verify session.init]
     #[test]
     fn session_new_fails_with_invalid_root() {
         let dir = tempfile::tempdir().unwrap();
@@ -297,7 +297,7 @@ mod tests {
         files
     }
 
-    // core[verify session.init.state.attach]
+    // bough[verify session.init.state.attach]
     #[test]
     fn session_creates_state_files_under_config_state_dir() {
         let dir = tempfile::tempdir().unwrap();
@@ -317,7 +317,7 @@ mod tests {
         }
     }
 
-    // core[verify session.init.state.get]
+    // bough[verify session.init.state.get]
     #[test]
     fn session_get_state_reads_back_disk_files() {
         let dir = tempfile::tempdir().unwrap();
@@ -334,7 +334,7 @@ mod tests {
         }
     }
 
-    // core[verify session.init.state.add-missing]
+    // bough[verify session.init.state.add-missing]
     #[test]
     fn session_adds_missing_mutations_as_state_files_with_null_outcome() {
         let dir = tempfile::tempdir().unwrap();
@@ -371,7 +371,7 @@ mod tests {
         dirs
     }
 
-    // core[verify session.init.workspaces]
+    // bough[verify session.init.workspaces]
     #[test]
     fn session_creates_workspaces_in_state_dir() {
         let dir = tempfile::tempdir().unwrap();
@@ -390,7 +390,7 @@ mod tests {
         }
     }
 
-    // core[verify session.init.workspaces.bind]
+    // bough[verify session.init.workspaces.bind]
     #[test]
     fn session_binds_existing_workspaces() {
         let dir = tempfile::tempdir().unwrap();
@@ -414,7 +414,7 @@ mod tests {
         assert_eq!(dirs_before, dirs_after, "workspace dirs should be the same");
     }
 
-    // core[verify session.init.workspaces.get-ids]
+    // bough[verify session.init.workspaces.get-ids]
     #[test]
     fn session_workspace_ids_returns_created_ids() {
         let dir = tempfile::tempdir().unwrap();
@@ -430,7 +430,7 @@ mod tests {
         }
     }
 
-    // core[verify session.init.state.remove-stale]
+    // bough[verify session.init.state.remove-stale]
     #[test]
     fn session_removes_stale_state_files_from_disk() {
         let dir = tempfile::tempdir().unwrap();
