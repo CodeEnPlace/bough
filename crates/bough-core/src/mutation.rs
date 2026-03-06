@@ -38,6 +38,9 @@ impl<'a> Iterator for MutationIter<'a> {
 
 // core[impl mutation.mutant]
 // core[impl mutation.subst]
+// core[impl mutation.hash.typed-hashable]
+// core[impl mutation.hash.mutant]
+// core[impl mutation.hash.subst]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, facet::Facet, TypedHashable)]
 pub struct Mutation {
     pub(crate) mutant: Mutant,
