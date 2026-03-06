@@ -169,6 +169,18 @@ pub fn collect_vcs_ignore_globs(root: &std::path::Path) -> Vec<String> {
     globs
 }
 
+const VCS_DIRS: &[&str] = &[".git", ".jj", ".hg", ".svn"];
+
+// cli[impl config.exclude.from-vcs-dir]
+// cli[impl config.lang.exclude.from-vcs-dir]
+pub fn collect_vcs_dir_globs(root: &std::path::Path) -> Vec<String> {
+    VCS_DIRS
+        .iter()
+        .filter(|d| root.join(d).is_dir())
+        .map(|d| format!("{d}/**"))
+        .collect()
+}
+
 const CONFIG_NAMES: &[&str] = &[
     "bough.config.toml",
     "bough.config.yaml",
@@ -594,6 +606,35 @@ exclude = []
         assert!(globs.iter().any(|g| g.contains(".bough")));
     }
 
+    // cli[verify config.exclude.from-vcs-dir]
+    // cli[verify config.lang.exclude.from-vcs-dir]
+    #[test]
+    fn collect_vcs_dir_globs_finds_git_dir() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(dir.path().join(".git")).unwrap();
+        let globs = collect_vcs_dir_globs(dir.path());
+        assert!(globs.contains(&".git/**".to_string()));
+    }
+
+    // cli[verify config.exclude.from-vcs-dir]
+    #[test]
+    fn collect_vcs_dir_globs_finds_multiple() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(dir.path().join(".git")).unwrap();
+        std::fs::create_dir_all(dir.path().join(".jj")).unwrap();
+        let globs = collect_vcs_dir_globs(dir.path());
+        assert!(globs.contains(&".git/**".to_string()));
+        assert!(globs.contains(&".jj/**".to_string()));
+    }
+
+    // cli[verify config.exclude.from-vcs-dir]
+    #[test]
+    fn collect_vcs_dir_globs_empty_when_none() {
+        let dir = tempfile::tempdir().unwrap();
+        let globs = collect_vcs_dir_globs(dir.path());
+        assert!(globs.is_empty());
+    }
+
     // cli[verify config.exclude.from-vcs-ignore]
     #[test]
     fn collect_vcs_ignore_reads_gitignore() {
@@ -687,16 +728,18 @@ impl bough_core::Config for Config {
     }
 
     // cli[impl config.exclude.from-vcs-ignore]
+    // cli[impl config.exclude.from-vcs-dir]
     // cli[impl config.exclude.bough-dir]
     fn get_base_exclude_globs(&self) -> impl Iterator<Item = String> {
         let root = self.get_base_root_path();
-        let vcs = collect_vcs_ignore_globs(&root);
+        let vcs_ignore = collect_vcs_ignore_globs(&root);
+        let vcs_dirs = collect_vcs_dir_globs(&root);
         let bough_dir = self.get_bough_state_dir();
         let bough_glob = bough_dir
             .strip_prefix(&root)
             .map(|rel| format!("{}/**", rel.display()))
             .unwrap_or_else(|_| format!("{}/**", bough_dir.display()));
-        self.exclude.clone().into_iter().chain(vcs).chain(std::iter::once(bough_glob))
+        self.exclude.clone().into_iter().chain(vcs_ignore).chain(vcs_dirs).chain(std::iter::once(bough_glob))
     }
 
     fn get_langs(&self) -> impl Iterator<Item = bough_core::LanguageId> {
@@ -716,6 +759,7 @@ impl bough_core::Config for Config {
     }
 
     // cli[impl config.lang.exclude.from-vcs-ignore]
+    // cli[impl config.lang.exclude.from-vcs-dir]
     // cli[impl config.lang.exclude.bough-dir]
     // cli[impl config.lang.exclude.derived]
     fn get_lang_exclude_globs(
@@ -723,7 +767,8 @@ impl bough_core::Config for Config {
         language_id: bough_core::LanguageId,
     ) -> impl Iterator<Item = String> {
         let root = self.get_base_root_path();
-        let vcs = collect_vcs_ignore_globs(&root);
+        let vcs_ignore = collect_vcs_ignore_globs(&root);
+        let vcs_dirs = collect_vcs_dir_globs(&root);
         let bough_dir = self.get_bough_state_dir();
         let bough_glob = bough_dir
             .strip_prefix(&root)
@@ -732,7 +777,8 @@ impl bough_core::Config for Config {
         self.exclude
             .iter()
             .cloned()
-            .chain(vcs)
+            .chain(vcs_ignore)
+            .chain(vcs_dirs)
             .chain(std::iter::once(bough_glob))
             .chain(
                 self.lang
