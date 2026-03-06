@@ -35,7 +35,7 @@ pub struct BaseFiles(pub Vec<PathBuf>);
 impl Render for BaseFiles {
     fn markdown(&self) -> String {
         format!(
-            "# Files in Base Directory\n\n{}",
+            "# Files in Base Directory\n\n\tThese files will be coppied into Workspace directories\n\n{}",
             self.0
                 .iter()
                 .map(|pb| format!("- {}", pb.to_string_lossy()))
@@ -43,7 +43,6 @@ impl Render for BaseFiles {
                 .join("\n")
         )
     }
-
     fn terse(&self) -> String {
         self.0
             .iter()
@@ -51,7 +50,6 @@ impl Render for BaseFiles {
             .collect::<Vec<_>>()
             .join(" ")
     }
-
     fn verbose(&self) -> String {
         self.0
             .iter()
