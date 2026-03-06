@@ -57,6 +57,7 @@ where
     }
 
     // core[impl fds.keys]
+    // core[impl fds.keys.invalid]
     pub fn keys(&self) -> impl Iterator<Item = Key> {
         let read_dir = match std::fs::read_dir(&self.dir) {
             Ok(rd) => rd,
@@ -251,6 +252,20 @@ mod tests {
         let mut store: FacetDiskStore<TestKey, TestVal> =
             FacetDiskStore::new(dir.path().to_path_buf());
         assert!(store.remove(&TestKey("nope".into())).is_none());
+    }
+
+    // core[verify fds.keys.invalid]
+    #[test]
+    fn keys_skips_invalidly_named_files() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("good.json"), r#"{"data":"x","count":1}"#).unwrap();
+        std::fs::write(dir.path().join("no_extension"), "garbage").unwrap();
+        std::fs::write(dir.path().join("wrong.txt"), "garbage").unwrap();
+        std::fs::write(dir.path().join("also_good.json"), r#"{"data":"y","count":2}"#).unwrap();
+        let store: FacetDiskStore<TestKey, TestVal> = FacetDiskStore::new(dir.path().to_path_buf());
+        let mut keys: Vec<_> = store.keys().map(|k| k.0).collect();
+        keys.sort();
+        assert_eq!(keys, vec!["also_good", "good"]);
     }
 
     // core[verify fds.get.invalid]
