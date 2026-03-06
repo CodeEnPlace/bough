@@ -9,6 +9,7 @@ use crate::{
     mutation::{Mutation, MutationHash},
     state::State,
     twig::TwigsIterBuilder,
+    workspace::{Workspace, WorkspaceId},
 };
 
 trait Config {
@@ -28,6 +29,7 @@ trait Config {
 pub enum Error {
     File(crate::file::Error),
     Io(std::io::Error),
+    Workspace(crate::workspace::Error),
 }
 
 pub struct TestConfig {}
@@ -35,14 +37,27 @@ pub struct TestConfig {}
 pub struct Session<C: Config> {
     config: C,
     base: Base,
-    workspaces: Vec<Base>,
+    workspaces: Vec<WorkspaceId>,
     mutations_state: FacetDiskStore<MutationHash, State>,
 }
 
 impl<C: Config> Session<C> {
     // core[impl session.init]
     pub fn new(config: C) -> Result<Self, Error> {
-        let workspaces = vec![];
+        let workspaces_dir = config.get_bough_state_dir().join("workspaces");
+
+        // core[impl session.init.workspaces.bind]
+        let existing_ids: Vec<WorkspaceId> = if workspaces_dir.join("work").exists() {
+            std::fs::read_dir(workspaces_dir.join("work"))?
+                .flatten()
+                .filter_map(|entry| {
+                    let name = entry.file_name().to_string_lossy().into_owned();
+                    WorkspaceId::parse(&name).ok()
+                })
+                .collect()
+        } else {
+            vec![]
+        };
 
         let mut base_twigs_iter_builder = TwigsIterBuilder::new();
         for include in config.get_base_include_globs() {
@@ -101,6 +116,20 @@ impl<C: Config> Session<C> {
             mutations_state.remove(&key);
         }
 
+        // core[impl session.init.workspaces]
+        let mut workspaces: Vec<WorkspaceId> = Vec::new();
+
+        for id in &existing_ids {
+            Workspace::bind(workspaces_dir.clone(), id, &base)?;
+            workspaces.push(id.clone());
+        }
+
+        let needed = (config.get_workers_count() as usize).saturating_sub(workspaces.len());
+        for _ in 0..needed {
+            let ws = Workspace::new(workspaces_dir.clone(), &base)?;
+            workspaces.push(ws.id().clone());
+        }
+
         Ok(Self {
             config,
             base,
@@ -124,6 +153,12 @@ impl From<crate::file::Error> for Error {
 impl From<std::io::Error> for Error {
     fn from(e: std::io::Error) -> Self {
         Error::Io(e)
+    }
+}
+
+impl From<crate::workspace::Error> for Error {
+    fn from(e: crate::workspace::Error) -> Self {
+        Error::Workspace(e)
     }
 }
 
