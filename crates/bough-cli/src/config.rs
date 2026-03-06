@@ -218,8 +218,28 @@ fn find_config_candidates() -> Vec<(std::path::PathBuf, String)> {
         .unwrap_or_default()
 }
 
+// cli[impl config.base-root-path.absolutized-relative-to-file]
 pub fn resolve_root_path(config_dir: &std::path::Path, root: &str) -> std::path::PathBuf {
-    todo!()
+    let path = std::path::Path::new(root);
+    if path.is_absolute() {
+        return path.to_path_buf();
+    }
+    let joined = config_dir.join(path);
+    normalize_path(&joined)
+}
+
+fn normalize_path(path: &std::path::Path) -> std::path::PathBuf {
+    let mut components = Vec::new();
+    for component in path.components() {
+        match component {
+            std::path::Component::ParentDir => {
+                components.pop();
+            }
+            std::path::Component::CurDir => {}
+            c => components.push(c),
+        }
+    }
+    components.iter().collect()
 }
 
 fn resolve_config_from(start: &std::path::Path) -> Option<(std::path::PathBuf, String)> {
@@ -690,6 +710,34 @@ exclude = []
         let globs = collect_vcs_ignore_globs(&child);
         assert!(globs.contains(&"**/dist".to_string()));
         assert!(globs.contains(&"**/*.log".to_string()));
+    }
+
+    // cli[verify config.base-root-path.absolutized-relative-to-file]
+    #[test]
+    fn resolve_root_path_relative_from_config_dir() {
+        let resolved = resolve_root_path(std::path::Path::new("/foo/bar"), "./qux");
+        assert_eq!(resolved, std::path::PathBuf::from("/foo/bar/qux"));
+    }
+
+    // cli[verify config.base-root-path.absolutized-relative-to-file]
+    #[test]
+    fn resolve_root_path_relative_parent_from_config_dir() {
+        let resolved = resolve_root_path(std::path::Path::new("/foo/bar/.config"), "../qux");
+        assert_eq!(resolved, std::path::PathBuf::from("/foo/bar/qux"));
+    }
+
+    // cli[verify config.base-root-path.absolutized-relative-to-file]
+    #[test]
+    fn resolve_root_path_absolute_unchanged() {
+        let resolved = resolve_root_path(std::path::Path::new("/foo/bar"), "/absolute/path");
+        assert_eq!(resolved, std::path::PathBuf::from("/absolute/path"));
+    }
+
+    // cli[verify config.base-root-path.absolutized-relative-to-file]
+    #[test]
+    fn resolve_root_path_dot_returns_config_dir() {
+        let resolved = resolve_root_path(std::path::Path::new("/foo/bar"), ".");
+        assert_eq!(resolved, std::path::PathBuf::from("/foo/bar"));
     }
 }
 

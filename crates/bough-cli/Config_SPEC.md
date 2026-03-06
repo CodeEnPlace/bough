@@ -39,3 +39,6 @@ Once the config has been resolved and parsed, the base_root_path should be absol
 Eg, if a config file contained `base_root_path = "./qux"`, and was found in `/foo/bar/config.toml`, the resolved value should be /foo/bar/qux.
 
 If it was located in `/foo/bar/.config/bough.toml`, that same value would be resolved to /foo/bar/.config/qux, to achieve the same effect you would have to update the file to instead contain "../qux"
+
+cli[config.base-root-path.relative-via-figue]
+the location of the resolved config should be extracted from the figue processing, not calculated separately
