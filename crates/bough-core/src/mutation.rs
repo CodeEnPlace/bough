@@ -1,6 +1,7 @@
 use super::language::driver_for_lang;
 use crate::mutant::Mutant;
 use bough_typed_hash::{HashInto, TypedHashable};
+use tracing::trace;
 
 // core[impl mutation.iter.mutant]
 pub struct MutationIter<'a> {
@@ -12,6 +13,7 @@ impl<'a> MutationIter<'a> {
     pub fn new(mutant: &'a Mutant) -> Self {
         let driver = driver_for_lang(mutant.lang());
         let subs = driver.substitutions(mutant.kind());
+        trace!(lang = ?mutant.lang(), kind = ?mutant.kind(), substitutions = subs.len(), "creating mutation iter");
         Self {
             mutant,
             subs: subs.into_iter(),
