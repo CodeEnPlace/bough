@@ -55,8 +55,8 @@ impl TwigsIterBuilder {
         let root_path = root.path();
         debug!(
             root = %root_path.display(),
-            includes = self.include.len(),
-            excludes = self.exclude.len(),
+            includes = ?self.include,
+            excludes = ?self.exclude,
             "building twigs iterator"
         );
         let include = self

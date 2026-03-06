@@ -409,6 +409,61 @@ exclude = []
     }
 
     #[test]
+    fn lang_include_globs_no_base() {
+        let cli = parse_ok(&["run"], FULL_TOML);
+        let globs: Vec<&str> = bough_core::Config::get_lang_include_globs(
+            &cli.config,
+            bough_core::LanguageId::Javascript,
+        )
+        .collect();
+        assert_eq!(globs, vec!["**/*.js"]);
+    }
+
+    #[test]
+    fn lang_exclude_globs_prepend_base() {
+        let cli = parse_ok(&["run"], FULL_TOML);
+        let globs: Vec<&str> = bough_core::Config::get_lang_exclude_globs(
+            &cli.config,
+            bough_core::LanguageId::Javascript,
+        )
+        .collect();
+        assert_eq!(globs, vec!["target/**", "node_modules/**"]);
+    }
+
+    #[test]
+    fn lang_include_globs_lang_only() {
+        let cli = parse_ok(&["run"], FULL_TOML);
+        let globs: Vec<&str> = bough_core::Config::get_lang_include_globs(
+            &cli.config,
+            bough_core::LanguageId::Typescript,
+        )
+        .collect();
+        assert_eq!(globs, vec!["**/*.ts"]);
+    }
+
+    #[test]
+    fn lang_exclude_globs_base_only_when_lang_empty() {
+        let cli = parse_ok(&["run"], FULL_TOML);
+        let globs: Vec<&str> = bough_core::Config::get_lang_exclude_globs(
+            &cli.config,
+            bough_core::LanguageId::Typescript,
+        )
+        .collect();
+        assert_eq!(globs, vec!["target/**"]);
+    }
+
+    #[test]
+    fn lang_globs_with_no_base_excludes() {
+        let cli = parse_ok(&["run"], MINIMAL_TOML);
+        let globs: Vec<&str> = bough_core::Config::get_lang_exclude_globs(
+            &cli.config,
+            bough_core::LanguageId::Javascript,
+        )
+        .collect();
+        assert!(globs.is_empty());
+    }
+
+    #[test]
     fn yaml_config() {
         let yaml = "include:\n  - \"src/**\"\nexclude: []\nlang:\n  js:\n    include:\n      - \"**/*.js\"\n    exclude: []\n";
         let cli = try_parse_from(&["run"], Some((yaml, "config.yaml"))).expect("should parse");
@@ -463,10 +518,16 @@ impl bough_core::Config for Config {
         &self,
         language_id: bough_core::LanguageId,
     ) -> impl Iterator<Item = &str> {
-        self.lang
-            .get(&language_id)
-            .map(|c| c.exclude.iter().map(|s| s.as_str()).collect::<Vec<_>>())
-            .unwrap_or_default()
+        self.exclude
+            .iter()
+            .map(|s| s.as_str())
+            .chain(
+                self.lang
+                    .get(&language_id)
+                    .map(|c| c.exclude.iter().map(|s| s.as_str()).collect::<Vec<_>>())
+                    .unwrap_or_default(),
+            )
+            .collect::<Vec<_>>()
             .into_iter()
     }
 }

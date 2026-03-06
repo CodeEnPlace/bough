@@ -1,9 +1,9 @@
 include = ["**/*"]
-exclude = ["node_modules"]
+exclude = ["**/node_modules/**"]
 
 [lang.js]
 include = [
-  "**/*.js",
-  "**/*.jsx",
+  "src/**/*.js",
+  "src/**/*.jsx",
 ]
 exclude = ["**/*.test.*"]
