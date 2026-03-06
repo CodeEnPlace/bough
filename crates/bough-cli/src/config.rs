@@ -5,6 +5,7 @@ use facet::Facet;
 use figue::{self as args, ConfigFormat, ConfigFormatError, Driver, builder};
 use miette::Diagnostic;
 use thiserror::Error;
+use tracing::{debug, info, warn};
 
 #[derive(Facet, Debug)]
 pub struct Cli {
@@ -140,13 +141,19 @@ fn find_config_paths() -> Vec<String> {
         }
         dir = d.parent().map(|p| p.to_path_buf());
     }
+    debug!(count = paths.len(), "searched config paths");
     paths
 }
 
 pub fn resolve_config_path() -> Option<String> {
-    find_config_paths()
+    let result = find_config_paths()
         .into_iter()
-        .find(|p| std::path::Path::new(p).is_file())
+        .find(|p| std::path::Path::new(p).is_file());
+    match &result {
+        Some(path) => info!(path, "resolved config file"),
+        None => warn!("no config file found"),
+    }
+    result
 }
 
 pub fn parse() -> Cli {
@@ -182,12 +189,14 @@ pub fn parse() -> Cli {
 
     let errors = cli.validate();
     if !errors.is_empty() {
+        warn!(count = errors.len(), "config validation failed");
         for error in &errors {
             eprintln!("{:?}", miette::Report::new_boxed(Box::new(error.clone())));
         }
         std::process::exit(1);
     }
 
+    debug!(workers = cli.config.workers, verbose = cli.verbose, "config parsed");
     cli
 }
 
