@@ -298,6 +298,17 @@ pub fn parse() -> Cli {
     output.print_warnings();
     let mut cli = output.get_silent();
 
+    // cli[impl config.base-root-path+2]
+    // cli[impl config.base-root-path.absolutized-relative-to-file]
+    if let Some((_, config_path)) = resolve_config() {
+        let config_dir = std::path::Path::new(&config_path)
+            .parent()
+            .expect("config file should have a parent directory");
+        cli.config.base_root_dir = resolve_root_path(config_dir, &cli.config.base_root_dir)
+            .to_string_lossy()
+            .into_owned();
+    }
+
     let errors = cli.validate();
     if !errors.is_empty() {
         warn!(count = errors.len(), "config validation failed");
@@ -712,32 +723,97 @@ exclude = []
         assert!(globs.contains(&"**/*.log".to_string()));
     }
 
+    fn parse_from_disk(dir: &std::path::Path, config_filename: &str, toml: &str) -> Cli {
+        let config_path = dir.join(config_filename);
+        if let Some(parent) = config_path.parent() {
+            std::fs::create_dir_all(parent).unwrap();
+        }
+        std::fs::write(&config_path, toml).unwrap();
+
+        let config_dir = config_path.parent().unwrap();
+
+        let config = builder::<Cli>()
+            .expect("schema should be valid")
+            .cli(|cli| cli.args(["run"].iter().map(|s| s.to_string())))
+            .file(|f| {
+                f.default_paths(vec![config_path.to_string_lossy().into_owned()])
+                    .format(TomlFormat)
+                    .format(YamlFormat)
+            })
+            .build();
+
+        let mut cli: Cli = Driver::new(config)
+            .run()
+            .into_result()
+            .expect("should parse")
+            .get_silent();
+
+        cli.config.base_root_dir = resolve_root_path(config_dir, &cli.config.base_root_dir)
+            .to_string_lossy()
+            .into_owned();
+
+        cli
+    }
+
+    fn config_toml_with_root(base_root_dir: &str) -> String {
+        format!(
+            r#"
+base_root_dir = "{base_root_dir}"
+include = ["src/**"]
+exclude = []
+
+[lang.js]
+include = ["**/*.js"]
+exclude = []
+"#
+        )
+    }
+
+    // cli[verify config.base-root-path+2]
+    #[test]
+    fn base_root_path_from_top_level_config_dot() {
+        let dir = tempfile::tempdir().unwrap();
+        let cli = parse_from_disk(dir.path(), "bough.config.toml", &config_toml_with_root("."));
+        let root = bough_core::Config::get_base_root_path(&cli.config);
+        assert_eq!(root, dir.path().to_path_buf());
+    }
+
+    // cli[verify config.base-root-path+2]
     // cli[verify config.base-root-path.absolutized-relative-to-file]
     #[test]
-    fn resolve_root_path_relative_from_config_dir() {
-        let resolved = resolve_root_path(std::path::Path::new("/foo/bar"), "./qux");
-        assert_eq!(resolved, std::path::PathBuf::from("/foo/bar/qux"));
+    fn base_root_path_from_top_level_config_subdir() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(dir.path().join("src")).unwrap();
+        let cli = parse_from_disk(dir.path(), "bough.config.toml", &config_toml_with_root("./src"));
+        let root = bough_core::Config::get_base_root_path(&cli.config);
+        assert_eq!(root, dir.path().join("src"));
     }
 
     // cli[verify config.base-root-path.absolutized-relative-to-file]
     #[test]
-    fn resolve_root_path_relative_parent_from_config_dir() {
-        let resolved = resolve_root_path(std::path::Path::new("/foo/bar/.config"), "../qux");
-        assert_eq!(resolved, std::path::PathBuf::from("/foo/bar/qux"));
+    fn base_root_path_from_dotconfig_subdir_with_parent_ref() {
+        let dir = tempfile::tempdir().unwrap();
+        let cli = parse_from_disk(
+            dir.path(),
+            ".config/bough.toml",
+            &config_toml_with_root(".."),
+        );
+        let root = bough_core::Config::get_base_root_path(&cli.config);
+        assert_eq!(root, dir.path().to_path_buf());
     }
 
     // cli[verify config.base-root-path.absolutized-relative-to-file]
     #[test]
-    fn resolve_root_path_absolute_unchanged() {
-        let resolved = resolve_root_path(std::path::Path::new("/foo/bar"), "/absolute/path");
-        assert_eq!(resolved, std::path::PathBuf::from("/absolute/path"));
-    }
-
-    // cli[verify config.base-root-path.absolutized-relative-to-file]
-    #[test]
-    fn resolve_root_path_dot_returns_config_dir() {
-        let resolved = resolve_root_path(std::path::Path::new("/foo/bar"), ".");
-        assert_eq!(resolved, std::path::PathBuf::from("/foo/bar"));
+    fn base_root_path_from_dotconfig_subdir_relative() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(dir.path().join("src")).unwrap();
+        let cli = parse_from_disk(
+            dir.path(),
+            ".config/bough.toml",
+            &config_toml_with_root("../src"),
+        );
+        let root = bough_core::Config::get_base_root_path(&cli.config);
+        assert_eq!(root, dir.path().join("src"));
     }
 }
 
@@ -750,8 +826,9 @@ impl bough_core::Config for Config {
         self.get_base_root_path().join(".bough")
     }
 
+    // cli[impl config.base-root-path+2]
     fn get_base_root_path(&self) -> std::path::PathBuf {
-        todo!()
+        std::path::PathBuf::from(&self.base_root_dir)
     }
 
     fn get_base_include_globs(&self) -> impl Iterator<Item = String> {
