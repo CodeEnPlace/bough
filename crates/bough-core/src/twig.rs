@@ -70,9 +70,11 @@ impl TwigsIterBuilder {
         }
 
         let mut overrides = OverrideBuilder::new(root_path);
+        // core[impl twig.iter.include.match]
         for pat in &self.include {
             overrides.add(pat).expect("invalid include glob");
         }
+        // core[impl twig.iter.exclude.match]
         for pat in &self.exclude {
             overrides
                 .add(&format!("!{pat}"))

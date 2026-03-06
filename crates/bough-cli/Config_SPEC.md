@@ -28,13 +28,10 @@ cli[config.lang.include.derived]
 Config::get_lang_include_globs must not include include paths from Config::get_base_include_globs
 
 cli[config.base-root-path]
-`Config::get_base_root_path` should resolve to the correct dir
+`Config::get_base_root_path` should be set from a value in the config file
 
-cli[config.base-root-path.sub]
-`Config::get_base_root_path` should resolve correctly when the config file was located in a sub directory
+cli[config.base-root-path.relative-from-file]
+base_root_path should be absolutized to be relative from the config file's location, just before validation
 
-cli[config.base-root-path.parent]
-`Config::get_base_root_path` should resolve correctly when the config file was located in a parent directory
-
-cli[config.base-root-path.parent.sub]
-`Config::get_base_root_path` should resolve correctly when the config file was located in the sub dir of a parent directory
+cli[config.base-root-path.wherever]
+base_root_path should be absolutized correctly, depending on where the config file was sourced from.
