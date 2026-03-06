@@ -94,20 +94,3 @@ TwigsMutantsIter::with_skip_query(self, query: &str) -> Self skips all mutants w
 
 core[mutant.twigs-iter.skip.query.multiple]
 with_skip_query can be called multiple times; a mutant is skipped if its node matches ANY of the configured skip queries
-
-<!-- ## TwigsMutantsIter -->
-
-<!-- core[mutant.twigs-iter.twigs] -->
-<!-- TwigsMutantsIter holds a TwigsIter -->
-
-<!-- core[mutant.twigs-iter.base] -->
-<!-- TwigsMutantsIter holds &Base -->
-
-<!-- core[mutant.twigs-iter.lang] -->
-<!-- TwigsMutantsIter owns LanguageId -->
-
-<!-- core[mutant.twigs-iter.item] -->
-<!-- TwigsMutantsIter impls Iterator<Item = Mutant> -->
-
-<!-- core[mutant.twigs-iter.find] -->
-<!-- TwigsMutantsIter lazily creates a TwigMutantsIter for each twig, yielding all Mutants across all files -->
