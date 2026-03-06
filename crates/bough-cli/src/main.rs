@@ -1,3 +1,5 @@
+use std::env;
+
 use facet::Facet;
 use figue::{self as args, ConfigFormat, ConfigFormatError, Driver, builder};
 
@@ -49,25 +51,104 @@ impl ConfigFormat for TomlFormat {
     }
 }
 
+struct YamlFormat;
+
+impl ConfigFormat for YamlFormat {
+    fn extensions(&self) -> &[&str] {
+        &["yaml", "yml"]
+    }
+
+    fn parse(&self, contents: &str) -> Result<figue::ConfigValue, ConfigFormatError> {
+        facet_yaml::from_str(contents).map_err(|e| ConfigFormatError::new(e.to_string()))
+    }
+}
+
+const CONFIG_NAMES: &[&str] = &[
+    "bough.config.toml",
+    "bough.config.yaml",
+    "bough.config.yml",
+    "bough.config.json",
+    ".bough.toml",
+    ".bough.yaml",
+    ".bough.yml",
+    ".bough.json",
+    ".config/bough.toml",
+    ".config/bough.yaml",
+    ".config/bough.yml",
+    ".config/bough.json",
+];
+
+fn find_config_paths() -> Vec<String> {
+    let mut paths = Vec::new();
+    let mut dir = env::current_dir().ok();
+    while let Some(d) = dir {
+        for name in CONFIG_NAMES {
+            paths.push(d.join(name).to_string_lossy().into_owned());
+        }
+        dir = d.parent().map(|p| p.to_path_buf());
+    }
+    paths
+}
+
+fn resolve_config_path() -> Option<String> {
+    find_config_paths()
+        .into_iter()
+        .find(|p| std::path::Path::new(p).is_file())
+}
+
 fn main() {
     let config = builder::<Cli>()
         .expect("schema should be valid")
         .cli(|cli| cli)
         .env(|env| env)
-        .file(|f| f.default_paths(["config.toml"]).format(TomlFormat))
+        .file(|f| {
+            f.default_paths(find_config_paths())
+                .format(TomlFormat)
+                .format(YamlFormat)
+        })
         .build();
 
-    let cli: Cli = Driver::new(config).run().unwrap();
+    let outcome = Driver::new(config).run();
+    let output = match outcome.into_result() {
+        Ok(output) => output,
+        Err(figue::DriverError::Help { text }) => {
+            println!("{text}");
+            std::process::exit(0);
+        }
+        Err(figue::DriverError::Failed { report }) => {
+            eprintln!("{}", report.render_pretty());
+            std::process::exit(1);
+        }
+        Err(e) => {
+            eprintln!("{e:?}");
+            std::process::exit(1);
+        }
+    };
+    output.print_warnings();
+
+    let config_path = resolve_config_path();
+    let (cli, _report) = output.into_parts();
 
     match cli.command {
         Command::Show { ref what } => match what {
-            ShowCommand::Cli => println!("{cli:#?}"),
+            ShowCommand::Cli => {
+                if let Some(ref path) = config_path {
+                    println!("config file: {path}");
+                }
+                println!("{cli:#?}");
+            }
             ShowCommand::Config => {
+                if let Some(ref path) = config_path {
+                    println!("config file: {path}");
+                }
                 println!("workers: {}", cli.config.workers);
                 println!("id: {}", cli.config.id);
             }
             ShowCommand::File => {
-                println!("show file: not yet implemented");
+                match config_path {
+                    Some(ref path) => println!("{path}"),
+                    None => println!("no config file found"),
+                }
             }
         },
         Command::Run => {
