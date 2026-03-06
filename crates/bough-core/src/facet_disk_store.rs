@@ -1,32 +1,36 @@
-use std::collections::HashMap;
 use std::path::PathBuf;
 
 // core[impl fds.type]
 pub struct FacetDiskStore<Key, Val>
 where
-    Key: for<'a> facet::Facet<'a> + std::fmt::Display + Eq + std::hash::Hash + Clone,
-    Val: for<'a> facet::Facet<'a> + Clone,
+    Key: std::fmt::Display + std::str::FromStr,
+    Val: for<'a> facet::Facet<'a>,
 {
     dir: PathBuf,
-    cache: HashMap<Key, Val>,
+    _phantom: std::marker::PhantomData<(Key, Val)>,
 }
 
+// core[impl fds.live]
 impl<Key, Val> FacetDiskStore<Key, Val>
 where
-    Key: for<'a> facet::Facet<'a> + std::fmt::Display + Eq + std::hash::Hash + Clone,
-    Val: for<'a> facet::Facet<'a> + Clone,
+    Key: std::fmt::Display + std::str::FromStr,
+    Val: for<'a> facet::Facet<'a>,
 {
     // core[impl fds.new]
+    // core[impl fds.live.startup]
     pub fn new(dir: PathBuf) -> Self {
         Self {
             dir,
-            cache: HashMap::new(),
+            _phantom: std::marker::PhantomData,
         }
     }
 
     // core[impl fds.get]
-    pub fn get(&self, key: &Key) -> Option<&Val> {
-        self.cache.get(key)
+    // core[impl fds.live.intercepted]
+    pub fn get(&self, key: &Key) -> Option<Val> {
+        let path = self.dir.join(format!("{key}.json"));
+        let data = std::fs::read_to_string(path).ok()?;
+        facet_json::from_str(&data).ok()
     }
 
     // core[impl fds.set]
@@ -37,13 +41,24 @@ where
         let json = facet_json::to_string(&val)
             .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e.to_string()))?;
         std::fs::write(path, json)?;
-        self.cache.insert(key, val);
         Ok(())
     }
 
     // core[impl fds.keys]
-    pub fn keys(&self) -> impl Iterator<Item = &Key> {
-        self.cache.keys()
+    pub fn keys(&self) -> impl Iterator<Item = Key> {
+        let read_dir = match std::fs::read_dir(&self.dir) {
+            Ok(rd) => rd,
+            Err(_) => return Vec::new().into_iter(),
+        };
+        read_dir
+            .flatten()
+            .filter_map(|entry| {
+                let name = entry.file_name().to_string_lossy().into_owned();
+                let stem = name.strip_suffix(".json")?;
+                stem.parse().ok()
+            })
+            .collect::<Vec<_>>()
+            .into_iter()
     }
 }
 
@@ -51,12 +66,19 @@ where
 mod tests {
     use super::*;
 
-    #[derive(Debug, Clone, PartialEq, Eq, Hash, facet::Facet)]
+    #[derive(Debug, Clone, PartialEq, Eq)]
     struct TestKey(String);
 
     impl std::fmt::Display for TestKey {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             write!(f, "{}", self.0)
+        }
+    }
+
+    impl std::str::FromStr for TestKey {
+        type Err = std::convert::Infallible;
+        fn from_str(s: &str) -> Result<Self, Self::Err> {
+            Ok(TestKey(s.to_owned()))
         }
     }
 
@@ -89,7 +111,7 @@ mod tests {
         };
         store.set(key.clone(), val.clone()).unwrap();
         let got = store.get(&key).unwrap();
-        assert_eq!(got, &val);
+        assert_eq!(got, val);
     }
 
     // core[verify fds.get]
@@ -113,7 +135,7 @@ mod tests {
         store.set(TestKey("a".into()), val.clone()).unwrap();
         store.set(TestKey("b".into()), val.clone()).unwrap();
         store.set(TestKey("c".into()), val).unwrap();
-        let mut keys: Vec<_> = store.keys().map(|k| k.0.clone()).collect();
+        let mut keys: Vec<_> = store.keys().map(|k| k.0).collect();
         keys.sort();
         assert_eq!(keys, vec!["a", "b", "c"]);
     }
@@ -166,5 +188,45 @@ mod tests {
         let got = store.get(&key).unwrap();
         assert_eq!(got.data, "new");
         assert_eq!(got.count, 2);
+    }
+
+    // core[verify fds.live]
+    // core[verify fds.live.intercepted]
+    #[test]
+    fn get_reads_from_disk_not_cache() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut store: FacetDiskStore<TestKey, TestVal> =
+            FacetDiskStore::new(dir.path().to_path_buf());
+        let key = TestKey("live".into());
+        let val = TestVal {
+            data: "original".into(),
+            count: 1,
+        };
+        store.set(key.clone(), val).unwrap();
+
+        let modified = r#"{"data":"modified","count":99}"#;
+        std::fs::write(dir.path().join("live.json"), modified).unwrap();
+
+        let got = store.get(&key).unwrap();
+        assert_eq!(got.data, "modified");
+        assert_eq!(got.count, 99);
+    }
+
+    // core[verify fds.live.startup]
+    #[test]
+    fn discovers_preexisting_files() {
+        let dir = tempfile::tempdir().unwrap();
+        let val_json = r#"{"data":"preexisting","count":5}"#;
+        std::fs::write(dir.path().join("old.json"), val_json).unwrap();
+
+        let store: FacetDiskStore<TestKey, TestVal> =
+            FacetDiskStore::new(dir.path().to_path_buf());
+
+        let got = store.get(&TestKey("old".into())).unwrap();
+        assert_eq!(got.data, "preexisting");
+        assert_eq!(got.count, 5);
+
+        let keys: Vec<_> = store.keys().map(|k| k.0).collect();
+        assert_eq!(keys, vec!["old"]);
     }
 }
