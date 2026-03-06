@@ -19,8 +19,9 @@ fn main() {
     };
     tracing_subscriber::fmt().with_max_level(log_level).init();
 
-    dbg!(cli);
-    return info!(log_level = %log_level, "tracing initialized");
+    // dbg!(cli);
+    // return;
+    info!(log_level = %log_level, "tracing initialized");
 
     let session = Session::new(cli.config.clone()).expect("session creation");
 
