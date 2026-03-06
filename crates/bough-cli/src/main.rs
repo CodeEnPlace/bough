@@ -1,5 +1,6 @@
 mod config;
 
+use bough_core::Session;
 use config::{Command, ShowCommand, parse, resolve_config_path};
 use tracing::{Level, debug, info};
 
@@ -19,27 +20,30 @@ fn main() {
 
     info!(log_level = %log_level, "tracing initialized");
 
+    let session = Session::new(cli.config.clone());
+
     match cli.command {
         Command::Show { ref what } => {
             debug!(subcommand = ?what, "executing show command");
             match what {
-            ShowCommand::Cli => {
-                if let Some(ref path) = config_path {
-                    println!("config file: {path}");
+                ShowCommand::Cli => {
+                    if let Some(ref path) = config_path {
+                        println!("config file: {path}");
+                    }
+                    println!("{cli:#?}");
                 }
-                println!("{cli:#?}");
-            }
-            ShowCommand::Config => {
-                if let Some(ref path) = config_path {
-                    println!("config file: {path}");
+                ShowCommand::Config => {
+                    if let Some(ref path) = config_path {
+                        println!("config file: {path}");
+                    }
+                    println!("workers: {}", cli.config.workers);
                 }
-                println!("workers: {}", cli.config.workers);
+                ShowCommand::File => match config_path {
+                    Some(ref path) => println!("{path}"),
+                    None => println!("no config file found"),
+                },
             }
-            ShowCommand::File => match config_path {
-                Some(ref path) => println!("{path}"),
-                None => println!("no config file found"),
-            },
-        }},
+        }
         Command::Run => {
             info!("starting run");
         }

@@ -1,0 +1,9 @@
+include = ["**/*"]
+exclude = ["node_modules"]
+
+[lang.js]
+include = [
+  "**/*.js",
+  "**/*.jsx",
+]
+exclude = ["**/*.test.*"]
