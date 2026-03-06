@@ -27,7 +27,7 @@ pub struct MutantHash([u8; 32]);
 // core[impl mutant.twig]
 // core[impl mutant.kind]
 // core[impl mutant.span]
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, facet::Facet)]
 pub struct Mutant {
     lang: LanguageId,
     twig: Twig,
@@ -147,7 +147,7 @@ impl TypedHashable for BasedMutant<'_> {
 }
 
 // core[impl span.point]
-#[derive(Debug, Clone, PartialEq, Eq, bough_typed_hash::HashInto)]
+#[derive(Debug, Clone, PartialEq, Eq, bough_typed_hash::HashInto, Hash, facet::Facet)]
 pub struct Span {
     start: Point,
     end: Point,
@@ -170,7 +170,7 @@ impl Span {
 // core[impl point.line]
 // core[impl point.col]
 // core[impl point.byte]
-#[derive(Debug, Clone, PartialEq, Eq, bough_typed_hash::HashInto)]
+#[derive(Debug, Clone, PartialEq, Eq, bough_typed_hash::HashInto, Hash, facet::Facet)]
 pub struct Point {
     line: usize,
     col: usize,
@@ -195,13 +195,15 @@ impl Point {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, bough_typed_hash::HashInto)]
+#[derive(Debug, Clone, PartialEq, Eq, bough_typed_hash::HashInto, Hash, facet::Facet)]
+#[repr(u8)]
 pub enum BinaryOpMutationKind {
     Add,
     Sub,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, bough_typed_hash::HashInto)]
+#[derive(Debug, Clone, PartialEq, Eq, bough_typed_hash::HashInto, Hash, facet::Facet)]
+#[repr(u8)]
 pub enum MutantKind {
     StatementBlock,
     Condition,
@@ -781,8 +783,7 @@ mod tests {
         std::fs::write(dir1.path().join("src/a.js"), "const a = 1;").unwrap();
         let base1 = Base::new(
             dir1.path().to_path_buf(),
-            TwigsIterBuilder::new()
-                .with_include_glob("src/**/*.js")
+            TwigsIterBuilder::new().with_include_glob("src/**/*.js"),
         )
         .unwrap();
 
@@ -791,8 +792,7 @@ mod tests {
         std::fs::write(dir2.path().join("src/a.js"), "const b = 2;").unwrap();
         let base2 = Base::new(
             dir2.path().to_path_buf(),
-            TwigsIterBuilder::new()
-                .with_include_glob("src/**/*.js")
+            TwigsIterBuilder::new().with_include_glob("src/**/*.js"),
         )
         .unwrap();
 
@@ -930,8 +930,7 @@ mod tests {
         }
         let base = Base::new(
             dir.path().to_path_buf(),
-            TwigsIterBuilder::new()
-                .with_include_glob("src/**/*.js")
+            TwigsIterBuilder::new().with_include_glob("src/**/*.js"),
         )
         .unwrap();
         (dir, base)
