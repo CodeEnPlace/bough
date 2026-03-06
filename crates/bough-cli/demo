@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+set -exuo pipefail
+
+cd "$(dirname "$0")/../.."
+
+BIN="cargo run -p bough-cli --"
+
+header() {
+    echo ""
+    echo "========================================"
+    echo "  $1"
+    echo "========================================"
+}
+
+header "subcommands"
+$BIN run
+$BIN show config
+$BIN show file
+$BIN show cli
+
+header "cli overrides"
+$BIN show cli --config.workers 16
+$BIN show cli --config.id custom-id
+$BIN show cli --config.workers 8 --config.id both-overridden
+
+header "env var overrides"
+BOUGH__WORKERS=32 $BIN show cli
+BOUGH__ID=env-id $BIN show cli
+BOUGH__WORKERS=64 BOUGH__ID=env-both $BIN show cli
+
+header "cli overrides env"
+BOUGH__WORKERS=32 $BIN show cli --config.workers 1
+
+header "toml config file"
+cat > config.toml << 'TOML'
+workers = 99
+id = "from-toml"
+TOML
+$BIN show cli
+rm config.toml
+
+header "toml + env override"
+cat > config.toml << 'TOML'
+workers = 99
+id = "from-toml"
+TOML
+BOUGH__ID=env-wins $BIN show cli
+rm config.toml
+
+header "toml + cli override"
+cat > config.toml << 'TOML'
+workers = 99
+id = "from-toml"
+TOML
+$BIN show cli --config.workers 1
+rm config.toml
+
+header "all three layers"
+cat > config.toml << 'TOML'
+workers = 99
+id = "from-toml"
+TOML
+BOUGH__ID=env-id $BIN show cli --config.workers 1
+rm config.toml
+
+header "defaults only (no config file, no env, no cli)"
+$BIN show config

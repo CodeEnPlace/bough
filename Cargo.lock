@@ -64,6 +64,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "bough-cli"
+version = "0.0.0"
+dependencies = [
+ "facet",
+ "facet-toml",
+ "figue",
+]
+
+[[package]]
 name = "bough-core"
 version = "0.0.0"
 dependencies = [
