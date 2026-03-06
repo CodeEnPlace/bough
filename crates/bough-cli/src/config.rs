@@ -195,28 +195,51 @@ const CONFIG_NAMES: &[&str] = &[
     ".config/bough.json",
 ];
 
-fn find_config_paths() -> Vec<String> {
-    let mut paths = Vec::new();
-    let mut dir = env::current_dir().ok();
+fn find_config_candidates_from(start: &std::path::Path) -> Vec<(std::path::PathBuf, String)> {
+    let mut candidates = Vec::new();
+    let mut dir = Some(start.to_path_buf());
     while let Some(d) = dir {
         for name in CONFIG_NAMES {
-            paths.push(d.join(name).to_string_lossy().into_owned());
+            let path = d.join(name).to_string_lossy().into_owned();
+            candidates.push((d.clone(), path));
         }
         dir = d.parent().map(|p| p.to_path_buf());
     }
-    debug!(count = paths.len(), "searched config paths");
-    paths
+    debug!(count = candidates.len(), "searched config paths");
+    candidates
 }
 
-pub fn resolve_config_path() -> Option<String> {
-    let result = find_config_paths()
+fn find_config_candidates() -> Vec<(std::path::PathBuf, String)> {
+    env::current_dir()
+        .map(|d| find_config_candidates_from(&d))
+        .unwrap_or_default()
+}
+
+// cli[impl config.base-root-path]
+// cli[impl config.base-root-path.sub]
+// cli[impl config.base-root-path.parent]
+// cli[impl config.base-root-path.parent.sub]
+pub fn resolve_config_from(start: &std::path::Path) -> Option<(std::path::PathBuf, String)> {
+    let result = find_config_candidates_from(start)
         .into_iter()
-        .find(|p| std::path::Path::new(p).is_file());
+        .find(|(_, p)| std::path::Path::new(p).is_file());
     match &result {
-        Some(path) => info!(path, "resolved config file"),
+        Some((root, path)) => info!(path, root = %root.display(), "resolved config file"),
         None => warn!("no config file found"),
     }
     result
+}
+
+pub fn resolve_config() -> Option<(std::path::PathBuf, String)> {
+    env::current_dir().ok().and_then(|d| resolve_config_from(&d))
+}
+
+pub fn resolve_config_path() -> Option<String> {
+    resolve_config().map(|(_, path)| path)
+}
+
+pub fn resolve_config_root() -> Option<std::path::PathBuf> {
+    resolve_config().map(|(root, _)| root)
 }
 
 pub fn parse() -> Cli {
@@ -225,7 +248,7 @@ pub fn parse() -> Cli {
         .cli(|cli| cli)
         .env(|env| env)
         .file(|f| {
-            f.default_paths(find_config_paths())
+            f.default_paths(find_config_candidates().into_iter().map(|(_, p)| p).collect::<Vec<_>>())
                 .format(TomlFormat)
                 .format(YamlFormat)
         })
@@ -519,6 +542,48 @@ exclude = []
         assert_eq!(cli.config.include, vec!["src/**"]);
     }
 
+    // cli[verify config.base-root-path]
+    #[test]
+    fn resolve_config_finds_root_for_top_level_config() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("bough.config.toml"), MINIMAL_TOML).unwrap();
+        let (root, _) = resolve_config_from(dir.path()).unwrap();
+        assert_eq!(root, dir.path());
+    }
+
+    // cli[verify config.base-root-path.sub]
+    #[test]
+    fn resolve_config_finds_root_for_sub_dir_config() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(dir.path().join(".config")).unwrap();
+        std::fs::write(dir.path().join(".config/bough.toml"), MINIMAL_TOML).unwrap();
+        let (root, _) = resolve_config_from(dir.path()).unwrap();
+        assert_eq!(root, dir.path());
+    }
+
+    // cli[verify config.base-root-path.parent]
+    #[test]
+    fn resolve_config_finds_root_in_parent() {
+        let dir = tempfile::tempdir().unwrap();
+        let child = dir.path().join("subproject");
+        std::fs::create_dir_all(&child).unwrap();
+        std::fs::write(dir.path().join("bough.config.toml"), MINIMAL_TOML).unwrap();
+        let (root, _) = resolve_config_from(&child).unwrap();
+        assert_eq!(root, dir.path());
+    }
+
+    // cli[verify config.base-root-path.parent.sub]
+    #[test]
+    fn resolve_config_finds_root_in_parent_sub_dir() {
+        let dir = tempfile::tempdir().unwrap();
+        let child = dir.path().join("subproject");
+        std::fs::create_dir_all(&child).unwrap();
+        std::fs::create_dir_all(dir.path().join(".config")).unwrap();
+        std::fs::write(dir.path().join(".config/bough.toml"), MINIMAL_TOML).unwrap();
+        let (root, _) = resolve_config_from(&child).unwrap();
+        assert_eq!(root, dir.path());
+    }
+
     // cli[verify config.exclude.bough-dir]
     #[test]
     fn base_exclude_globs_includes_bough_dir() {
@@ -624,13 +689,7 @@ impl bough_core::Config for Config {
     }
 
     fn get_base_root_path(&self) -> std::path::PathBuf {
-        resolve_config_path()
-            .map(|p| {
-                std::path::Path::new(&p)
-                    .parent()
-                    .unwrap_or(std::path::Path::new("."))
-                    .to_path_buf()
-            })
+        resolve_config_root()
             .unwrap_or_else(|| env::current_dir().unwrap_or_else(|_| ".".into()))
     }
 
