@@ -113,6 +113,7 @@ impl Cli {
         if let Err(e) = self.format() {
             errors.push(e);
         }
+        // cli[impl config.include.at-least-one]
         if self.config.include.is_empty() {
             errors.push(Error::EmptyInclude);
         }
@@ -348,6 +349,7 @@ exclude = []
         assert!(matches!(cli.command, Command::Run));
     }
 
+    // cli[verify config.include.at-least-one]
     #[test]
     fn empty_include_fails_validation() {
         let toml = r#"
