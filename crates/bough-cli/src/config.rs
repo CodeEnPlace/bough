@@ -64,6 +64,7 @@ pub struct Config {
     #[facet(default = 1)]
     pub threads: u64,
 
+    // cli[impl config.base-root-path.default]
     pub base_root_dir: String,
 
     pub include: Vec<String>,
@@ -455,6 +456,21 @@ exclude = []
     fn missing_lang_fails_parse() {
         let toml = r#"
 include = ["src/**"]
+exclude = []
+"#;
+        let errors = parse_err(&["run"], toml);
+        assert!(errors.iter().any(|e| matches!(e, Error::Parse(_))));
+    }
+
+    // cli[verify config.base-root-path.default]
+    #[test]
+    fn missing_base_root_dir_fails_parse() {
+        let toml = r#"
+include = ["src/**"]
+exclude = []
+
+[lang.js]
+include = ["**/*.js"]
 exclude = []
 "#;
         let errors = parse_err(&["run"], toml);
