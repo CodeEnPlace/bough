@@ -53,4 +53,6 @@ fn main() {
             Box::new(Noop)
         }
     };
+
+    println!("{}", result.render(cli.format().expect("valid format")));
 }
