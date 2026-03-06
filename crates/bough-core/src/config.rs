@@ -1,6 +1,7 @@
 use facet::Facet;
 use std::collections::HashMap;
 use std::path::PathBuf;
+use tracing::{debug, trace, warn};
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Facet)]
 #[facet(rename_all = "PascalCase")]
@@ -165,12 +166,14 @@ impl ConfigBuilder {
     }
 
     pub fn from_toml(self, toml_str: &str) -> Result<Self, ConfigError> {
+        debug!("parsing base config from TOML");
         let value: facet_value::Value =
             facet_toml::from_str(toml_str).map_err(|e| ConfigError::Deserialize(e.to_string()))?;
         Ok(Self { value, ..self })
     }
 
     pub fn override_with_toml(self, toml_str: &str) -> Result<Self, ConfigError> {
+        debug!("applying TOML override");
         let patch: facet_value::Value =
             facet_toml::from_str(toml_str).map_err(|e| ConfigError::Deserialize(e.to_string()))?;
         Ok(Self {
@@ -180,6 +183,7 @@ impl ConfigBuilder {
     }
 
     fn deep_merge(base: facet_value::Value, patch: facet_value::Value) -> facet_value::Value {
+        trace!("deep merging config values");
         match (base.as_object(), patch.as_object()) {
             (Some(base_obj), Some(patch_obj)) => {
                 let mut merged = base_obj.clone();
@@ -204,6 +208,11 @@ impl ConfigBuilder {
         let mut config: Config =
             facet_json::from_str(&json_str).map_err(|e| ConfigError::Deserialize(e.to_string()))?;
         config.source_dir = self.source_dir;
+        debug!(
+            threads = config.threads,
+            source_dir = %config.source_dir.display(),
+            "config built"
+        );
         Ok(config)
     }
 }
