@@ -5,6 +5,7 @@ pub(crate) use javascript::JavascriptDriver;
 pub(crate) use typescript::TypescriptDriver;
 
 use crate::mutant::{MutantKind, Span};
+use tracing::debug;
 
 // core[impl mutation.iter.language_driver]
 pub(crate) trait LanguageDriver {
@@ -20,6 +21,7 @@ pub(crate) trait LanguageDriver {
 }
 
 pub(crate) fn driver_for_lang(lang: crate::LanguageId) -> Box<dyn LanguageDriver> {
+    debug!(?lang, "selecting language driver");
     match lang {
         crate::LanguageId::Javascript => Box::new(JavascriptDriver),
         crate::LanguageId::Typescript => Box::new(TypescriptDriver),
