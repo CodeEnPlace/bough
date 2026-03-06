@@ -9,6 +9,7 @@ pub struct FileHash([u8; 32]);
 pub enum Error {
     RootMustBeAbsolute(PathBuf),
     TwigMustBeRelative(PathBuf),
+    TwigNotUtf8(PathBuf),
 }
 
 pub trait Root: std::fmt::Debug + Clone + PartialEq {
@@ -30,6 +31,9 @@ impl std::fmt::Display for Error {
             }
             Error::TwigMustBeRelative(p) => {
                 write!(f, "twig path must be relative: {}", p.display())
+            }
+            Error::TwigNotUtf8(p) => {
+                write!(f, "twig path must be valid UTF-8: {}", p.display())
             }
         }
     }

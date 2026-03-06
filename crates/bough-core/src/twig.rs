@@ -3,18 +3,21 @@ use std::path::{Path, PathBuf};
 
 // core[impl file.twig]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, facet::Facet)]
-pub struct Twig(PathBuf);
+pub struct Twig(String);
 
 impl Twig {
     pub fn new(path: PathBuf) -> Result<Self, Error> {
         if path.is_absolute() {
             return Err(Error::TwigMustBeRelative(path));
         }
-        Ok(Self(path))
+        let s = path
+            .to_str()
+            .ok_or_else(|| Error::TwigNotUtf8(path.clone()))?;
+        Ok(Self(s.to_owned()))
     }
 
     pub fn path(&self) -> &Path {
-        &self.0
+        Path::new(&self.0)
     }
 }
 
