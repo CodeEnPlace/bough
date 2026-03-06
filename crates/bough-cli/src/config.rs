@@ -265,9 +265,10 @@ pub fn resolve_config_root() -> Option<std::path::PathBuf> {
 // bough[impl config.base-root-path.relative-via-figue]
 fn config_dir_from_report(report: &figue::DriverReport) -> Option<std::path::PathBuf> {
     let fr = report.file_resolution.as_ref()?;
-    let picked = fr.paths.iter().find(|p| {
-        format!("{:?}", p.status).contains("Picked")
-    })?;
+    let picked = fr
+        .paths
+        .iter()
+        .find(|p| format!("{:?}", p.status).contains("Picked"))?;
     std::path::Path::new(picked.path.as_str())
         .parent()
         .map(|d| d.to_path_buf())
@@ -754,7 +755,10 @@ exclude = []
             .expect("should parse");
         let (_, report) = output.into_parts();
         let config_dir = super::config_dir_from_report(&report);
-        assert!(config_dir.is_some(), "should extract config dir from figue report");
+        assert!(
+            config_dir.is_some(),
+            "should extract config dir from figue report"
+        );
         assert_eq!(config_dir.unwrap(), dir.path());
     }
 
@@ -822,7 +826,11 @@ exclude = []
     fn base_root_path_from_top_level_config_subdir() {
         let dir = tempfile::tempdir().unwrap();
         std::fs::create_dir_all(dir.path().join("src")).unwrap();
-        let cli = parse_from_disk(dir.path(), "bough.config.toml", &config_toml_with_root("./src"));
+        let cli = parse_from_disk(
+            dir.path(),
+            "bough.config.toml",
+            &config_toml_with_root("./src"),
+        );
         let root = bough_core::Config::get_base_root_path(&cli.config);
         assert_eq!(root, dir.path().join("src"));
     }
