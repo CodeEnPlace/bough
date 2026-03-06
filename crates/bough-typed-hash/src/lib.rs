@@ -141,7 +141,7 @@ pub trait TypedHashable: HashInto + Clone + Sized {
     }
 }
 
-fn hex_to_bytes(hex: &str) -> Result<[u8; 32], String> {
+pub fn hex_to_bytes(hex: &str) -> Result<[u8; 32], String> {
     if hex.len() != 64 {
         return Err(format!("expected 64 hex chars, got {}", hex.len()));
     }

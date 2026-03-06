@@ -3,7 +3,11 @@ use std::{collections::HashSet, path::PathBuf};
 use bough_typed_hash::TypedHashable;
 
 use crate::{
-    LanguageId, base::Base, facet_disk_store::FacetDiskStore, mutation::Mutation, state::State,
+    LanguageId,
+    base::Base,
+    facet_disk_store::FacetDiskStore,
+    mutation::{Mutation, MutationHash},
+    state::State,
     twig::TwigsIterBuilder,
 };
 
@@ -29,7 +33,7 @@ pub struct Session<C: Config> {
     config: C,
     base: Base,
     workspaces: Vec<Base>,
-    mutations_in_base: HashSet<Mutation>,
+    mutations_state: FacetDiskStore<MutationHash, State>,
 }
 
 impl<C: Config> Session<C> {
@@ -67,7 +71,7 @@ impl<C: Config> Session<C> {
             config,
             base,
             workspaces,
-            mutations_in_base,
+            mutations_state,
         })
     }
 }
@@ -90,6 +94,7 @@ mod tests {
 
     struct MinimalConfig {
         root: PathBuf,
+        state_dir: PathBuf,
     }
 
     impl Config for MinimalConfig {
@@ -118,7 +123,7 @@ mod tests {
         }
 
         fn get_bough_state_dir(&self) -> PathBuf {
-            todo!()
+            self.state_dir.clone()
         }
     }
 
@@ -128,6 +133,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let config = MinimalConfig {
             root: dir.path().to_path_buf(),
+            state_dir: dir.path().join("state"),
         };
         let session = Session::new(config);
         assert!(session.is_ok());
@@ -136,8 +142,10 @@ mod tests {
     // core[verify session.init]
     #[test]
     fn session_new_fails_with_invalid_root() {
+        let dir = tempfile::tempdir().unwrap();
         let config = MinimalConfig {
             root: PathBuf::from("not/absolute"),
+            state_dir: dir.path().join("state"),
         };
         let session = Session::new(config);
         assert!(session.is_err());
