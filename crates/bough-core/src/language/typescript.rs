@@ -1,5 +1,6 @@
 use super::LanguageDriver;
 use crate::mutant::{MutantKind, Span};
+use tracing::trace;
 
 pub(crate) struct TypescriptDriver;
 
@@ -13,6 +14,7 @@ impl LanguageDriver for TypescriptDriver {
         _node: &tree_sitter::Node<'_>,
         _file_content: &[u8],
     ) -> Option<(MutantKind, Span)> {
+        trace!("ts: check_node (no-op driver)");
         None
     }
 
