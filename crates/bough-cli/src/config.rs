@@ -48,8 +48,7 @@ pub struct Config {
 
     pub exclude: Vec<String>,
 
-    #[facet(default)]
-    pub languages: Option<HashMap<bough_core::LanguageId, LanguageConfig>>,
+    pub lang: HashMap<bough_core::LanguageId, LanguageConfig>,
 }
 
 #[derive(Facet, Debug)]
@@ -68,6 +67,13 @@ pub enum Error {
     )]
     EmptyInclude,
 
+    #[error("at least one language must be configured")]
+    #[diagnostic(
+        code(bough::config::no_languages),
+        help("add a [js] or [ts] section to your config")
+    )]
+    NoLanguages,
+
     #[error("{0}")]
     #[diagnostic(code(bough::config::parse))]
     Parse(String),
@@ -78,6 +84,9 @@ impl Cli {
         let mut errors = Vec::new();
         if self.config.include.is_empty() {
             errors.push(Error::EmptyInclude);
+        }
+        if self.config.lang.is_empty() {
+            errors.push(Error::NoLanguages);
         }
         errors
     }
@@ -189,12 +198,24 @@ mod tests {
     const MINIMAL_TOML: &str = r#"
 include = ["src/**"]
 exclude = []
+
+[lang.js]
+include = ["**/*.js"]
+exclude = []
 "#;
 
     const FULL_TOML: &str = r#"
 workers = 16
 include = ["src/**", "lib/**"]
 exclude = ["target/**"]
+
+[lang.js]
+include = ["**/*.js"]
+exclude = ["node_modules/**"]
+
+[lang.ts]
+include = ["**/*.ts"]
+exclude = []
 "#;
 
     pub fn try_parse_from(
@@ -311,6 +332,10 @@ exclude = ["target/**"]
         let toml = r#"
 include = []
 exclude = []
+
+[lang.js]
+include = ["**/*.js"]
+exclude = []
 "#;
         let errors = parse_err(&["run"], toml);
         assert_eq!(errors.len(), 1);
@@ -329,47 +354,50 @@ exclude = []
 
     #[test]
     fn language_config_from_toml() {
-        let toml = r#"
-include = ["src/**"]
-exclude = []
+        let cli = parse_ok(&["run"], FULL_TOML);
+        assert_eq!(cli.config.lang.len(), 2);
 
-[languages.js]
-include = ["**/*.js"]
-exclude = ["node_modules/**"]
-
-[languages.ts]
-include = ["**/*.ts"]
-exclude = []
-"#;
-        let cli = parse_ok(&["run"], toml);
-        let langs = cli.config.languages.as_ref().expect("languages should be Some");
-        assert_eq!(langs.len(), 2);
-
-        let js = &langs[&bough_core::LanguageId::Javascript];
+        let js = &cli.config.lang[&bough_core::LanguageId::Javascript];
         assert_eq!(js.include, vec!["**/*.js"]);
         assert_eq!(js.exclude, vec!["node_modules/**"]);
 
-        let ts = &langs[&bough_core::LanguageId::Typescript];
+        let ts = &cli.config.lang[&bough_core::LanguageId::Typescript];
         assert_eq!(ts.include, vec!["**/*.ts"]);
         assert!(ts.exclude.is_empty());
     }
 
     #[test]
-    fn no_languages_defaults_to_none() {
-        let cli = parse_ok(&["run"], MINIMAL_TOML);
-        assert!(cli.config.languages.is_none());
+    fn missing_lang_fails_parse() {
+        let toml = r#"
+include = ["src/**"]
+exclude = []
+"#;
+        let errors = parse_err(&["run"], toml);
+        assert!(errors.iter().any(|e| matches!(e, Error::Parse(_))));
+    }
+
+    #[test]
+    fn empty_lang_fails_validation() {
+        let toml = r#"
+include = ["src/**"]
+exclude = []
+
+[lang]
+"#;
+        let errors = parse_err(&["run"], toml);
+        assert!(errors.iter().any(|e| matches!(e, Error::NoLanguages)));
     }
 
     #[test]
     fn json_config() {
-        let json = r#"{"include": ["src/**"], "exclude": []}"#;
+        let json = r#"{"include": ["src/**"], "exclude": [], "lang": {"js": {"include": ["**/*.js"], "exclude": []}}}"#;
         let cli = try_parse_from(&["run"], Some((json, "config.json"))).expect("should parse");
         assert_eq!(cli.config.include, vec!["src/**"]);
     }
 
     #[test]
     fn yaml_config() {
-        let yaml = "include:\n  - \"src/**\"\nexclude: []\n";
+        let yaml = "include:\n  - \"src/**\"\nexclude: []\nlang:\n  js:\n    include:\n      - \"**/*.js\"\n    exclude: []\n";
         let cli = try_parse_from(&["run"], Some((yaml, "config.yaml"))).expect("should parse");
         assert_eq!(cli.config.include, vec!["src/**"]);
     }
@@ -381,36 +409,51 @@ impl bough_core::Config for Config {
     }
 
     fn get_bough_state_dir(&self) -> std::path::PathBuf {
-        todo!()
+        self.get_base_root_path().join(".bough")
     }
 
     fn get_base_root_path(&self) -> std::path::PathBuf {
-        todo!()
+        resolve_config_path()
+            .map(|p| {
+                std::path::Path::new(&p)
+                    .parent()
+                    .unwrap_or(std::path::Path::new("."))
+                    .to_path_buf()
+            })
+            .unwrap_or_else(|| env::current_dir().unwrap_or_else(|_| ".".into()))
     }
 
     fn get_base_include_globs(&self) -> impl Iterator<Item = &str> {
-        self.include.iter().map(|s| s.as_ref())
+        self.include.iter().map(|s| s.as_str())
     }
 
     fn get_base_exclude_globs(&self) -> impl Iterator<Item = &str> {
-        self.exclude.iter().map(|s| s.as_ref())
+        self.exclude.iter().map(|s| s.as_str())
     }
 
     fn get_langs(&self) -> impl Iterator<Item = bough_core::LanguageId> {
-        vec![].into_iter()
+        self.lang.keys().copied().collect::<Vec<_>>().into_iter()
     }
 
     fn get_lang_include_globs(
         &self,
         language_id: bough_core::LanguageId,
     ) -> impl Iterator<Item = &str> {
-        vec![].into_iter()
+        self.lang
+            .get(&language_id)
+            .map(|c| c.include.iter().map(|s| s.as_str()).collect::<Vec<_>>())
+            .unwrap_or_default()
+            .into_iter()
     }
 
     fn get_lang_exclude_globs(
         &self,
         language_id: bough_core::LanguageId,
     ) -> impl Iterator<Item = &str> {
-        vec![].into_iter()
+        self.lang
+            .get(&language_id)
+            .map(|c| c.exclude.iter().map(|s| s.as_str()).collect::<Vec<_>>())
+            .unwrap_or_default()
+            .into_iter()
     }
 }
