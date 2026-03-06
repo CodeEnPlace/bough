@@ -1,5 +1,6 @@
 use crate::{TypedHash, TypedHashable};
 use sha2::{Digest, Sha256};
+use tracing::{debug, trace};
 
 fn raw_hash<T: TypedHashable>(value: &T) -> T::Hash {
     let mut state = Sha256::new();
@@ -64,6 +65,7 @@ impl<T: TypedHashable> Default for MemoryHashStore<T> {
 
 impl<T: TypedHashable> HashStore<T> for MemoryHashStore<T> {
     fn get(&self, hash: &T::Hash) -> Option<&T> {
+        trace!("memory store: get");
         self.entries.iter()
             .find(|e| e.hash.as_bytes() == hash.as_bytes())
             .map(|e| &e.value)
@@ -71,6 +73,7 @@ impl<T: TypedHashable> HashStore<T> for MemoryHashStore<T> {
 
     fn insert(&mut self, value: T) {
         let hash = raw_hash(&value);
+        trace!("memory store: insert");
         if let Some(entry) = self.entries.iter_mut().find(|e| e.hash.as_bytes() == hash.as_bytes()) {
             entry.value = value;
             entry.hash = hash;
@@ -157,6 +160,7 @@ struct DiskEntry<T: TypedHashable> {
 impl<T: TypedHashable + for<'a> facet::Facet<'a>> DiskHashStore<T> {
     /// Create a store backed by `dir`. Scans existing `*.json` files to build the index.
     pub fn new(dir: std::path::PathBuf) -> Self {
+        debug!(dir = %dir.display(), "creating disk hash store");
         let mut entries = Vec::new();
         if let Ok(read_dir) = std::fs::read_dir(&dir) {
             for entry in read_dir.flatten() {
