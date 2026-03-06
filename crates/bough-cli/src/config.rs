@@ -216,10 +216,7 @@ fn find_config_candidates() -> Vec<(std::path::PathBuf, String)> {
         .unwrap_or_default()
 }
 
-// cli[impl config.base-root-path]
-// cli[impl config.base-root-path.sub]
-// cli[impl config.base-root-path.parent]
-// cli[impl config.base-root-path.parent.sub]
+// cli[impl config.base-root-path.wherever]
 pub fn resolve_config_from(start: &std::path::Path) -> Option<(std::path::PathBuf, String)> {
     let result = find_config_candidates_from(start)
         .into_iter()
@@ -543,7 +540,7 @@ exclude = []
         assert_eq!(cli.config.include, vec!["src/**"]);
     }
 
-    // cli[verify config.base-root-path]
+    // cli[verify config.base-root-path.wherever]
     #[test]
     fn resolve_config_finds_root_for_top_level_config() {
         let dir = tempfile::tempdir().unwrap();
@@ -552,7 +549,7 @@ exclude = []
         assert_eq!(root, dir.path());
     }
 
-    // cli[verify config.base-root-path.sub]
+    // cli[verify config.base-root-path.wherever]
     #[test]
     fn resolve_config_finds_root_for_sub_dir_config() {
         let dir = tempfile::tempdir().unwrap();
@@ -562,7 +559,7 @@ exclude = []
         assert_eq!(root, dir.path());
     }
 
-    // cli[verify config.base-root-path.parent]
+    // cli[verify config.base-root-path.wherever]
     #[test]
     fn resolve_config_finds_root_in_parent() {
         let dir = tempfile::tempdir().unwrap();
@@ -573,7 +570,7 @@ exclude = []
         assert_eq!(root, dir.path());
     }
 
-    // cli[verify config.base-root-path.parent.sub]
+    // cli[verify config.base-root-path.wherever]
     #[test]
     fn resolve_config_finds_root_in_parent_sub_dir() {
         let dir = tempfile::tempdir().unwrap();
