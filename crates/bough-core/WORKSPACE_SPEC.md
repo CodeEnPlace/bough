@@ -45,6 +45,9 @@ Workspace::validate_unchanged() is called after bind to ensure it has not change
 core[workspace.validate-unchanged]
 Workspace::validate_unchanged() checks that list and file contents of Base::files and Workspace::files are identicall
 
+core[workspace.validate-unchanged.untracked]
+Workspace::validate_unchanged() doesn't check for equality of files that are not in Base::files; they are allowed to differ, or not be present, in workspaces
+
 core[workspace.active]
 The stored Workspace active Mutation should be of type Mutation
 
