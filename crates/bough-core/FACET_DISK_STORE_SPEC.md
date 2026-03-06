@@ -1,7 +1,7 @@
 ## FacetDiskStore
 
 core[fds.type]
-`FacetDiskStore<Key: Facet, Val: Facet>`
+`FacetDiskStore<Key: Display + FromStr, Val: Facet>`
 
 core[fds.keys]
 `FacetDiskStore::keys` iterates all keys that have been inserted into it
@@ -21,5 +21,8 @@ fds should store all vals on disk at `$dir/$key.json` in json format
 core[fds.live]
 fds should handle all actions by reading/writing disk, and not cache in memory.
 
-core[fds.startup.live]
+core[fds.live.intercepted]
+if the directory is altered by some other process/function, the most up-to-date state should be refected by fds
+
+core[fds.live.startup]
 fds should include files that were on disk before it was created
