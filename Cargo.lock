@@ -137,6 +137,7 @@ dependencies = [
  "glob",
  "rand",
  "tempfile",
+ "tracing",
  "tree-sitter",
  "tree-sitter-javascript",
  "tree-sitter-typescript",
@@ -153,6 +154,7 @@ dependencies = [
  "facet-json",
  "sha2",
  "tempfile",
+ "tracing",
 ]
 
 [[package]]

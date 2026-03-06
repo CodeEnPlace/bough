@@ -10,6 +10,7 @@ disk = ["facet-json"]
 
 [dependencies]
 sha2 = "0.10"
+tracing = "0.1"
 facet = "0.44"
 facet-json = { version = "0.44", optional = true }
 bough-typed-hash-derive = { path = "../bough-typed-hash-derive" }
