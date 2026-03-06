@@ -20,3 +20,6 @@ core[session.init.workspaces]
 
 core[session.init.workspaces.bind]
 if some workspaces already exist in the workspace dir, they should be attached with `Workspace::bind`
+
+core[session.init.workspaces.get-ids]
+`Session::workspace_ids` returns `WorkspaceId`s for its workspaces

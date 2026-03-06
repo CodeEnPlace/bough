@@ -28,6 +28,7 @@ where
     }
 
     // core[impl fds.get]
+    // core[impl fds.get.invalid]
     // core[impl fds.live.intercepted]
     pub fn get(&self, key: &Key) -> Option<Val> {
         let path = self.dir.join(format!("{key}.json"));
@@ -250,6 +251,15 @@ mod tests {
         let mut store: FacetDiskStore<TestKey, TestVal> =
             FacetDiskStore::new(dir.path().to_path_buf());
         assert!(store.remove(&TestKey("nope".into())).is_none());
+    }
+
+    // core[verify fds.get.invalid]
+    #[test]
+    fn get_returns_none_for_invalid_file() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("bad.json"), "not valid json!!!").unwrap();
+        let store: FacetDiskStore<TestKey, TestVal> = FacetDiskStore::new(dir.path().to_path_buf());
+        assert!(store.get(&TestKey("bad".into())).is_none());
     }
 
     // core[verify fds.new.mkdir]
