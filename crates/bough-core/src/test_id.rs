@@ -1,0 +1,1 @@
+struct TestId(String);

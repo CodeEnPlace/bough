@@ -28,12 +28,12 @@ impl<'a> MutationIter<'a> {
 
 // core[impl mutation.iter.mutation]
 impl<'a> Iterator for MutationIter<'a> {
-    type Item = Mutation<'a>;
+    type Item = Mutation;
 
     fn next(&mut self) -> Option<Self::Item> {
         let subst = self.subs.next()?;
         Some(Mutation {
-            mutant: self.mutant,
+            mutant: self.mutant.clone(),
             subst,
         })
     }
@@ -41,15 +41,15 @@ impl<'a> Iterator for MutationIter<'a> {
 
 // core[impl mutation.mutant]
 // core[impl mutation.subst]
-#[derive(Debug, Clone, PartialEq)]
-pub struct Mutation<'a> {
-    pub(crate) mutant: &'a Mutant,
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Mutation {
+    pub(crate) mutant: Mutant,
     pub(crate) subst: String,
 }
 
-impl<'a> Mutation<'a> {
+impl Mutation {
     pub fn mutant(&self) -> &Mutant {
-        self.mutant
+        &self.mutant
     }
 
     pub fn subst(&self) -> &str {
@@ -58,13 +58,13 @@ impl<'a> Mutation<'a> {
 }
 
 // core[impl mutation.hash.typed-hashable]
-impl TypedHashable for Mutation<'_> {
+impl TypedHashable for Mutation {
     type Hash = MutationHash;
 }
 
 // core[impl mutation.hash.mutant]
 // core[impl mutation.hash.subst]
-impl HashInto for Mutation<'_> {
+impl HashInto for Mutation {
     fn hash_into(&self, state: &mut bough_typed_hash::ShaState) -> Result<(), std::io::Error> {
         self.mutant.hash_into(state)?;
         self.subst.hash_into(state)?;
@@ -280,7 +280,7 @@ mod tests {
         assert!(subs.contains(&"-".to_string()));
     }
 
-    fn hash_mutation(mutation: &Mutation<'_>) -> [u8; 32] {
+    fn hash_mutation(mutation: &Mutation) -> [u8; 32] {
         use bough_typed_hash::sha2::Digest;
         let mut state = bough_typed_hash::ShaState::new();
         mutation.hash_into(&mut state).unwrap();
@@ -299,7 +299,7 @@ mod tests {
             Span::new(Point::new(0, 0, 0), Point::new(0, 10, 10)),
         );
         let mutation = Mutation {
-            mutant: &mutant,
+            mutant: mutant.clone(),
             subst: "-".into(),
         };
         let mut store = bough_typed_hash::MemoryHashStore::new();
@@ -325,11 +325,11 @@ mod tests {
             Span::new(Point::new(0, 0, 0), Point::new(0, 10, 10)),
         );
         let mut1 = Mutation {
-            mutant: &m1,
+            mutant: m1.clone(),
             subst: "-".into(),
         };
         let mut2 = Mutation {
-            mutant: &m2,
+            mutant: m2.clone(),
             subst: "-".into(),
         };
         assert_ne!(hash_mutation(&mut1), hash_mutation(&mut2));
@@ -347,11 +347,11 @@ mod tests {
             Span::new(Point::new(0, 0, 0), Point::new(0, 10, 10)),
         );
         let mut1 = Mutation {
-            mutant: &m,
+            mutant: m.clone(),
             subst: "-".into(),
         };
         let mut2 = Mutation {
-            mutant: &m,
+            mutant: m.clone(),
             subst: "*".into(),
         };
         assert_ne!(hash_mutation(&mut1), hash_mutation(&mut2));

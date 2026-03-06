@@ -1,11 +1,13 @@
-pub mod base;
-pub mod file;
-pub(crate) mod language;
-pub mod mutant;
-pub mod mutation;
-pub mod phase;
-pub mod twig;
-pub mod workspace;
+mod base;
+mod file;
+mod language;
+mod mutant;
+mod mutation;
+mod outcome;
+mod phase;
+mod test_id;
+mod twig;
+mod workspace;
 
 #[derive(
     Debug,

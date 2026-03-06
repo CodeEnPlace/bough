@@ -28,7 +28,7 @@ pub struct MutantHash([u8; 32]);
 // core[impl mutant.twig]
 // core[impl mutant.kind]
 // core[impl mutant.span]
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Mutant {
     lang: LanguageId,
     twig: Twig,
@@ -144,7 +144,7 @@ impl TypedHashable for BasedMutant<'_> {
 }
 
 // core[impl span.point]
-#[derive(Debug, Clone, PartialEq, bough_typed_hash::HashInto)]
+#[derive(Debug, Clone, PartialEq, Eq, bough_typed_hash::HashInto)]
 pub struct Span {
     start: Point,
     end: Point,
@@ -167,7 +167,7 @@ impl Span {
 // core[impl point.line]
 // core[impl point.col]
 // core[impl point.byte]
-#[derive(Debug, Clone, PartialEq, bough_typed_hash::HashInto)]
+#[derive(Debug, Clone, PartialEq, Eq, bough_typed_hash::HashInto)]
 pub struct Point {
     line: usize,
     col: usize,
@@ -192,13 +192,13 @@ impl Point {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, bough_typed_hash::HashInto)]
+#[derive(Debug, Clone, PartialEq, Eq, bough_typed_hash::HashInto)]
 pub enum BinaryOpMutationKind {
     Add,
     Sub,
 }
 
-#[derive(Debug, Clone, PartialEq, bough_typed_hash::HashInto)]
+#[derive(Debug, Clone, PartialEq, Eq, bough_typed_hash::HashInto)]
 pub enum MutantKind {
     StatementBlock,
     Condition,
