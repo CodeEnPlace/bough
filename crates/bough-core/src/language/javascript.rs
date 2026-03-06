@@ -1,5 +1,6 @@
 use super::LanguageDriver;
 use crate::mutant::{BinaryOpMutationKind, MutantKind, Span, span_from_node};
+use tracing::trace;
 
 pub(crate) struct JavascriptDriver;
 
@@ -17,7 +18,7 @@ impl LanguageDriver for JavascriptDriver {
         node: &tree_sitter::Node<'_>,
         file_content: &[u8],
     ) -> Option<(MutantKind, Span)> {
-        match node.kind() {
+        let result = match node.kind() {
             "statement_block" => Some((MutantKind::StatementBlock, span_from_node(node))),
             "if_statement" | "while_statement" | "for_statement" => {
                 let condition = node.child_by_field_name("condition")?;
@@ -36,7 +37,11 @@ impl LanguageDriver for JavascriptDriver {
                 Some((MutantKind::BinaryOp(kind), span_from_node(node)))
             }
             _ => None,
+        };
+        if let Some((ref kind, ref span)) = result {
+            trace!(node_kind = node.kind(), mutant_kind = ?kind, start_byte = span.start().byte(), "js: matched node");
         }
+        result
     }
 
     // core[impl mutation.subst.js.add.sub]
