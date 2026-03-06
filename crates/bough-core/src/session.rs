@@ -43,7 +43,7 @@ pub struct Session<C: Config> {
 }
 
 impl<C: Config> Session<C> {
-    // bough[impl session.init]
+    // bough[impl session.init+2]
     pub fn new(config: C) -> Result<Self, Error> {
         info!("initializing session");
         let workspaces_dir = config.get_bough_state_dir().join("workspaces");
@@ -248,7 +248,7 @@ mod tests {
         }
     }
 
-    // bough[verify session.init]
+    // bough[verify session.init+2]
     #[test]
     fn session_new_creates_session_from_config() {
         let dir = tempfile::tempdir().unwrap();
@@ -263,7 +263,7 @@ mod tests {
         assert!(session.is_ok());
     }
 
-    // bough[verify session.init]
+    // bough[verify session.init+2]
     #[test]
     fn session_new_fails_with_invalid_root() {
         let dir = tempfile::tempdir().unwrap();
