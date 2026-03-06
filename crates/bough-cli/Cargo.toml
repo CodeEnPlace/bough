@@ -7,6 +7,8 @@ license.workspace = true
 [dependencies]
 bough-core = { path = "../bough-core" }
 facet = "0.44"
+miette = { version = "7", features = ["fancy"] }
+thiserror = "2"
 facet-toml = "0.44"
 facet-yaml = "0.44"
 figue = "2"
