@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 mod base;
+mod facet_disk_store;
 mod file;
 mod language;
 mod mutant;

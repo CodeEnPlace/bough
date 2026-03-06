@@ -17,3 +17,9 @@ core[fds.new]
 
 core[fds.files]
 fds should store all vals on disk at `$dir/$key.json` in json format
+
+core[fds.live]
+fds should handle all actions by reading/writing disk, and not cache in memory.
+
+core[fds.startup.live]
+fds should include files that were on disk before it was created
