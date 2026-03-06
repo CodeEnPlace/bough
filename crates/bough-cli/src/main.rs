@@ -68,5 +68,5 @@ fn main() {
         }
     };
 
-    println!("{}", result.render(cli.format().expect("valid format")));
+    println!("{}", result.render(cli.format));
 }

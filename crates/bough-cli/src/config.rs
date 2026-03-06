@@ -12,8 +12,8 @@ pub struct Cli {
     #[facet(args::named, args::short = 'v', args::counted, default)]
     pub verbose: u8,
 
-    #[facet(args::named, args::short = 'f', default = "terse")]
-    pub format: String,
+    #[facet(args::named, args::short = 'f', default)]
+    pub format: Format,
 
     #[facet(args::subcommand)]
     pub command: Command,
@@ -22,11 +22,17 @@ pub struct Cli {
     pub config: Config,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Facet, Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[repr(u8)]
 pub enum Format {
+    #[default]
+    #[facet(rename = "terse")]
     Terse,
+    #[facet(rename = "verbose")]
     Verbose,
+    #[facet(rename = "markdown")]
     Markdown,
+    #[facet(rename = "json")]
     Json,
 }
 
@@ -89,34 +95,14 @@ pub enum Error {
     )]
     NoLanguages,
 
-    #[error("unknown format: {0}")]
-    #[diagnostic(
-        code(bough::config::unknown_format),
-        help("valid formats: terse, verbose, markdown, json")
-    )]
-    UnknownFormat(String),
-
     #[error("{0}")]
     #[diagnostic(code(bough::config::parse))]
     Parse(String),
 }
 
 impl Cli {
-    pub fn format(&self) -> Result<Format, Error> {
-        match self.format.as_str() {
-            "terse" => Ok(Format::Terse),
-            "verbose" => Ok(Format::Verbose),
-            "markdown" => Ok(Format::Markdown),
-            "json" => Ok(Format::Json),
-            other => Err(Error::UnknownFormat(other.to_string())),
-        }
-    }
-
     pub fn validate(&self) -> Vec<Error> {
         let mut errors = Vec::new();
-        if let Err(e) = self.format() {
-            errors.push(e);
-        }
         // cli[impl config.include.at-least-one]
         if self.config.include.is_empty() {
             errors.push(Error::EmptyInclude);
