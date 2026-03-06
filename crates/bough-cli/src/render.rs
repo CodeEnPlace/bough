@@ -1,5 +1,7 @@
 use std::path::PathBuf;
 
+use bough_core::LanguageId;
+
 use crate::config::Format;
 
 pub trait Render {
@@ -52,6 +54,35 @@ impl Render for BaseFiles {
     }
     fn verbose(&self) -> String {
         self.0
+            .iter()
+            .map(|pb| format!("{}", pb.to_string_lossy()))
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
+}
+
+pub struct MutantFiles(pub LanguageId, pub Vec<PathBuf>);
+impl Render for MutantFiles {
+    fn markdown(&self) -> String {
+        format!(
+            "# {:?} Files that will be Mutated\n\n{}",
+            self.0,
+            self.1
+                .iter()
+                .map(|pb| format!("- {}", pb.to_string_lossy()))
+                .collect::<Vec<_>>()
+                .join("\n")
+        )
+    }
+    fn terse(&self) -> String {
+        self.1
+            .iter()
+            .map(|pb| format!("{}", pb.to_string_lossy()))
+            .collect::<Vec<_>>()
+            .join(" ")
+    }
+    fn verbose(&self) -> String {
+        self.1
             .iter()
             .map(|pb| format!("{}", pb.to_string_lossy()))
             .collect::<Vec<_>>()

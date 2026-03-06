@@ -44,7 +44,10 @@ pub enum Command {
 #[derive(Facet, Debug)]
 #[repr(u8)]
 pub enum ShowCommand {
-    Files,
+    Files {
+        #[facet(args::positional, default)]
+        lang: Option<bough_core::LanguageId>,
+    },
 }
 
 #[derive(Facet, Debug, Clone)]
@@ -393,7 +396,7 @@ exclude = []
         assert!(matches!(
             cli.command,
             Command::Show {
-                what: ShowCommand::Files
+                what: ShowCommand::Files { .. }
             }
         ));
     }
