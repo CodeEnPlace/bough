@@ -21,6 +21,7 @@ pub struct Session<C: Config> {
 }
 
 impl<C: Config> Session<C> {
+    // core[impl session.init]
     pub fn new(config: C) -> Result<Self, Error> {
         let mut base_twigs_iter_builder = TwigsIterBuilder::new();
         for include in config.get_base_include_globs() {
@@ -76,5 +77,61 @@ impl Config for TestConfig {
 
     fn get_langs(&self) -> impl Iterator<Item = LanguageId> {
         vec![].into_iter()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    struct MinimalConfig {
+        root: PathBuf,
+    }
+
+    impl Config for MinimalConfig {
+        fn get_base_root_path(&self) -> PathBuf {
+            self.root.clone()
+        }
+
+        fn get_base_include_globs(&self) -> impl Iterator<Item = &str> {
+            vec![].into_iter()
+        }
+
+        fn get_base_exclude_globs(&self) -> impl Iterator<Item = &str> {
+            vec![].into_iter()
+        }
+
+        fn get_lang_include_globs(&self, _language_id: LanguageId) -> impl Iterator<Item = &str> {
+            vec![].into_iter()
+        }
+
+        fn get_lang_exclude_globs(&self, _language_id: LanguageId) -> impl Iterator<Item = &str> {
+            vec![].into_iter()
+        }
+
+        fn get_langs(&self) -> impl Iterator<Item = LanguageId> {
+            vec![].into_iter()
+        }
+    }
+
+    // core[verify session.init]
+    #[test]
+    fn session_new_creates_session_from_config() {
+        let dir = tempfile::tempdir().unwrap();
+        let config = MinimalConfig {
+            root: dir.path().to_path_buf(),
+        };
+        let session = Session::new(config);
+        assert!(session.is_ok());
+    }
+
+    // core[verify session.init]
+    #[test]
+    fn session_new_fails_with_invalid_root() {
+        let config = MinimalConfig {
+            root: PathBuf::from("not/absolute"),
+        };
+        let session = Session::new(config);
+        assert!(session.is_err());
     }
 }
