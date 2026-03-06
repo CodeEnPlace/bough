@@ -1,6 +1,6 @@
 ## Session
 
-core[session.init]
+core[session.init+2]
 `Session::<Config>::new(config: Config) -> Result<Self, _>`
 
 core[session.init.state.attach]
@@ -9,17 +9,26 @@ core[session.init.state.attach]
 core[session.init.state.get]
 `Session::get_state()` returns ref to mutations_state
 
-core[session.init.state.add-missing]
-`Session::new` will add any mutations_in_base that are missing to mutations_state, defaulting `outcome` to `None`
+core[session.tend.state.add-missing]
+`Session::tend_add_missing_states -> Iter<MutationHash>` will add any mutations_in_base that are missing to mutations_state, defaulting `outcome` to `None`, it returns the ones it added
 
-core[session.init.state.remove-stale]
-`Session::new` will remove any mutations_state that are missing from mutations_in_base
+core[session.tend.state.remove-stale]
+`Session::tend_remove_stale_states -> Iter<MutationHash>` will remove any mutations_state that are missing from mutations_in_base, it returns the ones it removed.
 
-core[session.init.workspaces]
-`Session::new` creates Config::get_workers_count workspaces in `Config::get_bough_state_dir + "/workspaces"`
+core[session.tend.workspaces]
+`Session::tend_workspaces(desired_count) -> Iter<WorkspaceId>` tends workspaces and returns the set of existing ones when it's done
 
-core[session.init.workspaces.bind]
-if some workspaces already exist in the workspace dir, they should be attached with `Workspace::bind`
+core[session.tend.workspaces.bind]
+`Session::tend_workspaces` binds to existing workspaces
 
-core[session.init.workspaces.get-ids]
-`Session::workspace_ids` returns `WorkspaceId`s for its workspaces
+core[session.tend.workspaces.bind.validate-unchanged.rm]
+if the bound workspace fails validate_unchanged, it is removed from disk
+
+core[session.tend.workspaces.bind.validate-unchanged.forget]
+if the bound workspace fails validate_unchanged, the Workspace struct is dropped
+
+core[session.tend.workspaces.new]
+After binding to clean existing dirs, new ones are created until desired_count is reached
+
+core[session.tend.workspaces.surplus]
+If more exist on disk than are desired, the surplus are removed

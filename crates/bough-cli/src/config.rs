@@ -64,6 +64,9 @@ pub struct Config {
     #[facet(default = 1)]
     pub threads: u64,
 
+    #[facet(default = ".")]
+    pub base_root_dir: String,
+
     pub include: Vec<String>,
 
     pub exclude: Vec<String>,
@@ -216,6 +219,18 @@ fn find_config_candidates() -> Vec<(std::path::PathBuf, String)> {
         .unwrap_or_default()
 }
 
+// cli[impl config.base-root-path+2]
+// cli[impl config.base-root-path.relative-from-file]
+pub fn resolve_root_path(config_dir: &std::path::Path, root: &str) -> std::path::PathBuf {
+    let path = std::path::Path::new(root);
+    let joined = if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        config_dir.join(path)
+    };
+    joined.canonicalize().unwrap_or(joined)
+}
+
 // cli[impl config.base-root-path.wherever]
 pub fn resolve_config_from(start: &std::path::Path) -> Option<(std::path::PathBuf, String)> {
     let result = find_config_candidates_from(start)
@@ -269,7 +284,14 @@ pub fn parse() -> Cli {
         }
     };
     output.print_warnings();
-    let cli = output.get_silent();
+    let mut cli = output.get_silent();
+
+    // cli[impl config.base-root-path.relative-from-file]
+    let config_dir = resolve_config_root()
+        .unwrap_or_else(|| env::current_dir().unwrap_or_else(|_| ".".into()));
+    cli.config.base_root_dir = resolve_root_path(&config_dir, &cli.config.base_root_dir)
+        .to_string_lossy()
+        .into_owned();
 
     let errors = cli.validate();
     if !errors.is_empty() {
@@ -582,6 +604,59 @@ exclude = []
         assert_eq!(root, dir.path());
     }
 
+    // cli[verify config.base-root-path+2]
+    #[test]
+    fn base_root_dir_parsed_from_config() {
+        let toml = "base_root_dir = \"my_root\"\ninclude = [\"src/**\"]\nexclude = []\n\n[lang.js]\ninclude = [\"**/*.js\"]\nexclude = []\n";
+        let cli = parse_ok(&["run"], toml);
+        assert_eq!(cli.config.base_root_dir, "my_root");
+    }
+
+    // cli[verify config.base-root-path+2]
+    #[test]
+    fn base_root_dir_defaults_to_dot() {
+        let cli = parse_ok(&["run"], MINIMAL_TOML);
+        assert_eq!(cli.config.base_root_dir, ".");
+    }
+
+    // cli[verify config.base-root-path.relative-from-file]
+    #[test]
+    fn resolve_root_path_absolutizes_relative_to_config_dir() {
+        let dir = tempfile::tempdir().unwrap();
+        let config_dir = dir.path().join("project");
+        std::fs::create_dir_all(&config_dir).unwrap();
+        let result = resolve_root_path(&config_dir, "..");
+        assert_eq!(result, dir.path().canonicalize().unwrap());
+    }
+
+    // cli[verify config.base-root-path.relative-from-file]
+    #[test]
+    fn resolve_root_path_dot_returns_config_dir() {
+        let dir = tempfile::tempdir().unwrap();
+        let result = resolve_root_path(dir.path(), ".");
+        assert_eq!(result, dir.path().canonicalize().unwrap());
+    }
+
+    // cli[verify config.base-root-path.relative-from-file]
+    #[test]
+    fn resolve_root_path_absolute_stays_absolute() {
+        let dir = tempfile::tempdir().unwrap();
+        let abs = dir.path().join("somewhere");
+        std::fs::create_dir_all(&abs).unwrap();
+        let result = resolve_root_path(dir.path(), abs.to_str().unwrap());
+        assert_eq!(result, abs.canonicalize().unwrap());
+    }
+
+    // cli[verify config.base-root-path.wherever]
+    #[test]
+    fn resolve_root_path_from_subdir_config() {
+        let dir = tempfile::tempdir().unwrap();
+        let config_dir = dir.path().join(".config");
+        std::fs::create_dir_all(&config_dir).unwrap();
+        let result = resolve_root_path(&config_dir, "..");
+        assert_eq!(result, dir.path().canonicalize().unwrap());
+    }
+
     // cli[verify config.exclude.bough-dir]
     #[test]
     fn base_exclude_globs_includes_bough_dir() {
@@ -715,9 +790,9 @@ impl bough_core::Config for Config {
         self.get_base_root_path().join(".bough")
     }
 
+    // cli[impl config.base-root-path+2]
     fn get_base_root_path(&self) -> std::path::PathBuf {
-        resolve_config_root()
-            .unwrap_or_else(|| env::current_dir().unwrap_or_else(|_| ".".into()))
+        std::path::PathBuf::from(&self.base_root_dir)
     }
 
     fn get_base_include_globs(&self) -> impl Iterator<Item = String> {
