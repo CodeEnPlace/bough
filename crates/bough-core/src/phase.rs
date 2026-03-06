@@ -443,7 +443,7 @@ mod tests {
             timeout_relative: Some(2.0),
             ..make_phase(&root)
         };
-        let ref_dur = std::time::Duration::from_millis(500);
+        let ref_dur = std::time::Duration::from_millis(50);
         let outcome = phase.run(Some(ref_dur)).unwrap();
         assert!(outcome.timed_out());
         assert!(outcome.duration() < std::time::Duration::from_secs(5));
