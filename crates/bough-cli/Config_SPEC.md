@@ -14,3 +14,9 @@ Config::get_base_exclude_globs must include a matcher for the current bough_dir
 
 cli[config.lang.exclude.bough-dir]
 Config::get_lang_exclude_globs must include a matcher for the current bough_dir
+
+cli[config.lang.exclude.derived]
+Config::get_lang_exclude_globs must include all exclude paths from Config::get_base_exclude_globs
+
+cli[config.lang.include.derived]
+Config::get_lang_include_globs must not include include paths from Config::get_base_include_globs

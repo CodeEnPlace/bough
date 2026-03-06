@@ -1,1 +1,0 @@
-{"mutation":{"mutant":{"lang":"js","twig":[".bough/workspaces/work/5b173304/src/index.js"],"kind":"Condition","span":{"start":{"line":5,"col":5,"byte":170},"end":{"line":5,"col":16,"byte":181}}},"subst":"true"},"outcome":null}
