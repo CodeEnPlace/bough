@@ -25,24 +25,21 @@ pub struct TwigMutantsIter<'a, 't> {
 pub struct MutantHash([u8; 32]);
 
 // core[impl mutant.lang]
-// core[impl mutant.base]
 // core[impl mutant.twig]
 // core[impl mutant.kind]
 // core[impl mutant.span]
 #[derive(Debug, Clone, PartialEq)]
-pub struct Mutant<'a> {
+pub struct Mutant {
     lang: LanguageId,
-    base: &'a Base,
     twig: Twig,
     kind: MutantKind,
     span: Span,
 }
 
-impl<'a> Mutant<'a> {
-    pub fn new(lang: LanguageId, base: &'a Base, twig: Twig, kind: MutantKind, span: Span) -> Self {
+impl Mutant {
+    pub fn new(lang: LanguageId, twig: Twig, kind: MutantKind, span: Span) -> Self {
         Self {
             lang,
-            base,
             twig,
             kind,
             span,
@@ -51,10 +48,6 @@ impl<'a> Mutant<'a> {
 
     pub fn lang(&self) -> LanguageId {
         self.lang
-    }
-
-    pub fn base(&self) -> &Base {
-        self.base
     }
 
     pub fn twig(&self) -> &Twig {
@@ -70,14 +63,51 @@ impl<'a> Mutant<'a> {
     }
 }
 
+// core[impl mutant.based]
+// core[impl mutant.based.base]
+// core[impl mutant.based.mutant]
+#[derive(Debug, Clone, PartialEq)]
+pub struct BasedMutant<'a> {
+    mutant: Mutant,
+    base: &'a Base,
+}
+
+impl<'a> BasedMutant<'a> {
+    pub fn new(mutant: Mutant, base: &'a Base) -> Self {
+        Self { mutant, base }
+    }
+
+    pub fn mutant(&self) -> &Mutant {
+        &self.mutant
+    }
+
+    pub fn base(&self) -> &Base {
+        self.base
+    }
+
+    pub fn lang(&self) -> LanguageId {
+        self.mutant.lang
+    }
+
+    pub fn twig(&self) -> &Twig {
+        &self.mutant.twig
+    }
+
+    pub fn kind(&self) -> &MutantKind {
+        &self.mutant.kind
+    }
+
+    pub fn span(&self) -> &Span {
+        &self.mutant.span
+    }
+}
+
 // core[impl mutant.hash.typed-hashable]
-// core[impl mutant.hash.base]
 // core[impl mutant.hash.lang]
 // core[impl mutant.hash.twig]
-// core[impl mutant.hash.file]
 // core[impl mutant.hash.span]
 // core[impl mutant.hash.kind]
-impl HashInto for Mutant<'_> {
+impl HashInto for Mutant {
     fn hash_into(&self, state: &mut bough_typed_hash::ShaState) -> Result<(), std::io::Error> {
         self.lang.hash_into(state)?;
         self.twig
@@ -85,15 +115,32 @@ impl HashInto for Mutant<'_> {
             .as_os_str()
             .as_encoded_bytes()
             .hash_into(state)?;
-        crate::file::File::new(self.base, &self.twig).hash_into(state)?;
         self.span.hash_into(state)?;
         self.kind.hash_into(state)?;
         Ok(())
     }
 }
 
-impl TypedHashable for Mutant<'_> {
+impl TypedHashable for Mutant {
     type Hash = MutantHash;
+}
+
+#[derive(bough_typed_hash::TypedHash)]
+pub struct BasedMutantHash([u8; 32]);
+
+// core[impl mutant.based.hash.typed-hashable]
+// core[impl mutant.based.hash.base]
+// core[impl mutant.based.hash.file]
+impl HashInto for BasedMutant<'_> {
+    fn hash_into(&self, state: &mut bough_typed_hash::ShaState) -> Result<(), std::io::Error> {
+        self.mutant.hash_into(state)?;
+        crate::file::File::new(self.base, &self.mutant.twig).hash_into(state)?;
+        Ok(())
+    }
+}
+
+impl TypedHashable for BasedMutant<'_> {
+    type Hash = BasedMutantHash;
 }
 
 // core[impl span.point]
@@ -230,7 +277,7 @@ impl<'a, 't> TwigMutantsIter<'a, 't> {
 // core[impl mutant.twig-iter.item]
 // core[impl mutant.twig-iter.find]
 impl<'a, 't> Iterator for TwigMutantsIter<'a, 't> {
-    type Item = Mutant<'a>;
+    type Item = BasedMutant<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
@@ -264,13 +311,8 @@ impl<'a, 't> Iterator for TwigMutantsIter<'a, 't> {
                 }) {
                     continue;
                 }
-                return Some(Mutant::new(
-                    self.lang,
-                    self.base,
-                    self.twig.clone(),
-                    kind,
-                    span,
-                ));
+                let mutant = Mutant::new(self.lang, self.twig.clone(), kind, span);
+                return Some(BasedMutant::new(mutant, self.base));
             }
         }
     }
@@ -285,7 +327,7 @@ pub struct TwigsMutantsIter<'a> {
     twigs_iter: TwigsIter,
     skip_kinds: Vec<MutantKind>,
     skip_queries: Vec<String>,
-    buffer: std::collections::VecDeque<Mutant<'a>>,
+    buffer: std::collections::VecDeque<BasedMutant<'a>>,
 }
 
 impl<'a> TwigsMutantsIter<'a> {
@@ -358,7 +400,7 @@ impl<'a> TwigsMutantsIter<'a> {
 
 // core[impl mutant.twigs-iter]
 impl<'a> Iterator for TwigsMutantsIter<'a> {
-    type Item = Mutant<'a>;
+    type Item = BasedMutant<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.buffer.is_empty() {
@@ -424,11 +466,9 @@ mod tests {
     // core[verify mutant.lang]
     #[test]
     fn mutant_owns_language_id() {
-        let (_dir, base) = make_base();
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let m = Mutant::new(
             LanguageId::Javascript,
-            &base,
             twig.clone(),
             MutantKind::StatementBlock,
             Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
@@ -436,29 +476,12 @@ mod tests {
         assert_eq!(m.lang(), LanguageId::Javascript);
     }
 
-    // core[verify mutant.base]
-    #[test]
-    fn mutant_holds_base() {
-        let (_dir, base) = make_base();
-        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
-        let m = Mutant::new(
-            LanguageId::Javascript,
-            &base,
-            twig.clone(),
-            MutantKind::StatementBlock,
-            Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
-        );
-        assert_eq!(m.base().path(), base.path());
-    }
-
     // core[verify mutant.twig]
     #[test]
     fn mutant_holds_twig() {
-        let (_dir, base) = make_base();
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let m = Mutant::new(
             LanguageId::Javascript,
-            &base,
             twig.clone(),
             MutantKind::StatementBlock,
             Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
@@ -469,11 +492,9 @@ mod tests {
     // core[verify mutant.kind]
     #[test]
     fn mutant_owns_kind() {
-        let (_dir, base) = make_base();
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let m = Mutant::new(
             LanguageId::Javascript,
-            &base,
             twig.clone(),
             MutantKind::Condition,
             Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
@@ -484,17 +505,46 @@ mod tests {
     // core[verify mutant.span]
     #[test]
     fn mutant_owns_span() {
-        let (_dir, base) = make_base();
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let m = Mutant::new(
             LanguageId::Javascript,
-            &base,
             twig.clone(),
             MutantKind::StatementBlock,
             Span::new(Point::new(3, 5, 30), Point::new(7, 1, 60)),
         );
         assert_eq!(m.span().start().line(), 3);
         assert_eq!(m.span().end().byte(), 60);
+    }
+
+    // core[verify mutant.based]
+    // core[verify mutant.based.mutant]
+    #[test]
+    fn based_mutant_holds_mutant() {
+        let (_dir, base) = make_base();
+        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
+        let mutant = Mutant::new(
+            LanguageId::Javascript,
+            twig.clone(),
+            MutantKind::StatementBlock,
+            Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
+        );
+        let based = BasedMutant::new(mutant.clone(), &base);
+        assert_eq!(based.mutant(), &mutant);
+    }
+
+    // core[verify mutant.based.base]
+    #[test]
+    fn based_mutant_holds_base() {
+        let (_dir, base) = make_base();
+        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
+        let mutant = Mutant::new(
+            LanguageId::Javascript,
+            twig.clone(),
+            MutantKind::StatementBlock,
+            Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
+        );
+        let based = BasedMutant::new(mutant, &base);
+        assert_eq!(based.base().path(), base.path());
     }
 
     // core[verify mutant.twig-iter.twig]
@@ -672,16 +722,115 @@ mod tests {
 
     use bough_typed_hash::HashStore;
 
-    fn hash_mutant(mutant: &Mutant<'_>) -> [u8; 32] {
+    fn hash_mutant(mutant: &Mutant) -> [u8; 32] {
         use bough_typed_hash::sha2::Digest;
         let mut state = bough_typed_hash::ShaState::new();
         mutant.hash_into(&mut state).unwrap();
         state.finalize().into()
     }
 
-    // core[verify mutant.hash.base]
+    fn hash_based_mutant(based: &BasedMutant<'_>) -> [u8; 32] {
+        use bough_typed_hash::sha2::Digest;
+        let mut state = bough_typed_hash::ShaState::new();
+        based.hash_into(&mut state).unwrap();
+        state.finalize().into()
+    }
+
+    // core[verify mutant.hash.lang]
     #[test]
-    fn mutant_hash_excludes_base() {
+    fn mutant_hash_includes_lang() {
+        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
+        let m1 = Mutant::new(
+            LanguageId::Javascript,
+            twig.clone(),
+            MutantKind::StatementBlock,
+            Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
+        );
+        let m2 = Mutant::new(
+            LanguageId::Typescript,
+            twig.clone(),
+            MutantKind::StatementBlock,
+            Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
+        );
+        assert_ne!(hash_mutant(&m1), hash_mutant(&m2));
+    }
+
+    // core[verify mutant.hash.twig]
+    #[test]
+    fn mutant_hash_includes_twig() {
+        let twig_a = Twig::new(PathBuf::from("src/a.js")).unwrap();
+        let twig_b = Twig::new(PathBuf::from("src/b.js")).unwrap();
+        let m1 = Mutant::new(
+            LanguageId::Javascript,
+            twig_a,
+            MutantKind::StatementBlock,
+            Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
+        );
+        let m2 = Mutant::new(
+            LanguageId::Javascript,
+            twig_b,
+            MutantKind::StatementBlock,
+            Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
+        );
+        assert_ne!(hash_mutant(&m1), hash_mutant(&m2));
+    }
+
+    // core[verify mutant.hash.span]
+    #[test]
+    fn mutant_hash_includes_span() {
+        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
+        let m1 = Mutant::new(
+            LanguageId::Javascript,
+            twig.clone(),
+            MutantKind::StatementBlock,
+            Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
+        );
+        let m2 = Mutant::new(
+            LanguageId::Javascript,
+            twig.clone(),
+            MutantKind::StatementBlock,
+            Span::new(Point::new(5, 3, 40), Point::new(8, 0, 70)),
+        );
+        assert_ne!(hash_mutant(&m1), hash_mutant(&m2));
+    }
+
+    // core[verify mutant.hash.kind]
+    #[test]
+    fn mutant_hash_includes_kind() {
+        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
+        let m1 = Mutant::new(
+            LanguageId::Javascript,
+            twig.clone(),
+            MutantKind::StatementBlock,
+            Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
+        );
+        let m2 = Mutant::new(
+            LanguageId::Javascript,
+            twig.clone(),
+            MutantKind::Condition,
+            Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
+        );
+        assert_ne!(hash_mutant(&m1), hash_mutant(&m2));
+    }
+
+    // core[verify mutant.hash.typed-hashable]
+    #[test]
+    fn mutant_produces_typed_hash() {
+        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
+        let m = Mutant::new(
+            LanguageId::Javascript,
+            twig.clone(),
+            MutantKind::StatementBlock,
+            Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
+        );
+        let mut store = bough_typed_hash::MemoryHashStore::new();
+        let hash = m.hash(&mut store).unwrap();
+        assert!(store.contains(&hash));
+    }
+
+    // core[verify mutant.based.hash.base]
+    #[test]
+    fn based_mutant_hash_excludes_base() {
         let dir1 = tempfile::tempdir().unwrap();
         std::fs::create_dir_all(dir1.path().join("src")).unwrap();
         std::fs::write(dir1.path().join("src/a.js"), "const a = 1;").unwrap();
@@ -701,79 +850,20 @@ mod tests {
         .unwrap();
 
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
-        let m1 = Mutant::new(
+        let mutant = Mutant::new(
             LanguageId::Javascript,
-            &base1,
             twig.clone(),
             MutantKind::StatementBlock,
             Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
         );
-        let m2 = Mutant::new(
-            LanguageId::Javascript,
-            &base2,
-            twig.clone(),
-            MutantKind::StatementBlock,
-            Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
-        );
-        assert_eq!(hash_mutant(&m1), hash_mutant(&m2));
+        let bm1 = BasedMutant::new(mutant.clone(), &base1);
+        let bm2 = BasedMutant::new(mutant, &base2);
+        assert_eq!(hash_based_mutant(&bm1), hash_based_mutant(&bm2));
     }
 
-    // core[verify mutant.hash.lang]
+    // core[verify mutant.based.hash.file]
     #[test]
-    fn mutant_hash_includes_lang() {
-        let (_dir, base) = make_base();
-        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
-        let m1 = Mutant::new(
-            LanguageId::Javascript,
-            &base,
-            twig.clone(),
-            MutantKind::StatementBlock,
-            Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
-        );
-        let m2 = Mutant::new(
-            LanguageId::Typescript,
-            &base,
-            twig.clone(),
-            MutantKind::StatementBlock,
-            Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
-        );
-        assert_ne!(hash_mutant(&m1), hash_mutant(&m2));
-    }
-
-    // core[verify mutant.hash.twig]
-    #[test]
-    fn mutant_hash_includes_twig() {
-        let dir = tempfile::tempdir().unwrap();
-        std::fs::create_dir_all(dir.path().join("src")).unwrap();
-        std::fs::write(dir.path().join("src/a.js"), "const a = 1;").unwrap();
-        std::fs::write(dir.path().join("src/b.js"), "const a = 1;").unwrap();
-        let base = Base::new(
-            dir.path().to_path_buf(),
-            TwigsIter::new(dir.path()).with_include_glob("src/**/*.js"),
-        )
-        .unwrap();
-        let twig_a = Twig::new(PathBuf::from("src/a.js")).unwrap();
-        let twig_b = Twig::new(PathBuf::from("src/b.js")).unwrap();
-        let m1 = Mutant::new(
-            LanguageId::Javascript,
-            &base,
-            twig_a.clone(),
-            MutantKind::StatementBlock,
-            Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
-        );
-        let m2 = Mutant::new(
-            LanguageId::Javascript,
-            &base,
-            twig_b.clone(),
-            MutantKind::StatementBlock,
-            Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
-        );
-        assert_ne!(hash_mutant(&m1), hash_mutant(&m2));
-    }
-
-    // core[verify mutant.hash.file]
-    #[test]
-    fn mutant_hash_includes_file_contents() {
+    fn based_mutant_hash_includes_file_contents() {
         let dir1 = tempfile::tempdir().unwrap();
         std::fs::create_dir_all(dir1.path().join("src")).unwrap();
         std::fs::write(dir1.path().join("src/a.js"), "const a = 1;").unwrap();
@@ -793,81 +883,31 @@ mod tests {
         .unwrap();
 
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
-        let m1 = Mutant::new(
+        let mutant = Mutant::new(
             LanguageId::Javascript,
-            &base1,
             twig.clone(),
             MutantKind::StatementBlock,
             Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
         );
-        let m2 = Mutant::new(
-            LanguageId::Javascript,
-            &base2,
-            twig.clone(),
-            MutantKind::StatementBlock,
-            Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
-        );
-        assert_ne!(hash_mutant(&m1), hash_mutant(&m2));
+        let bm1 = BasedMutant::new(mutant.clone(), &base1);
+        let bm2 = BasedMutant::new(mutant, &base2);
+        assert_ne!(hash_based_mutant(&bm1), hash_based_mutant(&bm2));
     }
 
-    // core[verify mutant.hash.span]
+    // core[verify mutant.based.hash.typed-hashable]
     #[test]
-    fn mutant_hash_includes_span() {
+    fn based_mutant_produces_typed_hash() {
         let (_dir, base) = make_base();
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
-        let m1 = Mutant::new(
+        let mutant = Mutant::new(
             LanguageId::Javascript,
-            &base,
             twig.clone(),
             MutantKind::StatementBlock,
             Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
         );
-        let m2 = Mutant::new(
-            LanguageId::Javascript,
-            &base,
-            twig.clone(),
-            MutantKind::StatementBlock,
-            Span::new(Point::new(5, 3, 40), Point::new(8, 0, 70)),
-        );
-        assert_ne!(hash_mutant(&m1), hash_mutant(&m2));
-    }
-
-    // core[verify mutant.hash.kind]
-    #[test]
-    fn mutant_hash_includes_kind() {
-        let (_dir, base) = make_base();
-        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
-        let m1 = Mutant::new(
-            LanguageId::Javascript,
-            &base,
-            twig.clone(),
-            MutantKind::StatementBlock,
-            Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
-        );
-        let m2 = Mutant::new(
-            LanguageId::Javascript,
-            &base,
-            twig.clone(),
-            MutantKind::Condition,
-            Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
-        );
-        assert_ne!(hash_mutant(&m1), hash_mutant(&m2));
-    }
-
-    // core[verify mutant.hash.typed-hashable]
-    #[test]
-    fn mutant_produces_typed_hash() {
-        let (_dir, base) = make_base();
-        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
-        let m = Mutant::new(
-            LanguageId::Javascript,
-            &base,
-            twig.clone(),
-            MutantKind::StatementBlock,
-            Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
-        );
+        let based = BasedMutant::new(mutant, &base);
         let mut store = bough_typed_hash::MemoryHashStore::new();
-        let hash = m.hash(&mut store).unwrap();
+        let hash = based.hash(&mut store).unwrap();
         assert!(store.contains(&hash));
     }
 

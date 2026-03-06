@@ -7,12 +7,12 @@ pub struct MutationHash([u8; 32]);
 
 // core[impl mutation.iter.mutant]
 pub struct MutationIter<'a> {
-    mutant: &'a Mutant<'a>,
+    mutant: &'a Mutant,
     subs: std::vec::IntoIter<String>,
 }
 
 impl<'a> MutationIter<'a> {
-    pub fn new(mutant: &'a Mutant<'a>) -> Self {
+    pub fn new(mutant: &'a Mutant) -> Self {
         let driver = driver_for_lang(mutant.lang());
         let subs = driver.substitutions(mutant.kind());
         Self {
@@ -21,7 +21,7 @@ impl<'a> MutationIter<'a> {
         }
     }
 
-    pub fn mutant(&self) -> &Mutant<'a> {
+    pub fn mutant(&self) -> &Mutant {
         self.mutant
     }
 }
@@ -43,12 +43,12 @@ impl<'a> Iterator for MutationIter<'a> {
 // core[impl mutation.subst]
 #[derive(Debug, Clone, PartialEq)]
 pub struct Mutation<'a> {
-    pub(crate) mutant: &'a Mutant<'a>,
+    pub(crate) mutant: &'a Mutant,
     pub(crate) subst: String,
 }
 
 impl<'a> Mutation<'a> {
-    pub fn mutant(&self) -> &Mutant<'a> {
+    pub fn mutant(&self) -> &Mutant {
         self.mutant
     }
 
@@ -104,7 +104,6 @@ mod tests {
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let mutant = Mutant::new(
             crate::LanguageId::Javascript,
-            &base,
             twig.clone(),
             MutantKind::BinaryOp(BinaryOpMutationKind::Add),
             Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
@@ -121,7 +120,6 @@ mod tests {
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let mutant = Mutant::new(
             crate::LanguageId::Javascript,
-            &base,
             twig.clone(),
             MutantKind::BinaryOp(BinaryOpMutationKind::Add),
             Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
@@ -138,7 +136,6 @@ mod tests {
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let mutant = Mutant::new(
             crate::LanguageId::Javascript,
-            &base,
             twig.clone(),
             MutantKind::BinaryOp(BinaryOpMutationKind::Add),
             Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
@@ -153,7 +150,6 @@ mod tests {
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let mutant = Mutant::new(
             crate::LanguageId::Javascript,
-            &base,
             twig.clone(),
             MutantKind::BinaryOp(BinaryOpMutationKind::Add),
             Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
@@ -170,7 +166,6 @@ mod tests {
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let mutant = Mutant::new(
             crate::LanguageId::Javascript,
-            &base,
             twig.clone(),
             MutantKind::BinaryOp(BinaryOpMutationKind::Add),
             Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
@@ -187,7 +182,6 @@ mod tests {
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let mutant = Mutant::new(
             crate::LanguageId::Typescript,
-            &base,
             twig.clone(),
             MutantKind::BinaryOp(BinaryOpMutationKind::Add),
             Span::new(Point::new(0, 0, 0), Point::new(0, 5, 5)),
@@ -204,7 +198,6 @@ mod tests {
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let mutant = Mutant::new(
             crate::LanguageId::Javascript,
-            &base,
             twig.clone(),
             MutantKind::Condition,
             Span::new(Point::new(0, 3, 3), Point::new(0, 10, 10)),
@@ -223,7 +216,6 @@ mod tests {
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let mutant = Mutant::new(
             crate::LanguageId::Javascript,
-            &base,
             twig.clone(),
             MutantKind::Condition,
             Span::new(Point::new(0, 3, 3), Point::new(0, 10, 10)),
@@ -242,7 +234,6 @@ mod tests {
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let mutant = Mutant::new(
             crate::LanguageId::Javascript,
-            &base,
             twig.clone(),
             MutantKind::StatementBlock,
             Span::new(Point::new(0, 15, 15), Point::new(0, 28, 28)),
@@ -261,7 +252,6 @@ mod tests {
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let mutant = Mutant::new(
             crate::LanguageId::Javascript,
-            &base,
             twig.clone(),
             MutantKind::BinaryOp(BinaryOpMutationKind::Add),
             Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
@@ -280,7 +270,6 @@ mod tests {
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let mutant = Mutant::new(
             crate::LanguageId::Javascript,
-            &base,
             twig.clone(),
             MutantKind::BinaryOp(BinaryOpMutationKind::Add),
             Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
@@ -305,7 +294,6 @@ mod tests {
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let mutant = Mutant::new(
             crate::LanguageId::Javascript,
-            &base,
             twig.clone(),
             MutantKind::BinaryOp(BinaryOpMutationKind::Add),
             Span::new(Point::new(0, 0, 0), Point::new(0, 10, 10)),
@@ -326,14 +314,12 @@ mod tests {
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let m1 = Mutant::new(
             crate::LanguageId::Javascript,
-            &base,
             twig.clone(),
             MutantKind::BinaryOp(BinaryOpMutationKind::Add),
             Span::new(Point::new(0, 0, 0), Point::new(0, 10, 10)),
         );
         let m2 = Mutant::new(
             crate::LanguageId::Javascript,
-            &base,
             twig.clone(),
             MutantKind::Condition,
             Span::new(Point::new(0, 0, 0), Point::new(0, 10, 10)),
@@ -356,7 +342,6 @@ mod tests {
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let m = Mutant::new(
             crate::LanguageId::Javascript,
-            &base,
             twig.clone(),
             MutantKind::BinaryOp(BinaryOpMutationKind::Add),
             Span::new(Point::new(0, 0, 0), Point::new(0, 10, 10)),
