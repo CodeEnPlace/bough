@@ -5,6 +5,7 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+bough-core = { path = "../bough-core" }
 facet = "0.44"
 facet-toml = "0.44"
 facet-yaml = "0.44"

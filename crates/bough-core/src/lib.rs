@@ -33,3 +33,5 @@ pub enum LanguageId {
     #[facet(rename = "ts")]
     Typescript,
 }
+
+pub use session::Config;

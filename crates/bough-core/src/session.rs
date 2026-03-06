@@ -12,7 +12,7 @@ use crate::{
     workspace::{Workspace, WorkspaceId},
 };
 
-trait Config {
+pub trait Config {
     fn get_workers_count(&self) -> u64;
 
     fn get_bough_state_dir(&self) -> PathBuf;
@@ -359,7 +359,10 @@ mod tests {
         let dirs = workspace_dirs(dir.path());
         assert_eq!(dirs.len(), 3, "expected 3 workspaces, got: {dirs:?}");
         for d in &dirs {
-            assert!(d.join("src/a.js").exists(), "workspace should contain source files");
+            assert!(
+                d.join("src/a.js").exists(),
+                "workspace should contain source files"
+            );
         }
     }
 
@@ -379,7 +382,11 @@ mod tests {
         config2.workers_count = 2;
         let _session2 = Session::new(config2).unwrap();
         let dirs_after = workspace_dirs(dir.path());
-        assert_eq!(dirs_after.len(), 2, "should reuse existing workspaces, not create new ones");
+        assert_eq!(
+            dirs_after.len(),
+            2,
+            "should reuse existing workspaces, not create new ones"
+        );
         assert_eq!(dirs_before, dirs_after, "workspace dirs should be the same");
     }
 

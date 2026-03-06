@@ -38,8 +38,8 @@ pub struct Config {
     #[facet(default = 4)]
     pub workers: u64,
 
-    #[facet(default = "default")]
-    pub id: String,
+    pub include: Vec<String>,
+    pub exclude: Vec<String>,
 }
 
 struct TomlFormat;
@@ -129,4 +129,44 @@ pub fn parse() -> Cli {
     };
     output.print_warnings();
     output.get_silent()
+}
+
+impl bough_core::Config for Config {
+    fn get_workers_count(&self) -> u64 {
+        self.workers
+    }
+
+    fn get_bough_state_dir(&self) -> std::path::PathBuf {
+        todo!()
+    }
+
+    fn get_base_root_path(&self) -> std::path::PathBuf {
+        todo!()
+    }
+
+    fn get_base_include_globs(&self) -> impl Iterator<Item = &str> {
+        vec![].into_iter()
+    }
+
+    fn get_base_exclude_globs(&self) -> impl Iterator<Item = &str> {
+        vec![].into_iter()
+    }
+
+    fn get_langs(&self) -> impl Iterator<Item = bough_core::LanguageId> {
+        vec![].into_iter()
+    }
+
+    fn get_lang_include_globs(
+        &self,
+        language_id: bough_core::LanguageId,
+    ) -> impl Iterator<Item = &str> {
+        vec![].into_iter()
+    }
+
+    fn get_lang_exclude_globs(
+        &self,
+        language_id: bough_core::LanguageId,
+    ) -> impl Iterator<Item = &str> {
+        vec![].into_iter()
+    }
 }

@@ -13,9 +13,7 @@ fn main() {
         3 => Level::DEBUG,
         _ => Level::TRACE,
     };
-    tracing_subscriber::fmt()
-        .with_max_level(log_level)
-        .init();
+    tracing_subscriber::fmt().with_max_level(log_level).init();
 
     let config_path = resolve_config_path();
 
@@ -32,17 +30,12 @@ fn main() {
                     println!("config file: {path}");
                 }
                 println!("workers: {}", cli.config.workers);
-                println!("id: {}", cli.config.id);
             }
             ShowCommand::File => match config_path {
                 Some(ref path) => println!("{path}"),
                 None => println!("no config file found"),
             },
         },
-        Command::Run => {
-            println!("run: not yet implemented");
-            println!("workers: {}", cli.config.workers);
-            println!("id: {}", cli.config.id);
-        }
+        Command::Run => {}
     }
 }
