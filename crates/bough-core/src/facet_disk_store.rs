@@ -44,6 +44,15 @@ where
         Ok(())
     }
 
+    // core[impl fds.remove]
+    pub fn remove(&mut self, key: &Key) -> Option<Val> {
+        let path = self.dir.join(format!("{key}.json"));
+        let data = std::fs::read_to_string(&path).ok()?;
+        let val: Val = facet_json::from_str(&data).ok()?;
+        std::fs::remove_file(path).ok()?;
+        Some(val)
+    }
+
     // core[impl fds.keys]
     pub fn keys(&self) -> impl Iterator<Item = Key> {
         let read_dir = match std::fs::read_dir(&self.dir) {
@@ -210,6 +219,35 @@ mod tests {
         let got = store.get(&key).unwrap();
         assert_eq!(got.data, "modified");
         assert_eq!(got.count, 99);
+    }
+
+    // core[verify fds.remove]
+    #[test]
+    fn remove_returns_val_and_deletes_from_disk() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut store: FacetDiskStore<TestKey, TestVal> =
+            FacetDiskStore::new(dir.path().to_path_buf());
+        let key = TestKey("rm".into());
+        let val = TestVal {
+            data: "gone".into(),
+            count: 3,
+        };
+        store.set(key.clone(), val.clone()).unwrap();
+        assert!(dir.path().join("rm.json").exists());
+
+        let removed = store.remove(&key).unwrap();
+        assert_eq!(removed, val);
+        assert!(!dir.path().join("rm.json").exists());
+        assert!(store.get(&key).is_none());
+    }
+
+    // core[verify fds.remove]
+    #[test]
+    fn remove_missing_key_returns_none() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut store: FacetDiskStore<TestKey, TestVal> =
+            FacetDiskStore::new(dir.path().to_path_buf());
+        assert!(store.remove(&TestKey("nope".into())).is_none());
     }
 
     // core[verify fds.live.startup]

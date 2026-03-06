@@ -13,7 +13,7 @@ core[fds.set]
 `FacetDiskStore::get(key, val) -> Result<(), _>` inserts val by key
 
 core[fds.remove]
-`FacetDiskStore::remove(key) -> Option<Val>` inserts val by key
+`FacetDiskStore::remove(key) -> Option<Val>` removes val by key
 
 core[fds.new]
 `FacetDiskStore::new(dir: PathBuf) -> Self` points fds at a specified directory
