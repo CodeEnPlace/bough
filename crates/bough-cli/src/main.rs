@@ -6,7 +6,7 @@ use config::{Command, ShowCommand, parse, resolve_config_path};
 use render::{Noop, Render};
 use tracing::{Level, debug, info};
 
-use crate::render::BaseFiles;
+use crate::render::{BaseFiles, MutantFiles};
 
 fn main() {
     let cli = parse();
@@ -30,7 +30,7 @@ fn main() {
         Command::Show { ref what } => {
             debug!(subcommand = ?what, "executing show command");
             match what {
-                ShowCommand::Files => {
+                ShowCommand::Files { lang: None } => {
                     let base = session.base();
                     let twigs = base.twigs().collect::<Vec<_>>();
                     let files = twigs
@@ -41,6 +41,20 @@ fn main() {
                     let paths = files.iter().map(|file| file.resolve()).collect();
 
                     Box::new(BaseFiles(paths))
+                }
+
+                ShowCommand::Files { lang: Some(lang) } => {
+                    let base = session.base();
+                    let twigs = base.mutant_twigs().collect::<Vec<_>>();
+                    let files = twigs
+                        .iter()
+                        .filter(|(l, _)| l == lang)
+                        .map(|(_, twig)| File::new(base, &twig))
+                        .collect::<Vec<_>>();
+
+                    let paths = files.iter().map(|file| file.resolve()).collect();
+
+                    Box::new(MutantFiles(*lang, paths))
                 }
             }
         }
