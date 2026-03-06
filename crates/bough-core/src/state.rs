@@ -22,3 +22,20 @@ pub struct State {
     mutation: Mutation,
     outcome: Option<Outcome>,
 }
+
+impl State {
+    pub fn new(mutation: Mutation) -> Self {
+        Self {
+            mutation,
+            outcome: None,
+        }
+    }
+
+    pub fn mutation(&self) -> &Mutation {
+        &self.mutation
+    }
+
+    pub fn has_outcome(&self) -> bool {
+        self.outcome.is_some()
+    }
+}
