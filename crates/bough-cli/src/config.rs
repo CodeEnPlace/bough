@@ -62,6 +62,7 @@ pub struct Config {
     pub lang: HashMap<bough_core::LanguageId, LanguageConfig>,
 }
 
+
 #[derive(Facet, Debug, Clone)]
 pub struct LanguageConfig {
     pub include: Vec<String>,
@@ -146,6 +147,37 @@ impl ConfigFormat for YamlFormat {
     fn parse(&self, contents: &str) -> Result<figue::ConfigValue, ConfigFormatError> {
         facet_yaml::from_str(contents).map_err(|e| ConfigFormatError::new(e.to_string()))
     }
+}
+
+// cli[impl config.exclude.from-vcs-ignore]
+// cli[impl config.lang.exclude.from-vcs-ignore]
+pub fn collect_vcs_ignore_globs(root: &std::path::Path) -> Vec<String> {
+    let mut globs = Vec::new();
+    let mut dir = Some(root.to_path_buf());
+    while let Some(d) = dir {
+        let gitignore = d.join(".gitignore");
+        if let Ok(content) = std::fs::read_to_string(&gitignore) {
+            debug!(path = %gitignore.display(), "reading vcs ignore file");
+            for line in content.lines() {
+                let trimmed = line.trim();
+                if trimmed.is_empty() || trimmed.starts_with('#') || trimmed.starts_with('!') {
+                    continue;
+                }
+                let pattern = if trimmed.starts_with('/') {
+                    trimmed[1..].to_string()
+                } else if trimmed.contains('/') {
+                    trimmed.to_string()
+                } else if trimmed.starts_with("**/") {
+                    trimmed.to_string()
+                } else {
+                    format!("**/{trimmed}")
+                };
+                globs.push(pattern);
+            }
+        }
+        dir = d.parent().map(|p| p.to_path_buf());
+    }
+    globs
 }
 
 const CONFIG_NAMES: &[&str] = &[
@@ -421,7 +453,7 @@ exclude = []
     #[test]
     fn lang_include_globs_prepend_base() {
         let cli = parse_ok(&["run"], FULL_TOML);
-        let globs: Vec<&str> = bough_core::Config::get_lang_include_globs(
+        let globs: Vec<String> = bough_core::Config::get_lang_include_globs(
             &cli.config,
             bough_core::LanguageId::Javascript,
         )
@@ -432,18 +464,20 @@ exclude = []
     #[test]
     fn lang_exclude_globs_prepend_base() {
         let cli = parse_ok(&["run"], FULL_TOML);
-        let globs: Vec<&str> = bough_core::Config::get_lang_exclude_globs(
+        let globs: Vec<String> = bough_core::Config::get_lang_exclude_globs(
             &cli.config,
             bough_core::LanguageId::Javascript,
         )
         .collect();
-        assert_eq!(globs, vec!["target/**", "node_modules/**"]);
+        assert!(globs.contains(&"target/**".to_string()));
+        assert!(globs.contains(&"node_modules/**".to_string()));
+        assert!(globs.iter().position(|g| g == "target/**") < globs.iter().position(|g| g == "node_modules/**"));
     }
 
     #[test]
     fn lang_include_globs_base_only_when_lang_empty() {
         let cli = parse_ok(&["run"], FULL_TOML);
-        let globs: Vec<&str> = bough_core::Config::get_lang_include_globs(
+        let globs: Vec<String> = bough_core::Config::get_lang_include_globs(
             &cli.config,
             bough_core::LanguageId::Typescript,
         )
@@ -454,23 +488,24 @@ exclude = []
     #[test]
     fn lang_exclude_globs_base_only_when_lang_empty() {
         let cli = parse_ok(&["run"], FULL_TOML);
-        let globs: Vec<&str> = bough_core::Config::get_lang_exclude_globs(
+        let globs: Vec<String> = bough_core::Config::get_lang_exclude_globs(
             &cli.config,
             bough_core::LanguageId::Typescript,
         )
         .collect();
-        assert_eq!(globs, vec!["target/**"]);
+        assert!(globs.contains(&"target/**".to_string()));
+        assert_eq!(globs[0], "target/**");
     }
 
     #[test]
     fn lang_globs_with_no_base_excludes() {
         let cli = parse_ok(&["run"], MINIMAL_TOML);
-        let globs: Vec<&str> = bough_core::Config::get_lang_exclude_globs(
+        let globs: Vec<String> = bough_core::Config::get_lang_exclude_globs(
             &cli.config,
             bough_core::LanguageId::Javascript,
         )
         .collect();
-        assert!(globs.is_empty());
+        assert!(globs.iter().all(|g| !MINIMAL_TOML.contains(g.as_str())));
     }
 
     #[test]
@@ -478,6 +513,79 @@ exclude = []
         let yaml = "include:\n  - \"src/**\"\nexclude: []\nlang:\n  js:\n    include:\n      - \"**/*.js\"\n    exclude: []\n";
         let cli = try_parse_from(&["run"], Some((yaml, "config.yaml"))).expect("should parse");
         assert_eq!(cli.config.include, vec!["src/**"]);
+    }
+
+    // cli[verify config.exclude.from-vcs-ignore]
+    #[test]
+    fn collect_vcs_ignore_reads_gitignore() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join(".gitignore"), "node_modules\n*.log\n").unwrap();
+        let globs = collect_vcs_ignore_globs(dir.path());
+        assert!(globs.contains(&"**/node_modules".to_string()));
+        assert!(globs.contains(&"**/*.log".to_string()));
+    }
+
+    // cli[verify config.exclude.from-vcs-ignore]
+    #[test]
+    fn collect_vcs_ignore_skips_comments_and_empty_lines() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(
+            dir.path().join(".gitignore"),
+            "# a comment\n\nnode_modules\n  \n",
+        )
+        .unwrap();
+        let globs = collect_vcs_ignore_globs(dir.path());
+        assert_eq!(globs.len(), 1);
+        assert!(globs.contains(&"**/node_modules".to_string()));
+    }
+
+    // cli[verify config.exclude.from-vcs-ignore]
+    #[test]
+    fn collect_vcs_ignore_skips_negation_patterns() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join(".gitignore"), "dist\n!dist/keep\n").unwrap();
+        let globs = collect_vcs_ignore_globs(dir.path());
+        assert_eq!(globs, vec!["**/dist"]);
+    }
+
+    // cli[verify config.exclude.from-vcs-ignore]
+    #[test]
+    fn collect_vcs_ignore_handles_slash_prefixed_patterns() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join(".gitignore"), "/build\n").unwrap();
+        let globs = collect_vcs_ignore_globs(dir.path());
+        assert_eq!(globs, vec!["build".to_string()]);
+    }
+
+    // cli[verify config.exclude.from-vcs-ignore]
+    #[test]
+    fn collect_vcs_ignore_preserves_glob_patterns() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join(".gitignore"), "**/*.o\nsrc/**/*.tmp\n").unwrap();
+        let globs = collect_vcs_ignore_globs(dir.path());
+        assert!(globs.contains(&"**/*.o".to_string()));
+        assert!(globs.contains(&"src/**/*.tmp".to_string()));
+    }
+
+    // cli[verify config.exclude.from-vcs-ignore]
+    #[test]
+    fn collect_vcs_ignore_returns_empty_when_no_gitignore() {
+        let dir = tempfile::tempdir().unwrap();
+        let globs = collect_vcs_ignore_globs(dir.path());
+        assert!(globs.is_empty());
+    }
+
+    // cli[verify config.exclude.from-vcs-ignore]
+    #[test]
+    fn collect_vcs_ignore_reads_parent_gitignore() {
+        let dir = tempfile::tempdir().unwrap();
+        let child = dir.path().join("project");
+        std::fs::create_dir_all(&child).unwrap();
+        std::fs::write(dir.path().join(".gitignore"), "*.log\n").unwrap();
+        std::fs::write(child.join(".gitignore"), "dist\n").unwrap();
+        let globs = collect_vcs_ignore_globs(&child);
+        assert!(globs.contains(&"**/dist".to_string()));
+        assert!(globs.contains(&"**/*.log".to_string()));
     }
 }
 
@@ -501,12 +609,14 @@ impl bough_core::Config for Config {
             .unwrap_or_else(|| env::current_dir().unwrap_or_else(|_| ".".into()))
     }
 
-    fn get_base_include_globs(&self) -> impl Iterator<Item = &str> {
-        self.include.iter().map(|s| s.as_str())
+    fn get_base_include_globs(&self) -> impl Iterator<Item = String> {
+        self.include.clone().into_iter()
     }
 
-    fn get_base_exclude_globs(&self) -> impl Iterator<Item = &str> {
-        self.exclude.iter().map(|s| s.as_str())
+    // cli[impl config.exclude.from-vcs-ignore]
+    fn get_base_exclude_globs(&self) -> impl Iterator<Item = String> {
+        let vcs = collect_vcs_ignore_globs(&self.get_base_root_path());
+        self.exclude.clone().into_iter().chain(vcs)
     }
 
     fn get_langs(&self) -> impl Iterator<Item = bough_core::LanguageId> {
@@ -516,31 +626,34 @@ impl bough_core::Config for Config {
     fn get_lang_include_globs(
         &self,
         language_id: bough_core::LanguageId,
-    ) -> impl Iterator<Item = &str> {
+    ) -> impl Iterator<Item = String> {
         self.include
             .iter()
-            .map(|s| s.as_str())
+            .cloned()
             .chain(
                 self.lang
                     .get(&language_id)
-                    .map(|c| c.include.iter().map(|s| s.as_str()).collect::<Vec<_>>())
+                    .map(|c| c.include.clone())
                     .unwrap_or_default(),
             )
             .collect::<Vec<_>>()
             .into_iter()
     }
 
+    // cli[impl config.lang.exclude.from-vcs-ignore]
     fn get_lang_exclude_globs(
         &self,
         language_id: bough_core::LanguageId,
-    ) -> impl Iterator<Item = &str> {
+    ) -> impl Iterator<Item = String> {
+        let vcs = collect_vcs_ignore_globs(&self.get_base_root_path());
         self.exclude
             .iter()
-            .map(|s| s.as_str())
+            .cloned()
+            .chain(vcs)
             .chain(
                 self.lang
                     .get(&language_id)
-                    .map(|c| c.exclude.iter().map(|s| s.as_str()).collect::<Vec<_>>())
+                    .map(|c| c.exclude.clone())
                     .unwrap_or_default(),
             )
             .collect::<Vec<_>>()
