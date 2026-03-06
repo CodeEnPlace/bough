@@ -27,7 +27,7 @@ Config::get_lang_exclude_globs must include all exclude paths from Config::get_b
 cli[config.lang.include.derived]
 Config::get_lang_include_globs must not include include paths from Config::get_base_include_globs
 
-cli[config.base-root-path]
+cli[config.base-root-path+2]
 `Config::get_base_root_path` should be set from a value in the config file
 
 cli[config.base-root-path.relative-from-file]
