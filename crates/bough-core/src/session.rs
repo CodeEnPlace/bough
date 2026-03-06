@@ -185,6 +185,30 @@ impl<C: Config> Session<C> {
         Ok(added)
     }
 
+    // bough[impl session.tend.state.remove-stale]
+    pub fn tend_remove_stale_states(&mut self) -> Result<Vec<MutationHash>, Error> {
+        let mutations_in_base: HashSet<Mutation> =
+            self.base.mutations().collect::<Result<_, _>>()?;
+        let mut hash_store = bough_typed_hash::MemoryHashStore::new();
+
+        let hashes_in_base: HashSet<MutationHash> = mutations_in_base
+            .iter()
+            .map(|m| m.hash(&mut hash_store).expect("hashing should not fail"))
+            .collect();
+
+        let stale_keys: Vec<MutationHash> = self
+            .mutations_state
+            .keys()
+            .filter(|k| !hashes_in_base.contains(k))
+            .collect();
+
+        for key in &stale_keys {
+            self.mutations_state.remove(key);
+        }
+
+        Ok(stale_keys)
+    }
+
     // bough[impl session.init.state.get]
     pub fn get_state(&self) -> &FacetDiskStore<MutationHash, State> {
         &self.mutations_state
@@ -504,6 +528,49 @@ mod tests {
         assert!(!added.is_empty());
         let final_count = session.get_state().keys().count();
         assert_eq!(final_count, initial_count + added.len());
+    }
+
+    // bough[verify session.tend.state.remove-stale]
+    #[test]
+    fn tend_remove_stale_states_removes_orphaned_entries() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(dir.path().join("src")).unwrap();
+        std::fs::write(dir.path().join("src/a.js"), "function foo() { return 1; }").unwrap();
+        std::fs::write(dir.path().join("src/b.js"), "function bar() { return 2; }").unwrap();
+        let config = make_js_config(dir.path());
+        let mut session = Session::new(config).unwrap();
+        let initial_count = session.get_state().keys().count();
+        assert!(initial_count > 0);
+
+        std::fs::remove_file(dir.path().join("src/b.js")).unwrap();
+        session.base = crate::base::Base::new(
+            dir.path().to_path_buf(),
+            crate::twig::TwigsIterBuilder::new().with_include_glob("src/**/*.js"),
+        )
+        .unwrap();
+        session.base.add_mutator(
+            LanguageId::Javascript,
+            crate::twig::TwigsIterBuilder::new().with_include_glob("src/**/*.js"),
+        );
+
+        let removed = session.tend_remove_stale_states().unwrap();
+        assert!(!removed.is_empty());
+        let final_count = session.get_state().keys().count();
+        assert!(final_count < initial_count);
+        assert_eq!(final_count + removed.len(), initial_count);
+    }
+
+    // bough[verify session.tend.state.remove-stale]
+    #[test]
+    fn tend_remove_stale_states_returns_empty_when_nothing_stale() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(dir.path().join("src")).unwrap();
+        std::fs::write(dir.path().join("src/a.js"), "function foo() { return 1; }").unwrap();
+        let config = make_js_config(dir.path());
+        let mut session = Session::new(config).unwrap();
+
+        let removed = session.tend_remove_stale_states().unwrap();
+        assert!(removed.is_empty());
     }
 
     // bough[verify session.init.state.remove-stale]
