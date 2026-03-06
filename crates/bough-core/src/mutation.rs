@@ -105,7 +105,7 @@ mod tests {
         let mutant = Mutant::new(
             crate::LanguageId::Javascript,
             &base,
-            &twig,
+            twig.clone(),
             MutantKind::BinaryOp(BinaryOpMutationKind::Add),
             Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
         );
@@ -122,7 +122,7 @@ mod tests {
         let mutant = Mutant::new(
             crate::LanguageId::Javascript,
             &base,
-            &twig,
+            twig.clone(),
             MutantKind::BinaryOp(BinaryOpMutationKind::Add),
             Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
         );
@@ -139,7 +139,7 @@ mod tests {
         let mutant = Mutant::new(
             crate::LanguageId::Javascript,
             &base,
-            &twig,
+            twig.clone(),
             MutantKind::BinaryOp(BinaryOpMutationKind::Add),
             Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
         );
@@ -154,7 +154,7 @@ mod tests {
         let mutant = Mutant::new(
             crate::LanguageId::Javascript,
             &base,
-            &twig,
+            twig.clone(),
             MutantKind::BinaryOp(BinaryOpMutationKind::Add),
             Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
         );
@@ -171,7 +171,7 @@ mod tests {
         let mutant = Mutant::new(
             crate::LanguageId::Javascript,
             &base,
-            &twig,
+            twig.clone(),
             MutantKind::BinaryOp(BinaryOpMutationKind::Add),
             Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
         );
@@ -188,7 +188,7 @@ mod tests {
         let mutant = Mutant::new(
             crate::LanguageId::Typescript,
             &base,
-            &twig,
+            twig.clone(),
             MutantKind::BinaryOp(BinaryOpMutationKind::Add),
             Span::new(Point::new(0, 0, 0), Point::new(0, 5, 5)),
         );
@@ -205,7 +205,7 @@ mod tests {
         let mutant = Mutant::new(
             crate::LanguageId::Javascript,
             &base,
-            &twig,
+            twig.clone(),
             MutantKind::Condition,
             Span::new(Point::new(0, 3, 3), Point::new(0, 10, 10)),
         );
@@ -224,7 +224,7 @@ mod tests {
         let mutant = Mutant::new(
             crate::LanguageId::Javascript,
             &base,
-            &twig,
+            twig.clone(),
             MutantKind::Condition,
             Span::new(Point::new(0, 3, 3), Point::new(0, 10, 10)),
         );
@@ -243,7 +243,7 @@ mod tests {
         let mutant = Mutant::new(
             crate::LanguageId::Javascript,
             &base,
-            &twig,
+            twig.clone(),
             MutantKind::StatementBlock,
             Span::new(Point::new(0, 15, 15), Point::new(0, 28, 28)),
         );
@@ -262,7 +262,7 @@ mod tests {
         let mutant = Mutant::new(
             crate::LanguageId::Javascript,
             &base,
-            &twig,
+            twig.clone(),
             MutantKind::BinaryOp(BinaryOpMutationKind::Add),
             Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
         );
@@ -281,7 +281,7 @@ mod tests {
         let mutant = Mutant::new(
             crate::LanguageId::Javascript,
             &base,
-            &twig,
+            twig.clone(),
             MutantKind::BinaryOp(BinaryOpMutationKind::Add),
             Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
         );
@@ -306,7 +306,7 @@ mod tests {
         let mutant = Mutant::new(
             crate::LanguageId::Javascript,
             &base,
-            &twig,
+            twig.clone(),
             MutantKind::BinaryOp(BinaryOpMutationKind::Add),
             Span::new(Point::new(0, 0, 0), Point::new(0, 10, 10)),
         );
@@ -327,14 +327,14 @@ mod tests {
         let m1 = Mutant::new(
             crate::LanguageId::Javascript,
             &base,
-            &twig,
+            twig.clone(),
             MutantKind::BinaryOp(BinaryOpMutationKind::Add),
             Span::new(Point::new(0, 0, 0), Point::new(0, 10, 10)),
         );
         let m2 = Mutant::new(
             crate::LanguageId::Javascript,
             &base,
-            &twig,
+            twig.clone(),
             MutantKind::Condition,
             Span::new(Point::new(0, 0, 0), Point::new(0, 10, 10)),
         );
@@ -357,7 +357,7 @@ mod tests {
         let m = Mutant::new(
             crate::LanguageId::Javascript,
             &base,
-            &twig,
+            twig.clone(),
             MutantKind::BinaryOp(BinaryOpMutationKind::Add),
             Span::new(Point::new(0, 0, 0), Point::new(0, 10, 10)),
         );
