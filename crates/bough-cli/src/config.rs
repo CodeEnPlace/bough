@@ -262,6 +262,17 @@ pub fn resolve_config_root() -> Option<std::path::PathBuf> {
     resolve_config().map(|(root, _)| root)
 }
 
+// bough[impl config.base-root-path.relative-via-figue]
+fn config_dir_from_report(report: &figue::DriverReport) -> Option<std::path::PathBuf> {
+    let fr = report.file_resolution.as_ref()?;
+    let picked = fr.paths.iter().find(|p| {
+        format!("{:?}", p.status).contains("Picked")
+    })?;
+    std::path::Path::new(picked.path.as_str())
+        .parent()
+        .map(|d| d.to_path_buf())
+}
+
 pub fn parse() -> Cli {
     let config = builder::<Cli>()
         .expect("schema should be valid")
@@ -296,15 +307,12 @@ pub fn parse() -> Cli {
         }
     };
     output.print_warnings();
-    let mut cli = output.get_silent();
+    let (mut cli, report) = output.into_parts();
 
     // bough[impl config.base-root-path+2]
     // bough[impl config.base-root-path.absolutized-relative-to-file]
-    if let Some((_, config_path)) = resolve_config() {
-        let config_dir = std::path::Path::new(&config_path)
-            .parent()
-            .expect("config file should have a parent directory");
-        cli.config.base_root_dir = resolve_root_path(config_dir, &cli.config.base_root_dir)
+    if let Some(config_dir) = config_dir_from_report(&report) {
+        cli.config.base_root_dir = resolve_root_path(&config_dir, &cli.config.base_root_dir)
             .to_string_lossy()
             .into_owned();
     }
@@ -721,6 +729,33 @@ exclude = []
         let globs = collect_vcs_ignore_globs(&child);
         assert!(globs.contains(&"**/dist".to_string()));
         assert!(globs.contains(&"**/*.log".to_string()));
+    }
+
+    // bough[verify config.base-root-path.relative-via-figue]
+    #[test]
+    fn config_dir_extracted_from_figue_report() {
+        let dir = tempfile::tempdir().unwrap();
+        let config_path = dir.path().join("bough.config.toml");
+        std::fs::write(&config_path, &config_toml_with_root(".")).unwrap();
+
+        let config = builder::<Cli>()
+            .expect("schema should be valid")
+            .cli(|cli| cli.args(["run"].iter().map(|s| s.to_string())))
+            .file(|f| {
+                f.default_paths(vec![config_path.to_string_lossy().into_owned()])
+                    .format(TomlFormat)
+                    .format(YamlFormat)
+            })
+            .build();
+
+        let output = Driver::new(config)
+            .run()
+            .into_result()
+            .expect("should parse");
+        let (_, report) = output.into_parts();
+        let config_dir = super::config_dir_from_report(&report);
+        assert!(config_dir.is_some(), "should extract config dir from figue report");
+        assert_eq!(config_dir.unwrap(), dir.path());
     }
 
     fn parse_from_disk(dir: &std::path::Path, config_filename: &str, toml: &str) -> Cli {
