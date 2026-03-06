@@ -1,26 +1,62 @@
 use std::path::PathBuf;
 
+use crate::config::Format;
+
 pub trait Render {
-    fn to_markdown(&self) -> String;
+    fn markdown(&self) -> String;
+    fn terse(&self) -> String;
+    fn verbose(&self) -> String;
+    fn render(&self, format: Format) -> String {
+        match format {
+            Format::Terse => self.terse(),
+            Format::Verbose => self.verbose(),
+            Format::Markdown => self.markdown(),
+            Format::Json => todo!(),
+        }
+    }
 }
 
 pub struct Noop;
 impl Render for Noop {
-    fn to_markdown(&self) -> String {
+    fn markdown(&self) -> String {
         String::new()
+    }
+
+    fn terse(&self) -> String {
+        todo!()
+    }
+
+    fn verbose(&self) -> String {
+        todo!()
     }
 }
 
 pub struct BaseFiles(pub Vec<PathBuf>);
 impl Render for BaseFiles {
-    fn to_markdown(&self) -> String {
+    fn markdown(&self) -> String {
         format!(
-            "# Files in Base Directory\n{}",
+            "# Files in Base Directory\n\n{}",
             self.0
                 .iter()
                 .map(|pb| format!("- {}", pb.to_string_lossy()))
                 .collect::<Vec<_>>()
                 .join("\n")
         )
+    }
+
+    fn terse(&self) -> String {
+        self.0
+            .iter()
+            .map(|pb| format!("{}", pb.to_string_lossy()))
+            .collect::<Vec<_>>()
+            .join(" ")
+    }
+
+    fn verbose(&self) -> String {
+        self.0
+            .iter()
+            .map(|pb| format!("{}", pb.to_string_lossy()))
+            .collect::<Vec<_>>()
+            .join("\n")
     }
 }

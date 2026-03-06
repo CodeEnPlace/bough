@@ -450,17 +450,21 @@ exclude = []
         assert_eq!(cli.config.include, vec!["src/**"]);
     }
 
+    // cli[verify config.lang.include.derived]
     #[test]
-    fn lang_include_globs_prepend_base() {
+    fn lang_include_globs_does_not_include_base() {
         let cli = parse_ok(&["run"], FULL_TOML);
         let globs: Vec<String> = bough_core::Config::get_lang_include_globs(
             &cli.config,
             bough_core::LanguageId::Javascript,
         )
         .collect();
-        assert_eq!(globs, vec!["src/**", "lib/**", "**/*.js"]);
+        assert_eq!(globs, vec!["**/*.js"]);
+        assert!(!globs.contains(&"src/**".to_string()));
+        assert!(!globs.contains(&"lib/**".to_string()));
     }
 
+    // cli[verify config.lang.exclude.derived]
     #[test]
     fn lang_exclude_globs_prepend_base() {
         let cli = parse_ok(&["run"], FULL_TOML);
@@ -475,14 +479,14 @@ exclude = []
     }
 
     #[test]
-    fn lang_include_globs_base_only_when_lang_empty() {
+    fn lang_include_globs_only_lang_specific() {
         let cli = parse_ok(&["run"], FULL_TOML);
         let globs: Vec<String> = bough_core::Config::get_lang_include_globs(
             &cli.config,
             bough_core::LanguageId::Typescript,
         )
         .collect();
-        assert_eq!(globs, vec!["src/**", "lib/**", "**/*.ts"]);
+        assert_eq!(globs, vec!["**/*.ts"]);
     }
 
     #[test]
@@ -651,25 +655,21 @@ impl bough_core::Config for Config {
         self.lang.keys().copied().collect::<Vec<_>>().into_iter()
     }
 
+    // cli[impl config.lang.include.derived]
     fn get_lang_include_globs(
         &self,
         language_id: bough_core::LanguageId,
     ) -> impl Iterator<Item = String> {
-        self.include
-            .iter()
-            .cloned()
-            .chain(
-                self.lang
-                    .get(&language_id)
-                    .map(|c| c.include.clone())
-                    .unwrap_or_default(),
-            )
-            .collect::<Vec<_>>()
+        self.lang
+            .get(&language_id)
+            .map(|c| c.include.clone())
+            .unwrap_or_default()
             .into_iter()
     }
 
     // cli[impl config.lang.exclude.from-vcs-ignore]
     // cli[impl config.lang.exclude.bough-dir]
+    // cli[impl config.lang.exclude.derived]
     fn get_lang_exclude_globs(
         &self,
         language_id: bough_core::LanguageId,
