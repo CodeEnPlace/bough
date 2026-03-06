@@ -108,6 +108,8 @@ pub struct Workspace<'a> {
     active: Option<ActiveMutation>,
 }
 
+/// Workspace is meant for actiing in a workspace directory, and to act as a handle for it
+/// It's not for storing state or making decitions, that's [Session]'s job
 impl<'a> Workspace<'a> {
     // core[impl workspace.new]
     // core[impl workspace.new.dir]

@@ -59,7 +59,9 @@ impl TwigsIterBuilder {
             .iter()
             .filter_map(|p| glob::Pattern::new(&root_path.join(p).to_string_lossy()).ok())
             .collect();
-        let walker = walkdir::WalkDir::new(root_path).sort_by_file_name().into_iter();
+        let walker = walkdir::WalkDir::new(root_path)
+            .sort_by_file_name()
+            .into_iter();
         TwigsIter {
             root,
             include,
@@ -157,7 +159,7 @@ mod tests {
         }
     }
 
-    fn sorted_twigs(iter: TwigsIter<impl Root>) -> Vec<PathBuf> {
+    fn sorted_twigs<'a, R: Root>(iter: TwigsIter<'a, R>) -> Vec<PathBuf> {
         let mut twigs: Vec<PathBuf> = iter.map(|t| t.path().to_path_buf()).collect();
         twigs.sort();
         twigs

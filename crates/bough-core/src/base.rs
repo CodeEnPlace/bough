@@ -1,6 +1,6 @@
 use crate::LanguageId;
 use crate::file::{Error, Root, Twig};
-use crate::mutant::{BasedMutant, TwigMutantsIter};
+use crate::mutant::{Mutant, TwigMutantsIter};
 use crate::mutation::{Mutation, MutationIter};
 use crate::twig::TwigsIterBuilder;
 use std::collections::HashMap;
@@ -14,6 +14,8 @@ pub struct Base {
     mutant_files: HashMap<LanguageId, TwigsIterBuilder>,
 }
 
+/// Base is meant for *scanning* the base directory, and to act as a handle for it
+/// It's not for storing state or making decitions, that's [Session]'s job
 impl Base {
     pub fn new(root: PathBuf, files: TwigsIterBuilder) -> Result<Self, Error> {
         crate::file::validate_root(&root)?;
@@ -43,10 +45,10 @@ impl Base {
             })
     }
 
-    pub fn mutants(&self) -> impl Iterator<Item = std::io::Result<BasedMutant<'_>>> + '_ {
+    pub fn mutants(&self) -> impl Iterator<Item = std::io::Result<Mutant>> + '_ {
         self.mutant_twigs().flat_map(|(language_id, twig)| {
             match TwigMutantsIter::new(language_id, self, &twig) {
-                Ok(iter) => iter.map(Ok).collect::<Vec<_>>(),
+                Ok(iter) => iter.map(|bm| Ok(bm.into_mutant())).collect::<Vec<_>>(),
                 Err(e) => vec![Err(e)],
             }
         })
@@ -54,7 +56,7 @@ impl Base {
 
     pub fn mutations(&self) -> impl Iterator<Item = std::io::Result<Mutation>> + '_ {
         self.mutants().flat_map(|r| match r {
-            Ok(bm) => MutationIter::new(bm.mutant()).map(Ok).collect::<Vec<_>>(),
+            Ok(m) => MutationIter::new(&m).map(Ok).collect::<Vec<_>>(),
             Err(e) => vec![Err(e)],
         })
     }

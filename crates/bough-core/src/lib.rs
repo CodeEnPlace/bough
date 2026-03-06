@@ -7,6 +7,7 @@ mod mutant;
 mod mutation;
 mod outcome;
 mod phase;
+mod session;
 mod test_id;
 mod twig;
 mod workspace;
