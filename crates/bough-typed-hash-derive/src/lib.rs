@@ -166,6 +166,13 @@ pub fn derive_typed_hash(input: TokenStream) -> TokenStream {
             }
         }
 
+        impl ::std::str::FromStr for #name {
+            type Err = String;
+            fn from_str(s: &str) -> ::std::result::Result<Self, Self::Err> {
+                bough_typed_hash::hex_to_bytes(s).map(Self)
+            }
+        }
+
     };
 
     expanded.into()

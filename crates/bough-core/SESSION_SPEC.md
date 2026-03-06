@@ -3,8 +3,14 @@
 core[session.init]
 `Session::<Config>::new(config: Config) -> Result<Self, _>`
 
-core[session.mutations_in_base]
-`Session::mutations_in_base -> &HashSet<Mutation>` returns all the possible mutations found in the base
+core[session.init.state.attach]
+`Session::new` will create a mutations_state pointing at `Config::get_bough_state_dir() + "/state"`
 
-core[session.mutations_on_disk]
-`Session::mutations_on_disk -> Iter<&MutationState>` returns all mutations
+core[session.init.state.get]
+`Session::get_state()` returns ref to mutations_state
+
+core[session.init.state.add-missing]
+`Session::new` will add any mutations_in_base that are missing to mutations_state, defaulting `outcome` to `None`
+
+core[session.init.state.remove-stale]
+`Session::new` will remove any mutations_state that are missing from mutations_in_base
