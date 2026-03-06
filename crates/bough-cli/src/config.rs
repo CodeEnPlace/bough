@@ -524,6 +524,7 @@ exclude = []
     }
 
     // cli[verify config.lang.exclude.bough-dir]
+    // cli[verify config.lang.exclude.from-vcs-ignore]
     #[test]
     fn lang_exclude_globs_includes_bough_dir() {
         let cli = parse_ok(&["run"], MINIMAL_TOML);
