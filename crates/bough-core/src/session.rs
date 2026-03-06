@@ -83,6 +83,7 @@ impl<C: Config> Session<C> {
             base.add_mutator(lang, lang_twigs_iter_builder);
         }
 
+        debug!("search for mutations in base");
         let mutations_in_base: HashSet<Mutation> = base.mutations().collect::<Result<_, _>>()?;
         debug!(
             count = mutations_in_base.len(),
