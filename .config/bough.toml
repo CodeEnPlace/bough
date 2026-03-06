@@ -1,5 +1,5 @@
 include = ["**/*"]
-exclude = ["**/target/**"]
+exclude = ["**/target/**", "**/node_modules/**", "**/.bough/**"]
 
 [lang.js]
 include = ["**/*.js"]
