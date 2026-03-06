@@ -515,6 +515,26 @@ exclude = []
         assert_eq!(cli.config.include, vec!["src/**"]);
     }
 
+    // cli[verify config.exclude.bough-dir]
+    #[test]
+    fn base_exclude_globs_includes_bough_dir() {
+        let cli = parse_ok(&["run"], MINIMAL_TOML);
+        let globs: Vec<String> = bough_core::Config::get_base_exclude_globs(&cli.config).collect();
+        assert!(globs.iter().any(|g| g.contains(".bough")));
+    }
+
+    // cli[verify config.lang.exclude.bough-dir]
+    #[test]
+    fn lang_exclude_globs_includes_bough_dir() {
+        let cli = parse_ok(&["run"], MINIMAL_TOML);
+        let globs: Vec<String> = bough_core::Config::get_lang_exclude_globs(
+            &cli.config,
+            bough_core::LanguageId::Javascript,
+        )
+        .collect();
+        assert!(globs.iter().any(|g| g.contains(".bough")));
+    }
+
     // cli[verify config.exclude.from-vcs-ignore]
     #[test]
     fn collect_vcs_ignore_reads_gitignore() {
@@ -614,9 +634,16 @@ impl bough_core::Config for Config {
     }
 
     // cli[impl config.exclude.from-vcs-ignore]
+    // cli[impl config.exclude.bough-dir]
     fn get_base_exclude_globs(&self) -> impl Iterator<Item = String> {
-        let vcs = collect_vcs_ignore_globs(&self.get_base_root_path());
-        self.exclude.clone().into_iter().chain(vcs)
+        let root = self.get_base_root_path();
+        let vcs = collect_vcs_ignore_globs(&root);
+        let bough_dir = self.get_bough_state_dir();
+        let bough_glob = bough_dir
+            .strip_prefix(&root)
+            .map(|rel| format!("{}/**", rel.display()))
+            .unwrap_or_else(|_| format!("{}/**", bough_dir.display()));
+        self.exclude.clone().into_iter().chain(vcs).chain(std::iter::once(bough_glob))
     }
 
     fn get_langs(&self) -> impl Iterator<Item = bough_core::LanguageId> {
@@ -641,15 +668,23 @@ impl bough_core::Config for Config {
     }
 
     // cli[impl config.lang.exclude.from-vcs-ignore]
+    // cli[impl config.lang.exclude.bough-dir]
     fn get_lang_exclude_globs(
         &self,
         language_id: bough_core::LanguageId,
     ) -> impl Iterator<Item = String> {
-        let vcs = collect_vcs_ignore_globs(&self.get_base_root_path());
+        let root = self.get_base_root_path();
+        let vcs = collect_vcs_ignore_globs(&root);
+        let bough_dir = self.get_bough_state_dir();
+        let bough_glob = bough_dir
+            .strip_prefix(&root)
+            .map(|rel| format!("{}/**", rel.display()))
+            .unwrap_or_else(|_| format!("{}/**", bough_dir.display()));
         self.exclude
             .iter()
             .cloned()
             .chain(vcs)
+            .chain(std::iter::once(bough_glob))
             .chain(
                 self.lang
                     .get(&language_id)
