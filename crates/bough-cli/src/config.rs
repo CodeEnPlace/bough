@@ -64,7 +64,6 @@ pub struct Config {
     #[facet(default = 1)]
     pub threads: u64,
 
-    #[facet(default = ".")]
     pub base_root_dir: String,
 
     pub include: Vec<String>,
@@ -73,7 +72,6 @@ pub struct Config {
 
     pub lang: HashMap<bough_core::LanguageId, LanguageConfig>,
 }
-
 
 #[derive(Facet, Debug, Clone)]
 pub struct LanguageConfig {
@@ -222,13 +220,7 @@ fn find_config_candidates() -> Vec<(std::path::PathBuf, String)> {
 // cli[impl config.base-root-path+2]
 // cli[impl config.base-root-path.relative-from-file]
 pub fn resolve_root_path(config_dir: &std::path::Path, root: &str) -> std::path::PathBuf {
-    let path = std::path::Path::new(root);
-    let joined = if path.is_absolute() {
-        path.to_path_buf()
-    } else {
-        config_dir.join(path)
-    };
-    joined.canonicalize().unwrap_or(joined)
+    todo!()
 }
 
 // cli[impl config.base-root-path.wherever]
@@ -244,7 +236,9 @@ pub fn resolve_config_from(start: &std::path::Path) -> Option<(std::path::PathBu
 }
 
 pub fn resolve_config() -> Option<(std::path::PathBuf, String)> {
-    env::current_dir().ok().and_then(|d| resolve_config_from(&d))
+    env::current_dir()
+        .ok()
+        .and_then(|d| resolve_config_from(&d))
 }
 
 pub fn resolve_config_path() -> Option<String> {
@@ -261,9 +255,14 @@ pub fn parse() -> Cli {
         .cli(|cli| cli)
         .env(|env| env)
         .file(|f| {
-            f.default_paths(find_config_candidates().into_iter().map(|(_, p)| p).collect::<Vec<_>>())
-                .format(TomlFormat)
-                .format(YamlFormat)
+            f.default_paths(
+                find_config_candidates()
+                    .into_iter()
+                    .map(|(_, p)| p)
+                    .collect::<Vec<_>>(),
+            )
+            .format(TomlFormat)
+            .format(YamlFormat)
         })
         .build();
 
@@ -287,11 +286,8 @@ pub fn parse() -> Cli {
     let mut cli = output.get_silent();
 
     // cli[impl config.base-root-path.relative-from-file]
-    let config_dir = resolve_config_root()
-        .unwrap_or_else(|| env::current_dir().unwrap_or_else(|_| ".".into()));
-    cli.config.base_root_dir = resolve_root_path(&config_dir, &cli.config.base_root_dir)
-        .to_string_lossy()
-        .into_owned();
+    // cli[impl config.base-root-path.wherever]
+    todo!("absolutize cli.config.base_root_dir relative to config file location");
 
     let errors = cli.validate();
     if !errors.is_empty() {
@@ -315,6 +311,7 @@ mod tests {
     use super::*;
 
     const MINIMAL_TOML: &str = r#"
+base_root_dir = "."
 include = ["src/**"]
 exclude = []
 
@@ -324,6 +321,7 @@ exclude = []
 "#;
 
     const FULL_TOML: &str = r#"
+base_root_dir = "."
 workers = 16
 include = ["src/**", "lib/**"]
 exclude = ["target/**"]
@@ -428,6 +426,7 @@ exclude = []
     #[test]
     fn empty_include_fails_validation() {
         let toml = r#"
+base_root_dir = "."
 include = []
 exclude = []
 
@@ -477,6 +476,7 @@ exclude = []
     #[test]
     fn empty_lang_fails_validation() {
         let toml = r#"
+base_root_dir = "."
 include = ["src/**"]
 exclude = []
 
@@ -488,7 +488,7 @@ exclude = []
 
     #[test]
     fn json_config() {
-        let json = r#"{"include": ["src/**"], "exclude": [], "lang": {"js": {"include": ["**/*.js"], "exclude": []}}}"#;
+        let json = r#"{"base_root_dir": ".", "include": ["src/**"], "exclude": [], "lang": {"js": {"include": ["**/*.js"], "exclude": []}}}"#;
         let cli = try_parse_from(&["run"], Some((json, "config.json"))).expect("should parse");
         assert_eq!(cli.config.include, vec!["src/**"]);
     }
@@ -518,7 +518,10 @@ exclude = []
         .collect();
         assert!(globs.contains(&"target/**".to_string()));
         assert!(globs.contains(&"node_modules/**".to_string()));
-        assert!(globs.iter().position(|g| g == "target/**") < globs.iter().position(|g| g == "node_modules/**"));
+        assert!(
+            globs.iter().position(|g| g == "target/**")
+                < globs.iter().position(|g| g == "node_modules/**")
+        );
     }
 
     #[test]
@@ -557,7 +560,7 @@ exclude = []
 
     #[test]
     fn yaml_config() {
-        let yaml = "include:\n  - \"src/**\"\nexclude: []\nlang:\n  js:\n    include:\n      - \"**/*.js\"\n    exclude: []\n";
+        let yaml = "base_root_dir: \".\"\ninclude:\n  - \"src/**\"\nexclude: []\nlang:\n  js:\n    include:\n      - \"**/*.js\"\n    exclude: []\n";
         let cli = try_parse_from(&["run"], Some((yaml, "config.yaml"))).expect("should parse");
         assert_eq!(cli.config.include, vec!["src/**"]);
     }
@@ -614,9 +617,17 @@ exclude = []
 
     // cli[verify config.base-root-path+2]
     #[test]
-    fn base_root_dir_defaults_to_dot() {
-        let cli = parse_ok(&["run"], MINIMAL_TOML);
-        assert_eq!(cli.config.base_root_dir, ".");
+    fn base_root_dir_required_in_config() {
+        let toml = r#"
+include = ["src/**"]
+exclude = []
+
+[lang.js]
+include = ["**/*.js"]
+exclude = []
+"#;
+        let errors = parse_err(&["run"], toml);
+        assert!(errors.iter().any(|e| matches!(e, Error::Parse(_))));
     }
 
     // cli[verify config.base-root-path.relative-from-file]
@@ -792,7 +803,7 @@ impl bough_core::Config for Config {
 
     // cli[impl config.base-root-path+2]
     fn get_base_root_path(&self) -> std::path::PathBuf {
-        std::path::PathBuf::from(&self.base_root_dir)
+        todo!()
     }
 
     fn get_base_include_globs(&self) -> impl Iterator<Item = String> {
@@ -811,7 +822,12 @@ impl bough_core::Config for Config {
             .strip_prefix(&root)
             .map(|rel| format!("{}/**", rel.display()))
             .unwrap_or_else(|_| format!("{}/**", bough_dir.display()));
-        self.exclude.clone().into_iter().chain(vcs_ignore).chain(vcs_dirs).chain(std::iter::once(bough_glob))
+        self.exclude
+            .clone()
+            .into_iter()
+            .chain(vcs_ignore)
+            .chain(vcs_dirs)
+            .chain(std::iter::once(bough_glob))
     }
 
     fn get_langs(&self) -> impl Iterator<Item = bough_core::LanguageId> {
