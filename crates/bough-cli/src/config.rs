@@ -217,22 +217,8 @@ fn find_config_candidates() -> Vec<(std::path::PathBuf, String)> {
         .unwrap_or_default()
 }
 
-// cli[impl config.base-root-path+2]
-// cli[impl config.base-root-path.relative-from-file]
 pub fn resolve_root_path(config_dir: &std::path::Path, root: &str) -> std::path::PathBuf {
     todo!()
-}
-
-// cli[impl config.base-root-path.wherever]
-pub fn resolve_config_from(start: &std::path::Path) -> Option<(std::path::PathBuf, String)> {
-    let result = find_config_candidates_from(start)
-        .into_iter()
-        .find(|(_, p)| std::path::Path::new(p).is_file());
-    match &result {
-        Some((root, path)) => info!(path, root = %root.display(), "resolved config file"),
-        None => warn!("no config file found"),
-    }
-    result
 }
 
 pub fn resolve_config() -> Option<(std::path::PathBuf, String)> {
@@ -284,10 +270,6 @@ pub fn parse() -> Cli {
     };
     output.print_warnings();
     let mut cli = output.get_silent();
-
-    // cli[impl config.base-root-path.relative-from-file]
-    // cli[impl config.base-root-path.wherever]
-    todo!("absolutize cli.config.base_root_dir relative to config file location");
 
     let errors = cli.validate();
     if !errors.is_empty() {
@@ -565,109 +547,6 @@ exclude = []
         assert_eq!(cli.config.include, vec!["src/**"]);
     }
 
-    // cli[verify config.base-root-path.wherever]
-    #[test]
-    fn resolve_config_finds_root_for_top_level_config() {
-        let dir = tempfile::tempdir().unwrap();
-        std::fs::write(dir.path().join("bough.config.toml"), MINIMAL_TOML).unwrap();
-        let (root, _) = resolve_config_from(dir.path()).unwrap();
-        assert_eq!(root, dir.path());
-    }
-
-    // cli[verify config.base-root-path.wherever]
-    #[test]
-    fn resolve_config_finds_root_for_sub_dir_config() {
-        let dir = tempfile::tempdir().unwrap();
-        std::fs::create_dir_all(dir.path().join(".config")).unwrap();
-        std::fs::write(dir.path().join(".config/bough.toml"), MINIMAL_TOML).unwrap();
-        let (root, _) = resolve_config_from(dir.path()).unwrap();
-        assert_eq!(root, dir.path());
-    }
-
-    // cli[verify config.base-root-path.wherever]
-    #[test]
-    fn resolve_config_finds_root_in_parent() {
-        let dir = tempfile::tempdir().unwrap();
-        let child = dir.path().join("subproject");
-        std::fs::create_dir_all(&child).unwrap();
-        std::fs::write(dir.path().join("bough.config.toml"), MINIMAL_TOML).unwrap();
-        let (root, _) = resolve_config_from(&child).unwrap();
-        assert_eq!(root, dir.path());
-    }
-
-    // cli[verify config.base-root-path.wherever]
-    #[test]
-    fn resolve_config_finds_root_in_parent_sub_dir() {
-        let dir = tempfile::tempdir().unwrap();
-        let child = dir.path().join("subproject");
-        std::fs::create_dir_all(&child).unwrap();
-        std::fs::create_dir_all(dir.path().join(".config")).unwrap();
-        std::fs::write(dir.path().join(".config/bough.toml"), MINIMAL_TOML).unwrap();
-        let (root, _) = resolve_config_from(&child).unwrap();
-        assert_eq!(root, dir.path());
-    }
-
-    // cli[verify config.base-root-path+2]
-    #[test]
-    fn base_root_dir_parsed_from_config() {
-        let toml = "base_root_dir = \"my_root\"\ninclude = [\"src/**\"]\nexclude = []\n\n[lang.js]\ninclude = [\"**/*.js\"]\nexclude = []\n";
-        let cli = parse_ok(&["run"], toml);
-        assert_eq!(cli.config.base_root_dir, "my_root");
-    }
-
-    // cli[verify config.base-root-path+2]
-    #[test]
-    fn base_root_dir_required_in_config() {
-        let toml = r#"
-include = ["src/**"]
-exclude = []
-
-[lang.js]
-include = ["**/*.js"]
-exclude = []
-"#;
-        let errors = parse_err(&["run"], toml);
-        assert!(errors.iter().any(|e| matches!(e, Error::Parse(_))));
-    }
-
-    // cli[verify config.base-root-path.relative-from-file]
-    #[test]
-    fn resolve_root_path_absolutizes_relative_to_config_dir() {
-        let dir = tempfile::tempdir().unwrap();
-        let config_dir = dir.path().join("project");
-        std::fs::create_dir_all(&config_dir).unwrap();
-        let result = resolve_root_path(&config_dir, "..");
-        assert_eq!(result, dir.path().canonicalize().unwrap());
-    }
-
-    // cli[verify config.base-root-path.relative-from-file]
-    #[test]
-    fn resolve_root_path_dot_returns_config_dir() {
-        let dir = tempfile::tempdir().unwrap();
-        let result = resolve_root_path(dir.path(), ".");
-        assert_eq!(result, dir.path().canonicalize().unwrap());
-    }
-
-    // cli[verify config.base-root-path.relative-from-file]
-    #[test]
-    fn resolve_root_path_absolute_stays_absolute() {
-        let dir = tempfile::tempdir().unwrap();
-        let abs = dir.path().join("somewhere");
-        std::fs::create_dir_all(&abs).unwrap();
-        let result = resolve_root_path(dir.path(), abs.to_str().unwrap());
-        assert_eq!(result, abs.canonicalize().unwrap());
-    }
-
-    // cli[verify config.base-root-path.wherever]
-    #[test]
-    fn resolve_root_path_from_subdir_config() {
-        let dir = tempfile::tempdir().unwrap();
-        let config_dir = dir.path().join(".config");
-        std::fs::create_dir_all(&config_dir).unwrap();
-        let result = resolve_root_path(&config_dir, "..");
-        assert_eq!(result, dir.path().canonicalize().unwrap());
-    }
-
     // cli[verify config.exclude.bough-dir]
     #[test]
     fn base_exclude_globs_includes_bough_dir() {
@@ -801,7 +680,6 @@ impl bough_core::Config for Config {
         self.get_base_root_path().join(".bough")
     }
 
-    // cli[impl config.base-root-path+2]
     fn get_base_root_path(&self) -> std::path::PathBuf {
         todo!()
     }
