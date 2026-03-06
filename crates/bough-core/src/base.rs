@@ -5,6 +5,7 @@ use crate::mutation::{Mutation, MutationIter};
 use crate::twig::TwigsIterBuilder;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use tracing::{debug, trace, warn};
 
 // core[impl base.root]
 #[derive(Debug, Clone, PartialEq)]
@@ -19,6 +20,7 @@ pub struct Base {
 impl Base {
     pub fn new(root: PathBuf, files: TwigsIterBuilder) -> Result<Self, Error> {
         crate::file::validate_root(&root)?;
+        debug!(root = %root.display(), "created base");
         Ok(Self {
             root,
             files,
@@ -27,6 +29,7 @@ impl Base {
     }
 
     pub fn add_mutator(&mut self, language_id: LanguageId, files: TwigsIterBuilder) {
+        debug!(lang = ?language_id, "added mutator");
         self.mutant_files.insert(language_id, files);
     }
 
@@ -47,9 +50,13 @@ impl Base {
 
     pub fn mutants(&self) -> impl Iterator<Item = std::io::Result<Mutant>> + '_ {
         self.mutant_twigs().flat_map(|(language_id, twig)| {
+            trace!(lang = ?language_id, twig = %twig.path().display(), "scanning twig for mutants");
             match TwigMutantsIter::new(language_id, self, &twig) {
                 Ok(iter) => iter.map(|bm| Ok(bm.into_mutant())).collect::<Vec<_>>(),
-                Err(e) => vec![Err(e)],
+                Err(e) => {
+                    warn!(lang = ?language_id, twig = %twig.path().display(), error = %e, "failed to scan twig for mutants");
+                    vec![Err(e)]
+                }
             }
         })
     }
