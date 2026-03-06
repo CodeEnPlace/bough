@@ -225,6 +225,7 @@ impl<'a> Workspace<'a> {
     }
 
     // core[impl workspace.validate-unchanged]
+    // core[impl workspace.validate-unchanged.untracked]
     pub fn validate_unchanged(&self) -> Result<(), Error> {
         for twig in self.files() {
             let base_file = File::new(self.base, &twig).resolve();
@@ -379,6 +380,18 @@ mod tests {
         let ws = Workspace::new(ws_dir.path().to_path_buf(), &base).unwrap();
         std::fs::write(ws.path().join("src/a.js"), "MUTATED").unwrap();
         assert!(ws.validate_unchanged().is_err());
+    }
+
+    // core[verify workspace.validate-unchanged.untracked]
+    #[test]
+    fn validate_unchanged_ignores_extra_files() {
+        let (_base_dir, base) = make_base();
+        let ws_dir = tempfile::tempdir().unwrap();
+        let ws = Workspace::new(ws_dir.path().to_path_buf(), &base).unwrap();
+        std::fs::write(ws.path().join("extra.txt"), "not tracked").unwrap();
+        std::fs::create_dir_all(ws.path().join("other")).unwrap();
+        std::fs::write(ws.path().join("other/file.js"), "also not tracked").unwrap();
+        ws.validate_unchanged().unwrap();
     }
 
     // core[verify workspace.bind.validate-unchanged]
