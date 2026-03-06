@@ -730,13 +730,13 @@ exclude = []
         }
         std::fs::write(&config_path, toml).unwrap();
 
-        let config_dir = config_path.parent().unwrap();
+        let (_, resolved_path) = resolve_config_from(dir).expect("should find config file");
 
         let config = builder::<Cli>()
             .expect("schema should be valid")
             .cli(|cli| cli.args(["run"].iter().map(|s| s.to_string())))
             .file(|f| {
-                f.default_paths(vec![config_path.to_string_lossy().into_owned()])
+                f.default_paths(vec![resolved_path.clone()])
                     .format(TomlFormat)
                     .format(YamlFormat)
             })
@@ -748,6 +748,9 @@ exclude = []
             .expect("should parse")
             .get_silent();
 
+        let config_dir = std::path::Path::new(&resolved_path)
+            .parent()
+            .expect("config file should have a parent directory");
         cli.config.base_root_dir = resolve_root_path(config_dir, &cli.config.base_root_dir)
             .to_string_lossy()
             .into_owned();
