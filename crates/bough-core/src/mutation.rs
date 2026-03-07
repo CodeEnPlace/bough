@@ -57,6 +57,12 @@ impl Mutation {
     pub fn subst(&self) -> &str {
         &self.subst
     }
+
+    pub fn apply_to_complete_src_string(&self, src: &str) -> String {
+        let start = self.mutant.span().start().byte();
+        let end = self.mutant.span().end().byte();
+        format!("{}{}{}", &src[..start], self.subst, &src[end..])
+    }
 }
 
 #[cfg(test)]
@@ -358,5 +364,61 @@ mod tests {
         )
         .unwrap();
         (dir, base)
+    }
+
+    #[test]
+    fn apply_to_complete_src_string_replaces_binary_op() {
+        let src = "return a + b;";
+        //                  ^  byte 9..10
+        let mutant = Mutant::new(
+            crate::LanguageId::Javascript,
+            Twig::new(PathBuf::from("src/a.js")).unwrap(),
+            MutantKind::BinaryOp(BinaryOpMutationKind::Add),
+            Span::new(Point::new(0, 9, 9), Point::new(0, 10, 10)),
+        );
+        let mutation = Mutation { mutant, subst: "-".into() };
+        assert_eq!(mutation.apply_to_complete_src_string(src), "return a - b;");
+    }
+
+    #[test]
+    fn apply_to_complete_src_string_multiline() {
+        let src = "function f() {\n    return a + b;\n}";
+        //                                    ^  byte 28..29
+        let mutant = Mutant::new(
+            crate::LanguageId::Javascript,
+            Twig::new(PathBuf::from("src/a.js")).unwrap(),
+            MutantKind::BinaryOp(BinaryOpMutationKind::Add),
+            Span::new(Point::new(1, 13, 28), Point::new(1, 14, 29)),
+        );
+        let mutation = Mutation { mutant, subst: "*".into() };
+        assert_eq!(mutation.apply_to_complete_src_string(src), "function f() {\n    return a * b;\n}");
+    }
+
+    #[test]
+    fn apply_to_complete_src_string_different_length_subst() {
+        let src = "if (x) { foo(); }";
+        //                 ^^^^^^^^^^  bytes 7..17
+        let mutant = Mutant::new(
+            crate::LanguageId::Javascript,
+            Twig::new(PathBuf::from("src/a.js")).unwrap(),
+            MutantKind::StatementBlock,
+            Span::new(Point::new(0, 7, 7), Point::new(0, 17, 17)),
+        );
+        let mutation = Mutation { mutant, subst: "{}".into() };
+        assert_eq!(mutation.apply_to_complete_src_string(src), "if (x) {}");
+    }
+
+    #[test]
+    fn apply_to_complete_src_string_condition() {
+        let src = "if (a > 0) { return 1; }";
+        //            ^^^^^^^  bytes 3..10 is "(a > 0)"
+        let mutant = Mutant::new(
+            crate::LanguageId::Javascript,
+            Twig::new(PathBuf::from("src/a.js")).unwrap(),
+            MutantKind::Condition,
+            Span::new(Point::new(0, 3, 3), Point::new(0, 10, 10)),
+        );
+        let mutation = Mutation { mutant, subst: "true".into() };
+        assert_eq!(mutation.apply_to_complete_src_string(src), "if true { return 1; }");
     }
 }

@@ -669,6 +669,7 @@ mod tests {
     #[test]
     fn js_finds_add_binary_op() {
         let js = "const x = a + b;";
+        //                    ^  byte 12..13
         let (_dir, base) = make_js_base(js);
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let mutants: Vec<_> = TwigMutantsIter::new(LanguageId::Javascript, &base, &twig)
@@ -679,12 +680,14 @@ mod tests {
             .filter(|m| matches!(m.kind(), MutantKind::BinaryOp(BinaryOpMutationKind::Add)))
             .collect();
         assert_eq!(adds.len(), 1);
+        assert_eq!(*adds[0].span(), Span::new(Point::new(0, 12, 12), Point::new(0, 13, 13)));
     }
 
     // bough[verify mutant.twig-iter.find.js.binary.sub]
     #[test]
     fn js_finds_sub_binary_op() {
         let js = "const x = a - b;";
+        //                    ^  byte 12..13
         let (_dir, base) = make_js_base(js);
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let mutants: Vec<_> = TwigMutantsIter::new(LanguageId::Javascript, &base, &twig)
@@ -695,6 +698,7 @@ mod tests {
             .filter(|m| matches!(m.kind(), MutantKind::BinaryOp(BinaryOpMutationKind::Sub)))
             .collect();
         assert_eq!(subs.len(), 1);
+        assert_eq!(*subs[0].span(), Span::new(Point::new(0, 12, 12), Point::new(0, 13, 13)));
     }
 
     // bough[verify mutant.twig-iter.find.js.binary.add]
