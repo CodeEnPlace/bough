@@ -97,6 +97,7 @@ pub enum Error {
     )]
     NoLanguages,
 
+    #[cfg(test)]
     #[error("{0}")]
     #[diagnostic(code(bough::config::parse))]
     Parse(String),

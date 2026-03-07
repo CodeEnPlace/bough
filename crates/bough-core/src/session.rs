@@ -90,44 +90,10 @@ impl<C: Config> Session<C> {
             "discovered mutations in base"
         );
 
-        // bough[impl session.init.state.attach]
-        let mut mutations_state = FacetDiskStore::<<Mutation as TypedHashable>::Hash, State>::new(
+        let mutations_state = FacetDiskStore::<<Mutation as TypedHashable>::Hash, State>::new(
             config.get_bough_state_dir().join("state"),
         );
 
-        let mut hash_store = bough_typed_hash::MemoryHashStore::new();
-
-        let hashes_in_base: HashSet<MutationHash> = mutations_in_base
-            .iter()
-            .map(|m| m.hash(&mut hash_store).expect("hashing should not fail"))
-            .collect();
-
-        // bough[impl session.init.state.add-missing]
-        for mutation in &mutations_in_base {
-            let hash = mutation
-                .hash(&mut hash_store)
-                .expect("hashing should not fail");
-            if mutations_state.get(&hash).is_none() {
-                let state = State::new(mutation.clone());
-                mutations_state
-                    .set(hash, state)
-                    .expect("writing state should not fail");
-            }
-        }
-
-        // bough[impl session.init.state.remove-stale]
-        let stale_keys: Vec<MutationHash> = mutations_state
-            .keys()
-            .filter(|k| !hashes_in_base.contains(k))
-            .collect();
-        if !stale_keys.is_empty() {
-            info!(count = stale_keys.len(), "removing stale state entries");
-        }
-        for key in stale_keys {
-            mutations_state.remove(&key);
-        }
-
-        // bough[impl session.init.workspaces]
         let mut workspaces: Vec<WorkspaceId> = Vec::new();
 
         for id in &existing_ids {
@@ -396,26 +362,6 @@ mod tests {
         files
     }
 
-    // bough[verify session.init.state.attach]
-    #[test]
-    fn session_creates_state_files_under_config_state_dir() {
-        let dir = tempfile::tempdir().unwrap();
-        std::fs::create_dir_all(dir.path().join("src")).unwrap();
-        std::fs::write(dir.path().join("src/a.js"), "function foo() { return 1; }").unwrap();
-        let config = make_js_config(dir.path());
-        let _session = Session::new(config).unwrap();
-        let sd = state_dir(dir.path());
-        assert!(sd.exists(), "state dir {sd:?} should exist on disk");
-        let files = state_files(dir.path());
-        assert!(!files.is_empty(), "state dir should contain json files");
-        for f in &files {
-            assert!(
-                f.starts_with(&sd),
-                "state file {f:?} should be under {sd:?}"
-            );
-        }
-    }
-
     // bough[verify session.init.state.get]
     #[test]
     fn session_get_state_reads_back_disk_files() {
@@ -431,28 +377,6 @@ mod tests {
         for key in state.keys() {
             assert!(state.get(&key).is_some());
         }
-    }
-
-    // bough[verify session.init.state.add-missing]
-    #[test]
-    fn session_adds_missing_mutations_as_state_files_with_null_outcome() {
-        let dir = tempfile::tempdir().unwrap();
-        std::fs::create_dir_all(dir.path().join("src")).unwrap();
-        std::fs::write(dir.path().join("src/a.js"), "function foo() { return 1; }").unwrap();
-        let config = make_js_config(dir.path());
-        let session = Session::new(config).unwrap();
-        let files = state_files(dir.path());
-        assert_eq!(files.len(), 1);
-        let content = std::fs::read_to_string(&files[0]).unwrap();
-        assert_eq!(
-            content,
-            r#"{"mutation":{"mutant":{"lang":"js","twig":["src/a.js"],"kind":"StatementBlock","span":{"start":{"line":0,"col":15,"byte":15},"end":{"line":0,"col":28,"byte":28}}},"subst":"{}"},"outcome":null}"#,
-        );
-        let state = session.get_state();
-        let key = state.keys().next().unwrap();
-        let s = state.get(&key).unwrap();
-        assert!(!s.has_outcome());
-        assert_eq!(s.mutation().subst(), "{}");
     }
 
     fn workspace_dirs(dir: &std::path::Path) -> Vec<PathBuf> {
@@ -540,11 +464,7 @@ mod tests {
         let initial_count = session.get_state().keys().count();
         assert!(initial_count > 0);
 
-        std::fs::write(
-            dir.path().join("src/b.js"),
-            "function bar() { return 2; }",
-        )
-        .unwrap();
+        std::fs::write(dir.path().join("src/b.js"), "function bar() { return 2; }").unwrap();
 
         let mut config2 = make_js_config(dir.path());
         config2.lang_includes = vec!["src/**/*.js".to_string()];
@@ -553,7 +473,10 @@ mod tests {
         assert!(count_after > initial_count);
 
         let added = session2.tend_add_missing_states().unwrap();
-        assert!(added.is_empty(), "no new mutations since session2 was created fresh");
+        assert!(
+            added.is_empty(),
+            "no new mutations since session2 was created fresh"
+        );
     }
 
     // bough[verify session.tend.state.add-missing]
@@ -566,11 +489,7 @@ mod tests {
         let mut session = Session::new(config).unwrap();
         let initial_count = session.get_state().keys().count();
 
-        std::fs::write(
-            dir.path().join("src/b.js"),
-            "function bar() { return 2; }",
-        )
-        .unwrap();
+        std::fs::write(dir.path().join("src/b.js"), "function bar() { return 2; }").unwrap();
         session.base.add_mutator(
             LanguageId::Javascript,
             crate::twig::TwigsIterBuilder::new().with_include_glob("src/**/*.js"),
@@ -630,7 +549,10 @@ mod tests {
 
         let ids = session.tend_workspaces(2).unwrap();
         assert_eq!(ids.len(), 2);
-        assert!(!dirs_before[0].exists(), "modified workspace dir should be removed from disk");
+        assert!(
+            !dirs_before[0].exists(),
+            "modified workspace dir should be removed from disk"
+        );
     }
 
     // bough[verify session.tend.workspaces.new]
@@ -706,32 +628,5 @@ mod tests {
 
         let removed = session.tend_remove_stale_states().unwrap();
         assert!(removed.is_empty());
-    }
-
-    // bough[verify session.init.state.remove-stale]
-    #[test]
-    fn session_removes_stale_state_files_from_disk() {
-        let dir = tempfile::tempdir().unwrap();
-        let sd = state_dir(dir.path());
-        std::fs::create_dir_all(&sd).unwrap();
-        std::fs::create_dir_all(dir.path().join("src")).unwrap();
-
-        let stale_content = r#"{"mutation":{"mutant":{"lang":"js","twig":["old/gone.js"],"kind":"StatementBlock","span":{"start":{"line":0,"col":0,"byte":0},"end":{"line":0,"col":1,"byte":1}}},"subst":"{}"},"outcome":null}"#;
-        let fake_hash_a = "aa".repeat(32);
-        let fake_hash_b = "bb".repeat(32);
-        std::fs::write(sd.join(format!("{fake_hash_a}.json")), stale_content).unwrap();
-        std::fs::write(sd.join(format!("{fake_hash_b}.json")), stale_content).unwrap();
-        assert_eq!(state_files(dir.path()).len(), 2);
-
-        std::fs::write(dir.path().join("src/a.js"), "const x = 1;").unwrap();
-        let config = make_js_config(dir.path());
-        let _session = Session::new(config).unwrap();
-
-        let files_after = state_files(dir.path());
-        assert_eq!(
-            files_after.len(),
-            0,
-            "stale state files should be removed, but found: {files_after:?}"
-        );
     }
 }
