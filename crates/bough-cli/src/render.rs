@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
-use bough_core::{LanguageId, Mutation};
-use bough_typed_hash::TypedHashable;
+use bough_core::{LanguageId, Mutation, State};
+use bough_typed_hash::{TypedHash, TypedHashable, UnvalidatedHash};
 use facet::Facet;
 
 use crate::config::{Cli, Config, Format};
@@ -238,6 +238,51 @@ impl Render for FileMutations {
 
     fn json(&self) -> String {
         facet_json::to_string(self).unwrap()
+    }
+}
+
+pub fn find_mutation_by_hash(hash: &str, mutations: Vec<Mutation>) -> Mutation {
+    let unvalidated = UnvalidatedHash::new(hash.to_string());
+    let hashes: Vec<_> = mutations
+        .iter()
+        .map(|m| m.hash().expect("hashing should not fail"))
+        .collect();
+    let matched = unvalidated
+        .validate(&hashes)
+        .expect("hash resolution failed");
+    let matched_bytes = matched.as_bytes();
+    mutations
+        .into_iter()
+        .find(|m| m.hash().unwrap().as_bytes() == matched_bytes)
+        .unwrap()
+}
+
+pub struct SingleMutation(pub State);
+impl Render for SingleMutation {
+    fn markdown(&self) -> String {
+        let m = self.0.mutation();
+        let outcome = if self.0.has_outcome() { "has outcome" } else { "pending" };
+        format!(
+            "# Mutation\n\n{}\n\nStatus: {}",
+            fmt_mutation_verbose(m),
+            outcome,
+        )
+    }
+
+    fn terse(&self) -> String {
+        let m = self.0.mutation();
+        let outcome = if self.0.has_outcome() { "has outcome" } else { "pending" };
+        format!("{} {}", fmt_mutation_terse(m), outcome)
+    }
+
+    fn verbose(&self) -> String {
+        let m = self.0.mutation();
+        let outcome = if self.0.has_outcome() { "has outcome" } else { "pending" };
+        format!("{}\nStatus: {}", fmt_mutation_verbose(m), outcome)
+    }
+
+    fn json(&self) -> String {
+        facet_json::to_string(&self.0).unwrap()
     }
 }
 
