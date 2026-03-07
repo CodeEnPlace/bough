@@ -1,7 +1,19 @@
 specs (
     {
-        name bough
-        include ( **/*SPEC*.md )
+        name bough-core
+        include ( crates/bough-core/**/*SPEC*.md )
+        impls (
+            {
+                name rust
+                include (crates/**/*.rs)
+                exclude (target/**)
+            }
+        )
+    }
+
+    {
+        name bough-cli
+        include ( crates/bough-cli/**/*SPEC*.md )
         impls (
             {
                 name rust

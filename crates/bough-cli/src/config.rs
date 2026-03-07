@@ -2,6 +2,8 @@ use std::env;
 
 use facet::Facet;
 use figue::{self as args, ConfigFormat, ConfigFormatError, Driver, builder};
+use miette::Diagnostic;
+use thiserror::Error;
 
 #[derive(Facet, Debug)]
 pub struct Cli {
@@ -35,11 +37,39 @@ pub enum ShowCommand {
 
 #[derive(Facet, Debug)]
 pub struct Config {
-    #[facet(default = 4)]
+    #[facet(default = 1)]
     pub workers: u64,
 
+    #[facet(default = 1)]
+    pub threads: u64,
+
     pub include: Vec<String>,
+
     pub exclude: Vec<String>,
+}
+
+#[derive(Debug, Clone, Error, Diagnostic)]
+pub enum Error {
+    #[error("config.include must not be empty")]
+    #[diagnostic(
+        code(bough::config::empty_include),
+        help("add at least one include glob pattern")
+    )]
+    EmptyInclude,
+
+    #[error("{0}")]
+    #[diagnostic(code(bough::config::parse))]
+    Parse(String),
+}
+
+impl Cli {
+    pub fn validate(&self) -> Vec<Error> {
+        let mut errors = Vec::new();
+        if self.config.include.is_empty() {
+            errors.push(Error::EmptyInclude);
+        }
+        errors
+    }
 }
 
 struct TomlFormat;
@@ -128,7 +158,177 @@ pub fn parse() -> Cli {
         }
     };
     output.print_warnings();
-    output.get_silent()
+    let cli = output.get_silent();
+
+    let errors = cli.validate();
+    if !errors.is_empty() {
+        for error in &errors {
+            eprintln!("{:?}", miette::Report::new_boxed(Box::new(error.clone())));
+        }
+        std::process::exit(1);
+    }
+
+    cli
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const MINIMAL_TOML: &str = r#"
+include = ["src/**"]
+exclude = []
+"#;
+
+    const FULL_TOML: &str = r#"
+workers = 16
+include = ["src/**", "lib/**"]
+exclude = ["target/**"]
+"#;
+
+    pub fn try_parse_from(
+        args: &[&str],
+        config_content: Option<(&str, &str)>,
+    ) -> Result<Cli, Vec<Error>> {
+        let b = builder::<Cli>()
+            .expect("schema should be valid")
+            .cli(|cli| cli.args(args.iter().map(|s| s.to_string())));
+
+        let b = match config_content {
+            Some((content, filename)) => b.file(|f| {
+                f.content(content, filename)
+                    .format(TomlFormat)
+                    .format(YamlFormat)
+            }),
+            None => b,
+        };
+
+        let config = b.build();
+        let cli: Cli = Driver::new(config)
+            .run()
+            .into_result()
+            .map_err(|e| vec![Error::Parse(format!("{e:?}"))])?
+            .get_silent();
+
+        let errors = cli.validate();
+        if !errors.is_empty() {
+            return Err(errors);
+        }
+
+        Ok(cli)
+    }
+
+    fn parse_ok(args: &[&str], toml: &str) -> Cli {
+        try_parse_from(args, Some((toml, "config.toml"))).expect("should parse")
+    }
+
+    fn parse_err(args: &[&str], toml: &str) -> Vec<Error> {
+        try_parse_from(args, Some((toml, "config.toml"))).expect_err("should fail")
+    }
+
+    #[test]
+    fn defaults_with_minimal_config() {
+        let cli = parse_ok(&["run"], MINIMAL_TOML);
+        assert_eq!(cli.config.workers, 1);
+        assert_eq!(cli.config.include, vec!["src/**"]);
+        assert!(cli.config.exclude.is_empty());
+        assert_eq!(cli.verbose, 0);
+    }
+
+    #[test]
+    fn full_config() {
+        let cli = parse_ok(&["run"], FULL_TOML);
+        assert_eq!(cli.config.workers, 16);
+        assert_eq!(cli.config.include, vec!["src/**", "lib/**"]);
+        assert_eq!(cli.config.exclude, vec!["target/**"]);
+    }
+
+    #[test]
+    fn cli_overrides_file() {
+        let cli = parse_ok(&["run", "--config.workers", "32"], FULL_TOML);
+        assert_eq!(cli.config.workers, 32);
+        assert_eq!(cli.config.include, vec!["src/**", "lib/**"]);
+    }
+
+    #[test]
+    fn verbose_counted() {
+        let cli = parse_ok(&["-vvv", "run"], MINIMAL_TOML);
+        assert_eq!(cli.verbose, 3);
+    }
+
+    #[test]
+    fn show_config_subcommand() {
+        let cli = parse_ok(&["show", "config"], MINIMAL_TOML);
+        assert!(matches!(
+            cli.command,
+            Command::Show {
+                what: ShowCommand::Config
+            }
+        ));
+    }
+
+    #[test]
+    fn show_file_subcommand() {
+        let cli = parse_ok(&["show", "file"], MINIMAL_TOML);
+        assert!(matches!(
+            cli.command,
+            Command::Show {
+                what: ShowCommand::File
+            }
+        ));
+    }
+
+    #[test]
+    fn show_cli_subcommand() {
+        let cli = parse_ok(&["show", "cli"], MINIMAL_TOML);
+        assert!(matches!(
+            cli.command,
+            Command::Show {
+                what: ShowCommand::Cli
+            }
+        ));
+    }
+
+    #[test]
+    fn run_subcommand() {
+        let cli = parse_ok(&["run"], MINIMAL_TOML);
+        assert!(matches!(cli.command, Command::Run));
+    }
+
+    #[test]
+    fn empty_include_fails_validation() {
+        let toml = r#"
+include = []
+exclude = []
+"#;
+        let errors = parse_err(&["run"], toml);
+        assert_eq!(errors.len(), 1);
+        assert!(matches!(errors[0], Error::EmptyInclude));
+    }
+
+    #[test]
+    fn missing_include_fails_parse() {
+        let toml = r#"
+exclude = []
+"#;
+        let errors = parse_err(&["run"], toml);
+        assert_eq!(errors.len(), 1);
+        assert!(matches!(errors[0], Error::Parse(_)));
+    }
+
+    #[test]
+    fn json_config() {
+        let json = r#"{"include": ["src/**"], "exclude": []}"#;
+        let cli = try_parse_from(&["run"], Some((json, "config.json"))).expect("should parse");
+        assert_eq!(cli.config.include, vec!["src/**"]);
+    }
+
+    #[test]
+    fn yaml_config() {
+        let yaml = "include:\n  - \"src/**\"\nexclude: []\n";
+        let cli = try_parse_from(&["run"], Some((yaml, "config.yaml"))).expect("should parse");
+        assert_eq!(cli.config.include, vec!["src/**"]);
+    }
 }
 
 impl bough_core::Config for Config {
