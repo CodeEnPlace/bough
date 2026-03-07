@@ -3,6 +3,7 @@ name = "bough-typed-hash"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
 description = "Type-safe content-addressable hashing for bough"
 
 [dependencies]
