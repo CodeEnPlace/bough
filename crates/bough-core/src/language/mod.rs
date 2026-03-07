@@ -17,6 +17,8 @@ pub(crate) trait LanguageDriver {
     ) -> Option<(MutantKind, Span)>;
 
     fn substitutions(&self, kind: &MutantKind) -> Vec<String>;
+
+    fn is_context_boundary(&self, node: &tree_sitter::Node<'_>) -> bool;
 }
 
 pub(crate) fn driver_for_lang(lang: crate::LanguageId) -> Box<dyn LanguageDriver> {

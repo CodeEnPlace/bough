@@ -44,6 +44,17 @@ impl LanguageDriver for JavascriptDriver {
         result
     }
 
+    fn is_context_boundary(&self, node: &tree_sitter::Node<'_>) -> bool {
+        matches!(
+            node.kind(),
+            "function_declaration"
+                | "method_definition"
+                | "class_declaration"
+                | "arrow_function"
+                | "export_statement"
+        )
+    }
+
     // bough[impl mutation.subst.js.add.sub]
     // bough[impl mutation.subst.js.add.mul]
     fn substitutions(&self, kind: &MutantKind) -> Vec<String> {

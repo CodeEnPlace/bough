@@ -18,6 +18,17 @@ impl LanguageDriver for TypescriptDriver {
         None
     }
 
+    fn is_context_boundary(&self, node: &tree_sitter::Node<'_>) -> bool {
+        matches!(
+            node.kind(),
+            "function_declaration"
+                | "method_definition"
+                | "class_declaration"
+                | "arrow_function"
+                | "export_statement"
+        )
+    }
+
     // bough[impl mutation.iter.invalid]
     fn substitutions(&self, _kind: &MutantKind) -> Vec<String> {
         vec![]
