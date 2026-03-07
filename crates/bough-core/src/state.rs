@@ -1,5 +1,6 @@
 use chrono::{DateTime, Utc};
 use facet::Facet;
+use tracing::trace;
 
 use crate::{mutation::Mutation, test_id::TestId};
 
@@ -25,6 +26,7 @@ pub struct State {
 
 impl State {
     pub fn new(mutation: Mutation) -> Self {
+        trace!(subst = mutation.subst(), "creating new state entry");
         Self {
             mutation,
             outcome: None,
