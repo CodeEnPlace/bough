@@ -3,6 +3,7 @@ name = "bough-cli"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+description = "CLI for bough mutation testing"
 
 [dependencies]
 bough-core = { path = "../bough-core", version = "0.0.1" }
