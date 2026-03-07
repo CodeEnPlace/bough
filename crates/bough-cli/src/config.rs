@@ -57,12 +57,14 @@ pub enum Show {
         #[facet(args::positional, default)]
         lang: Option<bough_core::LanguageId>,
     },
+
     Mutations {
         #[facet(args::positional, default)]
         lang: Option<bough_core::LanguageId>,
         #[facet(args::positional, default)]
         file: Option<PathBuf>,
     },
+
     Mutation {
         #[facet(args::positional)]
         hash: String,

@@ -19,19 +19,14 @@ fn main() {
     };
     tracing_subscriber::fmt().with_max_level(log_level).init();
 
-    // dbg!(cli);
-    // return;
     info!(log_level = %log_level, "tracing initialized");
-
-    let session = Session::new(cli.config.clone()).expect("session creation");
-
-    info!("session initalized");
 
     let result: Box<dyn Render> = match cli.command {
         Command::Show { ref show } => {
             debug!(subcommand = ?show, "executing show command");
             match show {
                 Show::Files { lang: None } => {
+                    let session = Session::new(cli.config.clone()).expect("session creation");
                     let base = session.base();
                     let twigs = base.twigs().collect::<Vec<_>>();
                     let files = twigs
@@ -43,7 +38,9 @@ fn main() {
 
                     Box::new(BaseFiles(paths))
                 }
+
                 Show::Files { lang: Some(lang) } => {
+                    let session = Session::new(cli.config.clone()).expect("session creation");
                     let base = session.base();
                     let twigs = base.mutant_twigs().collect::<Vec<_>>();
                     let files = twigs
@@ -56,7 +53,8 @@ fn main() {
 
                     Box::new(MutantFiles(*lang, paths))
                 }
-                Show::Config => todo!(),
+
+                Show::Config => Box::new(cli.config.clone()),
                 Show::Mutations { lang, file } => todo!(),
                 Show::Mutation { hash } => todo!(),
             }
