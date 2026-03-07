@@ -3,6 +3,7 @@ name = "bough-core"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+description = "Core mutation testing engine for bough"
 
 [dependencies]
 bough-typed-hash = { path = "../bough-typed-hash", version = "0.0.1" }
