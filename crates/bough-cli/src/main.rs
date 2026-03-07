@@ -2,11 +2,12 @@ mod config;
 mod render;
 
 use bough_core::{File, Session};
+use bough_typed_hash::TypedHashable;
 use config::{Command, Show, parse};
 use render::{Noop, Render};
 use tracing::{Level, debug, info};
 
-use crate::render::{AllMutations, BaseFiles, FileMutations, LangMutations, MutantFiles};
+use crate::render::{AllMutations, BaseFiles, FileMutations, LangMutations, MutantFiles, SingleMutation, find_mutation_by_hash};
 
 fn main() {
     let cli = parse();
@@ -101,7 +102,20 @@ fn main() {
                     Box::new(FileMutations(*lang, file.clone(), mutations))
                 }
 
-                Show::Mutation { hash } => todo!(),
+                Show::Mutation { hash } => {
+                    let mut session = Session::new(cli.config.clone()).expect("session creation");
+                    session.tend_add_missing_states().expect("tend states");
+                    let base = session.base();
+                    let mutations: Vec<_> = base
+                        .mutations()
+                        .collect::<Result<Vec<_>, _>>()
+                        .expect("mutation scan");
+                    let mutation = find_mutation_by_hash(hash, mutations);
+                    let mutation_hash = mutation.hash().expect("hashing should not fail");
+                    let state = session.get_state().get(&mutation_hash)
+                        .expect("state not found for mutation");
+                    Box::new(SingleMutation(state))
+                }
             }
         }
         Command::Run => {
