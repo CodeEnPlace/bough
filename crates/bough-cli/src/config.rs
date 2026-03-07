@@ -1,4 +1,5 @@
 use std::env;
+use std::io::IsTerminal;
 use std::{collections::HashMap, path::PathBuf};
 
 use facet::Facet;
@@ -15,11 +16,27 @@ pub struct Cli {
     #[facet(args::named, args::short = 'f', default)]
     pub format: Format,
 
+    #[facet(args::named, default)]
+    no_color: bool,
+
     #[facet(args::subcommand)]
     pub command: Command,
 
     #[facet(args::config, args::env_prefix = "BOUGH")]
     pub config: Config,
+}
+
+pub fn resolve_color(no_color_flag: bool, is_tty: bool) -> bool {
+    if no_color_flag || env::var("NO_COLOR").is_ok() {
+        return false;
+    }
+    is_tty
+}
+
+impl Cli {
+    pub fn color(&self) -> bool {
+        resolve_color(self.no_color, std::io::stdout().is_terminal())
+    }
 }
 
 #[derive(Facet, Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -863,6 +880,37 @@ exclude = []
         );
         let root = bough_core::Config::get_base_root_path(&cli.config);
         assert_eq!(root, dir.path().join("src"));
+    }
+
+    #[test]
+    fn color_defaults_true_when_tty() {
+        assert!(resolve_color(false, true));
+    }
+
+    #[test]
+    fn color_defaults_false_when_not_tty() {
+        assert!(!resolve_color(false, false));
+    }
+
+    #[test]
+    fn no_color_flag_disables_color_even_with_tty() {
+        assert!(!resolve_color(true, true));
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn no_color_env_disables_color() {
+        unsafe { env::set_var("NO_COLOR", "1") };
+        assert!(!resolve_color(false, true));
+        unsafe { env::remove_var("NO_COLOR") };
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn no_color_env_disables_color_even_without_flag() {
+        unsafe { env::set_var("NO_COLOR", "1") };
+        assert!(!resolve_color(false, true));
+        unsafe { env::remove_var("NO_COLOR") };
     }
 }
 
