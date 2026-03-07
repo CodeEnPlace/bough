@@ -22,7 +22,12 @@ impl LanguageDriver for JavascriptDriver {
             "statement_block" => Some((MutantKind::StatementBlock, span_from_node(node))),
             "if_statement" | "while_statement" | "for_statement" => {
                 let condition = node.child_by_field_name("condition")?;
-                Some((MutantKind::Condition, span_from_node(&condition)))
+                let inner = if condition.kind() == "parenthesized_expression" {
+                    condition.child(1).unwrap_or(condition)
+                } else {
+                    condition
+                };
+                Some((MutantKind::Condition, span_from_node(&inner)))
             }
             // bough[impl mutant.twig-iter.find.js.binary.add]
             // bough[impl mutant.twig-iter.find.js.binary.sub]
