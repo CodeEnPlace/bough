@@ -1,23 +1,27 @@
 use std::path::PathBuf;
 
 use bough_core::LanguageId;
+use facet::Facet;
 
-use crate::config::Format;
+use crate::config::{Config, Format};
 
 pub trait Render {
     fn markdown(&self) -> String;
     fn terse(&self) -> String;
     fn verbose(&self) -> String;
+    fn json(&self) -> String;
+
     fn render(&self, format: Format) -> String {
         match format {
             Format::Terse => self.terse(),
             Format::Verbose => self.verbose(),
             Format::Markdown => self.markdown(),
-            Format::Json => todo!(),
+            Format::Json => self.json(),
         }
     }
 }
 
+#[derive(Facet)]
 pub struct Noop;
 impl Render for Noop {
     fn markdown(&self) -> String {
@@ -31,8 +35,13 @@ impl Render for Noop {
     fn verbose(&self) -> String {
         todo!()
     }
+
+    fn json(&self) -> String {
+        facet_json::to_string(self).unwrap()
+    }
 }
 
+#[derive(Facet)]
 pub struct BaseFiles(pub Vec<PathBuf>);
 impl Render for BaseFiles {
     fn markdown(&self) -> String {
@@ -59,8 +68,13 @@ impl Render for BaseFiles {
             .collect::<Vec<_>>()
             .join("\n")
     }
+
+    fn json(&self) -> String {
+        facet_json::to_string(self).unwrap()
+    }
 }
 
+#[derive(Facet)]
 pub struct MutantFiles(pub LanguageId, pub Vec<PathBuf>);
 impl Render for MutantFiles {
     fn markdown(&self) -> String {
@@ -87,5 +101,41 @@ impl Render for MutantFiles {
             .map(|pb| format!("{}", pb.to_string_lossy()))
             .collect::<Vec<_>>()
             .join("\n")
+    }
+
+    fn json(&self) -> String {
+        facet_json::to_string(self).unwrap()
+    }
+}
+
+impl Render for Config {
+    fn markdown(&self) -> String {
+        format!(
+            "# Bough Config
+
+```json
+{}
+```",
+            facet_json::to_string(self).unwrap()
+        )
+    }
+
+    fn terse(&self) -> String {
+        facet_json::to_string(self).unwrap()
+    }
+
+    fn verbose(&self) -> String {
+        format!(
+            "# Bough Config
+
+```json
+{}
+```",
+            facet_json::to_string(self).unwrap()
+        )
+    }
+
+    fn json(&self) -> String {
+        facet_json::to_string(self).unwrap()
     }
 }
