@@ -2,7 +2,7 @@ mod config;
 mod render;
 
 use bough_core::{File, Session};
-use config::{Command, ShowCommand, parse};
+use config::{Command, Show, parse};
 use render::{Noop, Render};
 use tracing::{Level, debug, info};
 
@@ -28,10 +28,10 @@ fn main() {
     info!("session initalized");
 
     let result: Box<dyn Render> = match cli.command {
-        Command::Show { ref what } => {
-            debug!(subcommand = ?what, "executing show command");
-            match what {
-                ShowCommand::Files { lang: None } => {
+        Command::Show { ref show } => {
+            debug!(subcommand = ?show, "executing show command");
+            match show {
+                Show::Files { lang: None } => {
                     let base = session.base();
                     let twigs = base.twigs().collect::<Vec<_>>();
                     let files = twigs
@@ -43,8 +43,7 @@ fn main() {
 
                     Box::new(BaseFiles(paths))
                 }
-
-                ShowCommand::Files { lang: Some(lang) } => {
+                Show::Files { lang: Some(lang) } => {
                     let base = session.base();
                     let twigs = base.mutant_twigs().collect::<Vec<_>>();
                     let files = twigs
@@ -57,6 +56,9 @@ fn main() {
 
                     Box::new(MutantFiles(*lang, paths))
                 }
+                Show::Config => todo!(),
+                Show::Mutations { lang, file } => todo!(),
+                Show::Mutation { hash } => todo!(),
             }
         }
         Command::Run => {
