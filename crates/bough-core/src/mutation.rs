@@ -411,14 +411,14 @@ mod tests {
     #[test]
     fn apply_to_complete_src_string_condition() {
         let src = "if (a > 0) { return 1; }";
-        //            ^^^^^^^  bytes 3..10 is "(a > 0)"
+        //             ^^^^^  bytes 4..9 is "a > 0" (inside parens)
         let mutant = Mutant::new(
             crate::LanguageId::Javascript,
             Twig::new(PathBuf::from("src/a.js")).unwrap(),
             MutantKind::Condition,
-            Span::new(Point::new(0, 3, 3), Point::new(0, 10, 10)),
+            Span::new(Point::new(0, 4, 4), Point::new(0, 9, 9)),
         );
         let mutation = Mutation { mutant, subst: "true".into() };
-        assert_eq!(mutation.apply_to_complete_src_string(src), "if true { return 1; }");
+        assert_eq!(mutation.apply_to_complete_src_string(src), "if (true) { return 1; }");
     }
 }
