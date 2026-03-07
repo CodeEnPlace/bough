@@ -1,0 +1,1 @@
+{"mutation":{"mutant":{"lang":"js","twig":["examples/vitest-complex/src/validators/email.js"],"kind":"Condition","span":{"start":{"line":18,"col":6,"byte":610},"end":{"line":18,"col":25,"byte":629}}},"subst":"false"},"outcome":null}

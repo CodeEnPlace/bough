@@ -282,24 +282,31 @@ pub fn find_mutation_by_hash(hash: &str, mutations: Vec<Mutation>) -> Mutation {
 
 pub struct SingleMutation {
     pub state: State,
-    pub context: String,
+    pub before: String,
+    pub after: String,
     pub lang: LanguageId,
+}
+
+impl SingleMutation {
+    fn lang_tag(&self) -> &'static str {
+        match self.lang {
+            LanguageId::Javascript => "javascript",
+            LanguageId::Typescript => "typescript",
+        }
+    }
 }
 
 impl Render for SingleMutation {
     fn markdown(&self) -> String {
         let m = self.state.mutation();
         let outcome = if self.state.has_outcome() { "has outcome" } else { "pending" };
-        let lang_tag = match self.lang {
-            LanguageId::Javascript => "javascript",
-            LanguageId::Typescript => "typescript",
-        };
+        let tag = self.lang_tag();
         format!(
-            "# Mutation\n\n{}\n\nStatus: {}\n\n## Context\n\n```{}\n{}\n```",
+            "# Mutation\n\n{}\n\nStatus: {}\n\n## Before\n\n```{}\n{}\n```\n\n## After\n\n```{}\n{}\n```",
             fmt_mutation_markdown_table(std::slice::from_ref(m)),
             outcome,
-            lang_tag,
-            self.context,
+            tag, self.before,
+            tag, self.after,
         )
     }
 
@@ -312,7 +319,10 @@ impl Render for SingleMutation {
     fn verbose(&self) -> String {
         let m = self.state.mutation();
         let outcome = if self.state.has_outcome() { "has outcome" } else { "pending" };
-        format!("{}\nStatus: {}\n\n{}", fmt_mutation_verbose(m), outcome, self.context)
+        format!(
+            "{}\nStatus: {}\n\n--- before ---\n{}\n\n--- after ---\n{}",
+            fmt_mutation_verbose(m), outcome, self.before, self.after,
+        )
     }
 
     fn json(&self) -> String {
