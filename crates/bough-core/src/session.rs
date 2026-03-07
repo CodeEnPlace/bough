@@ -1,7 +1,7 @@
 use std::{collections::HashSet, path::PathBuf};
 
 use bough_typed_hash::TypedHashable;
-use tracing::{debug, info};
+use tracing::info;
 
 use crate::{
     LanguageId,
