@@ -3,6 +3,7 @@ use crate::file::{File, Root, Twig};
 use crate::mutant::Mutant;
 use crate::mutation::Mutation;
 use std::path::{Path, PathBuf};
+use tracing::{debug, info, warn};
 
 // core[impl workspace.active]
 #[derive(Debug, Clone, PartialEq)]
@@ -119,7 +120,10 @@ impl<'a> Workspace<'a> {
         let id = WorkspaceId::generate();
         let root = dir.join("work").join(id.as_str());
 
+        info!(id = %id, root = %root.display(), "creating new workspace");
+
         if root.exists() {
+            warn!(root = %root.display(), "workspace dir already exists");
             return Err(Error::DirAlreadyExists(root));
         }
 
@@ -145,6 +149,7 @@ impl<'a> Workspace<'a> {
     // core[impl workspace.bind]
     // core[impl workspace.bind.validate-unchanged]
     pub fn bind(dir: PathBuf, id: &WorkspaceId, base: &'a Base) -> Result<Self, Error> {
+        debug!(id = %id, "binding to existing workspace");
         let root = dir.join("work").join(id.as_str());
         let ws = Self {
             id: id.clone(),
@@ -170,8 +175,15 @@ impl<'a> Workspace<'a> {
     // core[impl workspace.write_mutant.set-active.only-one]
     pub fn write_mutant(&mut self, mutation: &Mutation) -> Result<(), Error> {
         if self.active.is_some() {
+            warn!(id = %self.id, "attempted to write mutant while one is already active");
             return Err(Error::AlreadyActive);
         }
+        debug!(
+            id = %self.id,
+            twig = %mutation.mutant().twig().path().display(),
+            subst = mutation.subst(),
+            "writing mutant to workspace"
+        );
         let mutant = mutation.mutant();
         let base_file = File::new(self.base, mutant.twig()).resolve();
         let content = std::fs::read(&base_file)?;
@@ -195,6 +207,7 @@ impl<'a> Workspace<'a> {
     // core[impl workspace.revert_mutant.active]
     pub fn revert_mutant(&mut self) -> Result<(), Error> {
         let active = self.active.take().ok_or(Error::NotActive)?;
+        debug!(id = %self.id, twig = %active.mutant().twig().path().display(), "reverting mutant");
         let twig = active.mutant().twig();
         let src = File::new(self.base, twig).resolve();
         let dst = self.root.join(twig.path());
