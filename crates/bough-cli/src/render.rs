@@ -6,6 +6,23 @@ use facet::Facet;
 
 use crate::config::{Cli, Config, Format};
 
+fn strip_ansi(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let mut chars = s.chars();
+    while let Some(c) = chars.next() {
+        if c == '\x1b' {
+            for c in chars.by_ref() {
+                if c == 'm' {
+                    break;
+                }
+            }
+        } else {
+            out.push(c);
+        }
+    }
+    out
+}
+
 const RESET: &str = "\x1b[0m";
 const TITLE: &str = "\x1b[33m";
 const PATH: &str = "\x1b[34m";
@@ -20,12 +37,13 @@ pub trait Render {
     fn json(&self) -> String;
 
     fn render(&self, cli: &Cli) -> String {
-        match cli.format {
+        let out = match cli.format {
             Format::Terse => self.terse(),
             Format::Verbose => self.verbose(),
             Format::Markdown => self.markdown(),
             Format::Json => self.json(),
-        }
+        };
+        if cli.color() { out } else { strip_ansi(&out) }
     }
 }
 
