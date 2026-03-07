@@ -110,7 +110,7 @@ dependencies = [
 
 [[package]]
 name = "bough-cli"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "bough-core",
  "bough-typed-hash",
@@ -129,7 +129,7 @@ dependencies = [
 
 [[package]]
 name = "bough-core"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "bough-typed-hash",
  "chrono",
@@ -150,7 +150,7 @@ dependencies = [
 
 [[package]]
 name = "bough-typed-hash"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "bough-typed-hash-derive",
  "facet",
@@ -161,7 +161,7 @@ dependencies = [
 
 [[package]]
 name = "bough-typed-hash-derive"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "proc-macro2",
  "quote",

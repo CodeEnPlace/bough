@@ -7,7 +7,7 @@ repository.workspace = true
 description = "Core mutation testing engine for bough"
 
 [dependencies]
-bough-typed-hash = { path = "../bough-typed-hash", version = "0.0.1" }
+bough-typed-hash = { path = "../bough-typed-hash", version = "0.0.2" }
 facet = { version = "0.44", features = ["uuid", "chrono"] }
 facet-json = "0.44.1"
 chrono = "0.4.44"
@@ -21,7 +21,6 @@ tree-sitter-javascript = "0.25"
 tree-sitter-typescript = "0.23"
 wait-timeout = "0.2"
 tracing = "0.1"
-
 
 [dev-dependencies]
 tempfile = "3.26"
