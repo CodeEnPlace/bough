@@ -641,8 +641,6 @@ mod tests {
         assert!(binary_ops.is_empty());
     }
 
-    use bough_typed_hash::HashStore;
-
     fn hash_mutant(mutant: &Mutant) -> [u8; 32] {
         use bough_typed_hash::sha2::Digest;
         let mut state = bough_typed_hash::ShaState::new();
@@ -744,9 +742,8 @@ mod tests {
             MutantKind::StatementBlock,
             Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
         );
-        let mut store = bough_typed_hash::MemoryHashStore::new();
-        let hash = m.hash(&mut store).unwrap();
-        assert!(store.contains(&hash));
+        let hash = m.hash().unwrap();
+        assert_eq!(hash.to_string().len(), 64);
     }
 
     // bough[verify mutant.based.hash.base]
@@ -827,9 +824,8 @@ mod tests {
             Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
         );
         let based = BasedMutant::new(mutant, &base);
-        let mut store = bough_typed_hash::MemoryHashStore::new();
-        let hash = based.hash(&mut store).unwrap();
-        assert!(store.contains(&hash));
+        let hash = based.hash().unwrap();
+        assert_eq!(hash.to_string().len(), 64);
     }
 
     // bough[verify span.point]

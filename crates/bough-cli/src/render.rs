@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use bough_core::{LanguageId, Mutation};
-use bough_typed_hash::{MemoryHashStore, TypedHashable};
+use bough_typed_hash::TypedHashable;
 use facet::Facet;
 
 use crate::config::{Cli, Config, Format};
@@ -134,8 +134,7 @@ impl Render for MutantFiles {
 }
 
 fn mutation_hash(m: &Mutation) -> String {
-    let mut store = MemoryHashStore::new();
-    let hash = m.hash(&mut store).expect("hashing should not fail");
+    let hash = m.hash().expect("hashing should not fail");
     format!("{hash}")
 }
 

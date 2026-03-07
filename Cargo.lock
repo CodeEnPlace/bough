@@ -154,7 +154,6 @@ version = "0.0.0"
 dependencies = [
  "bough-typed-hash-derive",
  "facet",
- "facet-json",
  "sha2",
  "tempfile",
  "tracing",
