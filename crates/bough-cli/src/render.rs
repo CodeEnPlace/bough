@@ -151,6 +151,29 @@ fn fmt_mutation_terse(m: &Mutation) -> String {
     )
 }
 
+fn fmt_mutation_markdown_row(m: &Mutation) -> String {
+    let mutant = m.mutant();
+    format!(
+        "| `{}` | {} | {:?} | {:?} | {}:{}-{}:{} | `{}` |",
+        mutation_hash(m),
+        mutant.twig().path().display(),
+        mutant.lang(),
+        mutant.kind(),
+        mutant.span().start().line() + 1,
+        mutant.span().start().col() + 1,
+        mutant.span().end().line() + 1,
+        mutant.span().end().col() + 1,
+        m.subst(),
+    )
+}
+
+const MARKDOWN_TABLE_HEADER: &str = "| Hash | File | Lang | Kind | Span | Subst |\n| --- | --- | --- | --- | --- | --- |";
+
+fn fmt_mutation_markdown_table(mutations: &[Mutation]) -> String {
+    let rows: Vec<_> = mutations.iter().map(fmt_mutation_markdown_row).collect();
+    format!("{MARKDOWN_TABLE_HEADER}\n{}", rows.join("\n"))
+}
+
 fn fmt_mutation_verbose(m: &Mutation) -> String {
     let mutant = m.mutant();
     format!(
@@ -174,7 +197,7 @@ impl Render for AllMutations {
         format!(
             "# All Mutations\n\n{} total\n\n{}",
             self.0.len(),
-            self.0.iter().map(|m| format!("- {}", fmt_mutation_verbose(m))).collect::<Vec<_>>().join("\n")
+            fmt_mutation_markdown_table(&self.0),
         )
     }
 
@@ -199,7 +222,7 @@ impl Render for LangMutations {
             "# {:?} Mutations\n\n{} total\n\n{}",
             self.0,
             self.1.len(),
-            self.1.iter().map(|m| format!("- {}", fmt_mutation_verbose(m))).collect::<Vec<_>>().join("\n")
+            fmt_mutation_markdown_table(&self.1),
         )
     }
 
@@ -224,7 +247,7 @@ impl Render for FileMutations {
             "# Mutations in {}\n\n{} total\n\n{}",
             self.1.display(),
             self.2.len(),
-            self.2.iter().map(|m| format!("- {}", fmt_mutation_verbose(m))).collect::<Vec<_>>().join("\n")
+            fmt_mutation_markdown_table(&self.2),
         )
     }
 
@@ -264,7 +287,7 @@ impl Render for SingleMutation {
         let outcome = if self.0.has_outcome() { "has outcome" } else { "pending" };
         format!(
             "# Mutation\n\n{}\n\nStatus: {}",
-            fmt_mutation_verbose(m),
+            fmt_mutation_markdown_table(std::slice::from_ref(m)),
             outcome,
         )
     }
