@@ -1,5 +1,6 @@
 use crate::file::{Error, Root};
 use std::path::{Path, PathBuf};
+use tracing::{debug, trace};
 
 // core[impl file.twig]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, facet::Facet)]
@@ -52,6 +53,12 @@ impl TwigsIterBuilder {
     // core[impl twig.iter.new]
     pub fn build<'a, R: Root>(self, root: &'a R) -> TwigsIter<'a, R> {
         let root_path = root.path();
+        debug!(
+            root = %root_path.display(),
+            includes = self.include.len(),
+            excludes = self.exclude.len(),
+            "building twigs iterator"
+        );
         let include = self
             .include
             .iter()
@@ -105,6 +112,7 @@ impl<R: Root> Iterator for TwigsIter<'_, R> {
             }
 
             let rel = path.strip_prefix(self.root.path()).ok()?;
+            trace!(twig = %rel.display(), "yielding twig");
             return Twig::new(rel.to_path_buf()).ok();
         }
     }
