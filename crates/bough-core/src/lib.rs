@@ -35,3 +35,4 @@ pub enum LanguageId {
 }
 
 pub use session::Config;
+pub use session::Session;

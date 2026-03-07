@@ -37,7 +37,7 @@ pub enum ShowCommand {
     File,
 }
 
-#[derive(Facet, Debug)]
+#[derive(Facet, Debug, Clone)]
 pub struct Config {
     #[facet(default = 1)]
     pub workers: u64,
@@ -52,7 +52,7 @@ pub struct Config {
     pub lang: HashMap<bough_core::LanguageId, LanguageConfig>,
 }
 
-#[derive(Facet, Debug)]
+#[derive(Facet, Debug, Clone)]
 pub struct LanguageConfig {
     pub include: Vec<String>,
 
@@ -196,7 +196,11 @@ pub fn parse() -> Cli {
         std::process::exit(1);
     }
 
-    debug!(workers = cli.config.workers, verbose = cli.verbose, "config parsed");
+    debug!(
+        workers = cli.config.workers,
+        verbose = cli.verbose,
+        "config parsed"
+    );
     cli
 }
 
