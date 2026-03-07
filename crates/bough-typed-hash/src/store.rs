@@ -1,6 +1,6 @@
 use crate::{TypedHash, TypedHashable};
 use sha2::{Digest, Sha256};
-use tracing::{debug, trace};
+use tracing::trace;
 
 fn raw_hash<T: TypedHashable>(value: &T) -> T::Hash {
     let mut state = Sha256::new();

@@ -1,7 +1,7 @@
 use crate::language::{LanguageDriver, driver_for_lang};
 use crate::{LanguageId, base::Base, file::Twig};
 use bough_typed_hash::{HashInto, TypedHashable};
-use tracing::{debug, trace, warn};
+use tracing::{debug, trace};
 use tree_sitter::StreamingIterator;
 
 // bough[impl mutant.twig-iter.twig]

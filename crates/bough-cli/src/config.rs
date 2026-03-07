@@ -5,7 +5,7 @@ use facet::Facet;
 use figue::{self as args, ConfigFormat, ConfigFormatError, Driver, builder};
 use miette::Diagnostic;
 use thiserror::Error;
-use tracing::{debug, info, warn};
+use tracing::{debug, warn};
 
 #[derive(Facet, Debug)]
 pub struct Cli {
@@ -242,24 +242,11 @@ fn normalize_path(path: &std::path::Path) -> std::path::PathBuf {
     components.iter().collect()
 }
 
+#[cfg(test)]
 fn resolve_config_from(start: &std::path::Path) -> Option<(std::path::PathBuf, String)> {
     find_config_candidates_from(start)
         .into_iter()
         .find(|(_, p)| std::path::Path::new(p).is_file())
-}
-
-pub fn resolve_config() -> Option<(std::path::PathBuf, String)> {
-    env::current_dir()
-        .ok()
-        .and_then(|d| resolve_config_from(&d))
-}
-
-pub fn resolve_config_path() -> Option<String> {
-    resolve_config().map(|(_, path)| path)
-}
-
-pub fn resolve_config_root() -> Option<std::path::PathBuf> {
-    resolve_config().map(|(root, _)| root)
 }
 
 // bough[impl config.base-root-path.relative-via-figue]

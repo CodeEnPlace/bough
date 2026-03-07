@@ -5,7 +5,6 @@ pub(crate) use javascript::JavascriptDriver;
 pub(crate) use typescript::TypescriptDriver;
 
 use crate::mutant::{MutantKind, Span};
-use tracing::debug;
 
 // bough[impl mutation.iter.language_driver]
 pub(crate) trait LanguageDriver {

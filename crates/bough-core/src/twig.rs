@@ -173,7 +173,7 @@ mod tests {
     }
 
     fn sorted_twigs<'a, R: Root>(iter: TwigsIter<'a, R>) -> Vec<PathBuf> {
-        let mut twigs: Vec<PathBuf> = iter.map(|t| t.path().to_path_buf()).collect();
+        let twigs: Vec<PathBuf> = iter.map(|t| t.path().to_path_buf()).collect();
         // twigs.sort();
         twigs
     }

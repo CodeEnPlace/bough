@@ -2,7 +2,7 @@ mod config;
 mod render;
 
 use bough_core::{File, Session};
-use config::{Command, ShowCommand, parse, resolve_config_path};
+use config::{Command, ShowCommand, parse};
 use render::{Noop, Render};
 use tracing::{Level, debug, info};
 
