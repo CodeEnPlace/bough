@@ -4,7 +4,14 @@ use bough_core::{LanguageId, Mutation};
 use bough_typed_hash::{MemoryHashStore, TypedHashable};
 use facet::Facet;
 
-use crate::config::{Config, Format};
+use crate::config::{Cli, Config, Format};
+
+const RESET: &str = "\x1b[0m";
+const TITLE: &str = "\x1b[33m";
+const PATH: &str = "\x1b[34m";
+const HASH: &str = "\x1b[36m";
+const LANG: &str = "\x1b[35m";
+const STRING: &str = "\x1b[33m";
 
 pub trait Render {
     fn markdown(&self) -> String;
@@ -58,14 +65,14 @@ impl Render for BaseFiles {
     fn terse(&self) -> String {
         self.0
             .iter()
-            .map(|pb| format!("{}", pb.to_string_lossy()))
+            .map(|pb| format!("{PATH}{}{RESET}", pb.to_string_lossy()))
             .collect::<Vec<_>>()
             .join(" ")
     }
     fn verbose(&self) -> String {
         self.0
             .iter()
-            .map(|pb| format!("{}", pb.to_string_lossy()))
+            .map(|pb| format!("{PATH}{}{RESET}", pb.to_string_lossy()))
             .collect::<Vec<_>>()
             .join("\n")
     }
@@ -92,14 +99,14 @@ impl Render for MutantFiles {
     fn terse(&self) -> String {
         self.1
             .iter()
-            .map(|pb| format!("{}", pb.to_string_lossy()))
+            .map(|pb| format!("{PATH}{}{RESET}", pb.to_string_lossy()))
             .collect::<Vec<_>>()
             .join(" ")
     }
     fn verbose(&self) -> String {
         self.1
             .iter()
-            .map(|pb| format!("{}", pb.to_string_lossy()))
+            .map(|pb| format!("{PATH}{}{RESET}", pb.to_string_lossy()))
             .collect::<Vec<_>>()
             .join("\n")
     }
@@ -117,7 +124,7 @@ fn mutation_hash(m: &Mutation) -> String {
 fn fmt_mutation_terse(m: &Mutation) -> String {
     let mutant = m.mutant();
     format!(
-        "{} {}:{}:{} {:?} → {}",
+        "{HASH}{}{RESET} {PATH}{}:{}:{}{RESET} {:?} → {STRING}{}{RESET}",
         mutation_hash(m),
         mutant.twig().path().display(),
         mutant.span().start().line() + 1,
@@ -130,7 +137,7 @@ fn fmt_mutation_terse(m: &Mutation) -> String {
 fn fmt_mutation_verbose(m: &Mutation) -> String {
     let mutant = m.mutant();
     format!(
-        "{} {} [{:?}] {:?} @ {}:{}-{}:{} → \"{}\"",
+        "{HASH}{}{RESET} {PATH}{}{RESET} [{LANG}{:?}{RESET}] {:?} @ {}:{}-{}:{} → {STRING}\"{}\"{RESET}",
         mutation_hash(m),
         mutant.twig().path().display(),
         mutant.lang(),
@@ -235,11 +242,7 @@ impl Render for Config {
 
     fn verbose(&self) -> String {
         format!(
-            "# Bough Config
-
-```json
-{}
-```",
+            "{TITLE}Bough Config{RESET}\n\n{}",
             facet_json::to_string(self).unwrap()
         )
     }
