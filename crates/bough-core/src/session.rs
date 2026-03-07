@@ -90,6 +90,7 @@ impl<C: Config> Session<C> {
             "discovered mutations in base"
         );
 
+        // bough[impl session.init.state.attach]
         let mutations_state = FacetDiskStore::<<Mutation as TypedHashable>::Hash, State>::new(
             config.get_bough_state_dir().join("state"),
         );
@@ -100,21 +101,6 @@ impl<C: Config> Session<C> {
             Workspace::bind(workspaces_dir.clone(), id, &base)?;
             workspaces.push(id.clone());
         }
-
-        let needed = (config.get_workers_count() as usize).saturating_sub(workspaces.len());
-        if needed > 0 {
-            debug!(count = needed, "creating new workspaces");
-        }
-        for _ in 0..needed {
-            let ws = Workspace::new(workspaces_dir.clone(), &base)?;
-            workspaces.push(ws.id().clone());
-        }
-
-        info!(
-            workspaces = workspaces.len(),
-            mutations = mutations_state.keys().count(),
-            "session initialized"
-        );
 
         Ok(Self {
             config,
@@ -343,6 +329,24 @@ mod tests {
         assert!(session.is_err());
     }
 
+    // bough[verify session.init.state.attach]
+    #[test]
+    fn session_new_creates_state_dir() {
+        let dir = tempfile::tempdir().unwrap();
+        let config = MinimalConfig {
+            root: dir.path().to_path_buf(),
+            state_dir: dir.path().join("my-state"),
+            langs: vec![],
+            lang_includes: vec![],
+            workers_count: 0,
+        };
+        let _session = Session::new(config).unwrap();
+        assert!(
+            dir.path().join("my-state/state").exists(),
+            "mutations_state dir should be created at <state_dir>/state"
+        );
+    }
+
     fn state_dir(dir: &std::path::Path) -> PathBuf {
         dir.join("bough/state")
     }
@@ -400,9 +404,9 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         std::fs::create_dir_all(dir.path().join("src")).unwrap();
         std::fs::write(dir.path().join("src/a.js"), "const x = 1;").unwrap();
-        let mut config = make_js_config(dir.path());
-        config.workers_count = 3;
-        let _session = Session::new(config).unwrap();
+        let config = make_js_config(dir.path());
+        let mut session = Session::new(config).unwrap();
+        session.tend_workspaces(3).unwrap();
         let dirs = workspace_dirs(dir.path());
         assert_eq!(dirs.len(), 3, "expected 3 workspaces, got: {dirs:?}");
         for d in &dirs {
@@ -419,14 +423,13 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         std::fs::create_dir_all(dir.path().join("src")).unwrap();
         std::fs::write(dir.path().join("src/a.js"), "const x = 1;").unwrap();
-        let mut config = make_js_config(dir.path());
-        config.workers_count = 2;
-        let _session = Session::new(config).unwrap();
+        let config = make_js_config(dir.path());
+        let mut session = Session::new(config).unwrap();
+        session.tend_workspaces(2).unwrap();
         let dirs_before = workspace_dirs(dir.path());
         assert_eq!(dirs_before.len(), 2);
 
-        let mut config2 = make_js_config(dir.path());
-        config2.workers_count = 2;
+        let config2 = make_js_config(dir.path());
         let _session2 = Session::new(config2).unwrap();
         let dirs_after = workspace_dirs(dir.path());
         assert_eq!(
@@ -443,9 +446,9 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         std::fs::create_dir_all(dir.path().join("src")).unwrap();
         std::fs::write(dir.path().join("src/a.js"), "const x = 1;").unwrap();
-        let mut config = make_js_config(dir.path());
-        config.workers_count = 3;
-        let session = Session::new(config).unwrap();
+        let config = make_js_config(dir.path());
+        let mut session = Session::new(config).unwrap();
+        session.tend_workspaces(3).unwrap();
         let ids = session.workspace_ids();
         assert_eq!(ids.len(), 3);
         for id in ids {
@@ -460,7 +463,8 @@ mod tests {
         std::fs::create_dir_all(dir.path().join("src")).unwrap();
         std::fs::write(dir.path().join("src/a.js"), "function foo() { return 1; }").unwrap();
         let config = make_js_config(dir.path());
-        let session = Session::new(config).unwrap();
+        let mut session = Session::new(config).unwrap();
+        session.tend_add_missing_states().unwrap();
         let initial_count = session.get_state().keys().count();
         assert!(initial_count > 0);
 
@@ -469,6 +473,7 @@ mod tests {
         let mut config2 = make_js_config(dir.path());
         config2.lang_includes = vec!["src/**/*.js".to_string()];
         let mut session2 = Session::new(config2).unwrap();
+        session2.tend_add_missing_states().unwrap();
         let count_after = session2.get_state().keys().count();
         assert!(count_after > initial_count);
 
@@ -520,9 +525,9 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         std::fs::create_dir_all(dir.path().join("src")).unwrap();
         std::fs::write(dir.path().join("src/a.js"), "const x = 1;").unwrap();
-        let mut config = make_js_config(dir.path());
-        config.workers_count = 2;
+        let config = make_js_config(dir.path());
         let mut session = Session::new(config).unwrap();
+        session.tend_workspaces(2).unwrap();
         let dirs_before = workspace_dirs(dir.path());
         assert_eq!(dirs_before.len(), 2);
 
@@ -539,9 +544,9 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         std::fs::create_dir_all(dir.path().join("src")).unwrap();
         std::fs::write(dir.path().join("src/a.js"), "const x = 1;").unwrap();
-        let mut config = make_js_config(dir.path());
-        config.workers_count = 2;
+        let config = make_js_config(dir.path());
         let mut session = Session::new(config).unwrap();
+        session.tend_workspaces(2).unwrap();
         let dirs_before = workspace_dirs(dir.path());
         assert_eq!(dirs_before.len(), 2);
 
@@ -561,9 +566,9 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         std::fs::create_dir_all(dir.path().join("src")).unwrap();
         std::fs::write(dir.path().join("src/a.js"), "const x = 1;").unwrap();
-        let mut config = make_js_config(dir.path());
-        config.workers_count = 1;
+        let config = make_js_config(dir.path());
         let mut session = Session::new(config).unwrap();
+        session.tend_workspaces(1).unwrap();
         assert_eq!(workspace_dirs(dir.path()).len(), 1);
 
         let ids = session.tend_workspaces(3).unwrap();
@@ -577,9 +582,9 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         std::fs::create_dir_all(dir.path().join("src")).unwrap();
         std::fs::write(dir.path().join("src/a.js"), "const x = 1;").unwrap();
-        let mut config = make_js_config(dir.path());
-        config.workers_count = 4;
+        let config = make_js_config(dir.path());
         let mut session = Session::new(config).unwrap();
+        session.tend_workspaces(4).unwrap();
         assert_eq!(workspace_dirs(dir.path()).len(), 4);
 
         let ids = session.tend_workspaces(2).unwrap();
@@ -596,6 +601,7 @@ mod tests {
         std::fs::write(dir.path().join("src/b.js"), "function bar() { return 2; }").unwrap();
         let config = make_js_config(dir.path());
         let mut session = Session::new(config).unwrap();
+        session.tend_add_missing_states().unwrap();
         let initial_count = session.get_state().keys().count();
         assert!(initial_count > 0);
 
