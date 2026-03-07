@@ -88,12 +88,11 @@ impl<C: Config> Session<C> {
     pub fn tend_add_missing_states(&mut self) -> Result<Vec<MutationHash>, Error> {
         let mutations_in_base: HashSet<Mutation> =
             self.base.mutations().collect::<Result<_, _>>()?;
-        let mut hash_store = bough_typed_hash::MemoryHashStore::new();
         let mut added = Vec::new();
 
         for mutation in &mutations_in_base {
             let hash = mutation
-                .hash(&mut hash_store)
+                .hash()
                 .expect("hashing should not fail");
             if self.mutations_state.get(&hash).is_none() {
                 let state = State::new(mutation.clone());
@@ -163,11 +162,9 @@ impl<C: Config> Session<C> {
     pub fn tend_remove_stale_states(&mut self) -> Result<Vec<MutationHash>, Error> {
         let mutations_in_base: HashSet<Mutation> =
             self.base.mutations().collect::<Result<_, _>>()?;
-        let mut hash_store = bough_typed_hash::MemoryHashStore::new();
-
         let hashes_in_base: HashSet<MutationHash> = mutations_in_base
             .iter()
-            .map(|m| m.hash(&mut hash_store).expect("hashing should not fail"))
+            .map(|m| m.hash().expect("hashing should not fail"))
             .collect();
 
         let stale_keys: Vec<MutationHash> = self

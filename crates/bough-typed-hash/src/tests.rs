@@ -76,8 +76,7 @@ fn typed_hash_display_format() {
 #[test]
 fn typed_hashable_produces_hash() {
     let w = Widget { name: "gear".into(), count: 5 };
-    let mut store = MemoryHashStore::new();
-    let h = w.hash(&mut store).unwrap();
+    let h = w.hash().unwrap();
     assert_eq!(h.to_string().len(), 64);
 }
 
@@ -85,24 +84,14 @@ fn typed_hashable_produces_hash() {
 fn typed_hashable_deterministic() {
     let a = Widget { name: "gear".into(), count: 5 };
     let b = Widget { name: "gear".into(), count: 5 };
-    assert_eq!(a.hash(&mut MemoryHashStore::new()).unwrap(), b.hash(&mut MemoryHashStore::new()).unwrap());
+    assert_eq!(a.hash().unwrap(), b.hash().unwrap());
 }
 
 #[test]
 fn typed_hashable_different_values_differ() {
     let a = Widget { name: "gear".into(), count: 5 };
     let b = Widget { name: "gear".into(), count: 6 };
-    assert_ne!(a.hash(&mut MemoryHashStore::new()).unwrap(), b.hash(&mut MemoryHashStore::new()).unwrap());
-}
-
-#[test]
-fn typed_hashable_hash_inserts_into_store() {
-    let mut store = MemoryHashStore::new();
-    let w = Widget { name: "auto".into(), count: 1 };
-    let h = w.hash(&mut MemoryHashStore::new()).unwrap();
-    assert!(!store.contains(&h));
-    w.hash(&mut store).unwrap();
-    assert!(store.contains(&h));
+    assert_ne!(a.hash().unwrap(), b.hash().unwrap());
 }
 
 #[test]
@@ -110,8 +99,8 @@ fn hash_into_derive_nested() {
     let a = Assembly { part: Part { label: "bolt".into(), weight: 1.5 }, quantity: 10 };
     let b = Assembly { part: Part { label: "bolt".into(), weight: 1.5 }, quantity: 10 };
     let c = Assembly { part: Part { label: "nut".into(), weight: 0.5 }, quantity: 10 };
-    assert_eq!(a.hash(&mut MemoryHashStore::new()).unwrap(), b.hash(&mut MemoryHashStore::new()).unwrap());
-    assert_ne!(a.hash(&mut MemoryHashStore::new()).unwrap(), c.hash(&mut MemoryHashStore::new()).unwrap());
+    assert_eq!(a.hash().unwrap(), b.hash().unwrap());
+    assert_ne!(a.hash().unwrap(), c.hash().unwrap());
 }
 
 #[test]
@@ -138,142 +127,50 @@ fn hash_into_derive_enum() {
 }
 
 #[test]
-fn memory_store_insert_get() {
-    let mut store = MemoryHashStore::new();
-    let w = Widget { name: "sprocket".into(), count: 3 };
-    let h = w.hash(&mut store).unwrap();
-    assert!(store.contains(&h));
-    assert_eq!(store.get(&h).unwrap().name, "sprocket");
-}
-
-#[test]
-fn memory_store_resolve_prefix() {
-    let mut store = MemoryHashStore::new();
-    let w = Widget { name: "a".into(), count: 1 };
-    let h = w.hash(&mut store).unwrap();
-
-    let hex = h.to_string();
-    let prefix = &hex[..4];
-    let matches = store.resolve_prefix(prefix);
-    assert!(matches.iter().any(|m| m.as_bytes() == h.as_bytes()));
-}
-
-#[test]
-fn typed_hash_parse_full_hex() {
-    let mut store = MemoryHashStore::new();
-    let w = Widget { name: "x".into(), count: 1 };
-    let h = w.hash(&mut store).unwrap();
-    let hex = h.to_string();
-
-    let parsed = WidgetHash::parse::<Widget>(&hex, &store).unwrap();
-    assert_eq!(parsed, h);
-}
-
-#[test]
-fn typed_hash_parse_prefix() {
-    let mut store = MemoryHashStore::new();
-    let w = Widget { name: "y".into(), count: 2 };
-    let h = w.hash(&mut store).unwrap();
-    let hex = h.to_string();
-
-    let parsed = WidgetHash::parse::<Widget>(&hex[..6], &store).unwrap();
-    assert_eq!(parsed, h);
-}
-
-#[test]
-fn typed_hash_parse_not_found() {
-    let store = MemoryHashStore::<Widget>::new();
-    let err = WidgetHash::parse::<Widget>("aabbccdd", &store);
-    assert!(matches!(err, Err(HashError::NotFound(_))));
-}
-
-#[test]
-fn typed_hash_parse_prefix_too_short() {
-    let store = MemoryHashStore::<Widget>::new();
-    let err = WidgetHash::parse::<Widget>("a", &store);
-    assert!(matches!(err, Err(HashError::PrefixTooShort { .. })));
-}
-
-#[test]
-fn typed_hash_parse_invalid_hex() {
-    let store = MemoryHashStore::<Widget>::new();
-    let err = WidgetHash::parse::<Widget>("zzzz", &store);
-    assert!(matches!(err, Err(HashError::InvalidHex(_))));
-}
-
-#[test]
-fn typed_hash_from_bytes_validates() {
-    let mut store = MemoryHashStore::new();
-    let w = Widget { name: "z".into(), count: 9 };
-    let h = w.hash(&mut store).unwrap();
-
-    let ok = WidgetHash::from_bytes::<Widget>(*h.as_bytes(), &store);
-    assert!(ok.is_ok());
-
-    let missing = WidgetHash::from_bytes::<Widget>([0xff; 32], &store);
-    assert!(matches!(missing, Err(HashError::NotFound(_))));
-}
-
-#[test]
-fn unvalidated_hash_roundtrip() {
-    let mut store = MemoryHashStore::new();
+fn unvalidated_hash_full_hex() {
     let w = Widget { name: "q".into(), count: 7 };
-    let h = w.hash(&mut store).unwrap();
+    let h = w.hash().unwrap();
     let hex = h.to_string();
 
     let unvalidated = UnvalidatedHash::new(hex);
-    let validated = unvalidated.validate::<Widget>(&store).unwrap();
+    let validated = unvalidated.validate(&[h]).unwrap();
     assert_eq!(validated, h);
 }
 
 #[test]
-fn chain_store_searches_all() {
-    let mut s1 = MemoryHashStore::new();
-    let mut s2 = MemoryHashStore::new();
-
-    let w1 = Widget { name: "alpha".into(), count: 1 };
-    let w2 = Widget { name: "beta".into(), count: 2 };
-    let h1 = w1.hash(&mut s1).unwrap();
-    let h2 = w2.hash(&mut s2).unwrap();
-
-    let chain = ChainStore::new(vec![&mut s1, &mut s2]);
-    assert!(chain.contains(&h1));
-    assert!(chain.contains(&h2));
-    assert_eq!(chain.get(&h1).unwrap().name, "alpha");
-    assert_eq!(chain.get(&h2).unwrap().name, "beta");
-}
-
-#[test]
-fn chain_store_inserts_into_first() {
-    let mut s1 = MemoryHashStore::new();
-    let mut s2 = MemoryHashStore::new();
-
-    let w = Widget { name: "gamma".into(), count: 3 };
-    let h = w.hash(&mut MemoryHashStore::new()).unwrap();
-
-    {
-        let mut chain = ChainStore::new(vec![&mut s1, &mut s2]);
-        chain.insert(w);
-    }
-
-    assert!(s1.contains(&h));
-    assert!(!s2.contains(&h));
-}
-
-#[test]
-fn chain_store_dedupes_prefix() {
-    let mut s1 = MemoryHashStore::new();
-    let mut s2 = MemoryHashStore::new();
-
-    let w = Widget { name: "delta".into(), count: 4 };
-    let h = w.hash(&mut MemoryHashStore::new()).unwrap();
+fn unvalidated_hash_prefix() {
+    let w = Widget { name: "y".into(), count: 2 };
+    let h = w.hash().unwrap();
     let hex = h.to_string();
-    s1.insert(Widget { name: "delta".into(), count: 4 });
-    s2.insert(Widget { name: "delta".into(), count: 4 });
 
-    let chain = ChainStore::new(vec![&mut s1, &mut s2]);
-    let matches = chain.resolve_prefix(&hex[..4]);
-    assert_eq!(matches.len(), 1);
+    let unvalidated = UnvalidatedHash::new(hex[..6].to_string());
+    let validated = unvalidated.validate(&[h]).unwrap();
+    assert_eq!(validated, h);
+}
+
+#[test]
+fn unvalidated_hash_not_found() {
+    let known: Vec<WidgetHash> = vec![];
+    let err = UnvalidatedHash::new("aabbccdd".into()).validate(&known);
+    assert!(matches!(err, Err(HashError::NotFound(_))));
+}
+
+#[test]
+fn unvalidated_hash_invalid_hex() {
+    let known: Vec<WidgetHash> = vec![];
+    let err = UnvalidatedHash::new("zzzz".into()).validate(&known);
+    assert!(matches!(err, Err(HashError::InvalidHex(_))));
+}
+
+#[test]
+fn unvalidated_hash_ambiguous() {
+    let h1 = WidgetHash::from_raw([0xaa; 32]);
+    let mut h2_bytes = [0xaa; 32];
+    h2_bytes[31] = 0xbb;
+    let h2 = WidgetHash::from_raw(h2_bytes);
+
+    let err = UnvalidatedHash::new("aa".into()).validate(&[h1, h2]);
+    assert!(matches!(err, Err(HashError::Ambiguous { .. })));
 }
 
 #[test]
@@ -358,51 +255,11 @@ fn hash_std_trait_impls() {
     assert!(set.contains(&h1));
 }
 
-#[cfg(feature = "disk")]
-mod disk_tests {
-    use super::*;
-
-    #[derive(Clone, facet::Facet, TypedHashable)]
-    pub struct DiskItem {
-        pub val: u32,
-    }
-
-    #[test]
-    fn disk_store_insert_and_resolve() {
-        let dir = tempfile::tempdir().unwrap();
-        let mut store = DiskHashStore::<DiskItem>::new(dir.path().to_path_buf());
-
-        let item = DiskItem { val: 42 };
-        let h = item.hash(&mut store).unwrap();
-
-        let hex = h.to_string();
-        let matches = store.resolve_prefix(&hex[..4]);
-        assert!(!matches.is_empty());
-    }
-
-    #[test]
-    fn disk_store_get_cached() {
-        let dir = tempfile::tempdir().unwrap();
-        let mut store = DiskHashStore::<DiskItem>::new(dir.path().to_path_buf());
-
-        let item = DiskItem { val: 99 };
-        let h = item.hash(&mut store).unwrap();
-
-        assert_eq!(store.get(&h).unwrap().val, 99);
-    }
-
-    #[test]
-    fn disk_store_reloads_from_disk() {
-        let dir = tempfile::tempdir().unwrap();
-        let h = {
-            let mut store = DiskHashStore::<DiskItem>::new(dir.path().to_path_buf());
-            let item = DiskItem { val: 77 };
-            let h = item.hash(&mut store).unwrap();
-            h
-        };
-
-        let store = DiskHashStore::<DiskItem>::new(dir.path().to_path_buf());
-        assert!(store.contains(&h));
-        assert_eq!(store.get(&h).unwrap().val, 77);
-    }
+#[test]
+fn bytes_to_hex_roundtrip() {
+    let bytes = [0xde; 32];
+    let hex = bytes_to_hex(&bytes);
+    assert_eq!(hex.len(), 64);
+    let back = hex_to_bytes(&hex).unwrap();
+    assert_eq!(back, bytes);
 }

@@ -66,7 +66,7 @@ mod tests {
     use crate::file::Twig;
     use crate::mutant::{BinaryOpMutationKind, MutantKind, Point, Span};
     use crate::twig::TwigsIterBuilder;
-    use bough_typed_hash::{HashInto, HashStore};
+    use bough_typed_hash::HashInto;
     use std::path::PathBuf;
 
     fn make_base() -> (tempfile::TempDir, Base) {
@@ -290,9 +290,8 @@ mod tests {
             mutant: mutant.clone(),
             subst: "-".into(),
         };
-        let mut store = bough_typed_hash::MemoryHashStore::new();
-        let hash = mutation.hash(&mut store).unwrap();
-        assert!(store.contains(&hash));
+        let hash = mutation.hash().unwrap();
+        assert_eq!(hash.to_string().len(), 64);
     }
 
     // bough[verify mutation.hash.mutant]
