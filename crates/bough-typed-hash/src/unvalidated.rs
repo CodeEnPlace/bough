@@ -1,4 +1,5 @@
 use crate::{HashError, HashStore, TypedHash, TypedHashable};
+use tracing::debug;
 
 /// Intermediate type for deserializing hashes without store validation.
 ///
@@ -37,6 +38,7 @@ impl UnvalidatedHash {
         self,
         store: &dyn HashStore<T>,
     ) -> Result<T::Hash, HashError<T::Hash>> {
+        debug!(hex_len = self.0.len(), "validating unvalidated hash");
         T::Hash::parse::<T>(&self.0, store)
     }
 }
