@@ -61,6 +61,79 @@ impl Mutant {
     pub fn span(&self) -> &Span {
         &self.span
     }
+
+    pub fn get_contextual_fragment(
+        &self,
+        base: &Base,
+        context_lines: usize,
+    ) -> Result<(String, Span), std::io::Error> {
+        let file_path = crate::file::File::new(base, &self.twig).resolve();
+        let file_content = std::fs::read(&file_path)?;
+
+        let driver = driver_for_lang(self.lang);
+        let mut parser = tree_sitter::Parser::new();
+        parser
+            .set_language(&driver.ts_language())
+            .expect("language grammar should load");
+        let tree = parser
+            .parse(&file_content, None)
+            .expect("parse should succeed");
+
+        let root = tree.root_node();
+        let target = root
+            .descendant_for_byte_range(self.span.start().byte(), self.span.end().byte())
+            .unwrap_or(root);
+
+        let mutant_start_line = self.span.start().line();
+        let mutant_end_line = self.span.end().line();
+
+        let mut candidate = target;
+        let mut current = target;
+
+        let has_context = |node: &tree_sitter::Node<'_>| -> bool {
+            let above = mutant_start_line.saturating_sub(node.start_position().row);
+            let below = node.end_position().row.saturating_sub(mutant_end_line);
+            above >= context_lines && below >= context_lines
+        };
+
+        let line_range = |node: &tree_sitter::Node<'_>| -> (usize, usize) {
+            (node.start_position().row, node.end_position().row)
+        };
+
+        let mut context_met = has_context(&current);
+
+        loop {
+            if driver.is_context_boundary(&current) {
+                candidate = current;
+                break;
+            }
+
+            if context_met {
+                let candidate_range = line_range(&candidate);
+                let current_range = line_range(&current);
+                if current_range != candidate_range {
+                    break;
+                }
+                candidate = current;
+            } else if has_context(&current) {
+                context_met = true;
+                candidate = current;
+            }
+
+            if let Some(parent) = current.parent() {
+                current = parent;
+            } else {
+                candidate = current;
+                break;
+            }
+        }
+
+        let text = std::str::from_utf8(&file_content[candidate.start_byte()..candidate.end_byte()])
+            .unwrap_or("")
+            .to_string();
+
+        Ok((text, span_from_node(&candidate)))
+    }
 }
 
 // bough[impl mutant.based]
@@ -937,5 +1010,85 @@ mod tests {
         )
         .unwrap();
         (dir, base)
+    }
+
+    const CONTEXT_JS: &str = "\
+// line 0
+function add(a, b) {
+    if (a > 0) {
+        return a + b;
+    }
+    return b;
+}
+// line 7
+function sub(a, b) {
+    return a - b;
+}";
+
+    fn make_context_base() -> (tempfile::TempDir, Base) {
+        make_js_base(CONTEXT_JS)
+    }
+
+    fn find_add_mutant(base: &Base) -> Mutant {
+        let twig = base.twigs().next().unwrap();
+        TwigMutantsIter::new(LanguageId::Javascript, base, &twig)
+            .unwrap()
+            .map(|bm| bm.into_mutant())
+            .find(|m| matches!(m.kind(), MutantKind::BinaryOp(BinaryOpMutationKind::Add)))
+            .expect("should find a + b mutant")
+    }
+
+    #[test]
+    fn contextual_fragment_zero_returns_complete_statement() {
+        let (_dir, base) = make_context_base();
+        let mutant = find_add_mutant(&base);
+        let (text, span) = mutant.get_contextual_fragment(&base, 0).unwrap();
+        assert_eq!(text, "return a + b;");
+        assert_eq!(span, Span::new(Point::new(3, 8, 56), Point::new(3, 21, 69)));
+    }
+
+    #[test]
+    fn contextual_fragment_one_returns_if_statement() {
+        let (_dir, base) = make_context_base();
+        let mutant = find_add_mutant(&base);
+        let (text, span) = mutant.get_contextual_fragment(&base, 1).unwrap();
+        assert_eq!(text, "if (a > 0) {\n        return a + b;\n    }");
+        assert_eq!(span, Span::new(Point::new(2, 4, 35), Point::new(4, 5, 75)));
+    }
+
+    #[test]
+    fn contextual_fragment_large_caps_at_function_boundary() {
+        let (_dir, base) = make_context_base();
+        let mutant = find_add_mutant(&base);
+        let (text, span) = mutant.get_contextual_fragment(&base, 100).unwrap();
+        assert_eq!(text, "function add(a, b) {\n    if (a > 0) {\n        return a + b;\n    }\n    return b;\n}");
+        assert_eq!(span, Span::new(Point::new(1, 0, 10), Point::new(6, 1, 91)));
+    }
+
+    #[test]
+    fn contextual_fragment_boundary_prevents_sibling_inclusion() {
+        let (_dir, base) = make_context_base();
+        let mutant = find_add_mutant(&base);
+        let (text, span) = mutant.get_contextual_fragment(&base, 3).unwrap();
+        assert_eq!(text, "function add(a, b) {\n    if (a > 0) {\n        return a + b;\n    }\n    return b;\n}");
+        assert_eq!(span, Span::new(Point::new(1, 0, 10), Point::new(6, 1, 91)));
+    }
+
+    #[test]
+    fn contextual_fragment_mutant_at_start_of_function() {
+        let (_dir, base) = make_js_base("function foo() {\n    return 1 + 2;\n}");
+        let mutant = find_add_mutant(&base);
+        let (text, span) = mutant.get_contextual_fragment(&base, 100).unwrap();
+        assert_eq!(text, "function foo() {\n    return 1 + 2;\n}");
+        assert_eq!(span, Span::new(Point::new(0, 0, 0), Point::new(2, 1, 36)));
+    }
+
+    #[test]
+    fn contextual_fragment_mutant_at_end_of_function() {
+        let (_dir, base) = make_js_base("function bar() {\n    const x = 1;\n    const y = 2;\n    return x + y;\n}");
+        let mutant = find_add_mutant(&base);
+        let (text, span) = mutant.get_contextual_fragment(&base, 100).unwrap();
+        assert_eq!(text, "function bar() {\n    const x = 1;\n    const y = 2;\n    return x + y;\n}");
+        assert_eq!(span, Span::new(Point::new(0, 0, 0), Point::new(4, 1, 70)));
     }
 }
