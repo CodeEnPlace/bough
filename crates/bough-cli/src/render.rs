@@ -167,6 +167,31 @@ impl Render for AllMutations {
     }
 }
 
+#[derive(Facet)]
+pub struct LangMutations(pub LanguageId, pub Vec<Mutation>);
+impl Render for LangMutations {
+    fn markdown(&self) -> String {
+        format!(
+            "# {:?} Mutations\n\n{} total\n\n{}",
+            self.0,
+            self.1.len(),
+            self.1.iter().map(|m| format!("- {}", fmt_mutation_verbose(m))).collect::<Vec<_>>().join("\n")
+        )
+    }
+
+    fn terse(&self) -> String {
+        self.1.iter().map(fmt_mutation_terse).collect::<Vec<_>>().join("\n")
+    }
+
+    fn verbose(&self) -> String {
+        self.1.iter().map(fmt_mutation_verbose).collect::<Vec<_>>().join("\n")
+    }
+
+    fn json(&self) -> String {
+        facet_json::to_string(self).unwrap()
+    }
+}
+
 impl Render for Config {
     fn markdown(&self) -> String {
         format!(

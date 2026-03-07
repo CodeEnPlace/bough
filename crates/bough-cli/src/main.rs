@@ -6,7 +6,7 @@ use config::{Command, Show, parse};
 use render::{Noop, Render};
 use tracing::{Level, debug, info};
 
-use crate::render::{AllMutations, BaseFiles, MutantFiles};
+use crate::render::{AllMutations, BaseFiles, LangMutations, MutantFiles};
 
 fn main() {
     let cli = parse();
@@ -70,9 +70,20 @@ fn main() {
                 }
 
                 Show::Mutations {
-                    lang: Some(_lang),
+                    lang: Some(lang),
                     file: None,
-                } => todo!(),
+                } => {
+                    let session = Session::new(cli.config.clone()).expect("session creation");
+                    let base = session.base();
+                    let mutations: Vec<_> = base
+                        .mutations()
+                        .collect::<Result<Vec<_>, _>>()
+                        .expect("mutation scan")
+                        .into_iter()
+                        .filter(|m| m.mutant().lang() == *lang)
+                        .collect();
+                    Box::new(LangMutations(*lang, mutations))
+                }
 
                 Show::Mutations {
                     lang: Some(_lang),
