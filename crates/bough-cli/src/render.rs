@@ -102,7 +102,6 @@ impl Render for MutantFiles {
             .collect::<Vec<_>>()
             .join("\n")
     }
-
     fn json(&self) -> String {
         facet_json::to_string(self).unwrap()
     }

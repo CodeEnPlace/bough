@@ -25,6 +25,8 @@ fn main() {
         Command::Show { ref show } => {
             debug!(subcommand = ?show, "executing show command");
             match show {
+                Show::Config => Box::new(cli.config.clone()),
+
                 Show::Files { lang: None } => {
                     let session = Session::new(cli.config.clone()).expect("session creation");
                     let base = session.base();
@@ -54,8 +56,21 @@ fn main() {
                     Box::new(MutantFiles(*lang, paths))
                 }
 
-                Show::Config => Box::new(cli.config.clone()),
-                Show::Mutations { lang, file } => todo!(),
+                Show::Mutations {
+                    lang: None,
+                    file: _,
+                } => todo!(),
+
+                Show::Mutations {
+                    lang: Some(lang),
+                    file: None,
+                } => todo!(),
+
+                Show::Mutations {
+                    lang: Some(lang),
+                    file: Some(file),
+                } => todo!(),
+
                 Show::Mutation { hash } => todo!(),
             }
         }
