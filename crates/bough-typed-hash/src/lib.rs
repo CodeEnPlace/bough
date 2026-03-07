@@ -26,6 +26,7 @@
 
 use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
+use tracing::{trace, warn};
 
 pub use bough_typed_hash_derive::{HashInto, TypedHash, TypedHashable};
 
@@ -73,6 +74,7 @@ pub trait TypedHash: Sized {
         s: &str,
         store: &dyn HashStore<T>,
     ) -> Result<Self, HashError<Self>> {
+        trace!(input_len = s.len(), "parsing hash");
         if s.len() == 64 {
             let bytes = hex_to_bytes(s).map_err(|e| HashError::InvalidHex(e))?;
             return Self::from_bytes(bytes, store);
@@ -97,10 +99,13 @@ pub trait TypedHash: Sized {
         match matches.len() {
             0 => Err(HashError::NotFound(s.to_string())),
             1 => Ok(matches.into_iter().next().unwrap()),
-            _ => Err(HashError::Ambiguous {
-                prefix: s.to_string(),
-                matches,
-            }),
+            _ => {
+                warn!(prefix = s, count = matches.len(), "ambiguous hash prefix");
+                Err(HashError::Ambiguous {
+                    prefix: s.to_string(),
+                    matches,
+                })
+            }
         }
     }
 
