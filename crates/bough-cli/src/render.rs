@@ -24,6 +24,7 @@ fn strip_ansi(s: &str) -> String {
 }
 
 const RESET: &str = "\x1b[0m";
+const BOLD: &str = "\x1b[1m";
 const TITLE: &str = "\x1b[33m";
 const PATH: &str = "\x1b[34m";
 const HASH: &str = "\x1b[36m";
@@ -299,11 +300,29 @@ impl SingleMutation {
 impl Render for SingleMutation {
     fn markdown(&self) -> String {
         let m = self.state.mutation();
+        let mutant = m.mutant();
         let outcome = if self.state.has_outcome() { "has outcome" } else { "pending" };
         let tag = self.lang_tag();
         format!(
-            "# Mutation\n\n{}\n\nStatus: {}\n\n## Before\n\n```{}\n{}\n```\n\n## After\n\n```{}\n{}\n```",
-            fmt_mutation_markdown_table(std::slice::from_ref(m)),
+            "{TITLE}# Mutation{RESET}\n\n\
+            - {BOLD}Hash:{RESET} {HASH}{}{RESET}\n\
+            - {BOLD}File:{RESET} {PATH}{}{RESET}\n\
+            - {BOLD}Lang:{RESET} {LANG}{:?}{RESET}\n\
+            - {BOLD}Kind:{RESET} {:?}\n\
+            - {BOLD}Span:{RESET} {}:{}-{}:{}\n\
+            - {BOLD}Subst:{RESET} {STRING}{}{RESET}\n\
+            - {BOLD}Status:{RESET} {}\n\n\
+            {TITLE}## Before{RESET}\n\n```{}\n{}\n```\n\n\
+            {TITLE}## After{RESET}\n\n```{}\n{}\n```",
+            mutation_hash(m),
+            mutant.twig().path().display(),
+            mutant.lang(),
+            mutant.kind(),
+            mutant.span().start().line() + 1,
+            mutant.span().start().col() + 1,
+            mutant.span().end().line() + 1,
+            mutant.span().end().col() + 1,
+            m.subst(),
             outcome,
             tag, self.before,
             tag, self.after,
