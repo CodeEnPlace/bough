@@ -1,0 +1,8 @@
+base_root_dir = "."
+include = ["**/*"]
+exclude = ["node_modules/**/*"]
+test.cmd = "npm test"
+
+[lang.js]
+include = ["src/**/*.js"]
+exclude = ["**/*.test.*"]

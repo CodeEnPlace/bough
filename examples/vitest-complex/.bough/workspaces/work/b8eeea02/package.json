@@ -1,0 +1,11 @@
+{
+  "name": "bough-example-vitest",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run --maxWorkers=2 > /tmp/$RANDOM.vitest.log"
+  },
+  "devDependencies": {
+    "vitest": "^3.0.0"
+  }
+}
