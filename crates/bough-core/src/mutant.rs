@@ -1,6 +1,7 @@
 use crate::language::{LanguageDriver, driver_for_lang};
 use crate::{LanguageId, base::Base, file::Twig};
 use bough_typed_hash::{HashInto, TypedHashable};
+use tracing::{debug, trace, warn};
 use tree_sitter::StreamingIterator;
 
 // core[impl mutant.twig-iter.twig]
@@ -214,6 +215,7 @@ impl<'a, 't> TwigMutantsIter<'a, 't> {
     pub fn new(lang: LanguageId, base: &'a Base, twig: &'t Twig) -> std::io::Result<Self> {
         // core[impl mutant.twig-iter.file]
         let file_path = crate::file::File::new(base, twig).resolve();
+        debug!(lang = ?lang, path = %file_path.display(), "parsing twig for mutants");
         let file_content = std::fs::read(&file_path)?;
 
         let driver = driver_for_lang(lang);
@@ -264,6 +266,7 @@ impl<'a, 't> TwigMutantsIter<'a, 't> {
     // core[impl mutant.twig-iter.skip.kind]
     // core[impl mutant.twig-iter.skip.kind.multiple]
     pub fn with_skip_kind(mut self, kind: MutantKind) -> Self {
+        debug!(?kind, "adding skip kind filter");
         self.skip_kinds.push(kind);
         self
     }
@@ -271,6 +274,7 @@ impl<'a, 't> TwigMutantsIter<'a, 't> {
     // core[impl mutant.twig-iter.skip.query]
     // core[impl mutant.twig-iter.skip.query.multiple]
     pub fn with_skip_query(mut self, query: &str) -> Self {
+        debug!(query, "adding skip query filter");
         let q = tree_sitter::Query::new(&self.driver.ts_language(), query)
             .expect("skip query should be valid");
         self.skip_queries.push(q);
@@ -306,6 +310,7 @@ impl<'a, 't> Iterator for TwigMutantsIter<'a, 't> {
 
             if let Some((kind, span)) = self.driver.check_node(&node, &self.file_content) {
                 if self.skip_kinds.contains(&kind) {
+                    trace!(?kind, "skipping mutant by kind filter");
                     continue;
                 }
                 if self.skip_queries.iter().any(|q| {
@@ -314,8 +319,10 @@ impl<'a, 't> Iterator for TwigMutantsIter<'a, 't> {
                         .next()
                         .is_some()
                 }) {
+                    trace!(?kind, "skipping mutant by query filter");
                     continue;
                 }
+                trace!(?kind, start = span.start().byte(), end = span.end().byte(), "found mutant");
                 let mutant = Mutant::new(self.lang, self.twig.clone(), kind, span);
                 return Some(BasedMutant::new(mutant, self.base));
             }
