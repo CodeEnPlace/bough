@@ -34,7 +34,7 @@ impl LanguageDriver for JavascriptDriver {
                     "-" => BinaryOpMutationKind::Sub,
                     _ => return None,
                 };
-                Some((MutantKind::BinaryOp(kind), span_from_node(node)))
+                Some((MutantKind::BinaryOp(kind), span_from_node(&op_node)))
             }
             _ => None,
         };
