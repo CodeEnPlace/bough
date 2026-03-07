@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use std::env;
+use std::{collections::HashMap, path::PathBuf};
 
 use facet::Facet;
 use figue::{self as args, ConfigFormat, ConfigFormatError, Driver, builder};
@@ -41,18 +41,31 @@ pub enum Format {
 pub enum Command {
     Show {
         #[facet(args::subcommand)]
-        what: ShowCommand,
+        show: Show,
     },
+
     Run,
     Noop,
 }
 
 #[derive(Facet, Debug)]
 #[repr(u8)]
-pub enum ShowCommand {
+pub enum Show {
+    Config,
+
     Files {
         #[facet(args::positional, default)]
         lang: Option<bough_core::LanguageId>,
+    },
+    Mutations {
+        #[facet(args::positional, default)]
+        lang: Option<bough_core::LanguageId>,
+        #[facet(args::positional, default)]
+        file: Option<PathBuf>,
+    },
+    Mutation {
+        #[facet(args::positional)]
+        hash: String,
     },
 }
 
@@ -428,7 +441,7 @@ exclude = []
         assert!(matches!(
             cli.command,
             Command::Show {
-                what: ShowCommand::Files { .. }
+                show: Show::Files { .. }
             }
         ));
     }

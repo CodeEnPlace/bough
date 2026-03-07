@@ -39,7 +39,9 @@ pub fn derive_hash_into(input: TokenStream) -> TokenStream {
                         }
                     }
                     Fields::Named(fields) => {
-                        let field_names: Vec<_> = fields.named.iter()
+                        let field_names: Vec<_> = fields
+                            .named
+                            .iter()
                             .map(|f| f.ident.as_ref().unwrap())
                             .collect();
                         let hash_fields = field_names.iter().map(|f| {
@@ -190,7 +192,9 @@ pub fn derive_typed_hashable(input: TokenStream) -> TokenStream {
     let vis = &input.vis;
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
-    let param_names: String = input.generics.type_params()
+    let param_names: String = input
+        .generics
+        .type_params()
         .map(|p| p.ident.to_string())
         .collect();
     let hash_name = format_ident!("{}{param_names}Hash", name);
@@ -222,7 +226,9 @@ pub fn derive_typed_hashable(input: TokenStream) -> TokenStream {
                         }
                     }
                     Fields::Named(fields) => {
-                        let field_names: Vec<_> = fields.named.iter()
+                        let field_names: Vec<_> = fields
+                            .named
+                            .iter()
                             .map(|f| f.ident.as_ref().unwrap())
                             .collect();
                         let hash_fields = field_names.iter().map(|f| {
@@ -243,7 +249,7 @@ pub fn derive_typed_hashable(input: TokenStream) -> TokenStream {
     };
 
     let expanded = quote! {
-        #[derive(bough_typed_hash::TypedHash)]
+        #[derive(bough_typed_hash::TypedHash, facet::Facet)]
         #vis struct #hash_name([u8; 32]);
 
         impl #impl_generics bough_typed_hash::HashInto for #name #ty_generics #where_clause {
