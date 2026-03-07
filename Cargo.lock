@@ -73,6 +73,7 @@ dependencies = [
 name = "bough-cli"
 version = "0.0.0"
 dependencies = [
+ "bough-core",
  "facet",
  "facet-toml",
  "facet-yaml",
