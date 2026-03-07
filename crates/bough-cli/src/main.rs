@@ -112,13 +112,24 @@ fn main() {
                         .expect("mutation scan");
                     let mutation = find_mutation_by_hash(hash, mutations);
                     let lang = mutation.mutant().lang();
-                    let (context, _span) = mutation.mutant()
+                    let file_path = bough_core::File::new(base, mutation.mutant().twig()).resolve();
+                    let file_src = std::fs::read_to_string(&file_path).expect("read source file");
+                    let (before, ctx_span) = mutation.mutant()
                         .get_contextual_fragment(base, 3)
                         .expect("context fragment");
+                    let mutated_src = mutation.apply_to_complete_src_string(&file_src);
+                    let original_len = mutation.mutant().span().end().byte() - mutation.mutant().span().start().byte();
+                    let subst_len = mutation.subst().len();
+                    let end_byte = if subst_len >= original_len {
+                        ctx_span.end().byte() + (subst_len - original_len)
+                    } else {
+                        ctx_span.end().byte() - (original_len - subst_len)
+                    };
+                    let after = &mutated_src[ctx_span.start().byte()..end_byte];
                     let mutation_hash = mutation.hash().expect("hashing should not fail");
                     let state = session.get_state().get(&mutation_hash)
                         .expect("state not found for mutation");
-                    Box::new(SingleMutation { state, context, lang })
+                    Box::new(SingleMutation { state, before, after: after.to_string(), lang })
                 }
             }
         }
