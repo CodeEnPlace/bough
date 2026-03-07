@@ -111,10 +111,14 @@ fn main() {
                         .collect::<Result<Vec<_>, _>>()
                         .expect("mutation scan");
                     let mutation = find_mutation_by_hash(hash, mutations);
+                    let lang = mutation.mutant().lang();
+                    let (context, _span) = mutation.mutant()
+                        .get_contextual_fragment(base, 3)
+                        .expect("context fragment");
                     let mutation_hash = mutation.hash().expect("hashing should not fail");
                     let state = session.get_state().get(&mutation_hash)
                         .expect("state not found for mutation");
-                    Box::new(SingleMutation(state))
+                    Box::new(SingleMutation { state, context, lang })
                 }
             }
         }
