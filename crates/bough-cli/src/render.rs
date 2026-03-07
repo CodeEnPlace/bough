@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
-use bough_core::LanguageId;
+use bough_core::{LanguageId, Mutation};
+use bough_typed_hash::{MemoryHashStore, TypedHashable};
 use facet::Facet;
 
 use crate::config::{Config, Format};
@@ -102,6 +103,65 @@ impl Render for MutantFiles {
             .collect::<Vec<_>>()
             .join("\n")
     }
+    fn json(&self) -> String {
+        facet_json::to_string(self).unwrap()
+    }
+}
+
+fn mutation_hash(m: &Mutation) -> String {
+    let mut store = MemoryHashStore::new();
+    let hash = m.hash(&mut store).expect("hashing should not fail");
+    format!("{hash}")
+}
+
+fn fmt_mutation_terse(m: &Mutation) -> String {
+    let mutant = m.mutant();
+    format!(
+        "{} {}:{}:{} {:?} → {}",
+        mutation_hash(m),
+        mutant.twig().path().display(),
+        mutant.span().start().line() + 1,
+        mutant.span().start().col() + 1,
+        mutant.kind(),
+        m.subst(),
+    )
+}
+
+fn fmt_mutation_verbose(m: &Mutation) -> String {
+    let mutant = m.mutant();
+    format!(
+        "{} {} [{:?}] {:?} @ {}:{}-{}:{} → \"{}\"",
+        mutation_hash(m),
+        mutant.twig().path().display(),
+        mutant.lang(),
+        mutant.kind(),
+        mutant.span().start().line() + 1,
+        mutant.span().start().col() + 1,
+        mutant.span().end().line() + 1,
+        mutant.span().end().col() + 1,
+        m.subst(),
+    )
+}
+
+#[derive(Facet)]
+pub struct AllMutations(pub Vec<Mutation>);
+impl Render for AllMutations {
+    fn markdown(&self) -> String {
+        format!(
+            "# All Mutations\n\n{} total\n\n{}",
+            self.0.len(),
+            self.0.iter().map(|m| format!("- {}", fmt_mutation_verbose(m))).collect::<Vec<_>>().join("\n")
+        )
+    }
+
+    fn terse(&self) -> String {
+        self.0.iter().map(fmt_mutation_terse).collect::<Vec<_>>().join("\n")
+    }
+
+    fn verbose(&self) -> String {
+        self.0.iter().map(fmt_mutation_verbose).collect::<Vec<_>>().join("\n")
+    }
+
     fn json(&self) -> String {
         facet_json::to_string(self).unwrap()
     }

@@ -113,6 +113,7 @@ name = "bough-cli"
 version = "0.0.0"
 dependencies = [
  "bough-core",
+ "bough-typed-hash",
  "facet",
  "facet-json",
  "facet-toml",
