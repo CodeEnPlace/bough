@@ -1,6 +1,6 @@
 use super::language::driver_for_lang;
 use crate::mutant::Mutant;
-use bough_typed_hash::{HashInto, TypedHashable};
+use bough_typed_hash::TypedHashable;
 use tracing::trace;
 
 // bough[impl mutation.iter.mutant]
@@ -66,7 +66,7 @@ mod tests {
     use crate::file::Twig;
     use crate::mutant::{BinaryOpMutationKind, MutantKind, Point, Span};
     use crate::twig::TwigsIterBuilder;
-    use bough_typed_hash::HashStore;
+    use bough_typed_hash::{HashInto, HashStore};
     use std::path::PathBuf;
 
     fn make_base() -> (tempfile::TempDir, Base) {

@@ -1,7 +1,7 @@
 use std::{collections::HashSet, path::PathBuf};
 
 use bough_typed_hash::TypedHashable;
-use tracing::{debug, info, warn};
+use tracing::{debug, info};
 
 use crate::{
     LanguageId,
@@ -536,7 +536,7 @@ mod tests {
         std::fs::create_dir_all(dir.path().join("src")).unwrap();
         std::fs::write(dir.path().join("src/a.js"), "function foo() { return 1; }").unwrap();
         let config = make_js_config(dir.path());
-        let mut session = Session::new(config).unwrap();
+        let session = Session::new(config).unwrap();
         let initial_count = session.get_state().keys().count();
         assert!(initial_count > 0);
 
