@@ -46,22 +46,6 @@ impl<C: Config> Session<C> {
     // bough[impl session.init+2]
     pub fn new(config: C) -> Result<Self, Error> {
         info!("initializing session");
-        let workspaces_dir = config.get_bough_state_dir().join("workspaces");
-
-        // bough[impl session.init.workspaces.bind]
-        debug!(dir = %workspaces_dir.display(), "scanning for existing workspaces");
-        let existing_ids: Vec<WorkspaceId> = if workspaces_dir.join("work").exists() {
-            std::fs::read_dir(workspaces_dir.join("work"))?
-                .flatten()
-                .filter_map(|entry| {
-                    let name = entry.file_name().to_string_lossy().into_owned();
-                    WorkspaceId::parse(&name).ok()
-                })
-                .collect()
-        } else {
-            vec![]
-        };
-
         let mut base_twigs_iter_builder = TwigsIterBuilder::new();
         for include in config.get_base_include_globs() {
             base_twigs_iter_builder = base_twigs_iter_builder.with_include_glob(&include);
@@ -95,17 +79,10 @@ impl<C: Config> Session<C> {
             config.get_bough_state_dir().join("state"),
         );
 
-        let mut workspaces: Vec<WorkspaceId> = Vec::new();
-
-        for id in &existing_ids {
-            Workspace::bind(workspaces_dir.clone(), id, &base)?;
-            workspaces.push(id.clone());
-        }
-
         Ok(Self {
             config,
             base,
-            workspaces,
+            workspaces: Vec::new(),
             mutations_state,
         })
     }
