@@ -19,8 +19,8 @@ pub trait Render {
     fn verbose(&self) -> String;
     fn json(&self) -> String;
 
-    fn render(&self, format: Format) -> String {
-        match format {
+    fn render(&self, cli: &Cli) -> String {
+        match cli.format {
             Format::Terse => self.terse(),
             Format::Verbose => self.verbose(),
             Format::Markdown => self.markdown(),

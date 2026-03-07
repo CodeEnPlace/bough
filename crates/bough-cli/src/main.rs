@@ -114,5 +114,5 @@ fn main() {
         }
     };
 
-    println!("{}", result.render(cli.format));
+    println!("{}", result.render(&cli));
 }
