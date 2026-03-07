@@ -8,10 +8,9 @@ fn main() {
     let cli = parse();
 
     let log_level = match cli.verbose {
-        0 => Level::ERROR,
-        1 => Level::WARN,
-        2 => Level::INFO,
-        3 => Level::DEBUG,
+        0 => Level::WARN,
+        1 => Level::INFO,
+        2 => Level::DEBUG,
         _ => Level::TRACE,
     };
     tracing_subscriber::fmt().with_max_level(log_level).init();
