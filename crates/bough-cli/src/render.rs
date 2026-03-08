@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use bough_core::{LanguageId, Mutation, State};
+use bough_core::{LanguageId, Mutation, State, Status};
 use bough_typed_hash::{TypedHash, TypedHashable, UnvalidatedHash};
 use facet::Facet;
 
@@ -191,6 +191,21 @@ fn fmt_mutation_verbose(m: &Mutation) -> String {
     )
 }
 
+fn fmt_status_from_state(state: &State) -> &'static str {
+    match state.status() {
+        None => "pending",
+        Some(Status::Caught) | Some(Status::CaughtByTests(_)) => "caught",
+        Some(Status::Missed) => "missed",
+    }
+}
+
+fn fmt_outcome_at_from_state(state: &State) -> String {
+    match state.outcome_at() {
+        None => "-".to_string(),
+        Some(at) => at.format("%Y-%m-%d %H:%M:%S").to_string(),
+    }
+}
+
 #[derive(Facet)]
 pub struct AllMutations(pub Vec<Mutation>);
 impl Render for AllMutations {
@@ -301,7 +316,8 @@ impl Render for SingleMutation {
     fn markdown(&self) -> String {
         let m = self.state.mutation();
         let mutant = m.mutant();
-        let outcome = if self.state.has_outcome() { "has outcome" } else { "pending" };
+        let status = fmt_status_from_state(&self.state);
+        let at = fmt_outcome_at_from_state(&self.state);
         let tag = self.lang_tag();
         format!(
             "{TITLE}# Mutation{RESET}\n\n\
@@ -311,7 +327,8 @@ impl Render for SingleMutation {
             - {BOLD}Kind:{RESET} {:?}\n\
             - {BOLD}Span:{RESET} {}:{}-{}:{}\n\
             - {BOLD}Subst:{RESET} {STRING}{}{RESET}\n\
-            - {BOLD}Status:{RESET} {}\n\n\
+            - {BOLD}Status:{RESET} {}\n\
+            - {BOLD}At:{RESET} {}\n\n\
             {TITLE}## Before{RESET}\n\n```{}\n{}\n```\n\n\
             {TITLE}## After{RESET}\n\n```{}\n{}\n```",
             mutation_hash(m),
@@ -323,7 +340,8 @@ impl Render for SingleMutation {
             mutant.span().end().line() + 1,
             mutant.span().end().col() + 1,
             m.subst(),
-            outcome,
+            status,
+            at,
             tag, self.before,
             tag, self.after,
         )
@@ -331,16 +349,16 @@ impl Render for SingleMutation {
 
     fn terse(&self) -> String {
         let m = self.state.mutation();
-        let outcome = if self.state.has_outcome() { "has outcome" } else { "pending" };
-        format!("{} {}", fmt_mutation_terse(m), outcome)
+        format!("{} {}", fmt_mutation_terse(m), fmt_status_from_state(&self.state))
     }
 
     fn verbose(&self) -> String {
         let m = self.state.mutation();
-        let outcome = if self.state.has_outcome() { "has outcome" } else { "pending" };
+        let status = fmt_status_from_state(&self.state);
+        let at = fmt_outcome_at_from_state(&self.state);
         format!(
-            "{}\nStatus: {}\n\n--- before ---\n{}\n\n--- after ---\n{}",
-            fmt_mutation_verbose(m), outcome, self.before, self.after,
+            "{}\nStatus: {} ({})\n\n--- before ---\n{}\n\n--- after ---\n{}",
+            fmt_mutation_verbose(m), status, at, self.before, self.after,
         )
     }
 
@@ -582,58 +600,47 @@ pub struct TestMutation {
     pub workspace_id: bough_core::WorkspaceId,
     pub mutation_hash: String,
     pub status: &'static str,
-    pub outcome: bough_core::PhaseOutcome,
+    pub duration: std::time::Duration,
 }
 
 impl Render for TestMutation {
     fn markdown(&self) -> String {
-        let stdout = String::from_utf8_lossy(self.outcome.stdout());
-        let stderr = String::from_utf8_lossy(self.outcome.stderr());
-        let mut out = format!(
-            "# Test Mutation `{}` in `{}`\n\n- Status: {}\n- Exit: {}\n- Duration: {:.2}s\n- Timed out: {}",
+        format!(
+            "# Test Mutation `{}` in `{}`\n\n- Status: {}\n- Duration: {:.2}s",
             self.mutation_hash,
             self.workspace_id,
             self.status,
-            self.outcome.exit_code(),
-            self.outcome.duration().as_secs_f64(),
-            self.outcome.timed_out(),
-        );
-        if !stdout.is_empty() {
-            out.push_str(&format!("\n\n## stdout\n\n```\n{stdout}\n```"));
-        }
-        if !stderr.is_empty() {
-            out.push_str(&format!("\n\n## stderr\n\n```\n{stderr}\n```"));
-        }
-        out
+            self.duration.as_secs_f64(),
+        )
     }
 
     fn terse(&self) -> String {
         format!(
-            "{HASH}{}{RESET} {HASH}{}{RESET} {} {}",
+            "{HASH}{}{RESET} {HASH}{}{RESET} {} {:.2}s",
             self.workspace_id,
             self.mutation_hash,
             self.status,
-            fmt_phase_outcome_terse(&self.outcome),
+            self.duration.as_secs_f64(),
         )
     }
 
     fn verbose(&self) -> String {
         format!(
-            "{TITLE}Test Mutation{RESET} {HASH}{}{RESET} in {HASH}{}{RESET}\n\nStatus: {}\n\n{}",
+            "{TITLE}Test Mutation{RESET} {HASH}{}{RESET} in {HASH}{}{RESET}\n\nStatus: {}\nDuration: {:.2}s",
             self.mutation_hash,
             self.workspace_id,
             self.status,
-            fmt_phase_outcome_verbose(&self.outcome),
+            self.duration.as_secs_f64(),
         )
     }
 
     fn json(&self) -> String {
         format!(
-            r#"{{"workspace_id":"{}","mutation_hash":"{}","status":"{}","outcome":{}}}"#,
+            r#"{{"workspace_id":"{}","mutation_hash":"{}","status":"{}","duration_secs":{:.3}}}"#,
             self.workspace_id,
             self.mutation_hash,
             self.status,
-            fmt_phase_outcome_json(&self.outcome),
+            self.duration.as_secs_f64(),
         )
     }
 }
