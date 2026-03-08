@@ -251,24 +251,36 @@ fn main() {
 
                 config::Step::TestMutation {
                     workspace_id,
-                    mutation_hash: _,
+                    mutation_hash,
                 } => {
                     let mut session =
                         Session::new(cli.config.clone()).expect("session creation");
                     let wid = bough_core::WorkspaceId::parse(workspace_id)
                         .expect("invalid workspace id");
-                    let workspace = session
+                    let base = session.base();
+                    let mutations: Vec<_> = base
+                        .mutations()
+                        .collect::<Result<Vec<_>, _>>()
+                        .expect("mutation scan");
+                    let mutation =
+                        render::find_mutation_by_hash(mutation_hash, mutations);
+                    let hash_str = mutation.hash().expect("hash").to_string();
+                    let mut workspace = session
                         .bind_workspace(&wid)
                         .expect("bind workspace");
-                    let active = workspace
-                        .active()
-                        .expect("no active mutation in workspace");
-                    let mutation = active.mutation().clone();
-                    let hash_str = mutation.hash().expect("hash").to_string();
+                    workspace
+                        .write_mutant(&mutation)
+                        .expect("apply mutation");
                     drop(workspace);
                     let outcome = session
                         .run_test_in_workspace(&wid, None)
                         .expect("test mutation");
+                    let mut workspace = session
+                        .bind_workspace(&wid)
+                        .expect("bind workspace");
+                    workspace
+                        .revert_mutant()
+                        .expect("revert mutation");
                     let status = if outcome.exit_code() != 0 {
                         bough_core::Status::Caught
                     } else {
