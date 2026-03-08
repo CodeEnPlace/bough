@@ -11,9 +11,7 @@ use crate::{
     LanguageId,
     base::Base,
     facet_disk_store::FacetDiskStore,
-    file::Twig,
     mutation::{Mutation, MutationHash},
-    phase::{Phase, PhaseOutcome},
     state::State,
     twig::TwigsIterBuilder,
     workspace::{Workspace, WorkspaceId},
@@ -228,37 +226,6 @@ impl<C: Config> Session<C> {
         Ok(())
     }
 
-    fn convert_timeout(timeout: Option<Duration>) -> Result<Option<std::time::Duration>, Error> {
-        timeout
-            .map(|d| d.to_std().map_err(|_| Error::InvalidTimeout))
-            .transpose()
-    }
-
-    fn build_phase<'a, R: crate::file::Root>(
-        &self,
-        root: &'a R,
-        cmd: &str,
-        pwd: PathBuf,
-        env: HashMap<String, String>,
-        timeout_absolute: Option<Duration>,
-        timeout_relative: Option<f64>,
-    ) -> Result<Phase<'a, R>, Error> {
-        if pwd.is_absolute() {
-            return Err(Error::AbsolutePwd(pwd));
-        }
-        let twig = Twig::new(pwd).map_err(crate::file::Error::from)?;
-        let cmd_parts: Vec<String> = cmd.split_whitespace().map(String::from).collect();
-        let timeout_abs = Self::convert_timeout(timeout_absolute)?;
-        Ok(Phase::new(
-            root,
-            twig,
-            env,
-            cmd_parts,
-            timeout_abs,
-            timeout_relative,
-        ))
-    }
-
     pub fn bind_workspace(&self, workspace_id: &WorkspaceId) -> Result<Workspace<'_>, Error> {
         let workspaces_dir = self.config.get_bough_state_dir().join("workspaces");
         Ok(Workspace::bind(workspaces_dir, workspace_id, &self.base)?)
@@ -269,105 +236,6 @@ impl<C: Config> Session<C> {
         Workspace::bind_dirty(workspaces_dir, workspace_id, &self.base)
     }
 
-    pub fn run_test_in_base(
-        &self,
-        reference_duration: Option<std::time::Duration>,
-    ) -> Result<PhaseOutcome, Error> {
-        let phase = self.build_phase(
-            &self.base,
-            &self.config.get_test_cmd(),
-            self.config.get_test_pwd(),
-            self.config.get_test_env(),
-            self.config.get_test_timeout_absolute(),
-            self.config.get_test_timeout_relative(),
-        )?;
-        Ok(phase.run(reference_duration)?)
-    }
-
-    pub fn run_init_in_base(
-        &self,
-        reference_duration: Option<std::time::Duration>,
-    ) -> Result<PhaseOutcome, Error> {
-        let cmd = self.config.get_init_cmd().ok_or(Error::NoCmdConfigured)?;
-        let phase = self.build_phase(
-            &self.base,
-            &cmd,
-            self.config.get_init_pwd(),
-            self.config.get_init_env(),
-            self.config.get_init_timeout_absolute(),
-            self.config.get_init_timeout_relative(),
-        )?;
-        Ok(phase.run(reference_duration)?)
-    }
-
-    pub fn run_reset_in_base(
-        &self,
-        reference_duration: Option<std::time::Duration>,
-    ) -> Result<PhaseOutcome, Error> {
-        let cmd = self.config.get_reset_cmd().ok_or(Error::NoCmdConfigured)?;
-        let phase = self.build_phase(
-            &self.base,
-            &cmd,
-            self.config.get_reset_pwd(),
-            self.config.get_reset_env(),
-            self.config.get_reset_timeout_absolute(),
-            self.config.get_reset_timeout_relative(),
-        )?;
-        Ok(phase.run(reference_duration)?)
-    }
-
-    pub fn run_test_in_workspace(
-        &self,
-        workspace_id: &WorkspaceId,
-        reference_duration: Option<std::time::Duration>,
-    ) -> Result<PhaseOutcome, Error> {
-        let workspace = self.bind_dirty_workspace(workspace_id);
-        let phase = self.build_phase(
-            &workspace,
-            &self.config.get_test_cmd(),
-            self.config.get_test_pwd(),
-            self.config.get_test_env(),
-            self.config.get_test_timeout_absolute(),
-            self.config.get_test_timeout_relative(),
-        )?;
-        Ok(phase.run(reference_duration)?)
-    }
-
-    pub fn run_init_in_workspace(
-        &self,
-        workspace_id: &WorkspaceId,
-        reference_duration: Option<std::time::Duration>,
-    ) -> Result<PhaseOutcome, Error> {
-        let cmd = self.config.get_init_cmd().ok_or(Error::NoCmdConfigured)?;
-        let workspace = self.bind_workspace(workspace_id)?;
-        let phase = self.build_phase(
-            &workspace,
-            &cmd,
-            self.config.get_init_pwd(),
-            self.config.get_init_env(),
-            self.config.get_init_timeout_absolute(),
-            self.config.get_init_timeout_relative(),
-        )?;
-        Ok(phase.run(reference_duration)?)
-    }
-
-    pub fn run_reset_in_workspace(
-        &self,
-        workspace_id: &WorkspaceId,
-        reference_duration: Option<std::time::Duration>,
-    ) -> Result<PhaseOutcome, Error> {
-        let cmd = self.config.get_reset_cmd().ok_or(Error::NoCmdConfigured)?;
-        let workspace = self.bind_workspace(workspace_id)?;
-        let phase = self.build_phase(
-            &workspace,
-            &cmd,
-            self.config.get_reset_pwd(),
-            self.config.get_reset_env(),
-            self.config.get_reset_timeout_absolute(),
-            self.config.get_reset_timeout_relative(),
-        )?;
-        Ok(phase.run(reference_duration)?)
-    }
 }
 
 impl From<crate::file::Error> for Error {
@@ -398,6 +266,7 @@ impl From<crate::phase::Error> for Error {
 mod tests {
     use super::*;
 
+    #[derive(Clone)]
     struct MinimalConfig {
         root: PathBuf,
         state_dir: PathBuf,
@@ -873,8 +742,8 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let mut config = make_js_config(dir.path());
         config.test_cmd = "echo hello".to_string();
-        let session = Session::new(config).unwrap();
-        let outcome = session.run_test_in_base(None).unwrap();
+        let session = Session::new(config.clone()).unwrap();
+        let outcome = session.base().run_test(&config, None).unwrap();
         assert_eq!(outcome.exit_code(), 0);
         assert_eq!(String::from_utf8_lossy(outcome.stdout()).trim(), "hello");
     }
@@ -887,8 +756,8 @@ mod tests {
         let mut config = make_js_config(dir.path());
         config.test_cmd = "pwd".to_string();
         config.test_pwd = PathBuf::from("src");
-        let session = Session::new(config).unwrap();
-        let outcome = session.run_test_in_base(None).unwrap();
+        let session = Session::new(config.clone()).unwrap();
+        let outcome = session.base().run_test(&config, None).unwrap();
         let out = String::from_utf8_lossy(outcome.stdout());
         assert!(
             out.trim().ends_with("src"),
@@ -901,9 +770,9 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let mut config = make_js_config(dir.path());
         config.test_pwd = PathBuf::from("/absolute/path");
-        let session = Session::new(config).unwrap();
-        let result = session.run_test_in_base(None);
-        assert!(matches!(result, Err(Error::AbsolutePwd(_))));
+        let session = Session::new(config.clone()).unwrap();
+        let result = session.base().run_test(&config, None);
+        assert!(matches!(result, Err(crate::phase::Error::AbsolutePwd(_))));
     }
 
     #[test]
@@ -911,8 +780,8 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let mut config = make_js_config(dir.path());
         config.test_cmd = "false".to_string();
-        let session = Session::new(config).unwrap();
-        let outcome = session.run_test_in_base(None).unwrap();
+        let session = Session::new(config.clone()).unwrap();
+        let outcome = session.base().run_test(&config, None).unwrap();
         assert_eq!(outcome.exit_code(), 1);
     }
 
@@ -921,8 +790,8 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let mut config = make_js_config(dir.path());
         config.init_cmd = Some("echo init".to_string());
-        let session = Session::new(config).unwrap();
-        let outcome = session.run_init_in_base(None).unwrap();
+        let session = Session::new(config.clone()).unwrap();
+        let outcome = session.base().run_init(&config, None).unwrap();
         assert_eq!(outcome.exit_code(), 0);
         assert_eq!(String::from_utf8_lossy(outcome.stdout()).trim(), "init");
     }
@@ -931,9 +800,9 @@ mod tests {
     fn run_init_in_base_errors_when_no_cmd() {
         let dir = tempfile::tempdir().unwrap();
         let config = make_js_config(dir.path());
-        let session = Session::new(config).unwrap();
-        let result = session.run_init_in_base(None);
-        assert!(matches!(result, Err(Error::NoCmdConfigured)));
+        let session = Session::new(config.clone()).unwrap();
+        let result = session.base().run_init(&config, None);
+        assert!(matches!(result, Err(crate::phase::Error::NoCmdConfigured)));
     }
 
     #[test]
@@ -941,8 +810,8 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let mut config = make_js_config(dir.path());
         config.reset_cmd = Some("echo reset".to_string());
-        let session = Session::new(config).unwrap();
-        let outcome = session.run_reset_in_base(None).unwrap();
+        let session = Session::new(config.clone()).unwrap();
+        let outcome = session.base().run_reset(&config, None).unwrap();
         assert_eq!(outcome.exit_code(), 0);
         assert_eq!(String::from_utf8_lossy(outcome.stdout()).trim(), "reset");
     }
@@ -951,9 +820,9 @@ mod tests {
     fn run_reset_in_base_errors_when_no_cmd() {
         let dir = tempfile::tempdir().unwrap();
         let config = make_js_config(dir.path());
-        let session = Session::new(config).unwrap();
-        let result = session.run_reset_in_base(None);
-        assert!(matches!(result, Err(Error::NoCmdConfigured)));
+        let session = Session::new(config.clone()).unwrap();
+        let result = session.base().run_reset(&config, None);
+        assert!(matches!(result, Err(crate::phase::Error::NoCmdConfigured)));
     }
 
     #[test]
@@ -962,9 +831,10 @@ mod tests {
         let mut config = make_js_config(dir.path());
         config.test_cmd = "pwd".to_string();
         std::fs::write(dir.path().join("src/a.js"), "const x = 1;").unwrap();
-        let mut session = Session::new(config).unwrap();
+        let mut session = Session::new(config.clone()).unwrap();
         let ids = session.tend_workspaces(1).unwrap();
-        let outcome = session.run_test_in_workspace(&ids[0], None).unwrap();
+        let workspace = session.bind_dirty_workspace(&ids[0]);
+        let outcome = workspace.run_test(&config, None).unwrap();
         let out = String::from_utf8_lossy(outcome.stdout());
         assert!(
             out.trim().contains(ids[0].as_str()),
@@ -979,9 +849,10 @@ mod tests {
         config.test_cmd = "pwd".to_string();
         config.test_pwd = PathBuf::from("src");
         std::fs::write(dir.path().join("src/a.js"), "const x = 1;").unwrap();
-        let mut session = Session::new(config).unwrap();
+        let mut session = Session::new(config.clone()).unwrap();
         let ids = session.tend_workspaces(1).unwrap();
-        let outcome = session.run_test_in_workspace(&ids[0], None).unwrap();
+        let workspace = session.bind_dirty_workspace(&ids[0]);
+        let outcome = workspace.run_test(&config, None).unwrap();
         let out = String::from_utf8_lossy(outcome.stdout());
         assert!(
             out.trim().ends_with("src"),
@@ -999,9 +870,10 @@ mod tests {
         let mut config = make_js_config(dir.path());
         config.init_cmd = Some("echo workspace_init".to_string());
         std::fs::write(dir.path().join("src/a.js"), "const x = 1;").unwrap();
-        let mut session = Session::new(config).unwrap();
+        let mut session = Session::new(config.clone()).unwrap();
         let ids = session.tend_workspaces(1).unwrap();
-        let outcome = session.run_init_in_workspace(&ids[0], None).unwrap();
+        let workspace = session.bind_workspace(&ids[0]).unwrap();
+        let outcome = workspace.run_init(&config, None).unwrap();
         assert_eq!(outcome.exit_code(), 0);
         assert_eq!(
             String::from_utf8_lossy(outcome.stdout()).trim(),
@@ -1014,10 +886,11 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let config = make_js_config(dir.path());
         std::fs::write(dir.path().join("src/a.js"), "const x = 1;").unwrap();
-        let mut session = Session::new(config).unwrap();
+        let mut session = Session::new(config.clone()).unwrap();
         let ids = session.tend_workspaces(1).unwrap();
-        let result = session.run_init_in_workspace(&ids[0], None);
-        assert!(matches!(result, Err(Error::NoCmdConfigured)));
+        let workspace = session.bind_workspace(&ids[0]).unwrap();
+        let result = workspace.run_init(&config, None);
+        assert!(matches!(result, Err(crate::phase::Error::NoCmdConfigured)));
     }
 
     #[test]
@@ -1026,9 +899,10 @@ mod tests {
         let mut config = make_js_config(dir.path());
         config.reset_cmd = Some("echo workspace_reset".to_string());
         std::fs::write(dir.path().join("src/a.js"), "const x = 1;").unwrap();
-        let mut session = Session::new(config).unwrap();
+        let mut session = Session::new(config.clone()).unwrap();
         let ids = session.tend_workspaces(1).unwrap();
-        let outcome = session.run_reset_in_workspace(&ids[0], None).unwrap();
+        let workspace = session.bind_workspace(&ids[0]).unwrap();
+        let outcome = workspace.run_reset(&config, None).unwrap();
         assert_eq!(outcome.exit_code(), 0);
         assert_eq!(
             String::from_utf8_lossy(outcome.stdout()).trim(),
@@ -1041,10 +915,11 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let config = make_js_config(dir.path());
         std::fs::write(dir.path().join("src/a.js"), "const x = 1;").unwrap();
-        let mut session = Session::new(config).unwrap();
+        let mut session = Session::new(config.clone()).unwrap();
         let ids = session.tend_workspaces(1).unwrap();
-        let result = session.run_reset_in_workspace(&ids[0], None);
-        assert!(matches!(result, Err(Error::NoCmdConfigured)));
+        let workspace = session.bind_workspace(&ids[0]).unwrap();
+        let result = workspace.run_reset(&config, None);
+        assert!(matches!(result, Err(crate::phase::Error::NoCmdConfigured)));
     }
 
     #[test]
@@ -1052,8 +927,8 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let mut config = make_js_config(dir.path());
         config.test_cmd = "echo one two three".to_string();
-        let session = Session::new(config).unwrap();
-        let outcome = session.run_test_in_base(None).unwrap();
+        let session = Session::new(config.clone()).unwrap();
+        let outcome = session.base().run_test(&config, None).unwrap();
         assert_eq!(
             String::from_utf8_lossy(outcome.stdout()).trim(),
             "one two three"
@@ -1065,8 +940,8 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let mut config = make_js_config(dir.path());
         config.test_cmd = "pwd".to_string();
-        let session = Session::new(config).unwrap();
-        let outcome = session.run_test_in_base(None).unwrap();
+        let session = Session::new(config.clone()).unwrap();
+        let outcome = session.base().run_test(&config, None).unwrap();
         let out = String::from_utf8_lossy(outcome.stdout());
         let actual = PathBuf::from(out.trim()).canonicalize().unwrap();
         let expected = dir.path().canonicalize().unwrap();

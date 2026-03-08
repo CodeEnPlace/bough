@@ -9,6 +9,10 @@ use tracing::{debug, info, warn};
 pub enum Error {
     Io(std::io::Error),
     EmptyCommand,
+    File(crate::file::Error),
+    AbsolutePwd(std::path::PathBuf),
+    InvalidTimeout,
+    NoCmdConfigured,
 }
 
 impl std::fmt::Display for Error {
@@ -16,6 +20,10 @@ impl std::fmt::Display for Error {
         match self {
             Error::Io(e) => write!(f, "phase io error: {e}"),
             Error::EmptyCommand => write!(f, "phase command is empty"),
+            Error::File(e) => write!(f, "phase file error: {e}"),
+            Error::AbsolutePwd(p) => write!(f, "phase pwd must be relative: {}", p.display()),
+            Error::InvalidTimeout => write!(f, "invalid timeout duration"),
+            Error::NoCmdConfigured => write!(f, "no command configured for phase"),
         }
     }
 }
@@ -25,6 +33,12 @@ impl std::error::Error for Error {}
 impl From<std::io::Error> for Error {
     fn from(e: std::io::Error) -> Self {
         Error::Io(e)
+    }
+}
+
+impl From<crate::file::Error> for Error {
+    fn from(e: crate::file::Error) -> Self {
+        Error::File(e)
     }
 }
 
@@ -219,6 +233,27 @@ impl PhaseOutcome {
     pub fn timed_out(&self) -> bool {
         self.timed_out
     }
+}
+
+pub fn run_phase<R: Root>(
+    root: &R,
+    cmd: &str,
+    pwd: std::path::PathBuf,
+    env: HashMap<String, String>,
+    timeout_absolute: Option<chrono::Duration>,
+    timeout_relative: Option<f64>,
+    reference_duration: Option<Duration>,
+) -> Result<PhaseOutcome, Error> {
+    if pwd.is_absolute() {
+        return Err(Error::AbsolutePwd(pwd));
+    }
+    let twig = Twig::new(pwd).map_err(crate::file::Error::from)?;
+    let cmd_parts: Vec<String> = cmd.split_whitespace().map(String::from).collect();
+    let timeout_abs = timeout_absolute
+        .map(|d| d.to_std().map_err(|_| Error::InvalidTimeout))
+        .transpose()?;
+    let phase = Phase::new(root, twig, env, cmd_parts, timeout_abs, timeout_relative);
+    phase.run(reference_duration)
 }
 
 #[cfg(test)]
