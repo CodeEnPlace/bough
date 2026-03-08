@@ -216,9 +216,19 @@ impl<C: Config> Session<C> {
         &self.workspaces
     }
 
-    fn convert_timeout(
-        timeout: Option<Duration>,
-    ) -> Result<Option<std::time::Duration>, Error> {
+    pub fn set_state(
+        &mut self,
+        mutation: &Mutation,
+        status: crate::state::Status,
+    ) -> Result<(), Error> {
+        let hash = mutation.hash().expect("hashing should not fail");
+        let mut state = State::new(mutation.clone());
+        state.set_outcome(status);
+        self.mutations_state.set(hash, state).map_err(Error::Io)?;
+        Ok(())
+    }
+
+    fn convert_timeout(timeout: Option<Duration>) -> Result<Option<std::time::Duration>, Error> {
         timeout
             .map(|d| d.to_std().map_err(|_| Error::InvalidTimeout))
             .transpose()
@@ -239,7 +249,14 @@ impl<C: Config> Session<C> {
         let twig = Twig::new(pwd).map_err(crate::file::Error::from)?;
         let cmd_parts: Vec<String> = cmd.split_whitespace().map(String::from).collect();
         let timeout_abs = Self::convert_timeout(timeout_absolute)?;
-        Ok(Phase::new(root, twig, env, cmd_parts, timeout_abs, timeout_relative))
+        Ok(Phase::new(
+            root,
+            twig,
+            env,
+            cmd_parts,
+            timeout_abs,
+            timeout_relative,
+        ))
     }
 
     fn bind_workspace(&self, workspace_id: &WorkspaceId) -> Result<Workspace<'_>, Error> {
@@ -854,10 +871,7 @@ mod tests {
         let session = Session::new(config).unwrap();
         let outcome = session.run_test_in_base(None).unwrap();
         assert_eq!(outcome.exit_code(), 0);
-        assert_eq!(
-            String::from_utf8_lossy(outcome.stdout()).trim(),
-            "hello"
-        );
+        assert_eq!(String::from_utf8_lossy(outcome.stdout()).trim(), "hello");
     }
 
     #[test]
@@ -905,10 +919,7 @@ mod tests {
         let session = Session::new(config).unwrap();
         let outcome = session.run_init_in_base(None).unwrap();
         assert_eq!(outcome.exit_code(), 0);
-        assert_eq!(
-            String::from_utf8_lossy(outcome.stdout()).trim(),
-            "init"
-        );
+        assert_eq!(String::from_utf8_lossy(outcome.stdout()).trim(), "init");
     }
 
     #[test]
@@ -928,10 +939,7 @@ mod tests {
         let session = Session::new(config).unwrap();
         let outcome = session.run_reset_in_base(None).unwrap();
         assert_eq!(outcome.exit_code(), 0);
-        assert_eq!(
-            String::from_utf8_lossy(outcome.stdout()).trim(),
-            "reset"
-        );
+        assert_eq!(String::from_utf8_lossy(outcome.stdout()).trim(), "reset");
     }
 
     #[test]
@@ -1058,5 +1066,127 @@ mod tests {
         let actual = PathBuf::from(out.trim()).canonicalize().unwrap();
         let expected = dir.path().canonicalize().unwrap();
         assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn set_state_records_outcome_on_mutation() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(dir.path().join("src")).unwrap();
+        std::fs::write(dir.path().join("src/a.js"), "function foo() { return 1; }").unwrap();
+        let config = make_js_config(dir.path());
+        let mut session = Session::new(config).unwrap();
+        session.tend_add_missing_states().unwrap();
+
+        let mutation: Mutation = session.base().mutations().next().unwrap().unwrap();
+        let hash = mutation.hash().unwrap();
+        session
+            .set_state(&mutation, crate::state::Status::Missed)
+            .unwrap();
+
+        let state = session.get_state().get(&hash).unwrap();
+        assert!(state.has_outcome());
+        assert!(state.outcome_at().is_some());
+    }
+
+    #[test]
+    fn set_state_persists_to_disk() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(dir.path().join("src")).unwrap();
+        std::fs::write(dir.path().join("src/a.js"), "function foo() { return 1; }").unwrap();
+        let config = make_js_config(dir.path());
+        let mut session = Session::new(config).unwrap();
+        session.tend_add_missing_states().unwrap();
+
+        let mutation: Mutation = session.base().mutations().next().unwrap().unwrap();
+        let hash = mutation.hash().unwrap();
+        session
+            .set_state(&mutation, crate::state::Status::Caught)
+            .unwrap();
+
+        let config2 = make_js_config(dir.path());
+        let session2 = Session::new(config2).unwrap();
+        let persisted = session2.get_state().get(&hash);
+        assert!(persisted.is_some());
+        assert!(persisted.unwrap().has_outcome());
+    }
+
+    #[test]
+    fn set_state_sets_at_automatically() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(dir.path().join("src")).unwrap();
+        std::fs::write(dir.path().join("src/a.js"), "function foo() { return 1; }").unwrap();
+        let config = make_js_config(dir.path());
+        let mut session = Session::new(config).unwrap();
+        session.tend_add_missing_states().unwrap();
+
+        let before = chrono::Utc::now() - chrono::Duration::seconds(1);
+        let mutation: Mutation = session.base().mutations().next().unwrap().unwrap();
+        let hash = mutation.hash().unwrap();
+        session
+            .set_state(&mutation, crate::state::Status::Missed)
+            .unwrap();
+        let after = chrono::Utc::now() + chrono::Duration::seconds(1);
+
+        let state = session.get_state().get(&hash).unwrap();
+        let at = state.outcome_at().unwrap();
+        assert!(
+            at >= before && at <= after,
+            "expected {before} <= {at} <= {after}"
+        );
+    }
+
+    #[test]
+    fn set_state_overwrites_previous_outcome() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(dir.path().join("src")).unwrap();
+        std::fs::write(dir.path().join("src/a.js"), "function foo() { return 1; }").unwrap();
+        let config = make_js_config(dir.path());
+        let mut session = Session::new(config).unwrap();
+        session.tend_add_missing_states().unwrap();
+
+        let mutation: Mutation = session.base().mutations().next().unwrap().unwrap();
+        let hash = mutation.hash().unwrap();
+        session
+            .set_state(&mutation, crate::state::Status::Missed)
+            .unwrap();
+        let first_at = session
+            .get_state()
+            .get(&hash)
+            .unwrap()
+            .outcome_at()
+            .unwrap();
+
+        std::thread::sleep(std::time::Duration::from_millis(100));
+        session
+            .set_state(&mutation, crate::state::Status::Caught)
+            .unwrap();
+        let second_at = session
+            .get_state()
+            .get(&hash)
+            .unwrap()
+            .outcome_at()
+            .unwrap();
+
+        assert!(second_at > first_at);
+    }
+
+    #[test]
+    fn set_state_preserves_mutation() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(dir.path().join("src")).unwrap();
+        std::fs::write(dir.path().join("src/a.js"), "function foo() { return 1; }").unwrap();
+        let config = make_js_config(dir.path());
+        let mut session = Session::new(config).unwrap();
+        session.tend_add_missing_states().unwrap();
+
+        let mutation: Mutation = session.base().mutations().next().unwrap().unwrap();
+        let hash = mutation.hash().unwrap();
+        session
+            .set_state(&mutation, crate::state::Status::Caught)
+            .unwrap();
+
+        let state = session.get_state().get(&hash).unwrap();
+        assert!(state.has_outcome());
+        assert_eq!(state.mutation(), &mutation);
     }
 }
