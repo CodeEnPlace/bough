@@ -7,7 +7,10 @@ use config::{Command, Show, parse};
 use render::{Noop, Render};
 use tracing::{Level, debug, info};
 
-use crate::render::{AllMutations, BaseFiles, FileMutations, LangMutations, MutantFiles, SingleMutation, find_mutation_by_hash};
+use crate::render::{
+    AllMutations, BaseFiles, FileMutations, LangMutations, MutantFiles, SingleMutation,
+    find_mutation_by_hash,
+};
 
 fn main() {
     let cli = parse();
@@ -97,7 +100,9 @@ fn main() {
                         .collect::<Result<Vec<_>, _>>()
                         .expect("mutation scan")
                         .into_iter()
-                        .filter(|m| m.mutant().lang() == *lang && m.mutant().twig().path() == file.as_path())
+                        .filter(|m| {
+                            m.mutant().lang() == *lang && m.mutant().twig().path() == file.as_path()
+                        })
                         .collect();
                     Box::new(FileMutations(*lang, file.clone(), mutations))
                 }
@@ -114,11 +119,13 @@ fn main() {
                     let lang = mutation.mutant().lang();
                     let file_path = bough_core::File::new(base, mutation.mutant().twig()).resolve();
                     let file_src = std::fs::read_to_string(&file_path).expect("read source file");
-                    let (before, ctx_span) = mutation.mutant()
+                    let (before, ctx_span) = mutation
+                        .mutant()
                         .get_contextual_fragment(base, 3)
                         .expect("context fragment");
                     let mutated_src = mutation.apply_to_complete_src_string(&file_src);
-                    let original_len = mutation.mutant().span().end().byte() - mutation.mutant().span().start().byte();
+                    let original_len = mutation.mutant().span().end().byte()
+                        - mutation.mutant().span().start().byte();
                     let subst_len = mutation.subst().len();
                     let end_byte = if subst_len >= original_len {
                         ctx_span.end().byte() + (subst_len - original_len)
@@ -127,16 +134,48 @@ fn main() {
                     };
                     let after = &mutated_src[ctx_span.start().byte()..end_byte];
                     let mutation_hash = mutation.hash().expect("hashing should not fail");
-                    let state = session.get_state().get(&mutation_hash)
+                    let state = session
+                        .get_state()
+                        .get(&mutation_hash)
                         .expect("state not found for mutation");
-                    Box::new(SingleMutation { state, before, after: after.to_string(), lang })
+                    Box::new(SingleMutation {
+                        state,
+                        before,
+                        after: after.to_string(),
+                        lang,
+                    })
                 }
             }
         }
+
+        Command::Step { step } => {
+            debug!(subcommand = ?step, "executing step command");
+
+            match step {
+                config::Step::TendState => todo!(),
+                config::Step::TendWorkspaces => todo!(),
+                config::Step::InitWorkspace { workspace_id } => todo!(),
+                config::Step::ResetWorkspace { workspace_id } => todo!(),
+                config::Step::ApplyMutation {
+                    workspace_id,
+                    mutation_hash,
+                } => todo!(),
+                config::Step::UnapplyMutation {
+                    workspace_id,
+                    mutation_hash,
+                } => todo!(),
+                config::Step::TestMutation {
+                    workspace_id,
+                    mutation_hash,
+                } => todo!(),
+            }
+        }
+
         Command::Run => {
             info!("starting run");
             Box::new(Noop)
         }
+
         Command::Noop => {
             info!("starting run");
             Box::new(Noop)
