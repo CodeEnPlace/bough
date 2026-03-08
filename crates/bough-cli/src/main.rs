@@ -187,7 +187,19 @@ fn main() {
                     })
                 }
 
-                config::Step::ResetWorkspace { workspace_id } => todo!(),
+                config::Step::ResetWorkspace { workspace_id } => {
+                    let session =
+                        Session::new(cli.config.clone()).expect("session creation");
+                    let wid = bough_core::WorkspaceId::parse(workspace_id)
+                        .expect("invalid workspace id");
+                    let outcome = session
+                        .run_reset_in_workspace(&wid, None)
+                        .expect("reset workspace");
+                    Box::new(render::ResetWorkspace {
+                        workspace_id: wid,
+                        outcome,
+                    })
+                }
 
                 config::Step::ApplyMutation {
                     workspace_id,
@@ -202,7 +214,20 @@ fn main() {
                 config::Step::TestMutation {
                     workspace_id,
                     mutation_hash,
-                } => todo!(),
+                } => {
+                    let session =
+                        Session::new(cli.config.clone()).expect("session creation");
+                    let wid = bough_core::WorkspaceId::parse(workspace_id)
+                        .expect("invalid workspace id");
+                    let outcome = session
+                        .run_test_in_workspace(&wid, None)
+                        .expect("test mutation");
+                    Box::new(render::TestMutation {
+                        workspace_id: wid,
+                        mutation_hash: mutation_hash.clone(),
+                        outcome,
+                    })
+                }
             }
         }
 
