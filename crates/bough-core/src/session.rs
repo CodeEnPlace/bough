@@ -264,13 +264,9 @@ impl<C: Config> Session<C> {
         Ok(Workspace::bind(workspaces_dir, workspace_id, &self.base)?)
     }
 
-    pub fn bind_dirty_workspace(&self, workspace_id: &WorkspaceId) -> Result<Workspace<'_>, Error> {
+    pub fn bind_dirty_workspace(&self, workspace_id: &WorkspaceId) -> Workspace<'_> {
         let workspaces_dir = self.config.get_bough_state_dir().join("workspaces");
-        Ok(Workspace::bind_dirty(
-            workspaces_dir,
-            workspace_id,
-            &self.base,
-        )?)
+        Workspace::bind_dirty(workspaces_dir, workspace_id, &self.base)
     }
 
     pub fn run_test_in_base(
@@ -325,7 +321,7 @@ impl<C: Config> Session<C> {
         workspace_id: &WorkspaceId,
         reference_duration: Option<std::time::Duration>,
     ) -> Result<PhaseOutcome, Error> {
-        let workspace = self.bind_dirty_workspace(workspace_id)?;
+        let workspace = self.bind_dirty_workspace(workspace_id);
         let phase = self.build_phase(
             &workspace,
             &self.config.get_test_cmd(),
