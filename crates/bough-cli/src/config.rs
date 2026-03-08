@@ -148,6 +148,56 @@ pub struct Config {
     pub exclude: Vec<String>,
 
     pub lang: HashMap<bough_core::LanguageId, LanguageConfig>,
+
+    #[facet(flatten, default)]
+    pub phase_defaults: PhaseOverrides,
+
+    #[facet(default)]
+    pub test: Option<TestPhaseConfig>,
+
+    #[facet(default)]
+    pub init: Option<PhaseConfig>,
+
+    #[facet(default)]
+    pub reset: Option<PhaseConfig>,
+}
+
+#[derive(Facet, Debug, Clone, Default)]
+pub struct PhaseOverrides {
+    #[facet(default)]
+    pub pwd: Option<String>,
+
+    #[facet(default)]
+    pub env: Option<HashMap<String, String>>,
+
+    #[facet(default)]
+    pub timeout: Option<TimeoutConfig>,
+}
+
+#[derive(Facet, Debug, Clone)]
+pub struct TimeoutConfig {
+    #[facet(default)]
+    pub absolute: Option<u64>,
+
+    #[facet(default)]
+    pub relative: Option<f64>,
+}
+
+#[derive(Facet, Debug, Clone)]
+pub struct TestPhaseConfig {
+    pub cmd: String,
+
+    #[facet(flatten, default)]
+    pub overrides: PhaseOverrides,
+}
+
+#[derive(Facet, Debug, Clone)]
+pub struct PhaseConfig {
+    #[facet(default)]
+    pub cmd: Option<String>,
+
+    #[facet(flatten, default)]
+    pub overrides: PhaseOverrides,
 }
 
 #[derive(Facet, Debug, Clone)]
@@ -173,6 +223,13 @@ pub enum Error {
     )]
     NoLanguages,
 
+    #[error("test.cmd is required")]
+    #[diagnostic(
+        code(bough::config::missing_test_cmd),
+        help("add a [test] section with cmd = \"your test command\"")
+    )]
+    MissingTestCmd,
+
     #[cfg(test)]
     #[error("{0}")]
     #[diagnostic(code(bough::config::parse))]
@@ -188,6 +245,9 @@ impl Cli {
         }
         if self.config.lang.is_empty() {
             errors.push(Error::NoLanguages);
+        }
+        if self.config.test.is_none() {
+            errors.push(Error::MissingTestCmd);
         }
         errors
     }
@@ -411,6 +471,9 @@ exclude = []
 [lang.js]
 include = ["**/*.js"]
 exclude = []
+
+[test]
+cmd = "echo test"
 "#;
 
     const FULL_TOML: &str = r#"
@@ -426,6 +489,9 @@ exclude = ["node_modules/**"]
 [lang.ts]
 include = ["**/*.ts"]
 exclude = []
+
+[test]
+cmd = "npm test"
 "#;
 
     pub fn try_parse_from(
@@ -526,6 +592,9 @@ exclude = []
 [lang.js]
 include = ["**/*.js"]
 exclude = []
+
+[test]
+cmd = "echo test"
 "#;
         let errors = parse_err(&["run"], toml);
         assert_eq!(errors.len(), 1);
@@ -596,7 +665,7 @@ exclude = []
 
     #[test]
     fn json_config() {
-        let json = r#"{"base_root_dir": ".", "include": ["src/**"], "exclude": [], "lang": {"js": {"include": ["**/*.js"], "exclude": []}}}"#;
+        let json = r#"{"base_root_dir": ".", "include": ["src/**"], "exclude": [], "lang": {"js": {"include": ["**/*.js"], "exclude": []}}, "test": {"cmd": "echo test"}}"#;
         let cli = try_parse_from(&["run"], Some((json, "config.json"))).expect("should parse");
         assert_eq!(cli.config.include, vec!["src/**"]);
     }
@@ -668,7 +737,7 @@ exclude = []
 
     #[test]
     fn yaml_config() {
-        let yaml = "base_root_dir: \".\"\ninclude:\n  - \"src/**\"\nexclude: []\nlang:\n  js:\n    include:\n      - \"**/*.js\"\n    exclude: []\n";
+        let yaml = "base_root_dir: \".\"\ninclude:\n  - \"src/**\"\nexclude: []\nlang:\n  js:\n    include:\n      - \"**/*.js\"\n    exclude: []\ntest:\n  cmd: \"echo test\"\n";
         let cli = try_parse_from(&["run"], Some((yaml, "config.yaml"))).expect("should parse");
         assert_eq!(cli.config.include, vec!["src/**"]);
     }
@@ -871,6 +940,9 @@ exclude = []
 [lang.js]
 include = ["**/*.js"]
 exclude = []
+
+[test]
+cmd = "echo test"
 "#
         )
     }
@@ -956,6 +1028,527 @@ exclude = []
         assert!(!resolve_color(false, true));
         unsafe { env::remove_var("NO_COLOR") };
     }
+
+    #[test]
+    fn missing_test_cmd_fails_validation() {
+        let toml = r#"
+base_root_dir = "."
+include = ["src/**"]
+exclude = []
+
+[lang.js]
+include = ["**/*.js"]
+exclude = []
+"#;
+        let errors = parse_err(&["run"], toml);
+        assert!(errors.iter().any(|e| matches!(e, Error::MissingTestCmd)));
+    }
+
+    #[test]
+    fn test_cmd_parsed() {
+        let cli = parse_ok(&["run"], MINIMAL_TOML);
+        assert_eq!(
+            bough_core::Config::get_test_cmd(&cli.config),
+            "echo test"
+        );
+    }
+
+    #[test]
+    fn test_pwd_defaults_to_base_root() {
+        let cli = parse_ok(&["run"], MINIMAL_TOML);
+        assert_eq!(
+            bough_core::Config::get_test_pwd(&cli.config),
+            std::path::PathBuf::from(".")
+        );
+    }
+
+    #[test]
+    fn test_pwd_uses_global_pwd() {
+        let toml = r#"
+base_root_dir = "."
+include = ["src/**"]
+exclude = []
+pwd = "/app"
+
+[lang.js]
+include = ["**/*.js"]
+exclude = []
+
+[test]
+cmd = "npm test"
+"#;
+        let cli = parse_ok(&["run"], toml);
+        assert_eq!(
+            bough_core::Config::get_test_pwd(&cli.config),
+            std::path::PathBuf::from("/app")
+        );
+    }
+
+    #[test]
+    fn test_pwd_phase_overrides_global() {
+        let toml = r#"
+base_root_dir = "."
+include = ["src/**"]
+exclude = []
+pwd = "/app"
+
+[lang.js]
+include = ["**/*.js"]
+exclude = []
+
+[test]
+cmd = "npm test"
+pwd = "/app/test"
+"#;
+        let cli = parse_ok(&["run"], toml);
+        assert_eq!(
+            bough_core::Config::get_test_pwd(&cli.config),
+            std::path::PathBuf::from("/app/test")
+        );
+    }
+
+    #[test]
+    fn test_env_empty_by_default() {
+        let cli = parse_ok(&["run"], MINIMAL_TOML);
+        assert_eq!(
+            bough_core::Config::get_test_env(&cli.config),
+            HashMap::new()
+        );
+    }
+
+    #[test]
+    fn test_env_from_global() {
+        let toml = r#"
+base_root_dir = "."
+include = ["src/**"]
+exclude = []
+
+[env]
+CI = "1"
+
+[lang.js]
+include = ["**/*.js"]
+exclude = []
+
+[test]
+cmd = "npm test"
+"#;
+        let cli = parse_ok(&["run"], toml);
+        assert_eq!(
+            bough_core::Config::get_test_env(&cli.config),
+            HashMap::from([("CI".to_string(), "1".to_string())])
+        );
+    }
+
+    #[test]
+    fn test_env_merges_global_and_phase() {
+        let toml = r#"
+base_root_dir = "."
+include = ["src/**"]
+exclude = []
+
+[env]
+CI = "1"
+NODE_ENV = "test"
+
+[lang.js]
+include = ["**/*.js"]
+exclude = []
+
+[test]
+cmd = "npm test"
+
+[test.env]
+JEST_WORKERS = "4"
+"#;
+        let cli = parse_ok(&["run"], toml);
+        assert_eq!(
+            bough_core::Config::get_test_env(&cli.config),
+            HashMap::from([
+                ("CI".to_string(), "1".to_string()),
+                ("NODE_ENV".to_string(), "test".to_string()),
+                ("JEST_WORKERS".to_string(), "4".to_string()),
+            ])
+        );
+    }
+
+    #[test]
+    fn test_env_phase_empty_val_removes_global() {
+        let toml = r#"
+base_root_dir = "."
+include = ["src/**"]
+exclude = []
+
+[env]
+CI = "1"
+NODE_ENV = "test"
+
+[lang.js]
+include = ["**/*.js"]
+exclude = []
+
+[test]
+cmd = "npm test"
+
+[test.env]
+NODE_ENV = ""
+"#;
+        let cli = parse_ok(&["run"], toml);
+        assert_eq!(
+            bough_core::Config::get_test_env(&cli.config),
+            HashMap::from([("CI".to_string(), "1".to_string())])
+        );
+    }
+
+    #[test]
+    fn test_timeout_absolute_none_by_default() {
+        let cli = parse_ok(&["run"], MINIMAL_TOML);
+        assert_eq!(
+            bough_core::Config::get_test_timeout_absolute(&cli.config),
+            None
+        );
+    }
+
+    #[test]
+    fn test_timeout_absolute_from_global() {
+        let toml = r#"
+base_root_dir = "."
+include = ["src/**"]
+exclude = []
+
+[timeout]
+absolute = 30
+
+[lang.js]
+include = ["**/*.js"]
+exclude = []
+
+[test]
+cmd = "npm test"
+"#;
+        let cli = parse_ok(&["run"], toml);
+        assert_eq!(
+            bough_core::Config::get_test_timeout_absolute(&cli.config),
+            Some(chrono::Duration::seconds(30))
+        );
+    }
+
+    #[test]
+    fn test_timeout_absolute_phase_overrides_global() {
+        let toml = r#"
+base_root_dir = "."
+include = ["src/**"]
+exclude = []
+
+[timeout]
+absolute = 30
+
+[lang.js]
+include = ["**/*.js"]
+exclude = []
+
+[test]
+cmd = "npm test"
+
+[test.timeout]
+absolute = 60
+"#;
+        let cli = parse_ok(&["run"], toml);
+        assert_eq!(
+            bough_core::Config::get_test_timeout_absolute(&cli.config),
+            Some(chrono::Duration::seconds(60))
+        );
+    }
+
+    #[test]
+    fn test_timeout_relative_from_global() {
+        let toml = r#"
+base_root_dir = "."
+include = ["src/**"]
+exclude = []
+
+[timeout]
+relative = 3.0
+
+[lang.js]
+include = ["**/*.js"]
+exclude = []
+
+[test]
+cmd = "npm test"
+"#;
+        let cli = parse_ok(&["run"], toml);
+        assert_eq!(
+            bough_core::Config::get_test_timeout_relative(&cli.config),
+            Some(3.0)
+        );
+    }
+
+    #[test]
+    fn init_cmd_none_by_default() {
+        let cli = parse_ok(&["run"], MINIMAL_TOML);
+        assert_eq!(
+            bough_core::Config::get_init_cmd(&cli.config),
+            None
+        );
+    }
+
+    #[test]
+    fn init_cmd_parsed() {
+        let toml = r#"
+base_root_dir = "."
+include = ["src/**"]
+exclude = []
+
+[lang.js]
+include = ["**/*.js"]
+exclude = []
+
+[test]
+cmd = "npm test"
+
+[init]
+cmd = "npm install"
+"#;
+        let cli = parse_ok(&["run"], toml);
+        assert_eq!(
+            bough_core::Config::get_init_cmd(&cli.config),
+            Some("npm install".to_string())
+        );
+    }
+
+    #[test]
+    fn init_pwd_defaults_to_base_root() {
+        let cli = parse_ok(&["run"], MINIMAL_TOML);
+        assert_eq!(
+            bough_core::Config::get_init_pwd(&cli.config),
+            std::path::PathBuf::from(".")
+        );
+    }
+
+    #[test]
+    fn init_env_merges_and_removes() {
+        let toml = r#"
+base_root_dir = "."
+include = ["src/**"]
+exclude = []
+
+[env]
+CI = "1"
+NODE_ENV = "test"
+
+[lang.js]
+include = ["**/*.js"]
+exclude = []
+
+[test]
+cmd = "npm test"
+
+[init]
+cmd = "npm install"
+
+[init.env]
+NODE_ENV = ""
+"#;
+        let cli = parse_ok(&["run"], toml);
+        assert_eq!(
+            bough_core::Config::get_init_env(&cli.config),
+            HashMap::from([("CI".to_string(), "1".to_string())])
+        );
+    }
+
+    #[test]
+    fn reset_cmd_none_by_default() {
+        let cli = parse_ok(&["run"], MINIMAL_TOML);
+        assert_eq!(
+            bough_core::Config::get_reset_cmd(&cli.config),
+            None
+        );
+    }
+
+    #[test]
+    fn reset_cmd_parsed() {
+        let toml = r#"
+base_root_dir = "."
+include = ["src/**"]
+exclude = []
+
+[lang.js]
+include = ["**/*.js"]
+exclude = []
+
+[test]
+cmd = "npm test"
+
+[reset]
+cmd = "npm run clean"
+"#;
+        let cli = parse_ok(&["run"], toml);
+        assert_eq!(
+            bough_core::Config::get_reset_cmd(&cli.config),
+            Some("npm run clean".to_string())
+        );
+    }
+
+    #[test]
+    fn reset_pwd_uses_global() {
+        let toml = r#"
+base_root_dir = "."
+include = ["src/**"]
+exclude = []
+pwd = "/app"
+
+[lang.js]
+include = ["**/*.js"]
+exclude = []
+
+[test]
+cmd = "npm test"
+
+[reset]
+cmd = "npm run clean"
+"#;
+        let cli = parse_ok(&["run"], toml);
+        assert_eq!(
+            bough_core::Config::get_reset_pwd(&cli.config),
+            std::path::PathBuf::from("/app")
+        );
+    }
+
+    #[test]
+    fn full_example_from_spec() {
+        let toml = r#"
+base_root_dir = "."
+include = ["src/**"]
+exclude = []
+pwd = "/app"
+
+[timeout]
+absolute = 30
+relative = 3.0
+
+[env]
+CI = "1"
+NODE_ENV = "test"
+
+[lang.js]
+include = ["**/*.js"]
+exclude = []
+
+[test]
+cmd = "npm test"
+
+[test.timeout]
+absolute = 60
+
+[test.env]
+JEST_WORKERS = "4"
+
+[init]
+cmd = "npm install"
+pwd = "/app/setup"
+
+[init.env]
+NODE_ENV = ""
+
+[reset]
+cmd = "npm run clean"
+"#;
+        let cli = parse_ok(&["run"], toml);
+        let c = &cli.config;
+
+        assert_eq!(bough_core::Config::get_test_cmd(c), "npm test");
+        assert_eq!(bough_core::Config::get_test_pwd(c), std::path::PathBuf::from("/app"));
+        assert_eq!(
+            bough_core::Config::get_test_env(c),
+            HashMap::from([
+                ("CI".to_string(), "1".to_string()),
+                ("NODE_ENV".to_string(), "test".to_string()),
+                ("JEST_WORKERS".to_string(), "4".to_string()),
+            ])
+        );
+        assert_eq!(bough_core::Config::get_test_timeout_absolute(c), Some(chrono::Duration::seconds(60)));
+        assert_eq!(bough_core::Config::get_test_timeout_relative(c), Some(3.0));
+
+        assert_eq!(bough_core::Config::get_init_cmd(c), Some("npm install".to_string()));
+        assert_eq!(bough_core::Config::get_init_pwd(c), std::path::PathBuf::from("/app/setup"));
+        assert_eq!(
+            bough_core::Config::get_init_env(c),
+            HashMap::from([("CI".to_string(), "1".to_string())])
+        );
+        assert_eq!(bough_core::Config::get_init_timeout_absolute(c), Some(chrono::Duration::seconds(30)));
+        assert_eq!(bough_core::Config::get_init_timeout_relative(c), Some(3.0));
+
+        assert_eq!(bough_core::Config::get_reset_cmd(c), Some("npm run clean".to_string()));
+        assert_eq!(bough_core::Config::get_reset_pwd(c), std::path::PathBuf::from("/app"));
+        assert_eq!(
+            bough_core::Config::get_reset_env(c),
+            HashMap::from([
+                ("CI".to_string(), "1".to_string()),
+                ("NODE_ENV".to_string(), "test".to_string()),
+            ])
+        );
+        assert_eq!(bough_core::Config::get_reset_timeout_absolute(c), Some(chrono::Duration::seconds(30)));
+        assert_eq!(bough_core::Config::get_reset_timeout_relative(c), Some(3.0));
+    }
+}
+
+trait HasPhaseOverrides {
+    fn phase_overrides(&self) -> &PhaseOverrides;
+}
+
+impl HasPhaseOverrides for TestPhaseConfig {
+    fn phase_overrides(&self) -> &PhaseOverrides {
+        &self.overrides
+    }
+}
+
+impl HasPhaseOverrides for PhaseConfig {
+    fn phase_overrides(&self) -> &PhaseOverrides {
+        &self.overrides
+    }
+}
+
+impl Config {
+    fn phase_overrides<T: HasPhaseOverrides>(&self, phase: &Option<T>) -> PhaseOverrides {
+        phase.as_ref()
+            .map(|p| p.phase_overrides().clone())
+            .unwrap_or_default()
+    }
+}
+
+impl PhaseOverrides {
+    fn resolve_pwd(&self, global: &PhaseOverrides, fallback: &std::path::Path) -> PathBuf {
+        self.pwd.as_deref()
+            .or(global.pwd.as_deref())
+            .map(PathBuf::from)
+            .unwrap_or_else(|| fallback.to_path_buf())
+    }
+
+    fn resolve_env(&self, global: &PhaseOverrides) -> HashMap<String, String> {
+        let mut result = global.env.clone().unwrap_or_default();
+        if let Some(phase_env) = &self.env {
+            for (k, v) in phase_env {
+                if v.is_empty() {
+                    result.remove(k);
+                } else {
+                    result.insert(k.clone(), v.clone());
+                }
+            }
+        }
+        result
+    }
+
+    fn resolve_timeout_absolute(&self, global: &PhaseOverrides) -> Option<chrono::Duration> {
+        self.timeout.as_ref().and_then(|t| t.absolute)
+            .or_else(|| global.timeout.as_ref().and_then(|t| t.absolute))
+            .map(|secs| chrono::Duration::seconds(secs as i64))
+    }
+
+    fn resolve_timeout_relative(&self, global: &PhaseOverrides) -> Option<f64> {
+        self.timeout.as_ref().and_then(|t| t.relative)
+            .or_else(|| global.timeout.as_ref().and_then(|t| t.relative))
+    }
 }
 
 impl bough_core::Config for Config {
@@ -994,6 +1587,66 @@ impl bough_core::Config for Config {
             .chain(vcs_ignore)
             .chain(vcs_dirs)
             .chain(std::iter::once(bough_glob))
+    }
+
+    fn get_test_cmd(&self) -> String {
+        self.test.as_ref().expect("test.cmd is required").cmd.clone()
+    }
+
+    fn get_test_pwd(&self) -> std::path::PathBuf {
+        self.phase_overrides(&self.test).resolve_pwd(&self.phase_defaults, &self.get_base_root_path())
+    }
+
+    fn get_test_env(&self) -> HashMap<String, String> {
+        self.phase_overrides(&self.test).resolve_env(&self.phase_defaults)
+    }
+
+    fn get_test_timeout_absolute(&self) -> Option<chrono::Duration> {
+        self.phase_overrides(&self.test).resolve_timeout_absolute(&self.phase_defaults)
+    }
+
+    fn get_test_timeout_relative(&self) -> Option<f64> {
+        self.phase_overrides(&self.test).resolve_timeout_relative(&self.phase_defaults)
+    }
+
+    fn get_init_cmd(&self) -> Option<String> {
+        self.init.as_ref().and_then(|i| i.cmd.clone())
+    }
+
+    fn get_init_pwd(&self) -> std::path::PathBuf {
+        self.phase_overrides(&self.init).resolve_pwd(&self.phase_defaults, &self.get_base_root_path())
+    }
+
+    fn get_init_env(&self) -> HashMap<String, String> {
+        self.phase_overrides(&self.init).resolve_env(&self.phase_defaults)
+    }
+
+    fn get_init_timeout_absolute(&self) -> Option<chrono::Duration> {
+        self.phase_overrides(&self.init).resolve_timeout_absolute(&self.phase_defaults)
+    }
+
+    fn get_init_timeout_relative(&self) -> Option<f64> {
+        self.phase_overrides(&self.init).resolve_timeout_relative(&self.phase_defaults)
+    }
+
+    fn get_reset_cmd(&self) -> Option<String> {
+        self.reset.as_ref().and_then(|r| r.cmd.clone())
+    }
+
+    fn get_reset_pwd(&self) -> std::path::PathBuf {
+        self.phase_overrides(&self.reset).resolve_pwd(&self.phase_defaults, &self.get_base_root_path())
+    }
+
+    fn get_reset_env(&self) -> HashMap<String, String> {
+        self.phase_overrides(&self.reset).resolve_env(&self.phase_defaults)
+    }
+
+    fn get_reset_timeout_absolute(&self) -> Option<chrono::Duration> {
+        self.phase_overrides(&self.reset).resolve_timeout_absolute(&self.phase_defaults)
+    }
+
+    fn get_reset_timeout_relative(&self) -> Option<f64> {
+        self.phase_overrides(&self.reset).resolve_timeout_relative(&self.phase_defaults)
     }
 
     fn get_langs(&self) -> impl Iterator<Item = bough_core::LanguageId> {

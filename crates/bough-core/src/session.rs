@@ -273,6 +273,66 @@ mod tests {
         fn get_workers_count(&self) -> u64 {
             self.workers_count
         }
+
+        fn get_test_cmd(&self) -> String {
+            "echo test".to_string()
+        }
+
+        fn get_test_pwd(&self) -> PathBuf {
+            self.root.clone()
+        }
+
+        fn get_test_env(&self) -> HashMap<String, String> {
+            HashMap::new()
+        }
+
+        fn get_test_timeout_absolute(&self) -> Option<Duration> {
+            None
+        }
+
+        fn get_test_timeout_relative(&self) -> Option<f64> {
+            None
+        }
+
+        fn get_init_cmd(&self) -> Option<String> {
+            None
+        }
+
+        fn get_init_pwd(&self) -> PathBuf {
+            self.root.clone()
+        }
+
+        fn get_init_env(&self) -> HashMap<String, String> {
+            HashMap::new()
+        }
+
+        fn get_init_timeout_absolute(&self) -> Option<Duration> {
+            None
+        }
+
+        fn get_init_timeout_relative(&self) -> Option<f64> {
+            None
+        }
+
+        fn get_reset_cmd(&self) -> Option<String> {
+            None
+        }
+
+        fn get_reset_pwd(&self) -> PathBuf {
+            self.root.clone()
+        }
+
+        fn get_reset_env(&self) -> HashMap<String, String> {
+            HashMap::new()
+        }
+
+        fn get_reset_timeout_absolute(&self) -> Option<Duration> {
+            None
+        }
+
+        fn get_reset_timeout_relative(&self) -> Option<f64> {
+            None
+        }
     }
 
     fn make_js_config(dir: &std::path::Path) -> MinimalConfig {
