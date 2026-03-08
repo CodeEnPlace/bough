@@ -114,6 +114,7 @@ version = "0.0.2"
 dependencies = [
  "bough-core",
  "bough-typed-hash",
+ "chrono",
  "facet",
  "facet-json",
  "facet-toml",
