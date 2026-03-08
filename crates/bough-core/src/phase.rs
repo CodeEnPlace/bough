@@ -43,6 +43,24 @@ pub struct Phase<'a, R: Root> {
 }
 
 impl<'a, R: Root> Phase<'a, R> {
+    pub fn new(
+        root: &'a R,
+        pwd: Twig,
+        env: HashMap<String, String>,
+        cmd: Vec<String>,
+        timeout_absolute: Option<Duration>,
+        timeout_relative: Option<f64>,
+    ) -> Self {
+        Self {
+            root,
+            pwd,
+            env,
+            cmd,
+            timeout_absolute,
+            timeout_relative,
+        }
+    }
+
     pub fn root(&self) -> &R {
         self.root
     }
