@@ -1156,7 +1156,7 @@ mod tests {
             .outcome_at()
             .unwrap();
 
-        std::thread::sleep(std::time::Duration::from_millis(100));
+        std::thread::sleep(std::time::Duration::from_millis(500));
         session
             .set_state(&mutation, crate::state::Status::Caught)
             .unwrap();

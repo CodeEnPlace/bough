@@ -173,7 +173,19 @@ fn main() {
                     Box::new(render::TendWorkspaces { workspace_ids })
                 }
 
-                config::Step::InitWorkspace { workspace_id } => todo!(),
+                config::Step::InitWorkspace { workspace_id } => {
+                    let session =
+                        Session::new(cli.config.clone()).expect("session creation");
+                    let wid = bough_core::WorkspaceId::parse(workspace_id)
+                        .expect("invalid workspace id");
+                    let outcome = session
+                        .run_init_in_workspace(&wid, None)
+                        .expect("init workspace");
+                    Box::new(render::InitWorkspace {
+                        workspace_id: wid,
+                        outcome,
+                    })
+                }
 
                 config::Step::ResetWorkspace { workspace_id } => todo!(),
 
