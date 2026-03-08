@@ -204,12 +204,50 @@ fn main() {
                 config::Step::ApplyMutation {
                     workspace_id,
                     mutation_hash,
-                } => todo!(),
+                } => {
+                    let session =
+                        Session::new(cli.config.clone()).expect("session creation");
+                    let wid = bough_core::WorkspaceId::parse(workspace_id)
+                        .expect("invalid workspace id");
+                    let base = session.base();
+                    let mutations: Vec<_> = base
+                        .mutations()
+                        .collect::<Result<Vec<_>, _>>()
+                        .expect("mutation scan");
+                    let mutation =
+                        render::find_mutation_by_hash(mutation_hash, mutations);
+                    let mut workspace = session
+                        .bind_workspace(&wid)
+                        .expect("bind workspace");
+                    workspace
+                        .write_mutant(&mutation)
+                        .expect("apply mutation");
+                    let hash_str = mutation.hash().expect("hash").to_string();
+                    Box::new(render::ApplyMutation {
+                        workspace_id: wid,
+                        mutation_hash: hash_str,
+                    })
+                }
 
                 config::Step::UnapplyMutation {
                     workspace_id,
                     mutation_hash,
-                } => todo!(),
+                } => {
+                    let session =
+                        Session::new(cli.config.clone()).expect("session creation");
+                    let wid = bough_core::WorkspaceId::parse(workspace_id)
+                        .expect("invalid workspace id");
+                    let mut workspace = session
+                        .bind_workspace(&wid)
+                        .expect("bind workspace");
+                    workspace
+                        .revert_mutant()
+                        .expect("unapply mutation");
+                    Box::new(render::UnapplyMutation {
+                        workspace_id: wid,
+                        mutation_hash: mutation_hash.clone(),
+                    })
+                }
 
                 config::Step::TestMutation {
                     workspace_id,

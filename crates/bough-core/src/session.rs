@@ -259,7 +259,7 @@ impl<C: Config> Session<C> {
         ))
     }
 
-    fn bind_workspace(&self, workspace_id: &WorkspaceId) -> Result<Workspace<'_>, Error> {
+    pub fn bind_workspace(&self, workspace_id: &WorkspaceId) -> Result<Workspace<'_>, Error> {
         let workspaces_dir = self.config.get_bough_state_dir().join("workspaces");
         Ok(Workspace::bind(workspaces_dir, workspace_id, &self.base)?)
     }
