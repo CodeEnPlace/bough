@@ -1,6 +1,10 @@
-use std::{collections::HashSet, path::PathBuf};
+use std::{
+    collections::{HashMap, HashSet},
+    path::PathBuf,
+};
 
 use bough_typed_hash::TypedHashable;
+use chrono::Duration;
 use tracing::info;
 
 use crate::{
@@ -24,6 +28,24 @@ pub trait Config {
     fn get_langs(&self) -> impl Iterator<Item = LanguageId>;
     fn get_lang_include_globs(&self, language_id: LanguageId) -> impl Iterator<Item = String>;
     fn get_lang_exclude_globs(&self, language_id: LanguageId) -> impl Iterator<Item = String>;
+
+    fn get_test_cmd(&self) -> String;
+    fn get_test_pwd(&self) -> PathBuf;
+    fn get_test_env(&self) -> HashMap<String, String>;
+    fn get_test_timeout_absolute(&self) -> Option<Duration>;
+    fn get_test_timeout_relative(&self) -> Option<f64>;
+
+    fn get_init_cmd(&self) -> Option<String>;
+    fn get_init_pwd(&self) -> PathBuf;
+    fn get_init_env(&self) -> HashMap<String, String>;
+    fn get_init_timeout_absolute(&self) -> Option<Duration>;
+    fn get_init_timeout_relative(&self) -> Option<f64>;
+
+    fn get_reset_cmd(&self) -> Option<String>;
+    fn get_reset_pwd(&self) -> PathBuf;
+    fn get_reset_env(&self) -> HashMap<String, String>;
+    fn get_reset_timeout_absolute(&self) -> Option<Duration>;
+    fn get_reset_timeout_relative(&self) -> Option<f64>;
 }
 
 #[derive(Debug)]
@@ -91,9 +113,7 @@ impl<C: Config> Session<C> {
         let mut added = Vec::new();
 
         for mutation in &mutations_in_base {
-            let hash = mutation
-                .hash()
-                .expect("hashing should not fail");
+            let hash = mutation.hash().expect("hashing should not fail");
             if self.mutations_state.get(&hash).is_none() {
                 let state = State::new(mutation.clone());
                 self.mutations_state
