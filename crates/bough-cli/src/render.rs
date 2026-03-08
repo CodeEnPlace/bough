@@ -438,6 +438,96 @@ impl Render for TendWorkspaces {
     }
 }
 
+pub struct InitWorkspace {
+    pub workspace_id: bough_core::WorkspaceId,
+    pub outcome: bough_core::PhaseOutcome,
+}
+
+fn fmt_phase_outcome_terse(outcome: &bough_core::PhaseOutcome) -> String {
+    format!(
+        "exit={} duration={:.2}s{}",
+        outcome.exit_code(),
+        outcome.duration().as_secs_f64(),
+        if outcome.timed_out() { " TIMED_OUT" } else { "" },
+    )
+}
+
+fn fmt_phase_outcome_verbose(outcome: &bough_core::PhaseOutcome) -> String {
+    let stdout = String::from_utf8_lossy(outcome.stdout());
+    let stderr = String::from_utf8_lossy(outcome.stderr());
+    let mut out = format!(
+        "Exit: {}\nDuration: {:.2}s\nTimed out: {}",
+        outcome.exit_code(),
+        outcome.duration().as_secs_f64(),
+        outcome.timed_out(),
+    );
+    if !stdout.is_empty() {
+        out.push_str(&format!("\n\n{TITLE}stdout{RESET}\n{stdout}"));
+    }
+    if !stderr.is_empty() {
+        out.push_str(&format!("\n\n{TITLE}stderr{RESET}\n{stderr}"));
+    }
+    out
+}
+
+fn fmt_phase_outcome_json(outcome: &bough_core::PhaseOutcome) -> String {
+    let stdout = String::from_utf8_lossy(outcome.stdout());
+    let stderr = String::from_utf8_lossy(outcome.stderr());
+    format!(
+        r#"{{"exit_code":{},"duration_secs":{:.3},"timed_out":{},"stdout":"{}","stderr":"{}"}}"#,
+        outcome.exit_code(),
+        outcome.duration().as_secs_f64(),
+        outcome.timed_out(),
+        stdout.replace('\\', "\\\\").replace('"', "\\\"").replace('\n', "\\n"),
+        stderr.replace('\\', "\\\\").replace('"', "\\\"").replace('\n', "\\n"),
+    )
+}
+
+impl Render for InitWorkspace {
+    fn markdown(&self) -> String {
+        let stdout = String::from_utf8_lossy(self.outcome.stdout());
+        let stderr = String::from_utf8_lossy(self.outcome.stderr());
+        let mut out = format!(
+            "# Init Workspace `{}`\n\n- Exit: {}\n- Duration: {:.2}s\n- Timed out: {}",
+            self.workspace_id,
+            self.outcome.exit_code(),
+            self.outcome.duration().as_secs_f64(),
+            self.outcome.timed_out(),
+        );
+        if !stdout.is_empty() {
+            out.push_str(&format!("\n\n## stdout\n\n```\n{stdout}\n```"));
+        }
+        if !stderr.is_empty() {
+            out.push_str(&format!("\n\n## stderr\n\n```\n{stderr}\n```"));
+        }
+        out
+    }
+
+    fn terse(&self) -> String {
+        format!(
+            "{HASH}{}{RESET} {}",
+            self.workspace_id,
+            fmt_phase_outcome_terse(&self.outcome),
+        )
+    }
+
+    fn verbose(&self) -> String {
+        format!(
+            "{TITLE}Init Workspace{RESET} {HASH}{}{RESET}\n\n{}",
+            self.workspace_id,
+            fmt_phase_outcome_verbose(&self.outcome),
+        )
+    }
+
+    fn json(&self) -> String {
+        format!(
+            r#"{{"workspace_id":"{}","outcome":{}}}"#,
+            self.workspace_id,
+            fmt_phase_outcome_json(&self.outcome),
+        )
+    }
+}
+
 impl Render for Config {
     fn markdown(&self) -> String {
         format!(

@@ -40,4 +40,5 @@ pub use mutation::MutationHash;
 pub use session::Config;
 pub use session::Session;
 pub use state::State;
+pub use phase::PhaseOutcome;
 pub use workspace::WorkspaceId;
