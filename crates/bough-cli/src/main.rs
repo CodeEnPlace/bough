@@ -164,23 +164,17 @@ fn main() {
                 }
 
                 config::Step::TendWorkspaces => {
-                    let mut session =
-                        Session::new(cli.config.clone()).expect("session creation");
+                    let mut session = Session::new(cli.config.clone()).expect("session creation");
                     let workers = cli.config.workers as usize;
-                    let workspace_ids = session
-                        .tend_workspaces(workers)
-                        .expect("tend workspaces");
+                    let workspace_ids = session.tend_workspaces(workers).expect("tend workspaces");
                     Box::new(render::TendWorkspaces { workspace_ids })
                 }
 
                 config::Step::InitWorkspace { workspace_id } => {
-                    let session =
-                        Session::new(cli.config.clone()).expect("session creation");
-                    let wid = bough_core::WorkspaceId::parse(workspace_id)
-                        .expect("invalid workspace id");
-                    let workspace = session
-                        .bind_workspace(&wid)
-                        .expect("bind workspace");
+                    let session = Session::new(cli.config.clone()).expect("session creation");
+                    let wid =
+                        bough_core::WorkspaceId::parse(workspace_id).expect("invalid workspace id");
+                    let workspace = session.bind_workspace(&wid).expect("bind workspace");
                     let outcome = workspace
                         .run_init(&cli.config, None)
                         .expect("init workspace");
@@ -191,13 +185,10 @@ fn main() {
                 }
 
                 config::Step::ResetWorkspace { workspace_id } => {
-                    let session =
-                        Session::new(cli.config.clone()).expect("session creation");
-                    let wid = bough_core::WorkspaceId::parse(workspace_id)
-                        .expect("invalid workspace id");
-                    let workspace = session
-                        .bind_workspace(&wid)
-                        .expect("bind workspace");
+                    let session = Session::new(cli.config.clone()).expect("session creation");
+                    let wid =
+                        bough_core::WorkspaceId::parse(workspace_id).expect("invalid workspace id");
+                    let workspace = session.bind_workspace(&wid).expect("bind workspace");
                     let outcome = workspace
                         .run_reset(&cli.config, None)
                         .expect("reset workspace");
@@ -211,23 +202,17 @@ fn main() {
                     workspace_id,
                     mutation_hash,
                 } => {
-                    let session =
-                        Session::new(cli.config.clone()).expect("session creation");
-                    let wid = bough_core::WorkspaceId::parse(workspace_id)
-                        .expect("invalid workspace id");
+                    let session = Session::new(cli.config.clone()).expect("session creation");
+                    let wid =
+                        bough_core::WorkspaceId::parse(workspace_id).expect("invalid workspace id");
                     let base = session.base();
                     let mutations: Vec<_> = base
                         .mutations()
                         .collect::<Result<Vec<_>, _>>()
                         .expect("mutation scan");
-                    let mutation =
-                        render::find_mutation_by_hash(mutation_hash, mutations);
-                    let mut workspace = session
-                        .bind_workspace(&wid)
-                        .expect("bind workspace");
-                    workspace
-                        .write_mutant(&mutation)
-                        .expect("apply mutation");
+                    let mutation = render::find_mutation_by_hash(mutation_hash, mutations);
+                    let mut workspace = session.bind_workspace(&wid).expect("bind workspace");
+                    workspace.write_mutant(&mutation).expect("apply mutation");
                     let hash_str = mutation.hash().expect("hash").to_string();
                     Box::new(render::ApplyMutation {
                         workspace_id: wid,
@@ -239,16 +224,11 @@ fn main() {
                     workspace_id,
                     mutation_hash,
                 } => {
-                    let session =
-                        Session::new(cli.config.clone()).expect("session creation");
-                    let wid = bough_core::WorkspaceId::parse(workspace_id)
-                        .expect("invalid workspace id");
-                    let mut workspace = session
-                        .bind_workspace(&wid)
-                        .expect("bind workspace");
-                    workspace
-                        .revert_mutant()
-                        .expect("unapply mutation");
+                    let session = Session::new(cli.config.clone()).expect("session creation");
+                    let wid =
+                        bough_core::WorkspaceId::parse(workspace_id).expect("invalid workspace id");
+                    let mut workspace = session.bind_workspace(&wid).expect("bind workspace");
+                    workspace.revert_mutant().expect("unapply mutation");
                     Box::new(render::UnapplyMutation {
                         workspace_id: wid,
                         mutation_hash: mutation_hash.clone(),
@@ -259,30 +239,22 @@ fn main() {
                     workspace_id,
                     mutation_hash,
                 } => {
-                    let mut session =
-                        Session::new(cli.config.clone()).expect("session creation");
-                    let wid = bough_core::WorkspaceId::parse(workspace_id)
-                        .expect("invalid workspace id");
+                    let mut session = Session::new(cli.config.clone()).expect("session creation");
+                    let wid =
+                        bough_core::WorkspaceId::parse(workspace_id).expect("invalid workspace id");
                     let base = session.base();
                     let mutations: Vec<_> = base
                         .mutations()
                         .collect::<Result<Vec<_>, _>>()
                         .expect("mutation scan");
-                    let mutation =
-                        render::find_mutation_by_hash(mutation_hash, mutations);
+                    let mutation = render::find_mutation_by_hash(mutation_hash, mutations);
                     let hash_str = mutation.hash().expect("hash").to_string();
-                    let mut workspace = session
-                        .bind_workspace(&wid)
-                        .expect("bind workspace");
-                    workspace
-                        .write_mutant(&mutation)
-                        .expect("apply mutation");
+                    let mut workspace = session.bind_workspace(&wid).expect("bind workspace");
+                    workspace.write_mutant(&mutation).expect("apply mutation");
                     let outcome = workspace
                         .run_test(&cli.config, None)
                         .expect("test mutation");
-                    workspace
-                        .revert_mutant()
-                        .expect("revert mutation");
+                    workspace.revert_mutant().expect("revert mutation");
                     let status = if outcome.exit_code() != 0 {
                         bough_core::Status::Caught
                     } else {
@@ -293,9 +265,7 @@ fn main() {
                     } else {
                         "missed"
                     };
-                    session
-                        .set_state(&mutation, status)
-                        .expect("set state");
+                    session.set_state(&mutation, status).expect("set state");
                     Box::new(render::TestMutation {
                         workspace_id: wid,
                         mutation_hash: hash_str,
