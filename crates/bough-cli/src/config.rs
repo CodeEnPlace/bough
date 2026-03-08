@@ -1068,7 +1068,7 @@ exclude = []
 base_root_dir = "."
 include = ["src/**"]
 exclude = []
-pwd = "/app"
+pwd = "build"
 
 [lang.js]
 include = ["**/*.js"]
@@ -1080,7 +1080,7 @@ cmd = "npm test"
         let cli = parse_ok(&["run"], toml);
         assert_eq!(
             bough_core::Config::get_test_pwd(&cli.config),
-            std::path::PathBuf::from("/app")
+            std::path::PathBuf::from("build")
         );
     }
 
@@ -1090,7 +1090,7 @@ cmd = "npm test"
 base_root_dir = "."
 include = ["src/**"]
 exclude = []
-pwd = "/app"
+pwd = "build"
 
 [lang.js]
 include = ["**/*.js"]
@@ -1098,12 +1098,12 @@ exclude = []
 
 [test]
 cmd = "npm test"
-pwd = "/app/test"
+pwd = "src/test"
 "#;
         let cli = parse_ok(&["run"], toml);
         assert_eq!(
             bough_core::Config::get_test_pwd(&cli.config),
-            std::path::PathBuf::from("/app/test")
+            std::path::PathBuf::from("src/test")
         );
     }
 
@@ -1396,7 +1396,7 @@ cmd = "npm run clean"
 base_root_dir = "."
 include = ["src/**"]
 exclude = []
-pwd = "/app"
+pwd = "build"
 
 [lang.js]
 include = ["**/*.js"]
@@ -1411,7 +1411,7 @@ cmd = "npm run clean"
         let cli = parse_ok(&["run"], toml);
         assert_eq!(
             bough_core::Config::get_reset_pwd(&cli.config),
-            std::path::PathBuf::from("/app")
+            std::path::PathBuf::from("build")
         );
     }
 
@@ -1421,7 +1421,7 @@ cmd = "npm run clean"
 base_root_dir = "."
 include = ["src/**"]
 exclude = []
-pwd = "/app"
+pwd = "build"
 
 [timeout]
 absolute = 30
@@ -1446,7 +1446,7 @@ JEST_WORKERS = "4"
 
 [init]
 cmd = "npm install"
-pwd = "/app/setup"
+pwd = "setup"
 
 [init.env]
 NODE_ENV = ""
@@ -1458,7 +1458,7 @@ cmd = "npm run clean"
         let c = &cli.config;
 
         assert_eq!(bough_core::Config::get_test_cmd(c), "npm test");
-        assert_eq!(bough_core::Config::get_test_pwd(c), std::path::PathBuf::from("/app"));
+        assert_eq!(bough_core::Config::get_test_pwd(c), std::path::PathBuf::from("build"));
         assert_eq!(
             bough_core::Config::get_test_env(c),
             HashMap::from([
@@ -1471,7 +1471,7 @@ cmd = "npm run clean"
         assert_eq!(bough_core::Config::get_test_timeout_relative(c), Some(3.0));
 
         assert_eq!(bough_core::Config::get_init_cmd(c), Some("npm install".to_string()));
-        assert_eq!(bough_core::Config::get_init_pwd(c), std::path::PathBuf::from("/app/setup"));
+        assert_eq!(bough_core::Config::get_init_pwd(c), std::path::PathBuf::from("setup"));
         assert_eq!(
             bough_core::Config::get_init_env(c),
             HashMap::from([("CI".to_string(), "1".to_string())])
@@ -1480,7 +1480,7 @@ cmd = "npm run clean"
         assert_eq!(bough_core::Config::get_init_timeout_relative(c), Some(3.0));
 
         assert_eq!(bough_core::Config::get_reset_cmd(c), Some("npm run clean".to_string()));
-        assert_eq!(bough_core::Config::get_reset_pwd(c), std::path::PathBuf::from("/app"));
+        assert_eq!(bough_core::Config::get_reset_pwd(c), std::path::PathBuf::from("build"));
         assert_eq!(
             bough_core::Config::get_reset_env(c),
             HashMap::from([
@@ -1518,11 +1518,11 @@ impl Config {
 }
 
 impl PhaseOverrides {
-    fn resolve_pwd(&self, global: &PhaseOverrides, fallback: &std::path::Path) -> PathBuf {
+    fn resolve_pwd(&self, global: &PhaseOverrides) -> PathBuf {
         self.pwd.as_deref()
             .or(global.pwd.as_deref())
             .map(PathBuf::from)
-            .unwrap_or_else(|| fallback.to_path_buf())
+            .unwrap_or_else(|| PathBuf::from("."))
     }
 
     fn resolve_env(&self, global: &PhaseOverrides) -> HashMap<String, String> {
@@ -1594,7 +1594,7 @@ impl bough_core::Config for Config {
     }
 
     fn get_test_pwd(&self) -> std::path::PathBuf {
-        self.phase_overrides(&self.test).resolve_pwd(&self.phase_defaults, &self.get_base_root_path())
+        self.phase_overrides(&self.test).resolve_pwd(&self.phase_defaults)
     }
 
     fn get_test_env(&self) -> HashMap<String, String> {
@@ -1614,7 +1614,7 @@ impl bough_core::Config for Config {
     }
 
     fn get_init_pwd(&self) -> std::path::PathBuf {
-        self.phase_overrides(&self.init).resolve_pwd(&self.phase_defaults, &self.get_base_root_path())
+        self.phase_overrides(&self.init).resolve_pwd(&self.phase_defaults)
     }
 
     fn get_init_env(&self) -> HashMap<String, String> {
@@ -1634,7 +1634,7 @@ impl bough_core::Config for Config {
     }
 
     fn get_reset_pwd(&self) -> std::path::PathBuf {
-        self.phase_overrides(&self.reset).resolve_pwd(&self.phase_defaults, &self.get_base_root_path())
+        self.phase_overrides(&self.reset).resolve_pwd(&self.phase_defaults)
     }
 
     fn get_reset_env(&self) -> HashMap<String, String> {

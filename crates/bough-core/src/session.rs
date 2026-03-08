@@ -11,7 +11,9 @@ use crate::{
     LanguageId,
     base::Base,
     facet_disk_store::FacetDiskStore,
+    file::Twig,
     mutation::{Mutation, MutationHash},
+    phase::{Phase, PhaseOutcome},
     state::State,
     twig::TwigsIterBuilder,
     workspace::{Workspace, WorkspaceId},
@@ -53,6 +55,10 @@ pub enum Error {
     File(crate::file::Error),
     Io(std::io::Error),
     Workspace(crate::workspace::Error),
+    Phase(crate::phase::Error),
+    NoCmdConfigured,
+    AbsolutePwd(PathBuf),
+    InvalidTimeout,
 }
 
 pub struct TestConfig {}
@@ -209,6 +215,137 @@ impl<C: Config> Session<C> {
     pub fn workspace_ids(&self) -> &[WorkspaceId] {
         &self.workspaces
     }
+
+    fn convert_timeout(
+        timeout: Option<Duration>,
+    ) -> Result<Option<std::time::Duration>, Error> {
+        timeout
+            .map(|d| d.to_std().map_err(|_| Error::InvalidTimeout))
+            .transpose()
+    }
+
+    fn build_phase<'a, R: crate::file::Root>(
+        &self,
+        root: &'a R,
+        cmd: &str,
+        pwd: PathBuf,
+        env: HashMap<String, String>,
+        timeout_absolute: Option<Duration>,
+        timeout_relative: Option<f64>,
+    ) -> Result<Phase<'a, R>, Error> {
+        if pwd.is_absolute() {
+            return Err(Error::AbsolutePwd(pwd));
+        }
+        let twig = Twig::new(pwd).map_err(crate::file::Error::from)?;
+        let cmd_parts: Vec<String> = cmd.split_whitespace().map(String::from).collect();
+        let timeout_abs = Self::convert_timeout(timeout_absolute)?;
+        Ok(Phase::new(root, twig, env, cmd_parts, timeout_abs, timeout_relative))
+    }
+
+    fn bind_workspace(&self, workspace_id: &WorkspaceId) -> Result<Workspace<'_>, Error> {
+        let workspaces_dir = self.config.get_bough_state_dir().join("workspaces");
+        Ok(Workspace::bind(workspaces_dir, workspace_id, &self.base)?)
+    }
+
+    pub fn run_test_in_base(
+        &self,
+        reference_duration: Option<std::time::Duration>,
+    ) -> Result<PhaseOutcome, Error> {
+        let phase = self.build_phase(
+            &self.base,
+            &self.config.get_test_cmd(),
+            self.config.get_test_pwd(),
+            self.config.get_test_env(),
+            self.config.get_test_timeout_absolute(),
+            self.config.get_test_timeout_relative(),
+        )?;
+        Ok(phase.run(reference_duration)?)
+    }
+
+    pub fn run_init_in_base(
+        &self,
+        reference_duration: Option<std::time::Duration>,
+    ) -> Result<PhaseOutcome, Error> {
+        let cmd = self.config.get_init_cmd().ok_or(Error::NoCmdConfigured)?;
+        let phase = self.build_phase(
+            &self.base,
+            &cmd,
+            self.config.get_init_pwd(),
+            self.config.get_init_env(),
+            self.config.get_init_timeout_absolute(),
+            self.config.get_init_timeout_relative(),
+        )?;
+        Ok(phase.run(reference_duration)?)
+    }
+
+    pub fn run_reset_in_base(
+        &self,
+        reference_duration: Option<std::time::Duration>,
+    ) -> Result<PhaseOutcome, Error> {
+        let cmd = self.config.get_reset_cmd().ok_or(Error::NoCmdConfigured)?;
+        let phase = self.build_phase(
+            &self.base,
+            &cmd,
+            self.config.get_reset_pwd(),
+            self.config.get_reset_env(),
+            self.config.get_reset_timeout_absolute(),
+            self.config.get_reset_timeout_relative(),
+        )?;
+        Ok(phase.run(reference_duration)?)
+    }
+
+    pub fn run_test_in_workspace(
+        &self,
+        workspace_id: &WorkspaceId,
+        reference_duration: Option<std::time::Duration>,
+    ) -> Result<PhaseOutcome, Error> {
+        let workspace = self.bind_workspace(workspace_id)?;
+        let phase = self.build_phase(
+            &workspace,
+            &self.config.get_test_cmd(),
+            self.config.get_test_pwd(),
+            self.config.get_test_env(),
+            self.config.get_test_timeout_absolute(),
+            self.config.get_test_timeout_relative(),
+        )?;
+        Ok(phase.run(reference_duration)?)
+    }
+
+    pub fn run_init_in_workspace(
+        &self,
+        workspace_id: &WorkspaceId,
+        reference_duration: Option<std::time::Duration>,
+    ) -> Result<PhaseOutcome, Error> {
+        let cmd = self.config.get_init_cmd().ok_or(Error::NoCmdConfigured)?;
+        let workspace = self.bind_workspace(workspace_id)?;
+        let phase = self.build_phase(
+            &workspace,
+            &cmd,
+            self.config.get_init_pwd(),
+            self.config.get_init_env(),
+            self.config.get_init_timeout_absolute(),
+            self.config.get_init_timeout_relative(),
+        )?;
+        Ok(phase.run(reference_duration)?)
+    }
+
+    pub fn run_reset_in_workspace(
+        &self,
+        workspace_id: &WorkspaceId,
+        reference_duration: Option<std::time::Duration>,
+    ) -> Result<PhaseOutcome, Error> {
+        let cmd = self.config.get_reset_cmd().ok_or(Error::NoCmdConfigured)?;
+        let workspace = self.bind_workspace(workspace_id)?;
+        let phase = self.build_phase(
+            &workspace,
+            &cmd,
+            self.config.get_reset_pwd(),
+            self.config.get_reset_env(),
+            self.config.get_reset_timeout_absolute(),
+            self.config.get_reset_timeout_relative(),
+        )?;
+        Ok(phase.run(reference_duration)?)
+    }
 }
 
 impl From<crate::file::Error> for Error {
@@ -229,6 +366,12 @@ impl From<crate::workspace::Error> for Error {
     }
 }
 
+impl From<crate::phase::Error> for Error {
+    fn from(e: crate::phase::Error) -> Self {
+        Error::Phase(e)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -239,6 +382,10 @@ mod tests {
         langs: Vec<LanguageId>,
         lang_includes: Vec<String>,
         workers_count: u64,
+        test_cmd: String,
+        test_pwd: PathBuf,
+        init_cmd: Option<String>,
+        reset_cmd: Option<String>,
     }
 
     impl Config for MinimalConfig {
@@ -275,11 +422,11 @@ mod tests {
         }
 
         fn get_test_cmd(&self) -> String {
-            "echo test".to_string()
+            self.test_cmd.clone()
         }
 
         fn get_test_pwd(&self) -> PathBuf {
-            self.root.clone()
+            self.test_pwd.clone()
         }
 
         fn get_test_env(&self) -> HashMap<String, String> {
@@ -295,11 +442,11 @@ mod tests {
         }
 
         fn get_init_cmd(&self) -> Option<String> {
-            None
+            self.init_cmd.clone()
         }
 
         fn get_init_pwd(&self) -> PathBuf {
-            self.root.clone()
+            PathBuf::from(".")
         }
 
         fn get_init_env(&self) -> HashMap<String, String> {
@@ -315,11 +462,11 @@ mod tests {
         }
 
         fn get_reset_cmd(&self) -> Option<String> {
-            None
+            self.reset_cmd.clone()
         }
 
         fn get_reset_pwd(&self) -> PathBuf {
-            self.root.clone()
+            PathBuf::from(".")
         }
 
         fn get_reset_env(&self) -> HashMap<String, String> {
@@ -343,6 +490,10 @@ mod tests {
             langs: vec![LanguageId::Javascript],
             lang_includes: vec!["src/**/*.js".to_string()],
             workers_count: 0,
+            test_cmd: "echo test".to_string(),
+            test_pwd: PathBuf::from("."),
+            init_cmd: None,
+            reset_cmd: None,
         }
     }
 
@@ -356,6 +507,10 @@ mod tests {
             langs: vec![],
             lang_includes: vec![],
             workers_count: 0,
+            test_cmd: "echo test".to_string(),
+            test_pwd: PathBuf::from("."),
+            init_cmd: None,
+            reset_cmd: None,
         };
         let session = Session::new(config);
         assert!(session.is_ok());
@@ -371,6 +526,10 @@ mod tests {
             langs: vec![],
             lang_includes: vec![],
             workers_count: 0,
+            test_cmd: "echo test".to_string(),
+            test_pwd: PathBuf::from("."),
+            init_cmd: None,
+            reset_cmd: None,
         };
         let session = Session::new(config);
         assert!(session.is_err());
@@ -386,6 +545,10 @@ mod tests {
             langs: vec![],
             lang_includes: vec![],
             workers_count: 0,
+            test_cmd: "echo test".to_string(),
+            test_pwd: PathBuf::from("."),
+            init_cmd: None,
+            reset_cmd: None,
         };
         let _session = Session::new(config).unwrap();
         assert!(
@@ -681,5 +844,219 @@ mod tests {
 
         let removed = session.tend_remove_stale_states().unwrap();
         assert!(removed.is_empty());
+    }
+
+    #[test]
+    fn run_test_in_base_executes_test_cmd() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut config = make_js_config(dir.path());
+        config.test_cmd = "echo hello".to_string();
+        let session = Session::new(config).unwrap();
+        let outcome = session.run_test_in_base(None).unwrap();
+        assert_eq!(outcome.exit_code(), 0);
+        assert_eq!(
+            String::from_utf8_lossy(outcome.stdout()).trim(),
+            "hello"
+        );
+    }
+
+    #[test]
+    fn run_test_in_base_uses_pwd() {
+        let dir = tempfile::tempdir().unwrap();
+        let sub = dir.path().join("src");
+        std::fs::create_dir_all(&sub).unwrap();
+        let mut config = make_js_config(dir.path());
+        config.test_cmd = "pwd".to_string();
+        config.test_pwd = PathBuf::from("src");
+        let session = Session::new(config).unwrap();
+        let outcome = session.run_test_in_base(None).unwrap();
+        let out = String::from_utf8_lossy(outcome.stdout());
+        assert!(
+            out.trim().ends_with("src"),
+            "pwd should end with src, got: {out}"
+        );
+    }
+
+    #[test]
+    fn run_test_in_base_errors_on_absolute_pwd() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut config = make_js_config(dir.path());
+        config.test_pwd = PathBuf::from("/absolute/path");
+        let session = Session::new(config).unwrap();
+        let result = session.run_test_in_base(None);
+        assert!(matches!(result, Err(Error::AbsolutePwd(_))));
+    }
+
+    #[test]
+    fn run_test_in_base_nonzero_exit_is_ok() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut config = make_js_config(dir.path());
+        config.test_cmd = "false".to_string();
+        let session = Session::new(config).unwrap();
+        let outcome = session.run_test_in_base(None).unwrap();
+        assert_eq!(outcome.exit_code(), 1);
+    }
+
+    #[test]
+    fn run_init_in_base_executes_init_cmd() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut config = make_js_config(dir.path());
+        config.init_cmd = Some("echo init".to_string());
+        let session = Session::new(config).unwrap();
+        let outcome = session.run_init_in_base(None).unwrap();
+        assert_eq!(outcome.exit_code(), 0);
+        assert_eq!(
+            String::from_utf8_lossy(outcome.stdout()).trim(),
+            "init"
+        );
+    }
+
+    #[test]
+    fn run_init_in_base_errors_when_no_cmd() {
+        let dir = tempfile::tempdir().unwrap();
+        let config = make_js_config(dir.path());
+        let session = Session::new(config).unwrap();
+        let result = session.run_init_in_base(None);
+        assert!(matches!(result, Err(Error::NoCmdConfigured)));
+    }
+
+    #[test]
+    fn run_reset_in_base_executes_reset_cmd() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut config = make_js_config(dir.path());
+        config.reset_cmd = Some("echo reset".to_string());
+        let session = Session::new(config).unwrap();
+        let outcome = session.run_reset_in_base(None).unwrap();
+        assert_eq!(outcome.exit_code(), 0);
+        assert_eq!(
+            String::from_utf8_lossy(outcome.stdout()).trim(),
+            "reset"
+        );
+    }
+
+    #[test]
+    fn run_reset_in_base_errors_when_no_cmd() {
+        let dir = tempfile::tempdir().unwrap();
+        let config = make_js_config(dir.path());
+        let session = Session::new(config).unwrap();
+        let result = session.run_reset_in_base(None);
+        assert!(matches!(result, Err(Error::NoCmdConfigured)));
+    }
+
+    #[test]
+    fn run_test_in_workspace_executes_in_workspace_root() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut config = make_js_config(dir.path());
+        config.test_cmd = "pwd".to_string();
+        std::fs::write(dir.path().join("src/a.js"), "const x = 1;").unwrap();
+        let mut session = Session::new(config).unwrap();
+        let ids = session.tend_workspaces(1).unwrap();
+        let outcome = session.run_test_in_workspace(&ids[0], None).unwrap();
+        let out = String::from_utf8_lossy(outcome.stdout());
+        assert!(
+            out.trim().contains(ids[0].as_str()),
+            "should run in workspace dir containing workspace id, got: {out}"
+        );
+    }
+
+    #[test]
+    fn run_test_in_workspace_uses_pwd_relative_to_workspace() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut config = make_js_config(dir.path());
+        config.test_cmd = "pwd".to_string();
+        config.test_pwd = PathBuf::from("src");
+        std::fs::write(dir.path().join("src/a.js"), "const x = 1;").unwrap();
+        let mut session = Session::new(config).unwrap();
+        let ids = session.tend_workspaces(1).unwrap();
+        let outcome = session.run_test_in_workspace(&ids[0], None).unwrap();
+        let out = String::from_utf8_lossy(outcome.stdout());
+        assert!(
+            out.trim().ends_with("src"),
+            "pwd should end with src, got: {out}"
+        );
+        assert!(
+            out.trim().contains(ids[0].as_str()),
+            "should be inside workspace dir, got: {out}"
+        );
+    }
+
+    #[test]
+    fn run_init_in_workspace_executes_init_cmd() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut config = make_js_config(dir.path());
+        config.init_cmd = Some("echo workspace_init".to_string());
+        std::fs::write(dir.path().join("src/a.js"), "const x = 1;").unwrap();
+        let mut session = Session::new(config).unwrap();
+        let ids = session.tend_workspaces(1).unwrap();
+        let outcome = session.run_init_in_workspace(&ids[0], None).unwrap();
+        assert_eq!(outcome.exit_code(), 0);
+        assert_eq!(
+            String::from_utf8_lossy(outcome.stdout()).trim(),
+            "workspace_init"
+        );
+    }
+
+    #[test]
+    fn run_init_in_workspace_errors_when_no_cmd() {
+        let dir = tempfile::tempdir().unwrap();
+        let config = make_js_config(dir.path());
+        std::fs::write(dir.path().join("src/a.js"), "const x = 1;").unwrap();
+        let mut session = Session::new(config).unwrap();
+        let ids = session.tend_workspaces(1).unwrap();
+        let result = session.run_init_in_workspace(&ids[0], None);
+        assert!(matches!(result, Err(Error::NoCmdConfigured)));
+    }
+
+    #[test]
+    fn run_reset_in_workspace_executes_reset_cmd() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut config = make_js_config(dir.path());
+        config.reset_cmd = Some("echo workspace_reset".to_string());
+        std::fs::write(dir.path().join("src/a.js"), "const x = 1;").unwrap();
+        let mut session = Session::new(config).unwrap();
+        let ids = session.tend_workspaces(1).unwrap();
+        let outcome = session.run_reset_in_workspace(&ids[0], None).unwrap();
+        assert_eq!(outcome.exit_code(), 0);
+        assert_eq!(
+            String::from_utf8_lossy(outcome.stdout()).trim(),
+            "workspace_reset"
+        );
+    }
+
+    #[test]
+    fn run_reset_in_workspace_errors_when_no_cmd() {
+        let dir = tempfile::tempdir().unwrap();
+        let config = make_js_config(dir.path());
+        std::fs::write(dir.path().join("src/a.js"), "const x = 1;").unwrap();
+        let mut session = Session::new(config).unwrap();
+        let ids = session.tend_workspaces(1).unwrap();
+        let result = session.run_reset_in_workspace(&ids[0], None);
+        assert!(matches!(result, Err(Error::NoCmdConfigured)));
+    }
+
+    #[test]
+    fn run_test_in_base_splits_cmd_at_whitespace() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut config = make_js_config(dir.path());
+        config.test_cmd = "echo one two three".to_string();
+        let session = Session::new(config).unwrap();
+        let outcome = session.run_test_in_base(None).unwrap();
+        assert_eq!(
+            String::from_utf8_lossy(outcome.stdout()).trim(),
+            "one two three"
+        );
+    }
+
+    #[test]
+    fn run_test_in_base_default_pwd_is_root() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut config = make_js_config(dir.path());
+        config.test_cmd = "pwd".to_string();
+        let session = Session::new(config).unwrap();
+        let outcome = session.run_test_in_base(None).unwrap();
+        let out = String::from_utf8_lossy(outcome.stdout());
+        let actual = PathBuf::from(out.trim()).canonicalize().unwrap();
+        let expected = dir.path().canonicalize().unwrap();
+        assert_eq!(actual, expected);
     }
 }
