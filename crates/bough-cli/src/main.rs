@@ -148,22 +148,37 @@ fn main() {
             }
         }
 
-        Command::Step { step } => {
+        Command::Step { ref step } => {
             debug!(subcommand = ?step, "executing step command");
 
             match step {
-                config::Step::TendState => todo!(),
+                config::Step::TendState => {
+                    let mut session = Session::new(cli.config.clone()).expect("session creation");
+                    let added = session
+                        .tend_add_missing_states()
+                        .expect("tend add missing states");
+                    let removed = session
+                        .tend_remove_stale_states()
+                        .expect("tend remove stale states");
+                    Box::new(render::TendState { added, removed })
+                }
+
                 config::Step::TendWorkspaces => todo!(),
+
                 config::Step::InitWorkspace { workspace_id } => todo!(),
+
                 config::Step::ResetWorkspace { workspace_id } => todo!(),
+
                 config::Step::ApplyMutation {
                     workspace_id,
                     mutation_hash,
                 } => todo!(),
+
                 config::Step::UnapplyMutation {
                     workspace_id,
                     mutation_hash,
                 } => todo!(),
+
                 config::Step::TestMutation {
                     workspace_id,
                     mutation_hash,
