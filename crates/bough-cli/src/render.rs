@@ -396,6 +396,48 @@ impl Render for TendState {
     }
 }
 
+pub struct TendWorkspaces {
+    pub workspace_ids: Vec<bough_core::WorkspaceId>,
+}
+
+impl Render for TendWorkspaces {
+    fn markdown(&self) -> String {
+        let list = self
+            .workspace_ids
+            .iter()
+            .map(|id| format!("- `{id}`"))
+            .collect::<Vec<_>>()
+            .join("\n");
+        format!("# Tend Workspaces\n\n{} total\n\n{list}", self.workspace_ids.len())
+    }
+
+    fn terse(&self) -> String {
+        self.workspace_ids
+            .iter()
+            .map(|id| format!("{HASH}{id}{RESET}"))
+            .collect::<Vec<_>>()
+            .join(" ")
+    }
+
+    fn verbose(&self) -> String {
+        let list = self
+            .workspace_ids
+            .iter()
+            .map(|id| format!("  {HASH}{id}{RESET}"))
+            .collect::<Vec<_>>()
+            .join("\n");
+        format!(
+            "{TITLE}Tend Workspaces{RESET}\n\n{} total\n\n{list}",
+            self.workspace_ids.len(),
+        )
+    }
+
+    fn json(&self) -> String {
+        let items: Vec<String> = self.workspace_ids.iter().map(|id| format!("\"{id}\"")).collect();
+        format!("[{}]", items.join(","))
+    }
+}
+
 impl Render for Config {
     fn markdown(&self) -> String {
         format!(
