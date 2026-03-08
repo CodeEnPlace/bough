@@ -69,6 +69,58 @@ impl Base {
     }
 }
 
+impl Base {
+    pub fn run_test(
+        &self,
+        config: &impl crate::session::Config,
+        reference_duration: Option<std::time::Duration>,
+    ) -> Result<crate::phase::PhaseOutcome, crate::phase::Error> {
+        crate::phase::run_phase(
+            self,
+            &config.get_test_cmd(),
+            config.get_test_pwd(),
+            config.get_test_env(),
+            config.get_test_timeout_absolute(),
+            config.get_test_timeout_relative(),
+            reference_duration,
+        )
+    }
+
+    pub fn run_init(
+        &self,
+        config: &impl crate::session::Config,
+        reference_duration: Option<std::time::Duration>,
+    ) -> Result<crate::phase::PhaseOutcome, crate::phase::Error> {
+        let cmd = config.get_init_cmd().ok_or(crate::phase::Error::NoCmdConfigured)?;
+        crate::phase::run_phase(
+            self,
+            &cmd,
+            config.get_init_pwd(),
+            config.get_init_env(),
+            config.get_init_timeout_absolute(),
+            config.get_init_timeout_relative(),
+            reference_duration,
+        )
+    }
+
+    pub fn run_reset(
+        &self,
+        config: &impl crate::session::Config,
+        reference_duration: Option<std::time::Duration>,
+    ) -> Result<crate::phase::PhaseOutcome, crate::phase::Error> {
+        let cmd = config.get_reset_cmd().ok_or(crate::phase::Error::NoCmdConfigured)?;
+        crate::phase::run_phase(
+            self,
+            &cmd,
+            config.get_reset_pwd(),
+            config.get_reset_env(),
+            config.get_reset_timeout_absolute(),
+            config.get_reset_timeout_relative(),
+            reference_duration,
+        )
+    }
+}
+
 impl Root for Base {
     fn path(&self) -> &Path {
         &self.root

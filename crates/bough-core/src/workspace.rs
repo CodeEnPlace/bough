@@ -164,12 +164,12 @@ impl<'a> Workspace<'a> {
     pub fn bind_dirty(dir: PathBuf, id: &WorkspaceId, base: &'a Base) -> Self {
         debug!(id = %id, "binding to existing workspace (dirty)");
         let root = dir.join("work").join(id.as_str());
-        (Self {
+        Self {
             id: id.clone(),
             root,
             base,
             active: None,
-        })
+        }
     }
 
     // bough[impl workspace.id.get]
@@ -256,6 +256,58 @@ impl<'a> Workspace<'a> {
             }
         }
         Ok(())
+    }
+}
+
+impl Workspace<'_> {
+    pub fn run_test(
+        &self,
+        config: &impl crate::session::Config,
+        reference_duration: Option<std::time::Duration>,
+    ) -> Result<crate::phase::PhaseOutcome, crate::phase::Error> {
+        crate::phase::run_phase(
+            self,
+            &config.get_test_cmd(),
+            config.get_test_pwd(),
+            config.get_test_env(),
+            config.get_test_timeout_absolute(),
+            config.get_test_timeout_relative(),
+            reference_duration,
+        )
+    }
+
+    pub fn run_init(
+        &self,
+        config: &impl crate::session::Config,
+        reference_duration: Option<std::time::Duration>,
+    ) -> Result<crate::phase::PhaseOutcome, crate::phase::Error> {
+        let cmd = config.get_init_cmd().ok_or(crate::phase::Error::NoCmdConfigured)?;
+        crate::phase::run_phase(
+            self,
+            &cmd,
+            config.get_init_pwd(),
+            config.get_init_env(),
+            config.get_init_timeout_absolute(),
+            config.get_init_timeout_relative(),
+            reference_duration,
+        )
+    }
+
+    pub fn run_reset(
+        &self,
+        config: &impl crate::session::Config,
+        reference_duration: Option<std::time::Duration>,
+    ) -> Result<crate::phase::PhaseOutcome, crate::phase::Error> {
+        let cmd = config.get_reset_cmd().ok_or(crate::phase::Error::NoCmdConfigured)?;
+        crate::phase::run_phase(
+            self,
+            &cmd,
+            config.get_reset_pwd(),
+            config.get_reset_env(),
+            config.get_reset_timeout_absolute(),
+            config.get_reset_timeout_relative(),
+            reference_duration,
+        )
     }
 }
 

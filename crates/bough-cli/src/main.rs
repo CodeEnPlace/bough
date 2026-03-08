@@ -178,8 +178,11 @@ fn main() {
                         Session::new(cli.config.clone()).expect("session creation");
                     let wid = bough_core::WorkspaceId::parse(workspace_id)
                         .expect("invalid workspace id");
-                    let outcome = session
-                        .run_init_in_workspace(&wid, None)
+                    let workspace = session
+                        .bind_workspace(&wid)
+                        .expect("bind workspace");
+                    let outcome = workspace
+                        .run_init(&cli.config, None)
                         .expect("init workspace");
                     Box::new(render::InitWorkspace {
                         workspace_id: wid,
@@ -192,8 +195,11 @@ fn main() {
                         Session::new(cli.config.clone()).expect("session creation");
                     let wid = bough_core::WorkspaceId::parse(workspace_id)
                         .expect("invalid workspace id");
-                    let outcome = session
-                        .run_reset_in_workspace(&wid, None)
+                    let workspace = session
+                        .bind_workspace(&wid)
+                        .expect("bind workspace");
+                    let outcome = workspace
+                        .run_reset(&cli.config, None)
                         .expect("reset workspace");
                     Box::new(render::ResetWorkspace {
                         workspace_id: wid,
@@ -271,13 +277,9 @@ fn main() {
                     workspace
                         .write_mutant(&mutation)
                         .expect("apply mutation");
-                    drop(workspace);
-                    let outcome = session
-                        .run_test_in_workspace(&wid, None)
+                    let outcome = workspace
+                        .run_test(&cli.config, None)
                         .expect("test mutation");
-                    let mut workspace = session
-                        .bind_workspace(&wid)
-                        .expect("bind workspace");
                     workspace
                         .revert_mutant()
                         .expect("revert mutation");
