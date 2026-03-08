@@ -270,7 +270,7 @@ fn main() {
                         workspace_id: wid,
                         mutation_hash: hash_str,
                         status: status_str,
-                        outcome,
+                        duration: outcome.duration(),
                     })
                 }
             }
