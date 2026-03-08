@@ -1,6 +1,11 @@
 include = ["**/*"]
 exclude = ["**/node_modules/**"]
 
+base_root_dir = "../"
+
+init.cmd = "npm install"
+test.cmd = "npm run test"
+
 [lang.js]
 include = [
   "src/**/*.js",
