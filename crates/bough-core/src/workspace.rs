@@ -161,10 +161,10 @@ impl<'a> Workspace<'a> {
         Ok(ws)
     }
 
-    pub fn bind_dirty(dir: PathBuf, id: &WorkspaceId, base: &'a Base) -> Result<Self, Error> {
+    pub fn bind_dirty(dir: PathBuf, id: &WorkspaceId, base: &'a Base) -> Self {
         debug!(id = %id, "binding to existing workspace (dirty)");
         let root = dir.join("work").join(id.as_str());
-        Ok(Self {
+        (Self {
             id: id.clone(),
             root,
             base,
