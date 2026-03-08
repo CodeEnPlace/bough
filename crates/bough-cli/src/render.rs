@@ -581,6 +581,7 @@ impl Render for ResetWorkspace {
 pub struct TestMutation {
     pub workspace_id: bough_core::WorkspaceId,
     pub mutation_hash: String,
+    pub status: &'static str,
     pub outcome: bough_core::PhaseOutcome,
 }
 
@@ -589,9 +590,10 @@ impl Render for TestMutation {
         let stdout = String::from_utf8_lossy(self.outcome.stdout());
         let stderr = String::from_utf8_lossy(self.outcome.stderr());
         let mut out = format!(
-            "# Test Mutation `{}` in `{}`\n\n- Exit: {}\n- Duration: {:.2}s\n- Timed out: {}",
+            "# Test Mutation `{}` in `{}`\n\n- Status: {}\n- Exit: {}\n- Duration: {:.2}s\n- Timed out: {}",
             self.mutation_hash,
             self.workspace_id,
+            self.status,
             self.outcome.exit_code(),
             self.outcome.duration().as_secs_f64(),
             self.outcome.timed_out(),
@@ -607,27 +609,30 @@ impl Render for TestMutation {
 
     fn terse(&self) -> String {
         format!(
-            "{HASH}{}{RESET} {HASH}{}{RESET} {}",
+            "{HASH}{}{RESET} {HASH}{}{RESET} {} {}",
             self.workspace_id,
             self.mutation_hash,
+            self.status,
             fmt_phase_outcome_terse(&self.outcome),
         )
     }
 
     fn verbose(&self) -> String {
         format!(
-            "{TITLE}Test Mutation{RESET} {HASH}{}{RESET} in {HASH}{}{RESET}\n\n{}",
+            "{TITLE}Test Mutation{RESET} {HASH}{}{RESET} in {HASH}{}{RESET}\n\nStatus: {}\n\n{}",
             self.mutation_hash,
             self.workspace_id,
+            self.status,
             fmt_phase_outcome_verbose(&self.outcome),
         )
     }
 
     fn json(&self) -> String {
         format!(
-            r#"{{"workspace_id":"{}","mutation_hash":"{}","outcome":{}}}"#,
+            r#"{{"workspace_id":"{}","mutation_hash":"{}","status":"{}","outcome":{}}}"#,
             self.workspace_id,
             self.mutation_hash,
+            self.status,
             fmt_phase_outcome_json(&self.outcome),
         )
     }

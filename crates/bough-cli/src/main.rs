@@ -251,18 +251,41 @@ fn main() {
 
                 config::Step::TestMutation {
                     workspace_id,
-                    mutation_hash,
+                    mutation_hash: _,
                 } => {
-                    let session =
+                    let mut session =
                         Session::new(cli.config.clone()).expect("session creation");
                     let wid = bough_core::WorkspaceId::parse(workspace_id)
                         .expect("invalid workspace id");
+                    let workspace = session
+                        .bind_workspace(&wid)
+                        .expect("bind workspace");
+                    let active = workspace
+                        .active()
+                        .expect("no active mutation in workspace");
+                    let mutation = active.mutation().clone();
+                    let hash_str = mutation.hash().expect("hash").to_string();
+                    drop(workspace);
                     let outcome = session
                         .run_test_in_workspace(&wid, None)
                         .expect("test mutation");
+                    let status = if outcome.exit_code() != 0 {
+                        bough_core::Status::Caught
+                    } else {
+                        bough_core::Status::Missed
+                    };
+                    let status_str = if outcome.exit_code() != 0 {
+                        "caught"
+                    } else {
+                        "missed"
+                    };
+                    session
+                        .set_state(&mutation, status)
+                        .expect("set state");
                     Box::new(render::TestMutation {
                         workspace_id: wid,
-                        mutation_hash: mutation_hash.clone(),
+                        mutation_hash: hash_str,
+                        status: status_str,
                         outcome,
                     })
                 }

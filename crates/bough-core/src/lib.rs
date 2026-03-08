@@ -39,6 +39,6 @@ pub use mutation::Mutation;
 pub use mutation::MutationHash;
 pub use session::Config;
 pub use session::Session;
-pub use state::State;
+pub use state::{State, Status};
 pub use phase::PhaseOutcome;
 pub use workspace::{Workspace, WorkspaceId};
