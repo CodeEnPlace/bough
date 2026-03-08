@@ -1,0 +1,1 @@
+{"mutation":{"mutant":{"lang":"js","twig":["src/index.js"],"kind":"Condition","span":{"start":{"line":7,"col":6,"byte":251},"end":{"line":7,"col":15,"byte":260}}},"subst":"true"},"outcome":null}
