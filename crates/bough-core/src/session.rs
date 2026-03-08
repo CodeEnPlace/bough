@@ -264,6 +264,15 @@ impl<C: Config> Session<C> {
         Ok(Workspace::bind(workspaces_dir, workspace_id, &self.base)?)
     }
 
+    pub fn bind_dirty_workspace(&self, workspace_id: &WorkspaceId) -> Result<Workspace<'_>, Error> {
+        let workspaces_dir = self.config.get_bough_state_dir().join("workspaces");
+        Ok(Workspace::bind_dirty(
+            workspaces_dir,
+            workspace_id,
+            &self.base,
+        )?)
+    }
+
     pub fn run_test_in_base(
         &self,
         reference_duration: Option<std::time::Duration>,
@@ -316,7 +325,7 @@ impl<C: Config> Session<C> {
         workspace_id: &WorkspaceId,
         reference_duration: Option<std::time::Duration>,
     ) -> Result<PhaseOutcome, Error> {
-        let workspace = self.bind_workspace(workspace_id)?;
+        let workspace = self.bind_dirty_workspace(workspace_id)?;
         let phase = self.build_phase(
             &workspace,
             &self.config.get_test_cmd(),
@@ -1156,7 +1165,7 @@ mod tests {
             .outcome_at()
             .unwrap();
 
-        std::thread::sleep(std::time::Duration::from_millis(500));
+        std::thread::sleep(std::time::Duration::from_secs(1));
         session
             .set_state(&mutation, crate::state::Status::Caught)
             .unwrap();
