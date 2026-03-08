@@ -163,7 +163,15 @@ fn main() {
                     Box::new(render::TendState { added, removed })
                 }
 
-                config::Step::TendWorkspaces => todo!(),
+                config::Step::TendWorkspaces => {
+                    let mut session =
+                        Session::new(cli.config.clone()).expect("session creation");
+                    let workers = cli.config.workers as usize;
+                    let workspace_ids = session
+                        .tend_workspaces(workers)
+                        .expect("tend workspaces");
+                    Box::new(render::TendWorkspaces { workspace_ids })
+                }
 
                 config::Step::InitWorkspace { workspace_id } => todo!(),
 
