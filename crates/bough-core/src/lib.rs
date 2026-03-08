@@ -41,4 +41,4 @@ pub use session::Config;
 pub use session::Session;
 pub use state::State;
 pub use phase::PhaseOutcome;
-pub use workspace::WorkspaceId;
+pub use workspace::{Workspace, WorkspaceId};

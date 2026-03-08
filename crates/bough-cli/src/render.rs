@@ -633,6 +633,76 @@ impl Render for TestMutation {
     }
 }
 
+pub struct ApplyMutation {
+    pub workspace_id: bough_core::WorkspaceId,
+    pub mutation_hash: String,
+}
+
+impl Render for ApplyMutation {
+    fn markdown(&self) -> String {
+        format!(
+            "# Apply Mutation\n\n- Workspace: `{}`\n- Mutation: `{}`",
+            self.workspace_id, self.mutation_hash,
+        )
+    }
+
+    fn terse(&self) -> String {
+        format!(
+            "{HASH}{}{RESET} {HASH}{}{RESET}",
+            self.workspace_id, self.mutation_hash,
+        )
+    }
+
+    fn verbose(&self) -> String {
+        format!(
+            "{TITLE}Apply Mutation{RESET} {HASH}{}{RESET} to {HASH}{}{RESET}",
+            self.mutation_hash, self.workspace_id,
+        )
+    }
+
+    fn json(&self) -> String {
+        format!(
+            r#"{{"workspace_id":"{}","mutation_hash":"{}"}}"#,
+            self.workspace_id, self.mutation_hash,
+        )
+    }
+}
+
+pub struct UnapplyMutation {
+    pub workspace_id: bough_core::WorkspaceId,
+    pub mutation_hash: String,
+}
+
+impl Render for UnapplyMutation {
+    fn markdown(&self) -> String {
+        format!(
+            "# Unapply Mutation\n\n- Workspace: `{}`\n- Mutation: `{}`",
+            self.workspace_id, self.mutation_hash,
+        )
+    }
+
+    fn terse(&self) -> String {
+        format!(
+            "{HASH}{}{RESET} {HASH}{}{RESET}",
+            self.workspace_id, self.mutation_hash,
+        )
+    }
+
+    fn verbose(&self) -> String {
+        format!(
+            "{TITLE}Unapply Mutation{RESET} {HASH}{}{RESET} from {HASH}{}{RESET}",
+            self.mutation_hash, self.workspace_id,
+        )
+    }
+
+    fn json(&self) -> String {
+        format!(
+            r#"{{"workspace_id":"{}","mutation_hash":"{}"}}"#,
+            self.workspace_id, self.mutation_hash,
+        )
+    }
+}
+
 impl Render for Config {
     fn markdown(&self) -> String {
         format!(
