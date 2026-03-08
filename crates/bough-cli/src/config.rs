@@ -61,6 +61,11 @@ pub enum Command {
         show: Show,
     },
 
+    Step {
+        #[facet(args::subcommand)]
+        step: Step,
+    },
+
     Run,
     Noop,
 }
@@ -85,6 +90,45 @@ pub enum Show {
     Mutation {
         #[facet(args::positional)]
         hash: String,
+    },
+}
+
+#[derive(Facet, Debug)]
+#[repr(u8)]
+pub enum Step {
+    TendState,
+
+    TendWorkspaces,
+
+    InitWorkspace {
+        #[facet(args::positional)]
+        workspace_id: String,
+    },
+
+    ResetWorkspace {
+        #[facet(args::positional)]
+        workspace_id: String,
+    },
+
+    ApplyMutation {
+        #[facet(args::positional)]
+        workspace_id: String,
+        #[facet(args::positional)]
+        mutation_hash: String,
+    },
+
+    UnapplyMutation {
+        #[facet(args::positional)]
+        workspace_id: String,
+        #[facet(args::positional)]
+        mutation_hash: String,
+    },
+
+    TestMutation {
+        #[facet(args::positional)]
+        workspace_id: String,
+        #[facet(args::positional)]
+        mutation_hash: String,
     },
 }
 
