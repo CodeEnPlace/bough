@@ -1,6 +1,7 @@
 use std::{
     collections::{HashMap, HashSet},
     path::PathBuf,
+    sync::Arc,
 };
 
 use bough_typed_hash::TypedHashable;
@@ -63,7 +64,7 @@ pub struct TestConfig {}
 
 pub struct Session<C: Config> {
     config: C,
-    base: Base,
+    base: Arc<Base>,
     workspaces: Vec<WorkspaceId>,
     mutations_state: FacetDiskStore<MutationHash, State>,
 }
@@ -100,7 +101,7 @@ impl<C: Config> Session<C> {
 
         Ok(Self {
             config,
-            base,
+            base: Arc::new(base),
             workspaces: Vec::new(),
             mutations_state,
         })
@@ -153,7 +154,7 @@ impl<C: Config> Session<C> {
 
         let mut valid: Vec<WorkspaceId> = Vec::new();
         for id in &existing_ids {
-            match Workspace::bind(workspaces_dir.clone(), id, &self.base) {
+            match Workspace::bind(workspaces_dir.clone(), id, self.base.clone()) {
                 Ok(_ws) => valid.push(id.clone()),
                 Err(_) => {
                     let ws_path = workspaces_dir.join("work").join(id.as_str());
@@ -174,7 +175,7 @@ impl<C: Config> Session<C> {
         }
 
         while valid.len() < desired_count {
-            let ws = Workspace::new(workspaces_dir.clone(), &self.base)?;
+            let ws = Workspace::new(workspaces_dir.clone(), self.base.clone())?;
             valid.push(ws.id().clone());
         }
 
@@ -226,14 +227,14 @@ impl<C: Config> Session<C> {
         Ok(())
     }
 
-    pub fn bind_workspace(&self, workspace_id: &WorkspaceId) -> Result<Workspace<'_>, Error> {
+    pub fn bind_workspace(&self, workspace_id: &WorkspaceId) -> Result<Workspace, Error> {
         let workspaces_dir = self.config.get_bough_state_dir().join("workspaces");
-        Ok(Workspace::bind(workspaces_dir, workspace_id, &self.base)?)
+        Ok(Workspace::bind(workspaces_dir, workspace_id, self.base.clone())?)
     }
 
-    pub fn bind_dirty_workspace(&self, workspace_id: &WorkspaceId) -> Workspace<'_> {
+    pub fn bind_dirty_workspace(&self, workspace_id: &WorkspaceId) -> Workspace {
         let workspaces_dir = self.config.get_bough_state_dir().join("workspaces");
-        Workspace::bind_dirty(workspaces_dir, workspace_id, &self.base)
+        Workspace::bind_dirty(workspaces_dir, workspace_id, self.base.clone())
     }
 }
 
@@ -595,7 +596,7 @@ mod tests {
         let initial_count = session.get_state().keys().count();
 
         std::fs::write(dir.path().join("src/b.js"), "function bar() { return 2; }").unwrap();
-        session.base.add_mutator(
+        Arc::get_mut(&mut session.base).unwrap().add_mutator(
             LanguageId::Javascript,
             crate::twig::TwigsIterBuilder::new().with_include_glob("src/**/*.js"),
         );
@@ -706,12 +707,12 @@ mod tests {
         assert!(initial_count > 0);
 
         std::fs::remove_file(dir.path().join("src/b.js")).unwrap();
-        session.base = crate::base::Base::new(
+        session.base = Arc::new(crate::base::Base::new(
             dir.path().to_path_buf(),
             crate::twig::TwigsIterBuilder::new().with_include_glob("src/**/*.js"),
         )
-        .unwrap();
-        session.base.add_mutator(
+        .unwrap());
+        Arc::get_mut(&mut session.base).unwrap().add_mutator(
             LanguageId::Javascript,
             crate::twig::TwigsIterBuilder::new().with_include_glob("src/**/*.js"),
         );

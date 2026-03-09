@@ -3,6 +3,7 @@ use crate::file::{File, Root, Twig};
 use crate::mutant::Mutant;
 use crate::mutation::Mutation;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use tracing::{debug, info, warn};
 
 // bough[impl workspace.active]
@@ -102,21 +103,21 @@ impl std::fmt::Display for WorkspaceId {
 // bough[impl workspace.root]
 // bough[impl workspace.base]
 #[derive(Debug, Clone, PartialEq)]
-pub struct Workspace<'a> {
+pub struct Workspace {
     id: WorkspaceId,
     root: PathBuf,
-    base: &'a Base,
+    base: Arc<Base>,
     active: Option<ActiveMutation>,
 }
 
 /// Workspace is meant for actiing in a workspace directory, and to act as a handle for it
 /// It's not for storing state or making decitions, that's [Session]'s job
-impl<'a> Workspace<'a> {
+impl Workspace {
     // bough[impl workspace.new]
     // bough[impl workspace.new.dir]
     // bough[impl workspace.new.dir.previous]
     // bough[impl workspace.new.from-base-files]
-    pub fn new(dir: PathBuf, base: &'a Base) -> Result<Self, Error> {
+    pub fn new(dir: PathBuf, base: Arc<Base>) -> Result<Self, Error> {
         let id = WorkspaceId::generate();
         let root = dir.join("work").join(id.as_str());
 
@@ -130,7 +131,7 @@ impl<'a> Workspace<'a> {
         std::fs::create_dir_all(&root)?;
 
         for twig in base.twigs() {
-            let src = File::new(base, &twig).resolve();
+            let src = File::new(base.as_ref(), &twig).resolve();
             let dst = root.join(twig.path());
             if let Some(parent) = dst.parent() {
                 std::fs::create_dir_all(parent)?;
@@ -148,7 +149,7 @@ impl<'a> Workspace<'a> {
 
     // bough[impl workspace.bind]
     // bough[impl workspace.bind.validate-unchanged]
-    pub fn bind(dir: PathBuf, id: &WorkspaceId, base: &'a Base) -> Result<Self, Error> {
+    pub fn bind(dir: PathBuf, id: &WorkspaceId, base: Arc<Base>) -> Result<Self, Error> {
         debug!(id = %id, "binding to existing workspace");
         let root = dir.join("work").join(id.as_str());
         let ws = Self {
@@ -161,7 +162,7 @@ impl<'a> Workspace<'a> {
         Ok(ws)
     }
 
-    pub fn bind_dirty(dir: PathBuf, id: &WorkspaceId, base: &'a Base) -> Self {
+    pub fn bind_dirty(dir: PathBuf, id: &WorkspaceId, base: Arc<Base>) -> Self {
         debug!(id = %id, "binding to existing workspace (dirty)");
         let root = dir.join("work").join(id.as_str());
         Self {
@@ -178,7 +179,7 @@ impl<'a> Workspace<'a> {
     }
 
     pub fn base(&self) -> &Base {
-        self.base
+        &self.base
     }
 
     // bough[impl workspace.write_mutant]
@@ -196,7 +197,7 @@ impl<'a> Workspace<'a> {
             "writing mutant to workspace"
         );
         let mutant = mutation.mutant();
-        let base_file = File::new(self.base, mutant.twig()).resolve();
+        let base_file = File::new(self.base.as_ref(), mutant.twig()).resolve();
         let content = std::fs::read(&base_file)?;
         let span = mutant.span();
         let start = span.start().byte();
@@ -220,7 +221,7 @@ impl<'a> Workspace<'a> {
         let active = self.active.take().ok_or(Error::NotActive)?;
         debug!(id = %self.id, twig = %active.mutant().twig().path().display(), "reverting mutant");
         let twig = active.mutant().twig();
-        let src = File::new(self.base, twig).resolve();
+        let src = File::new(self.base.as_ref(), twig).resolve();
         let dst = self.root.join(twig.path());
         std::fs::copy(&src, &dst)?;
         Ok(())
@@ -231,7 +232,7 @@ impl<'a> Workspace<'a> {
     }
 
     // bough[impl workspace.files]
-    pub fn files(&self) -> impl Iterator<Item = Twig> + '_ {
+    pub fn files(&self) -> impl Iterator<Item = Twig> + use<'_> {
         self.base.twigs()
     }
 
@@ -239,7 +240,7 @@ impl<'a> Workspace<'a> {
     // bough[impl workspace.validate-unchanged.untracked]
     pub fn validate_unchanged(&self) -> Result<(), Error> {
         for twig in self.files() {
-            let base_file = File::new(self.base, &twig).resolve();
+            let base_file = File::new(self.base.as_ref(), &twig).resolve();
             let ws_file = self.root.join(twig.path());
 
             let base_contents = std::fs::read(&base_file)
@@ -259,7 +260,7 @@ impl<'a> Workspace<'a> {
     }
 }
 
-impl Workspace<'_> {
+impl Workspace {
     pub fn run_test(
         &self,
         config: &impl crate::session::Config,
@@ -315,7 +316,7 @@ impl Workspace<'_> {
     }
 }
 
-impl Root for Workspace<'_> {
+impl Root for Workspace {
     fn path(&self) -> &Path {
         &self.root
     }
@@ -326,7 +327,7 @@ mod tests {
     use super::*;
     use crate::twig::TwigsIterBuilder;
 
-    fn make_base() -> (tempfile::TempDir, Base) {
+    fn make_base() -> (tempfile::TempDir, Arc<Base>) {
         let dir = tempfile::tempdir().unwrap();
         std::fs::create_dir_all(dir.path().join("src")).unwrap();
         std::fs::write(dir.path().join("src/a.js"), "const a = 1;").unwrap();
@@ -336,7 +337,7 @@ mod tests {
             TwigsIterBuilder::new().with_include_glob("src/**/*.js"),
         )
         .unwrap();
-        (dir, base)
+        (dir, Arc::new(base))
     }
 
     // bough[verify workspace.id]
@@ -368,7 +369,7 @@ mod tests {
     fn workspace_id_get() {
         let (_base_dir, base) = make_base();
         let ws_dir = tempfile::tempdir().unwrap();
-        let ws = Workspace::new(ws_dir.path().to_path_buf(), &base).unwrap();
+        let ws = Workspace::new(ws_dir.path().to_path_buf(), base.clone()).unwrap();
         assert_eq!(ws.id().as_str().len(), 8);
     }
 
@@ -378,7 +379,7 @@ mod tests {
     fn workspace_is_directory_handle() {
         let (_base_dir, base) = make_base();
         let ws_dir = tempfile::tempdir().unwrap();
-        let ws = Workspace::new(ws_dir.path().to_path_buf(), &base).unwrap();
+        let ws = Workspace::new(ws_dir.path().to_path_buf(), base.clone()).unwrap();
         assert!(ws.path().exists());
         assert!(ws.path().is_dir());
     }
@@ -389,7 +390,7 @@ mod tests {
     fn workspace_new_creates_work_subdir() {
         let (_base_dir, base) = make_base();
         let ws_dir = tempfile::tempdir().unwrap();
-        let ws = Workspace::new(ws_dir.path().to_path_buf(), &base).unwrap();
+        let ws = Workspace::new(ws_dir.path().to_path_buf(), base.clone()).unwrap();
         let expected_prefix = ws_dir.path().join("work");
         assert!(ws.path().starts_with(&expected_prefix));
     }
@@ -399,10 +400,10 @@ mod tests {
     fn workspace_new_errors_if_dir_exists() {
         let (_base_dir, base) = make_base();
         let ws_dir = tempfile::tempdir().unwrap();
-        let ws = Workspace::new(ws_dir.path().to_path_buf(), &base).unwrap();
+        let ws = Workspace::new(ws_dir.path().to_path_buf(), base.clone()).unwrap();
         let id = ws.id().clone();
         std::fs::create_dir_all(ws_dir.path().join("work").join(id.as_str())).ok();
-        let result = Workspace::bind(ws_dir.path().to_path_buf(), &id, &base);
+        let result = Workspace::bind(ws_dir.path().to_path_buf(), &id, base.clone());
         assert!(result.is_ok());
     }
 
@@ -411,7 +412,7 @@ mod tests {
     fn workspace_new_copies_source_files() {
         let (_base_dir, base) = make_base();
         let ws_dir = tempfile::tempdir().unwrap();
-        let ws = Workspace::new(ws_dir.path().to_path_buf(), &base).unwrap();
+        let ws = Workspace::new(ws_dir.path().to_path_buf(), base.clone()).unwrap();
         let a = std::fs::read_to_string(ws.path().join("src/a.js")).unwrap();
         let b = std::fs::read_to_string(ws.path().join("src/b.js")).unwrap();
         assert_eq!(a, "const a = 1;");
@@ -423,9 +424,9 @@ mod tests {
     fn workspace_bind_attaches_to_existing() {
         let (_base_dir, base) = make_base();
         let ws_dir = tempfile::tempdir().unwrap();
-        let ws = Workspace::new(ws_dir.path().to_path_buf(), &base).unwrap();
+        let ws = Workspace::new(ws_dir.path().to_path_buf(), base.clone()).unwrap();
         let id = ws.id().clone();
-        let bound = Workspace::bind(ws_dir.path().to_path_buf(), &id, &base).unwrap();
+        let bound = Workspace::bind(ws_dir.path().to_path_buf(), &id, base.clone()).unwrap();
         assert_eq!(bound.path(), ws.path());
         assert_eq!(bound.id(), ws.id());
     }
@@ -435,7 +436,7 @@ mod tests {
     fn validate_unchanged_passes_when_identical() {
         let (_base_dir, base) = make_base();
         let ws_dir = tempfile::tempdir().unwrap();
-        let ws = Workspace::new(ws_dir.path().to_path_buf(), &base).unwrap();
+        let ws = Workspace::new(ws_dir.path().to_path_buf(), base.clone()).unwrap();
         ws.validate_unchanged().unwrap();
     }
 
@@ -444,7 +445,7 @@ mod tests {
     fn validate_unchanged_fails_when_modified() {
         let (_base_dir, base) = make_base();
         let ws_dir = tempfile::tempdir().unwrap();
-        let ws = Workspace::new(ws_dir.path().to_path_buf(), &base).unwrap();
+        let ws = Workspace::new(ws_dir.path().to_path_buf(), base.clone()).unwrap();
         std::fs::write(ws.path().join("src/a.js"), "MUTATED").unwrap();
         assert!(ws.validate_unchanged().is_err());
     }
@@ -454,7 +455,7 @@ mod tests {
     fn validate_unchanged_ignores_extra_files() {
         let (_base_dir, base) = make_base();
         let ws_dir = tempfile::tempdir().unwrap();
-        let ws = Workspace::new(ws_dir.path().to_path_buf(), &base).unwrap();
+        let ws = Workspace::new(ws_dir.path().to_path_buf(), base.clone()).unwrap();
         std::fs::write(ws.path().join("extra.txt"), "not tracked").unwrap();
         std::fs::create_dir_all(ws.path().join("other")).unwrap();
         std::fs::write(ws.path().join("other/file.js"), "also not tracked").unwrap();
@@ -466,9 +467,9 @@ mod tests {
     fn bind_validates_unchanged_on_creation() {
         let (_base_dir, base) = make_base();
         let ws_dir = tempfile::tempdir().unwrap();
-        let ws = Workspace::new(ws_dir.path().to_path_buf(), &base).unwrap();
+        let ws = Workspace::new(ws_dir.path().to_path_buf(), base.clone()).unwrap();
         let id = ws.id().clone();
-        let bound = Workspace::bind(ws_dir.path().to_path_buf(), &id, &base);
+        let bound = Workspace::bind(ws_dir.path().to_path_buf(), &id, base.clone());
         assert!(bound.is_ok());
     }
 
@@ -477,10 +478,10 @@ mod tests {
     fn bind_fails_when_workspace_modified() {
         let (_base_dir, base) = make_base();
         let ws_dir = tempfile::tempdir().unwrap();
-        let ws = Workspace::new(ws_dir.path().to_path_buf(), &base).unwrap();
+        let ws = Workspace::new(ws_dir.path().to_path_buf(), base.clone()).unwrap();
         let id = ws.id().clone();
         std::fs::write(ws.path().join("src/a.js"), "MUTATED").unwrap();
-        let result = Workspace::bind(ws_dir.path().to_path_buf(), &id, &base);
+        let result = Workspace::bind(ws_dir.path().to_path_buf(), &id, base.clone());
         assert!(result.is_err());
     }
 
@@ -489,7 +490,7 @@ mod tests {
     fn workspace_impls_root() {
         let (_base_dir, base) = make_base();
         let ws_dir = tempfile::tempdir().unwrap();
-        let ws = Workspace::new(ws_dir.path().to_path_buf(), &base).unwrap();
+        let ws = Workspace::new(ws_dir.path().to_path_buf(), base.clone()).unwrap();
         assert!(ws.path().is_absolute());
     }
 
@@ -498,7 +499,7 @@ mod tests {
     fn workspace_holds_base() {
         let (_base_dir, base) = make_base();
         let ws_dir = tempfile::tempdir().unwrap();
-        let ws = Workspace::new(ws_dir.path().to_path_buf(), &base).unwrap();
+        let ws = Workspace::new(ws_dir.path().to_path_buf(), base.clone()).unwrap();
         assert_eq!(ws.base().path(), base.path());
     }
 
@@ -507,7 +508,7 @@ mod tests {
     use crate::mutant::{BinaryOpMutationKind, Mutant, MutantKind, Point, Span};
     use crate::mutation::Mutation;
 
-    fn make_js_base(content: &str) -> (tempfile::TempDir, Base) {
+    fn make_js_base(content: &str) -> (tempfile::TempDir, Arc<Base>) {
         let dir = tempfile::tempdir().unwrap();
         std::fs::create_dir_all(dir.path().join("src")).unwrap();
         std::fs::write(dir.path().join("src/a.js"), content).unwrap();
@@ -516,7 +517,7 @@ mod tests {
             TwigsIterBuilder::new().with_include_glob("src/**/*.js"),
         )
         .unwrap();
-        (dir, base)
+        (dir, Arc::new(base))
     }
 
     // bough[verify workspace.write_mutant]
@@ -525,7 +526,7 @@ mod tests {
         let js = "const x = a + b;";
         let (_base_dir, base) = make_js_base(js);
         let ws_dir = tempfile::tempdir().unwrap();
-        let mut ws = Workspace::new(ws_dir.path().to_path_buf(), &base).unwrap();
+        let mut ws = Workspace::new(ws_dir.path().to_path_buf(), base.clone()).unwrap();
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let mutant = Mutant::new(
             LanguageId::Javascript,
@@ -549,7 +550,7 @@ mod tests {
         let js = "const x = a + b;";
         let (_base_dir, base) = make_js_base(js);
         let ws_dir = tempfile::tempdir().unwrap();
-        let mut ws = Workspace::new(ws_dir.path().to_path_buf(), &base).unwrap();
+        let mut ws = Workspace::new(ws_dir.path().to_path_buf(), base.clone()).unwrap();
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let mutant = Mutant::new(
             LanguageId::Javascript,
@@ -573,7 +574,7 @@ mod tests {
         let js = "const x = a + b;";
         let (_base_dir, base) = make_js_base(js);
         let ws_dir = tempfile::tempdir().unwrap();
-        let mut ws = Workspace::new(ws_dir.path().to_path_buf(), &base).unwrap();
+        let mut ws = Workspace::new(ws_dir.path().to_path_buf(), base.clone()).unwrap();
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let mutant = Mutant::new(
             LanguageId::Javascript,
@@ -599,7 +600,7 @@ mod tests {
         let js = "const x = a + b;";
         let (_base_dir, base) = make_js_base(js);
         let ws_dir = tempfile::tempdir().unwrap();
-        let mut ws = Workspace::new(ws_dir.path().to_path_buf(), &base).unwrap();
+        let mut ws = Workspace::new(ws_dir.path().to_path_buf(), base.clone()).unwrap();
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let mutant = Mutant::new(
             LanguageId::Javascript,
@@ -621,7 +622,7 @@ mod tests {
     fn workspace_active_is_none_initially() {
         let (_base_dir, base) = make_base();
         let ws_dir = tempfile::tempdir().unwrap();
-        let ws = Workspace::new(ws_dir.path().to_path_buf(), &base).unwrap();
+        let ws = Workspace::new(ws_dir.path().to_path_buf(), base.clone()).unwrap();
         assert!(ws.active().is_none());
     }
 
@@ -631,7 +632,7 @@ mod tests {
         let js = "const x = a + b;";
         let (_base_dir, base) = make_js_base(js);
         let ws_dir = tempfile::tempdir().unwrap();
-        let mut ws = Workspace::new(ws_dir.path().to_path_buf(), &base).unwrap();
+        let mut ws = Workspace::new(ws_dir.path().to_path_buf(), base.clone()).unwrap();
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let mutant = Mutant::new(
             LanguageId::Javascript,
@@ -653,7 +654,7 @@ mod tests {
     fn workspace_files_returns_iter() {
         let (_base_dir, base) = make_base();
         let ws_dir = tempfile::tempdir().unwrap();
-        let ws = Workspace::new(ws_dir.path().to_path_buf(), &base).unwrap();
+        let ws = Workspace::new(ws_dir.path().to_path_buf(), base.clone()).unwrap();
         let mut twigs: Vec<_> = ws.files().map(|t| t.path().to_path_buf()).collect();
         twigs.sort();
         assert_eq!(
