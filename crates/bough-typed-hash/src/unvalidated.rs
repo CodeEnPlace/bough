@@ -33,10 +33,7 @@ impl UnvalidatedHash {
     }
 
     /// Validate against a set of known hashes, supporting both full hex and unique prefixes.
-    pub fn validate<H: TypedHash>(
-        self,
-        known: &[H],
-    ) -> Result<H, HashError<H>> {
+    pub fn validate<H: TypedHash>(self, known: &[H]) -> Result<H, HashError<H>> {
         debug!(hex_len = self.0.len(), "validating unvalidated hash");
         let s = &self.0;
 

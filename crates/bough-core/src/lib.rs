@@ -37,8 +37,8 @@ pub enum LanguageId {
 pub use file::File;
 pub use mutation::Mutation;
 pub use mutation::MutationHash;
+pub use phase::PhaseOutcome;
 pub use session::Config;
 pub use session::Session;
 pub use state::{State, Status};
-pub use phase::PhaseOutcome;
 pub use workspace::{Workspace, WorkspaceId};

@@ -278,7 +278,11 @@ mod tests {
         std::fs::write(dir.path().join("good.json"), r#"{"data":"x","count":1}"#).unwrap();
         std::fs::write(dir.path().join("no_extension"), "garbage").unwrap();
         std::fs::write(dir.path().join("wrong.txt"), "garbage").unwrap();
-        std::fs::write(dir.path().join("also_good.json"), r#"{"data":"y","count":2}"#).unwrap();
+        std::fs::write(
+            dir.path().join("also_good.json"),
+            r#"{"data":"y","count":2}"#,
+        )
+        .unwrap();
         let store: FacetDiskStore<TestKey, TestVal> = FacetDiskStore::new(dir.path().to_path_buf());
         let mut keys: Vec<_> = store.keys().map(|k| k.0).collect();
         keys.sort();
@@ -311,8 +315,7 @@ mod tests {
         let val_json = r#"{"data":"preexisting","count":5}"#;
         std::fs::write(dir.path().join("old.json"), val_json).unwrap();
 
-        let store: FacetDiskStore<TestKey, TestVal> =
-            FacetDiskStore::new(dir.path().to_path_buf());
+        let store: FacetDiskStore<TestKey, TestVal> = FacetDiskStore::new(dir.path().to_path_buf());
 
         let got = store.get(&TestKey("old".into())).unwrap();
         assert_eq!(got.data, "preexisting");

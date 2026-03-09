@@ -168,7 +168,8 @@ fn fmt_mutation_markdown_row(m: &Mutation) -> String {
     )
 }
 
-const MARKDOWN_TABLE_HEADER: &str = "| Hash | File | Lang | Kind | Span | Subst |\n| --- | --- | --- | --- | --- | --- |";
+const MARKDOWN_TABLE_HEADER: &str =
+    "| Hash | File | Lang | Kind | Span | Subst |\n| --- | --- | --- | --- | --- | --- |";
 
 fn fmt_mutation_markdown_table(mutations: &[Mutation]) -> String {
     let rows: Vec<_> = mutations.iter().map(fmt_mutation_markdown_row).collect();
@@ -218,11 +219,19 @@ impl Render for AllMutations {
     }
 
     fn terse(&self) -> String {
-        self.0.iter().map(fmt_mutation_terse).collect::<Vec<_>>().join("\n")
+        self.0
+            .iter()
+            .map(fmt_mutation_terse)
+            .collect::<Vec<_>>()
+            .join("\n")
     }
 
     fn verbose(&self) -> String {
-        self.0.iter().map(fmt_mutation_verbose).collect::<Vec<_>>().join("\n")
+        self.0
+            .iter()
+            .map(fmt_mutation_verbose)
+            .collect::<Vec<_>>()
+            .join("\n")
     }
 
     fn json(&self) -> String {
@@ -243,11 +252,19 @@ impl Render for LangMutations {
     }
 
     fn terse(&self) -> String {
-        self.1.iter().map(fmt_mutation_terse).collect::<Vec<_>>().join("\n")
+        self.1
+            .iter()
+            .map(fmt_mutation_terse)
+            .collect::<Vec<_>>()
+            .join("\n")
     }
 
     fn verbose(&self) -> String {
-        self.1.iter().map(fmt_mutation_verbose).collect::<Vec<_>>().join("\n")
+        self.1
+            .iter()
+            .map(fmt_mutation_verbose)
+            .collect::<Vec<_>>()
+            .join("\n")
     }
 
     fn json(&self) -> String {
@@ -268,11 +285,19 @@ impl Render for FileMutations {
     }
 
     fn terse(&self) -> String {
-        self.2.iter().map(fmt_mutation_terse).collect::<Vec<_>>().join("\n")
+        self.2
+            .iter()
+            .map(fmt_mutation_terse)
+            .collect::<Vec<_>>()
+            .join("\n")
     }
 
     fn verbose(&self) -> String {
-        self.2.iter().map(fmt_mutation_verbose).collect::<Vec<_>>().join("\n")
+        self.2
+            .iter()
+            .map(fmt_mutation_verbose)
+            .collect::<Vec<_>>()
+            .join("\n")
     }
 
     fn json(&self) -> String {
@@ -342,14 +367,20 @@ impl Render for SingleMutation {
             m.subst(),
             status,
             at,
-            tag, self.before,
-            tag, self.after,
+            tag,
+            self.before,
+            tag,
+            self.after,
         )
     }
 
     fn terse(&self) -> String {
         let m = self.state.mutation();
-        format!("{} {}", fmt_mutation_terse(m), fmt_status_from_state(&self.state))
+        format!(
+            "{} {}",
+            fmt_mutation_terse(m),
+            fmt_status_from_state(&self.state)
+        )
     }
 
     fn verbose(&self) -> String {
@@ -358,7 +389,11 @@ impl Render for SingleMutation {
         let at = fmt_outcome_at_from_state(&self.state);
         format!(
             "{}\nStatus: {} ({})\n\n--- before ---\n{}\n\n--- after ---\n{}",
-            fmt_mutation_verbose(m), status, at, self.before, self.after,
+            fmt_mutation_verbose(m),
+            status,
+            at,
+            self.before,
+            self.after,
         )
     }
 
@@ -426,7 +461,10 @@ impl Render for TendWorkspaces {
             .map(|id| format!("- `{id}`"))
             .collect::<Vec<_>>()
             .join("\n");
-        format!("# Tend Workspaces\n\n{} total\n\n{list}", self.workspace_ids.len())
+        format!(
+            "# Tend Workspaces\n\n{} total\n\n{list}",
+            self.workspace_ids.len()
+        )
     }
 
     fn terse(&self) -> String {
@@ -451,7 +489,11 @@ impl Render for TendWorkspaces {
     }
 
     fn json(&self) -> String {
-        let items: Vec<String> = self.workspace_ids.iter().map(|id| format!("\"{id}\"")).collect();
+        let items: Vec<String> = self
+            .workspace_ids
+            .iter()
+            .map(|id| format!("\"{id}\""))
+            .collect();
         format!("[{}]", items.join(","))
     }
 }
@@ -466,7 +508,11 @@ fn fmt_phase_outcome_terse(outcome: &bough_core::PhaseOutcome) -> String {
         "exit={} duration={:.2}s{}",
         outcome.exit_code(),
         outcome.duration().as_secs_f64(),
-        if outcome.timed_out() { " TIMED_OUT" } else { "" },
+        if outcome.timed_out() {
+            " TIMED_OUT"
+        } else {
+            ""
+        },
     )
 }
 
@@ -496,8 +542,14 @@ fn fmt_phase_outcome_json(outcome: &bough_core::PhaseOutcome) -> String {
         outcome.exit_code(),
         outcome.duration().as_secs_f64(),
         outcome.timed_out(),
-        stdout.replace('\\', "\\\\").replace('"', "\\\"").replace('\n', "\\n"),
-        stderr.replace('\\', "\\\\").replace('"', "\\\"").replace('\n', "\\n"),
+        stdout
+            .replace('\\', "\\\\")
+            .replace('"', "\\\"")
+            .replace('\n', "\\n"),
+        stderr
+            .replace('\\', "\\\\")
+            .replace('"', "\\\"")
+            .replace('\n', "\\n"),
     )
 }
 
