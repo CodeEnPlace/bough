@@ -281,7 +281,9 @@ impl Workspace<'_> {
         config: &impl crate::session::Config,
         reference_duration: Option<std::time::Duration>,
     ) -> Result<crate::phase::PhaseOutcome, crate::phase::Error> {
-        let cmd = config.get_init_cmd().ok_or(crate::phase::Error::NoCmdConfigured)?;
+        let cmd = config
+            .get_init_cmd()
+            .ok_or(crate::phase::Error::NoCmdConfigured)?;
         crate::phase::run_phase(
             self,
             &cmd,
@@ -298,7 +300,9 @@ impl Workspace<'_> {
         config: &impl crate::session::Config,
         reference_duration: Option<std::time::Duration>,
     ) -> Result<crate::phase::PhaseOutcome, crate::phase::Error> {
-        let cmd = config.get_reset_cmd().ok_or(crate::phase::Error::NoCmdConfigured)?;
+        let cmd = config
+            .get_reset_cmd()
+            .ok_or(crate::phase::Error::NoCmdConfigured)?;
         crate::phase::run_phase(
             self,
             &cmd,

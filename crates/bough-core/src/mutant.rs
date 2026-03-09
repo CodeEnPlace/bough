@@ -395,7 +395,12 @@ impl<'a, 't> Iterator for TwigMutantsIter<'a, 't> {
                     trace!(?kind, "skipping mutant by query filter");
                     continue;
                 }
-                trace!(?kind, start = span.start().byte(), end = span.end().byte(), "found mutant");
+                trace!(
+                    ?kind,
+                    start = span.start().byte(),
+                    end = span.end().byte(),
+                    "found mutant"
+                );
                 let mutant = Mutant::new(self.lang, self.twig.clone(), kind, span);
                 return Some(BasedMutant::new(mutant, self.base));
             }
@@ -680,7 +685,10 @@ mod tests {
             .filter(|m| matches!(m.kind(), MutantKind::BinaryOp(BinaryOpMutationKind::Add)))
             .collect();
         assert_eq!(adds.len(), 1);
-        assert_eq!(*adds[0].span(), Span::new(Point::new(0, 12, 12), Point::new(0, 13, 13)));
+        assert_eq!(
+            *adds[0].span(),
+            Span::new(Point::new(0, 12, 12), Point::new(0, 13, 13))
+        );
     }
 
     // bough[verify mutant.twig-iter.find.js.binary.sub]
@@ -698,7 +706,10 @@ mod tests {
             .filter(|m| matches!(m.kind(), MutantKind::BinaryOp(BinaryOpMutationKind::Sub)))
             .collect();
         assert_eq!(subs.len(), 1);
-        assert_eq!(*subs[0].span(), Span::new(Point::new(0, 12, 12), Point::new(0, 13, 13)));
+        assert_eq!(
+            *subs[0].span(),
+            Span::new(Point::new(0, 12, 12), Point::new(0, 13, 13))
+        );
     }
 
     // bough[verify mutant.twig-iter.find.js.binary.add]
@@ -1065,7 +1076,10 @@ function sub(a, b) {
         let (_dir, base) = make_context_base();
         let mutant = find_add_mutant(&base);
         let (text, span) = mutant.get_contextual_fragment(&base, 100).unwrap();
-        assert_eq!(text, "function add(a, b) {\n    if (a > 0) {\n        return a + b;\n    }\n    return b;\n}");
+        assert_eq!(
+            text,
+            "function add(a, b) {\n    if (a > 0) {\n        return a + b;\n    }\n    return b;\n}"
+        );
         assert_eq!(span, Span::new(Point::new(1, 0, 10), Point::new(6, 1, 91)));
     }
 
@@ -1074,7 +1088,10 @@ function sub(a, b) {
         let (_dir, base) = make_context_base();
         let mutant = find_add_mutant(&base);
         let (text, span) = mutant.get_contextual_fragment(&base, 3).unwrap();
-        assert_eq!(text, "function add(a, b) {\n    if (a > 0) {\n        return a + b;\n    }\n    return b;\n}");
+        assert_eq!(
+            text,
+            "function add(a, b) {\n    if (a > 0) {\n        return a + b;\n    }\n    return b;\n}"
+        );
         assert_eq!(span, Span::new(Point::new(1, 0, 10), Point::new(6, 1, 91)));
     }
 
@@ -1089,10 +1106,15 @@ function sub(a, b) {
 
     #[test]
     fn contextual_fragment_mutant_at_end_of_function() {
-        let (_dir, base) = make_js_base("function bar() {\n    const x = 1;\n    const y = 2;\n    return x + y;\n}");
+        let (_dir, base) = make_js_base(
+            "function bar() {\n    const x = 1;\n    const y = 2;\n    return x + y;\n}",
+        );
         let mutant = find_add_mutant(&base);
         let (text, span) = mutant.get_contextual_fragment(&base, 100).unwrap();
-        assert_eq!(text, "function bar() {\n    const x = 1;\n    const y = 2;\n    return x + y;\n}");
+        assert_eq!(
+            text,
+            "function bar() {\n    const x = 1;\n    const y = 2;\n    return x + y;\n}"
+        );
         assert_eq!(span, Span::new(Point::new(0, 0, 0), Point::new(4, 1, 70)));
     }
 }

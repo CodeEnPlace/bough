@@ -376,7 +376,10 @@ mod tests {
             MutantKind::BinaryOp(BinaryOpMutationKind::Add),
             Span::new(Point::new(0, 9, 9), Point::new(0, 10, 10)),
         );
-        let mutation = Mutation { mutant, subst: "-".into() };
+        let mutation = Mutation {
+            mutant,
+            subst: "-".into(),
+        };
         assert_eq!(mutation.apply_to_complete_src_string(src), "return a - b;");
     }
 
@@ -390,8 +393,14 @@ mod tests {
             MutantKind::BinaryOp(BinaryOpMutationKind::Add),
             Span::new(Point::new(1, 13, 28), Point::new(1, 14, 29)),
         );
-        let mutation = Mutation { mutant, subst: "*".into() };
-        assert_eq!(mutation.apply_to_complete_src_string(src), "function f() {\n    return a * b;\n}");
+        let mutation = Mutation {
+            mutant,
+            subst: "*".into(),
+        };
+        assert_eq!(
+            mutation.apply_to_complete_src_string(src),
+            "function f() {\n    return a * b;\n}"
+        );
     }
 
     #[test]
@@ -404,7 +413,10 @@ mod tests {
             MutantKind::StatementBlock,
             Span::new(Point::new(0, 7, 7), Point::new(0, 17, 17)),
         );
-        let mutation = Mutation { mutant, subst: "{}".into() };
+        let mutation = Mutation {
+            mutant,
+            subst: "{}".into(),
+        };
         assert_eq!(mutation.apply_to_complete_src_string(src), "if (x) {}");
     }
 
@@ -418,7 +430,13 @@ mod tests {
             MutantKind::Condition,
             Span::new(Point::new(0, 4, 4), Point::new(0, 9, 9)),
         );
-        let mutation = Mutation { mutant, subst: "true".into() };
-        assert_eq!(mutation.apply_to_complete_src_string(src), "if (true) { return 1; }");
+        let mutation = Mutation {
+            mutant,
+            subst: "true".into(),
+        };
+        assert_eq!(
+            mutation.apply_to_complete_src_string(src),
+            "if (true) { return 1; }"
+        );
     }
 }

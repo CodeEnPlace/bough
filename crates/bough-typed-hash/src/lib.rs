@@ -55,8 +55,6 @@ pub trait TypedHash: Sized {
     fn from_raw(bytes: [u8; 32]) -> Self;
 
     fn as_bytes(&self) -> &[u8; 32];
-
-
 }
 
 /// Data that produces a [`TypedHash`].
@@ -89,8 +87,7 @@ pub fn hex_to_bytes(hex: &str) -> Result<[u8; 32], String> {
     }
     let mut bytes = [0u8; 32];
     for i in 0..32 {
-        bytes[i] = u8::from_str_radix(&hex[i * 2..i * 2 + 2], 16)
-            .map_err(|e| e.to_string())?;
+        bytes[i] = u8::from_str_radix(&hex[i * 2..i * 2 + 2], 16).map_err(|e| e.to_string())?;
     }
     Ok(bytes)
 }

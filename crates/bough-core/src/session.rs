@@ -235,7 +235,6 @@ impl<C: Config> Session<C> {
         let workspaces_dir = self.config.get_bough_state_dir().join("workspaces");
         Workspace::bind_dirty(workspaces_dir, workspace_id, &self.base)
     }
-
 }
 
 impl From<crate::file::Error> for Error {

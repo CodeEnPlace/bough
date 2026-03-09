@@ -75,30 +75,63 @@ fn typed_hash_display_format() {
 
 #[test]
 fn typed_hashable_produces_hash() {
-    let w = Widget { name: "gear".into(), count: 5 };
+    let w = Widget {
+        name: "gear".into(),
+        count: 5,
+    };
     let h = w.hash().unwrap();
     assert_eq!(h.to_string().len(), 64);
 }
 
 #[test]
 fn typed_hashable_deterministic() {
-    let a = Widget { name: "gear".into(), count: 5 };
-    let b = Widget { name: "gear".into(), count: 5 };
+    let a = Widget {
+        name: "gear".into(),
+        count: 5,
+    };
+    let b = Widget {
+        name: "gear".into(),
+        count: 5,
+    };
     assert_eq!(a.hash().unwrap(), b.hash().unwrap());
 }
 
 #[test]
 fn typed_hashable_different_values_differ() {
-    let a = Widget { name: "gear".into(), count: 5 };
-    let b = Widget { name: "gear".into(), count: 6 };
+    let a = Widget {
+        name: "gear".into(),
+        count: 5,
+    };
+    let b = Widget {
+        name: "gear".into(),
+        count: 6,
+    };
     assert_ne!(a.hash().unwrap(), b.hash().unwrap());
 }
 
 #[test]
 fn hash_into_derive_nested() {
-    let a = Assembly { part: Part { label: "bolt".into(), weight: 1.5 }, quantity: 10 };
-    let b = Assembly { part: Part { label: "bolt".into(), weight: 1.5 }, quantity: 10 };
-    let c = Assembly { part: Part { label: "nut".into(), weight: 0.5 }, quantity: 10 };
+    let a = Assembly {
+        part: Part {
+            label: "bolt".into(),
+            weight: 1.5,
+        },
+        quantity: 10,
+    };
+    let b = Assembly {
+        part: Part {
+            label: "bolt".into(),
+            weight: 1.5,
+        },
+        quantity: 10,
+    };
+    let c = Assembly {
+        part: Part {
+            label: "nut".into(),
+            weight: 0.5,
+        },
+        quantity: 10,
+    };
     assert_eq!(a.hash().unwrap(), b.hash().unwrap());
     assert_ne!(a.hash().unwrap(), c.hash().unwrap());
 }
@@ -108,7 +141,10 @@ fn hash_into_derive_enum() {
     #[derive(HashInto)]
     enum Shape {
         Circle(f64),
-        Rect { w: f64, h: f64 },
+        Rect {
+            w: f64,
+            h: f64,
+        },
         #[allow(dead_code)]
         Point,
     }
@@ -128,7 +164,10 @@ fn hash_into_derive_enum() {
 
 #[test]
 fn unvalidated_hash_full_hex() {
-    let w = Widget { name: "q".into(), count: 7 };
+    let w = Widget {
+        name: "q".into(),
+        count: 7,
+    };
     let h = w.hash().unwrap();
     let hex = h.to_string();
 
@@ -139,7 +178,10 @@ fn unvalidated_hash_full_hex() {
 
 #[test]
 fn unvalidated_hash_prefix() {
-    let w = Widget { name: "y".into(), count: 2 };
+    let w = Widget {
+        name: "y".into(),
+        count: 2,
+    };
     let h = w.hash().unwrap();
     let hex = h.to_string();
 
@@ -231,12 +273,25 @@ fn vec_order_matters() {
 #[test]
 fn string_length_prefix_prevents_collisions() {
     #[derive(HashInto)]
-    struct Pair { a: String, b: String }
+    struct Pair {
+        a: String,
+        b: String,
+    }
 
     let mut s1 = Sha256::new();
     let mut s2 = Sha256::new();
-    Pair { a: "ab".into(), b: "c".into() }.hash_into(&mut s1).unwrap();
-    Pair { a: "a".into(), b: "bc".into() }.hash_into(&mut s2).unwrap();
+    Pair {
+        a: "ab".into(),
+        b: "c".into(),
+    }
+    .hash_into(&mut s1)
+    .unwrap();
+    Pair {
+        a: "a".into(),
+        b: "bc".into(),
+    }
+    .hash_into(&mut s2)
+    .unwrap();
     assert_ne!(
         <[u8; 32]>::from(s1.finalize()),
         <[u8; 32]>::from(s2.finalize()),

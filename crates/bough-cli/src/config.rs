@@ -1047,10 +1047,7 @@ exclude = []
     #[test]
     fn test_cmd_parsed() {
         let cli = parse_ok(&["run"], MINIMAL_TOML);
-        assert_eq!(
-            bough_core::Config::get_test_cmd(&cli.config),
-            "echo test"
-        );
+        assert_eq!(bough_core::Config::get_test_cmd(&cli.config), "echo test");
     }
 
     #[test]
@@ -1287,10 +1284,7 @@ cmd = "npm test"
     #[test]
     fn init_cmd_none_by_default() {
         let cli = parse_ok(&["run"], MINIMAL_TOML);
-        assert_eq!(
-            bough_core::Config::get_init_cmd(&cli.config),
-            None
-        );
+        assert_eq!(bough_core::Config::get_init_cmd(&cli.config), None);
     }
 
     #[test]
@@ -1360,10 +1354,7 @@ NODE_ENV = ""
     #[test]
     fn reset_cmd_none_by_default() {
         let cli = parse_ok(&["run"], MINIMAL_TOML);
-        assert_eq!(
-            bough_core::Config::get_reset_cmd(&cli.config),
-            None
-        );
+        assert_eq!(bough_core::Config::get_reset_cmd(&cli.config), None);
     }
 
     #[test]
@@ -1458,7 +1449,10 @@ cmd = "npm run clean"
         let c = &cli.config;
 
         assert_eq!(bough_core::Config::get_test_cmd(c), "npm test");
-        assert_eq!(bough_core::Config::get_test_pwd(c), std::path::PathBuf::from("build"));
+        assert_eq!(
+            bough_core::Config::get_test_pwd(c),
+            std::path::PathBuf::from("build")
+        );
         assert_eq!(
             bough_core::Config::get_test_env(c),
             HashMap::from([
@@ -1467,20 +1461,38 @@ cmd = "npm run clean"
                 ("JEST_WORKERS".to_string(), "4".to_string()),
             ])
         );
-        assert_eq!(bough_core::Config::get_test_timeout_absolute(c), Some(chrono::Duration::seconds(60)));
+        assert_eq!(
+            bough_core::Config::get_test_timeout_absolute(c),
+            Some(chrono::Duration::seconds(60))
+        );
         assert_eq!(bough_core::Config::get_test_timeout_relative(c), Some(3.0));
 
-        assert_eq!(bough_core::Config::get_init_cmd(c), Some("npm install".to_string()));
-        assert_eq!(bough_core::Config::get_init_pwd(c), std::path::PathBuf::from("setup"));
+        assert_eq!(
+            bough_core::Config::get_init_cmd(c),
+            Some("npm install".to_string())
+        );
+        assert_eq!(
+            bough_core::Config::get_init_pwd(c),
+            std::path::PathBuf::from("setup")
+        );
         assert_eq!(
             bough_core::Config::get_init_env(c),
             HashMap::from([("CI".to_string(), "1".to_string())])
         );
-        assert_eq!(bough_core::Config::get_init_timeout_absolute(c), Some(chrono::Duration::seconds(30)));
+        assert_eq!(
+            bough_core::Config::get_init_timeout_absolute(c),
+            Some(chrono::Duration::seconds(30))
+        );
         assert_eq!(bough_core::Config::get_init_timeout_relative(c), Some(3.0));
 
-        assert_eq!(bough_core::Config::get_reset_cmd(c), Some("npm run clean".to_string()));
-        assert_eq!(bough_core::Config::get_reset_pwd(c), std::path::PathBuf::from("build"));
+        assert_eq!(
+            bough_core::Config::get_reset_cmd(c),
+            Some("npm run clean".to_string())
+        );
+        assert_eq!(
+            bough_core::Config::get_reset_pwd(c),
+            std::path::PathBuf::from("build")
+        );
         assert_eq!(
             bough_core::Config::get_reset_env(c),
             HashMap::from([
@@ -1488,7 +1500,10 @@ cmd = "npm run clean"
                 ("NODE_ENV".to_string(), "test".to_string()),
             ])
         );
-        assert_eq!(bough_core::Config::get_reset_timeout_absolute(c), Some(chrono::Duration::seconds(30)));
+        assert_eq!(
+            bough_core::Config::get_reset_timeout_absolute(c),
+            Some(chrono::Duration::seconds(30))
+        );
         assert_eq!(bough_core::Config::get_reset_timeout_relative(c), Some(3.0));
     }
 }
@@ -1511,7 +1526,8 @@ impl HasPhaseOverrides for PhaseConfig {
 
 impl Config {
     fn phase_overrides<T: HasPhaseOverrides>(&self, phase: &Option<T>) -> PhaseOverrides {
-        phase.as_ref()
+        phase
+            .as_ref()
             .map(|p| p.phase_overrides().clone())
             .unwrap_or_default()
     }
@@ -1519,7 +1535,8 @@ impl Config {
 
 impl PhaseOverrides {
     fn resolve_pwd(&self, global: &PhaseOverrides) -> PathBuf {
-        self.pwd.as_deref()
+        self.pwd
+            .as_deref()
             .or(global.pwd.as_deref())
             .map(PathBuf::from)
             .unwrap_or_else(|| PathBuf::from("."))
@@ -1540,13 +1557,17 @@ impl PhaseOverrides {
     }
 
     fn resolve_timeout_absolute(&self, global: &PhaseOverrides) -> Option<chrono::Duration> {
-        self.timeout.as_ref().and_then(|t| t.absolute)
+        self.timeout
+            .as_ref()
+            .and_then(|t| t.absolute)
             .or_else(|| global.timeout.as_ref().and_then(|t| t.absolute))
             .map(|secs| chrono::Duration::seconds(secs as i64))
     }
 
     fn resolve_timeout_relative(&self, global: &PhaseOverrides) -> Option<f64> {
-        self.timeout.as_ref().and_then(|t| t.relative)
+        self.timeout
+            .as_ref()
+            .and_then(|t| t.relative)
             .or_else(|| global.timeout.as_ref().and_then(|t| t.relative))
     }
 }
@@ -1590,23 +1611,31 @@ impl bough_core::Config for Config {
     }
 
     fn get_test_cmd(&self) -> String {
-        self.test.as_ref().expect("test.cmd is required").cmd.clone()
+        self.test
+            .as_ref()
+            .expect("test.cmd is required")
+            .cmd
+            .clone()
     }
 
     fn get_test_pwd(&self) -> std::path::PathBuf {
-        self.phase_overrides(&self.test).resolve_pwd(&self.phase_defaults)
+        self.phase_overrides(&self.test)
+            .resolve_pwd(&self.phase_defaults)
     }
 
     fn get_test_env(&self) -> HashMap<String, String> {
-        self.phase_overrides(&self.test).resolve_env(&self.phase_defaults)
+        self.phase_overrides(&self.test)
+            .resolve_env(&self.phase_defaults)
     }
 
     fn get_test_timeout_absolute(&self) -> Option<chrono::Duration> {
-        self.phase_overrides(&self.test).resolve_timeout_absolute(&self.phase_defaults)
+        self.phase_overrides(&self.test)
+            .resolve_timeout_absolute(&self.phase_defaults)
     }
 
     fn get_test_timeout_relative(&self) -> Option<f64> {
-        self.phase_overrides(&self.test).resolve_timeout_relative(&self.phase_defaults)
+        self.phase_overrides(&self.test)
+            .resolve_timeout_relative(&self.phase_defaults)
     }
 
     fn get_init_cmd(&self) -> Option<String> {
@@ -1614,19 +1643,23 @@ impl bough_core::Config for Config {
     }
 
     fn get_init_pwd(&self) -> std::path::PathBuf {
-        self.phase_overrides(&self.init).resolve_pwd(&self.phase_defaults)
+        self.phase_overrides(&self.init)
+            .resolve_pwd(&self.phase_defaults)
     }
 
     fn get_init_env(&self) -> HashMap<String, String> {
-        self.phase_overrides(&self.init).resolve_env(&self.phase_defaults)
+        self.phase_overrides(&self.init)
+            .resolve_env(&self.phase_defaults)
     }
 
     fn get_init_timeout_absolute(&self) -> Option<chrono::Duration> {
-        self.phase_overrides(&self.init).resolve_timeout_absolute(&self.phase_defaults)
+        self.phase_overrides(&self.init)
+            .resolve_timeout_absolute(&self.phase_defaults)
     }
 
     fn get_init_timeout_relative(&self) -> Option<f64> {
-        self.phase_overrides(&self.init).resolve_timeout_relative(&self.phase_defaults)
+        self.phase_overrides(&self.init)
+            .resolve_timeout_relative(&self.phase_defaults)
     }
 
     fn get_reset_cmd(&self) -> Option<String> {
@@ -1634,19 +1667,23 @@ impl bough_core::Config for Config {
     }
 
     fn get_reset_pwd(&self) -> std::path::PathBuf {
-        self.phase_overrides(&self.reset).resolve_pwd(&self.phase_defaults)
+        self.phase_overrides(&self.reset)
+            .resolve_pwd(&self.phase_defaults)
     }
 
     fn get_reset_env(&self) -> HashMap<String, String> {
-        self.phase_overrides(&self.reset).resolve_env(&self.phase_defaults)
+        self.phase_overrides(&self.reset)
+            .resolve_env(&self.phase_defaults)
     }
 
     fn get_reset_timeout_absolute(&self) -> Option<chrono::Duration> {
-        self.phase_overrides(&self.reset).resolve_timeout_absolute(&self.phase_defaults)
+        self.phase_overrides(&self.reset)
+            .resolve_timeout_absolute(&self.phase_defaults)
     }
 
     fn get_reset_timeout_relative(&self) -> Option<f64> {
-        self.phase_overrides(&self.reset).resolve_timeout_relative(&self.phase_defaults)
+        self.phase_overrides(&self.reset)
+            .resolve_timeout_relative(&self.phase_defaults)
     }
 
     fn get_langs(&self) -> impl Iterator<Item = bough_core::LanguageId> {

@@ -63,10 +63,7 @@ impl TwigsIterBuilder {
 
         // bough[impl twig.iter.include.empty]
         if self.include.is_empty() {
-            return TwigsIter {
-                root,
-                walker: None,
-            };
+            return TwigsIter { root, walker: None };
         }
 
         let mut overrides = OverrideBuilder::new(root_path);
