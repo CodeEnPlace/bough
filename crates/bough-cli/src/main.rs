@@ -1,6 +1,8 @@
 mod config;
 mod render;
 
+use std::sync::{Arc, Mutex};
+
 use bough_core::{File, Session};
 use bough_typed_hash::TypedHashable;
 use config::{Command, Show, parse};
@@ -299,71 +301,96 @@ fn main() {
                 .render(&cli)
             );
 
-            let workspace_id = workspace_ids.get(0).unwrap();
-            let workspace = session
-                .bind_workspace(&workspace_id)
-                .expect("bind workspace");
+            let session = Arc::new(Mutex::new(session));
 
-            if let Ok(outcome) = workspace.run_init(&cli.config, None) {
-                println!(
-                    "{}",
-                    render::InitWorkspace {
-                        workspace_id: workspace_id.clone(),
-                        outcome,
-                    }
-                    .render(&cli)
-                );
-            }
+            std::thread::scope(|scope| {
+                for workspace_id in workspace_ids {
+                    let session = Arc::clone(&session);
+                    let cli = cli.clone();
 
-            if let Ok(outcome) = workspace.run_reset(&cli.config, None) {
-                println!(
-                    "{}",
-                    render::ResetWorkspace {
-                        workspace_id: workspace_id.clone(),
-                        outcome,
-                    }
-                    .render(&cli)
-                );
-            }
+                    scope.spawn(move || {
+                        let mut workspace = session
+                            .lock()
+                            .unwrap()
+                            .bind_workspace(&workspace_id)
+                            .expect("bind workspace");
 
-            let base = session.base().clone();
-            for mutation in base.mutations() {
-                let mutation = mutation.unwrap();
+                        if let Ok(outcome) = workspace.run_init(&cli.config, None) {
+                            println!(
+                                "{}",
+                                render::InitWorkspace {
+                                    workspace_id: workspace_id.clone(),
+                                    outcome,
+                                }
+                                .render(&cli)
+                            );
+                        }
 
-                let hash_str = mutation.hash().expect("hash").to_string();
-                let mut workspace = session
-                    .bind_workspace(&workspace_id)
-                    .expect("bind workspace");
-                workspace.write_mutant(&mutation).expect("apply mutation");
-                let outcome = workspace
-                    .run_test(&cli.config, None)
-                    .expect("test mutation");
-                workspace.revert_mutant().expect("revert mutation");
-                let status = if outcome.exit_code() != 0 {
-                    bough_core::Status::Caught
-                } else {
-                    bough_core::Status::Missed
-                };
+                        loop {
+                            let hash_to_test =
+                                session.lock().unwrap().get_next_mutation_needing_test();
 
-                let status_str = if outcome.exit_code() != 0 {
-                    "caught"
-                } else {
-                    "missed"
-                };
+                            if let Some(hash_to_test) = hash_to_test {
+                                let mutation_state = session
+                                    .lock()
+                                    .unwrap()
+                                    .get_state()
+                                    .get(&hash_to_test)
+                                    .unwrap();
 
-                session.set_state(&mutation, status).expect("set state");
+                                let mutation = mutation_state.mutation();
 
-                println!(
-                    "{}",
-                    (render::TestMutation {
-                        workspace_id: workspace_id.clone(),
-                        mutation_hash: hash_str,
-                        status: status_str,
-                        duration: outcome.duration(),
-                    })
-                    .render(&cli)
-                );
-            }
+                                if let Ok(outcome) = workspace.run_reset(&cli.config, None) {
+                                    println!(
+                                        "{}",
+                                        render::ResetWorkspace {
+                                            workspace_id: workspace_id.clone(),
+                                            outcome,
+                                        }
+                                        .render(&cli)
+                                    );
+                                }
+
+                                workspace.write_mutant(&mutation).expect("apply mutation");
+                                let outcome = workspace
+                                    .run_test(&cli.config, None)
+                                    .expect("test mutation");
+                                workspace.revert_mutant().expect("revert mutation");
+                                let status = if outcome.exit_code() != 0 {
+                                    bough_core::Status::Caught
+                                } else {
+                                    bough_core::Status::Missed
+                                };
+
+                                let status_str = if outcome.exit_code() != 0 {
+                                    "caught"
+                                } else {
+                                    "missed"
+                                };
+
+                                session
+                                    .lock()
+                                    .unwrap()
+                                    .set_state(&mutation, status)
+                                    .expect("set state");
+
+                                println!(
+                                    "{}",
+                                    (render::TestMutation {
+                                        workspace_id: workspace_id.clone(),
+                                        mutation_hash: format!("{}", hash_to_test),
+                                        status: status_str,
+                                        duration: outcome.duration(),
+                                    })
+                                    .render(&cli)
+                                );
+                            } else {
+                                break;
+                            }
+                        }
+                    });
+                }
+            });
 
             Box::new(Noop)
         }
