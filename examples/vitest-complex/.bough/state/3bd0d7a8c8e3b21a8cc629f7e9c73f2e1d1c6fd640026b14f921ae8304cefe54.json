@@ -1,0 +1,1 @@
+{"mutation":{"mutant":{"lang":"js","twig":["src/validators/role.js"],"kind":{"BinaryOp":"StrictNe"},"span":{"start":{"line":7,"col":19,"byte":221},"end":{"line":7,"col":22,"byte":224}}},"subst":"==="},"outcome":{"status":"Caught","at":"2026-03-09T16:46:50Z"}}
