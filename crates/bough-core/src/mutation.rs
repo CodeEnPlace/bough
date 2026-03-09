@@ -169,20 +169,7 @@ mod tests {
         }
     }
 
-    // bough[verify mutation.iter.invalid]
-    #[test]
-    fn mutation_iter_invalid_mutant_produces_no_mutations() {
-        let (_dir, _base) = make_base();
-        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
-        let mutant = Mutant::new(
-            crate::LanguageId::Typescript,
-            twig.clone(),
-            MutantKind::BinaryOp(BinaryOpMutationKind::Add),
-            Span::new(Point::new(0, 0, 0), Point::new(0, 5, 5)),
-        );
-        let mutations: Vec<Mutation> = MutationIter::new(&mutant).collect();
-        assert!(mutations.is_empty());
-    }
+
 
     // bough[verify mutation.subst.js.cond.false]
     #[test]

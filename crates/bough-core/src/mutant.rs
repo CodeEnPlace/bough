@@ -273,7 +273,31 @@ impl Point {
 #[repr(u8)]
 pub enum BinaryOpMutationKind {
     Add,
+    BitAnd,
+    BitOr,
+    BitXor,
+    Div,
+    Mul,
+    Rem,
+    Shl,
+    Shr,
     Sub,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, bough_typed_hash::HashInto, Hash, facet::Facet)]
+#[repr(u8)]
+pub enum AssignMutationKind {
+    NormalAssign,
+    AddAssign,
+    BitAndAssign,
+    BitOrAssign,
+    BitXorAssign,
+    DivAssign,
+    MulAssign,
+    RemAssign,
+    ShlAssign,
+    ShrAssign,
+    SubAssign,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, bough_typed_hash::HashInto, Hash, facet::Facet)]
@@ -282,6 +306,7 @@ pub enum MutantKind {
     StatementBlock,
     Condition,
     BinaryOp(BinaryOpMutationKind),
+    Assign(AssignMutationKind),
 }
 
 impl<'a, 't> TwigMutantsIter<'a, 't> {
@@ -395,13 +420,11 @@ impl<'a, 't> Iterator for TwigMutantsIter<'a, 't> {
                         .position(|n| *n == "skip")
                         .expect("skip query must have a @skip capture")
                         as u32;
-                    qc.matches(q, root, self.file_content.as_slice())
-                        .any(|m| {
-                            m.nodes_for_capture_index(skip_idx).any(|n| {
-                                node.start_byte() >= n.start_byte()
-                                    && node.end_byte() <= n.end_byte()
-                            })
+                    qc.matches(q, root, self.file_content.as_slice()).any(|m| {
+                        m.nodes_for_capture_index(skip_idx).any(|n| {
+                            node.start_byte() >= n.start_byte() && node.end_byte() <= n.end_byte()
                         })
+                    })
                 }) {
                     trace!(?kind, "skipping mutant by query filter");
                     continue;
@@ -723,22 +746,7 @@ mod tests {
         );
     }
 
-    // bough[verify mutant.twig-iter.find.js.binary.add]
-    // bough[verify mutant.twig-iter.find.js.binary.sub]
-    #[test]
-    fn js_ignores_other_binary_ops() {
-        let js = "const x = a * b;";
-        let (_dir, base) = make_js_base(js);
-        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
-        let mutants: Vec<_> = TwigMutantsIter::new(LanguageId::Javascript, &base, &twig)
-            .unwrap()
-            .collect();
-        let binary_ops: Vec<_> = mutants
-            .iter()
-            .filter(|m| matches!(m.kind(), MutantKind::BinaryOp(_)))
-            .collect();
-        assert!(binary_ops.is_empty());
-    }
+
 
     fn hash_mutant(mutant: &Mutant) -> [u8; 32] {
         use bough_typed_hash::sha2::Digest;
