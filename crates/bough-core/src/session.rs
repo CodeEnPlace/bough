@@ -9,7 +9,7 @@ use chrono::Duration;
 use tracing::info;
 
 use crate::{
-    LanguageId,
+    LanguageId, Status,
     base::Base,
     facet_disk_store::FacetDiskStore,
     mutation::{Mutation, MutationHash},
@@ -67,6 +67,7 @@ pub struct Session<C: Config> {
     base: Arc<Base>,
     workspaces: Vec<WorkspaceId>,
     mutations_state: FacetDiskStore<MutationHash, State>,
+    mutations_needing_test: Vec<MutationHash>,
 }
 
 impl<C: Config> Session<C> {
@@ -99,16 +100,41 @@ impl<C: Config> Session<C> {
             config.get_bough_state_dir().join("state"),
         );
 
+        let mutations_needing_test = Self::derive_mutations_needing_testing(&mutations_state);
+
         Ok(Self {
             config,
             base: Arc::new(base),
             workspaces: Vec::new(),
             mutations_state,
+            mutations_needing_test,
         })
     }
 
     pub fn base(&self) -> &Base {
         &self.base
+    }
+
+    fn derive_mutations_needing_testing(
+        mutations_state: &FacetDiskStore<MutationHash, State>,
+    ) -> Vec<MutationHash> {
+        mutations_state
+            .keys()
+            .filter(|key| {
+                if let Some(val) = mutations_state.get(key) {
+                    if let Some(status) = val.status() {
+                        if *status == Status::Caught {
+                            return false;
+                        }
+                    }
+                };
+                return true;
+            })
+            .collect()
+    }
+
+    pub fn get_next_mutation_needing_test(&mut self) -> Option<MutationHash> {
+        self.mutations_needing_test.pop()
     }
 
     // bough[impl session.tend.state.add-missing]
@@ -128,7 +154,33 @@ impl<C: Config> Session<C> {
             }
         }
 
+        self.mutations_needing_test = Self::derive_mutations_needing_testing(&self.mutations_state);
+
         Ok(added)
+    }
+
+    // bough[impl session.tend.state.remove-stale]
+    pub fn tend_remove_stale_states(&mut self) -> Result<Vec<MutationHash>, Error> {
+        let mutations_in_base: HashSet<Mutation> =
+            self.base.mutations().collect::<Result<_, _>>()?;
+        let hashes_in_base: HashSet<MutationHash> = mutations_in_base
+            .iter()
+            .map(|m| m.hash().expect("hashing should not fail"))
+            .collect();
+
+        let stale_keys: Vec<MutationHash> = self
+            .mutations_state
+            .keys()
+            .filter(|k| !hashes_in_base.contains(k))
+            .collect();
+
+        for key in &stale_keys {
+            self.mutations_state.remove(key);
+        }
+
+        self.mutations_needing_test = Self::derive_mutations_needing_testing(&self.mutations_state);
+
+        Ok(stale_keys)
     }
 
     // bough[impl session.tend.workspaces]
@@ -183,28 +235,6 @@ impl<C: Config> Session<C> {
         Ok(valid)
     }
 
-    // bough[impl session.tend.state.remove-stale]
-    pub fn tend_remove_stale_states(&mut self) -> Result<Vec<MutationHash>, Error> {
-        let mutations_in_base: HashSet<Mutation> =
-            self.base.mutations().collect::<Result<_, _>>()?;
-        let hashes_in_base: HashSet<MutationHash> = mutations_in_base
-            .iter()
-            .map(|m| m.hash().expect("hashing should not fail"))
-            .collect();
-
-        let stale_keys: Vec<MutationHash> = self
-            .mutations_state
-            .keys()
-            .filter(|k| !hashes_in_base.contains(k))
-            .collect();
-
-        for key in &stale_keys {
-            self.mutations_state.remove(key);
-        }
-
-        Ok(stale_keys)
-    }
-
     // bough[impl session.init.state.get]
     pub fn get_state(&self) -> &FacetDiskStore<MutationHash, State> {
         &self.mutations_state
@@ -229,7 +259,11 @@ impl<C: Config> Session<C> {
 
     pub fn bind_workspace(&self, workspace_id: &WorkspaceId) -> Result<Workspace, Error> {
         let workspaces_dir = self.config.get_bough_state_dir().join("workspaces");
-        Ok(Workspace::bind(workspaces_dir, workspace_id, self.base.clone())?)
+        Ok(Workspace::bind(
+            workspaces_dir,
+            workspace_id,
+            self.base.clone(),
+        )?)
     }
 
     pub fn bind_dirty_workspace(&self, workspace_id: &WorkspaceId) -> Workspace {
@@ -707,11 +741,13 @@ mod tests {
         assert!(initial_count > 0);
 
         std::fs::remove_file(dir.path().join("src/b.js")).unwrap();
-        session.base = Arc::new(crate::base::Base::new(
-            dir.path().to_path_buf(),
-            crate::twig::TwigsIterBuilder::new().with_include_glob("src/**/*.js"),
-        )
-        .unwrap());
+        session.base = Arc::new(
+            crate::base::Base::new(
+                dir.path().to_path_buf(),
+                crate::twig::TwigsIterBuilder::new().with_include_glob("src/**/*.js"),
+            )
+            .unwrap(),
+        );
         Arc::get_mut(&mut session.base).unwrap().add_mutator(
             LanguageId::Javascript,
             crate::twig::TwigsIterBuilder::new().with_include_glob("src/**/*.js"),
