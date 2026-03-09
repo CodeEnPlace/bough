@@ -205,6 +205,15 @@ pub struct LanguageConfig {
     pub include: Vec<String>,
 
     pub exclude: Vec<String>,
+
+    #[facet(default)]
+    pub skip: Option<LanguageSkipConfig>,
+}
+
+#[derive(Facet, Debug, Clone, Default)]
+pub struct LanguageSkipConfig {
+    #[facet(default)]
+    pub query: Vec<String>,
 }
 
 #[derive(Debug, Clone, Error, Diagnostic)]
@@ -1764,6 +1773,18 @@ impl bough_core::Config for Config {
                     .unwrap_or_default(),
             )
             .collect::<Vec<_>>()
+            .into_iter()
+    }
+
+    fn get_lang_skip_queries(
+        &self,
+        language_id: bough_core::LanguageId,
+    ) -> impl Iterator<Item = String> {
+        self.lang
+            .get(&language_id)
+            .and_then(|c| c.skip.as_ref())
+            .map(|s| s.query.clone())
+            .unwrap_or_default()
             .into_iter()
     }
 }

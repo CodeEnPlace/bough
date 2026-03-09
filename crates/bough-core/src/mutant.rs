@@ -388,9 +388,20 @@ impl<'a, 't> Iterator for TwigMutantsIter<'a, 't> {
                 }
                 if self.skip_queries.iter().any(|q| {
                     let mut qc = tree_sitter::QueryCursor::new();
-                    qc.matches(q, node, self.file_content.as_slice())
-                        .next()
-                        .is_some()
+                    let root = self.tree.root_node();
+                    let skip_idx = q
+                        .capture_names()
+                        .iter()
+                        .position(|n| *n == "skip")
+                        .expect("skip query must have a @skip capture")
+                        as u32;
+                    qc.matches(q, root, self.file_content.as_slice())
+                        .any(|m| {
+                            m.nodes_for_capture_index(skip_idx).any(|n| {
+                                node.start_byte() >= n.start_byte()
+                                    && node.end_byte() <= n.end_byte()
+                            })
+                        })
                 }) {
                     trace!(?kind, "skipping mutant by query filter");
                     continue;
