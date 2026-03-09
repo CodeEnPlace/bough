@@ -1,0 +1,26 @@
+include = ["**/*"]
+exclude = ["**/node_modules/**"]
+
+base_root_dir = "."
+
+init.cmd = "npm install"
+test.cmd = "npm run test"
+
+[lang.js]
+include = [
+  "src/**/*.js",
+  "src/**/*.jsx",
+]
+exclude = ["**/*.test.*"]
+
+[lang.js.skip]
+query = [
+  """
+(if_statement
+  condition: (parenthesized_expression
+    (member_expression
+      object: (meta_property)
+      property: (property_identifier) @_prop))
+  (#eq? @_prop "vitest")) @skip
+""",
+]

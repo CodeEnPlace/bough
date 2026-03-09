@@ -1,0 +1,1 @@
+{"mutation":{"mutant":{"lang":"js","twig":["src/validators/username.js"],"kind":"StatementBlock","span":{"start":{"line":15,"col":32,"byte":566},"end":{"line":17,"col":3,"byte":657}}},"subst":"{}"},"outcome":null}
