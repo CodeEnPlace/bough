@@ -361,7 +361,14 @@ pub fn resolve_root_path(config_dir: &std::path::Path, root: &str) -> std::path:
     if path.is_absolute() {
         return path.to_path_buf();
     }
-    let joined = config_dir.join(path);
+    let base = if config_dir.is_absolute() {
+        config_dir.to_path_buf()
+    } else {
+        std::env::current_dir()
+            .expect("current directory should be accessible")
+            .join(config_dir)
+    };
+    let joined = base.join(path);
     normalize_path(&joined)
 }
 
@@ -996,6 +1003,32 @@ cmd = "echo test"
         );
         let root = bough_core::Config::get_base_root_path(&cli.config);
         assert_eq!(root, dir.path().join("src"));
+    }
+
+    #[test]
+    fn resolve_root_path_with_relative_config_dir_dot() {
+        let cwd = std::env::current_dir().unwrap();
+        let result = resolve_root_path(std::path::Path::new("examples/vitest-js/.config"), "..");
+        assert_eq!(result, cwd.join("examples/vitest-js"));
+    }
+
+    #[test]
+    fn resolve_root_path_with_relative_config_dir_subdir() {
+        let cwd = std::env::current_dir().unwrap();
+        let result = resolve_root_path(std::path::Path::new("some/relative/dir"), ".");
+        assert_eq!(result, cwd.join("some/relative/dir"));
+    }
+
+    #[test]
+    fn resolve_root_path_with_absolute_config_dir() {
+        let result = resolve_root_path(std::path::Path::new("/absolute/config"), "..");
+        assert_eq!(result, std::path::PathBuf::from("/absolute"));
+    }
+
+    #[test]
+    fn resolve_root_path_with_absolute_root() {
+        let result = resolve_root_path(std::path::Path::new("relative"), "/absolute/root");
+        assert_eq!(result, std::path::PathBuf::from("/absolute/root"));
     }
 
     #[test]
