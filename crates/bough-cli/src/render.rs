@@ -59,11 +59,11 @@ impl Render for Noop {
     }
 
     fn terse(&self) -> String {
-        todo!()
+        String::new()
     }
 
     fn verbose(&self) -> String {
-        todo!()
+        String::new()
     }
 
     fn json(&self) -> String {
