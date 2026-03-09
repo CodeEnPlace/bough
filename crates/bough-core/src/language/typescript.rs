@@ -44,6 +44,8 @@ impl LanguageDriver for TypescriptDriver {
 
                     "==" => BinaryOpMutationKind::Eq,
                     "===" => BinaryOpMutationKind::StrictEq,
+                    "!=" => BinaryOpMutationKind::Ne,
+                    "!==" => BinaryOpMutationKind::StrictNe,
                     ">" => BinaryOpMutationKind::Gt,
                     ">=" => BinaryOpMutationKind::Gte,
                     "<" => BinaryOpMutationKind::Lt,
@@ -117,53 +119,39 @@ impl LanguageDriver for TypescriptDriver {
             MutantKind::BinaryOp(BinaryOpMutationKind::Xor) => vec![],
             MutantKind::BinaryOp(BinaryOpMutationKind::Eq) => vec!["!=".into()],
             MutantKind::BinaryOp(BinaryOpMutationKind::StrictEq) => vec!["!==".into()],
-            MutantKind::BinaryOp(BinaryOpMutationKind::Gt) => vec!["<=".into()],
-            MutantKind::BinaryOp(BinaryOpMutationKind::Gte) => vec!["<".into()],
-            MutantKind::BinaryOp(BinaryOpMutationKind::Lt) => vec![">=".into()],
-            MutantKind::BinaryOp(BinaryOpMutationKind::Lte) => vec![">".into()],
+            MutantKind::BinaryOp(BinaryOpMutationKind::Ne) => vec!["==".into()],
+            MutantKind::BinaryOp(BinaryOpMutationKind::StrictNe) => vec!["===".into()],
+            MutantKind::BinaryOp(BinaryOpMutationKind::Gt) => vec!["<=".into(), ">=".into()],
+            MutantKind::BinaryOp(BinaryOpMutationKind::Gte) => vec!["<".into(), ">".into()],
+            MutantKind::BinaryOp(BinaryOpMutationKind::Lt) => vec![">=".into(), "<=".into()],
+            MutantKind::BinaryOp(BinaryOpMutationKind::Lte) => vec![">".into(), "<".into()],
             MutantKind::StatementBlock => vec!["{}".into()],
             MutantKind::Condition => vec!["true".into(), "false".into()],
-            MutantKind::Assign(AssignMutationKind::NormalAssign) => {
-                vec!["+=".into(), "-=".into()]
-            }
+            MutantKind::Assign(AssignMutationKind::NormalAssign) => vec!["+=".into(), "-=".into()],
             MutantKind::Assign(AssignMutationKind::AddAssign) => vec!["-=".into(), "=".into()],
             MutantKind::Assign(AssignMutationKind::SubAssign) => vec!["+=".into(), "=".into()],
             MutantKind::Assign(AssignMutationKind::MulAssign) => vec!["/=".into(), "=".into()],
             MutantKind::Assign(AssignMutationKind::DivAssign) => vec!["*=".into(), "=".into()],
             MutantKind::Assign(AssignMutationKind::RemAssign) => vec!["*=".into(), "=".into()],
-            MutantKind::Assign(AssignMutationKind::BitAndAssign) => {
-                vec!["|=".into(), "=".into()]
-            }
-            MutantKind::Assign(AssignMutationKind::BitOrAssign) => {
-                vec!["&=".into(), "=".into()]
-            }
-            MutantKind::Assign(AssignMutationKind::BitXorAssign) => {
-                vec!["&=".into(), "=".into()]
-            }
-            MutantKind::Assign(AssignMutationKind::ShlAssign) => {
-                vec![">>=".into(), "=".into()]
-            }
-            MutantKind::Assign(AssignMutationKind::ShrAssign) => {
-                vec!["<<=".into(), "=".into()]
-            }
-            MutantKind::Assign(AssignMutationKind::AndAssign) => {
-                vec!["||=".into(), "=".into()]
-            }
-            MutantKind::Assign(AssignMutationKind::OrAssign) => {
-                vec!["&&=".into(), "=".into()]
-            }
+            MutantKind::Assign(AssignMutationKind::BitAndAssign) => vec!["|=".into(), "=".into()],
+            MutantKind::Assign(AssignMutationKind::BitOrAssign) => vec!["&=".into(), "=".into()],
+            MutantKind::Assign(AssignMutationKind::BitXorAssign) => vec!["&=".into(), "=".into()],
+            MutantKind::Assign(AssignMutationKind::ShlAssign) => vec![">>=".into(), "=".into()],
+            MutantKind::Assign(AssignMutationKind::ShrAssign) => vec!["<<=".into(), "=".into()],
+            MutantKind::Assign(AssignMutationKind::AndAssign) => vec!["||=".into(), "=".into()],
+            MutantKind::Assign(AssignMutationKind::OrAssign) => vec!["&&=".into(), "=".into()],
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::LanguageId;
     use crate::base::Base;
     use crate::file::Twig;
     use crate::mutant::TwigMutantsIter;
     use crate::mutation::MutationIter;
     use crate::twig::TwigsIterBuilder;
-    use crate::LanguageId;
     use std::path::PathBuf;
 
     fn make_ts_base(content: &str) -> (tempfile::TempDir, Base) {
@@ -434,35 +422,55 @@ mod tests {
     }
 
     #[test]
+    fn make_bin_op_ne() {
+        let src = "const x = a != b";
+        let mutations = all_mutations(src);
+        assert_eq!(mutations.len(), 1);
+        assert!(mutations.contains(&"const x = a == b".to_string()));
+    }
+
+    #[test]
+    fn make_bin_op_strict_ne() {
+        let src = "const x = a !== b";
+        let mutations = all_mutations(src);
+        assert_eq!(mutations.len(), 1);
+        assert!(mutations.contains(&"const x = a === b".to_string()));
+    }
+
+    #[test]
     fn make_bin_op_gt() {
         let src = "const x = a > b";
         let mutations = all_mutations(src);
-        assert_eq!(mutations.len(), 1);
+        assert_eq!(mutations.len(), 2);
         assert!(mutations.contains(&"const x = a <= b".to_string()));
+        assert!(mutations.contains(&"const x = a >= b".to_string()));
     }
 
     #[test]
     fn make_bin_op_gte() {
         let src = "const x = a >= b";
         let mutations = all_mutations(src);
-        assert_eq!(mutations.len(), 1);
+        assert_eq!(mutations.len(), 2);
         assert!(mutations.contains(&"const x = a < b".to_string()));
+        assert!(mutations.contains(&"const x = a > b".to_string()));
     }
 
     #[test]
     fn make_bin_op_lt() {
         let src = "const x = a < b";
         let mutations = all_mutations(src);
-        assert_eq!(mutations.len(), 1);
+        assert_eq!(mutations.len(), 2);
         assert!(mutations.contains(&"const x = a >= b".to_string()));
+        assert!(mutations.contains(&"const x = a <= b".to_string()));
     }
 
     #[test]
     fn make_bin_op_lte() {
         let src = "const x = a <= b";
         let mutations = all_mutations(src);
-        assert_eq!(mutations.len(), 1);
+        assert_eq!(mutations.len(), 2);
         assert!(mutations.contains(&"const x = a > b".to_string()));
+        assert!(mutations.contains(&"const x = a < b".to_string()));
     }
 
     #[test]
