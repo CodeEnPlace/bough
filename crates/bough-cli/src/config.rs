@@ -8,7 +8,7 @@ use miette::Diagnostic;
 use thiserror::Error;
 use tracing::{debug, warn};
 
-#[derive(Facet, Debug)]
+#[derive(Facet, Debug, Clone)]
 pub struct Cli {
     #[facet(args::named, args::short = 'v', args::counted, default)]
     pub verbose: u8,
@@ -53,7 +53,7 @@ pub enum Format {
     Json,
 }
 
-#[derive(Facet, Debug)]
+#[derive(Facet, Debug, Clone)]
 #[repr(u8)]
 pub enum Command {
     Show {
@@ -70,7 +70,7 @@ pub enum Command {
     Noop,
 }
 
-#[derive(Facet, Debug)]
+#[derive(Facet, Debug, Clone)]
 #[repr(u8)]
 pub enum Show {
     Config,
@@ -93,7 +93,7 @@ pub enum Show {
     },
 }
 
-#[derive(Facet, Debug)]
+#[derive(Facet, Debug, Clone)]
 #[repr(u8)]
 pub enum Step {
     TendState,

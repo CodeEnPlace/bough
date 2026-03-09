@@ -278,6 +278,93 @@ fn main() {
 
         Command::Run => {
             info!("starting run");
+            let mut session = Session::new(cli.config.clone()).expect("session creation");
+            let added = session
+                .tend_add_missing_states()
+                .expect("tend add missing states");
+            let removed = session
+                .tend_remove_stale_states()
+                .expect("tend remove stale states");
+
+            println!("{}", (render::TendState { added, removed }).render(&cli));
+
+            let workers = cli.config.workers as usize;
+            let workspace_ids = session.tend_workspaces(workers).expect("tend workspaces");
+
+            println!(
+                "{}",
+                (render::TendWorkspaces {
+                    workspace_ids: workspace_ids.clone(),
+                })
+                .render(&cli)
+            );
+
+            let workspace_id = workspace_ids.get(0).unwrap();
+            let workspace = session
+                .bind_workspace(&workspace_id)
+                .expect("bind workspace");
+
+            if let Ok(outcome) = workspace.run_init(&cli.config, None) {
+                println!(
+                    "{}",
+                    render::InitWorkspace {
+                        workspace_id: workspace_id.clone(),
+                        outcome,
+                    }
+                    .render(&cli)
+                );
+            }
+
+            if let Ok(outcome) = workspace.run_reset(&cli.config, None) {
+                println!(
+                    "{}",
+                    render::ResetWorkspace {
+                        workspace_id: workspace_id.clone(),
+                        outcome,
+                    }
+                    .render(&cli)
+                );
+            }
+
+            let base = session.base().clone();
+            for mutation in base.mutations() {
+                let mutation = mutation.unwrap();
+
+                let hash_str = mutation.hash().expect("hash").to_string();
+                let mut workspace = session
+                    .bind_workspace(&workspace_id)
+                    .expect("bind workspace");
+                workspace.write_mutant(&mutation).expect("apply mutation");
+                let outcome = workspace
+                    .run_test(&cli.config, None)
+                    .expect("test mutation");
+                workspace.revert_mutant().expect("revert mutation");
+                let status = if outcome.exit_code() != 0 {
+                    bough_core::Status::Caught
+                } else {
+                    bough_core::Status::Missed
+                };
+
+                let status_str = if outcome.exit_code() != 0 {
+                    "caught"
+                } else {
+                    "missed"
+                };
+
+                session.set_state(&mutation, status).expect("set state");
+
+                println!(
+                    "{}",
+                    (render::TestMutation {
+                        workspace_id: workspace_id.clone(),
+                        mutation_hash: hash_str,
+                        status: status_str,
+                        duration: outcome.duration(),
+                    })
+                    .render(&cli)
+                );
+            }
+
             Box::new(Noop)
         }
 
