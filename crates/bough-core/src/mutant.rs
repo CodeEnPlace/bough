@@ -273,27 +273,40 @@ impl Point {
 #[repr(u8)]
 pub enum BinaryOpMutationKind {
     Add,
+    And,
     BitAnd,
     BitOr,
     BitXor,
     Div,
+    Eq,
+    Gt,
+    Gte,
+    Lt,
+    Lte,
     Mul,
+    Or,
     Rem,
     Shl,
     Shr,
+    StrictEq,
+    Ne,
+    StrictNe,
     Sub,
+    Xor,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, bough_typed_hash::HashInto, Hash, facet::Facet)]
 #[repr(u8)]
 pub enum AssignMutationKind {
-    NormalAssign,
     AddAssign,
+    AndAssign,
     BitAndAssign,
     BitOrAssign,
     BitXorAssign,
     DivAssign,
     MulAssign,
+    NormalAssign,
+    OrAssign,
     RemAssign,
     ShlAssign,
     ShrAssign,
@@ -745,8 +758,6 @@ mod tests {
             Span::new(Point::new(0, 12, 12), Point::new(0, 13, 13))
         );
     }
-
-
 
     fn hash_mutant(mutant: &Mutant) -> [u8; 32] {
         use bough_typed_hash::sha2::Digest;
