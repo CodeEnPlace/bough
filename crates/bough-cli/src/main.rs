@@ -334,7 +334,7 @@ fn main() {
                     .unwrap()
                     .progress_chars("=+ "),
                 );
-                pb.enable_steady_tick(std::time::Duration::from_millis(16));
+                pb.enable_steady_tick(std::time::Duration::from_millis(100));
                 Some(pb)
             } else {
                 None
@@ -350,7 +350,7 @@ fn main() {
                             let remaining =
                                 session.lock().unwrap().get_count_mutation_needing_test() as u64;
                             pb.set_position(total.saturating_sub(remaining));
-                            std::thread::sleep(std::time::Duration::from_millis(16));
+                            std::thread::sleep(std::time::Duration::from_millis(100));
                         }
                         pb.set_position(total);
                         pb.finish();

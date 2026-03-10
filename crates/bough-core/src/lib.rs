@@ -6,6 +6,7 @@ mod file;
 mod language;
 mod mutant;
 mod mutation;
+mod mutation_score;
 mod phase;
 mod session;
 mod state;
@@ -37,6 +38,7 @@ pub enum LanguageId {
 pub use file::File;
 pub use mutation::Mutation;
 pub use mutation::MutationHash;
+pub use mutation_score::Factor;
 pub use phase::PhaseOutcome;
 pub use session::Config;
 pub use session::Session;
