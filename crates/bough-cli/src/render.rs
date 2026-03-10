@@ -711,6 +711,67 @@ impl Render for TestMutation {
     }
 }
 
+pub struct BenchmarkTimesInBase {
+    pub init: Option<std::time::Duration>,
+    pub reset: Option<std::time::Duration>,
+    pub test: std::time::Duration,
+}
+
+impl Render for BenchmarkTimesInBase {
+    fn markdown(&self) -> String {
+        let mut out = "# Benchmark Times (Base)\n".to_string();
+        if let Some(d) = self.init {
+            out.push_str(&format!("\n- Init: {:.2}s", d.as_secs_f64()));
+        }
+        if let Some(d) = self.reset {
+            out.push_str(&format!("\n- Reset: {:.2}s", d.as_secs_f64()));
+        }
+        out.push_str(&format!("\n- Test: {:.2}s", self.test.as_secs_f64()));
+        out
+    }
+
+    fn terse(&self) -> String {
+        let mut parts = Vec::new();
+        if let Some(d) = self.init {
+            parts.push(format!("init={:.2}s", d.as_secs_f64()));
+        }
+        if let Some(d) = self.reset {
+            parts.push(format!("reset={:.2}s", d.as_secs_f64()));
+        }
+        parts.push(format!("test={:.2}s", self.test.as_secs_f64()));
+        parts.join(" ")
+    }
+
+    fn verbose(&self) -> String {
+        let mut out = format!("{TITLE}Benchmark Times (Base){RESET}\n");
+        if let Some(d) = self.init {
+            out.push_str(&format!("\n  Init:  {:.2}s", d.as_secs_f64()));
+        }
+        if let Some(d) = self.reset {
+            out.push_str(&format!("\n  Reset: {:.2}s", d.as_secs_f64()));
+        }
+        out.push_str(&format!("\n  Test:  {:.2}s", self.test.as_secs_f64()));
+        out
+    }
+
+    fn json(&self) -> String {
+        let init = match self.init {
+            Some(d) => format!("{:.3}", d.as_secs_f64()),
+            None => "null".to_string(),
+        };
+        let reset = match self.reset {
+            Some(d) => format!("{:.3}", d.as_secs_f64()),
+            None => "null".to_string(),
+        };
+        format!(
+            r#"{{"init_secs":{},"reset_secs":{},"test_secs":{:.3}}}"#,
+            init,
+            reset,
+            self.test.as_secs_f64(),
+        )
+    }
+}
+
 pub struct ApplyMutation {
     pub workspace_id: bough_core::WorkspaceId,
     pub mutation_hash: String,
