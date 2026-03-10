@@ -336,6 +336,7 @@ pub enum MutantKind {
     Assign(AssignMutationKind),
     ArrayDecl(ArrayDeclKind),
     Literal(LiteralKind),
+    DictDecl,
 }
 
 impl<'a, 't> TwigMutantsIter<'a, 't> {
