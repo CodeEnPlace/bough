@@ -29,6 +29,7 @@ pub trait Config {
     fn get_langs(&self) -> impl Iterator<Item = LanguageId>;
     fn get_lang_include_globs(&self, language_id: LanguageId) -> impl Iterator<Item = String>;
     fn get_lang_exclude_globs(&self, language_id: LanguageId) -> impl Iterator<Item = String>;
+    fn get_lang_skip_queries(&self, language_id: LanguageId) -> impl Iterator<Item = String>;
 
     fn get_test_cmd(&self) -> String;
     fn get_test_pwd(&self) -> PathBuf;
@@ -92,7 +93,8 @@ impl<C: Config> Session<C> {
             for exclude in config.get_lang_exclude_globs(lang) {
                 lang_twigs_iter_builder = lang_twigs_iter_builder.with_exclude_glob(&exclude);
             }
-            base.add_mutator(lang, lang_twigs_iter_builder);
+            let skip_queries: Vec<String> = config.get_lang_skip_queries(lang).collect();
+            base.add_mutator(lang, lang_twigs_iter_builder, skip_queries);
         }
 
         // bough[impl session.init.state.attach]
@@ -331,6 +333,10 @@ mod tests {
         }
 
         fn get_lang_exclude_globs(&self, _language_id: LanguageId) -> impl Iterator<Item = String> {
+            Vec::<String>::new().into_iter()
+        }
+
+        fn get_lang_skip_queries(&self, _language_id: LanguageId) -> impl Iterator<Item = String> {
             Vec::<String>::new().into_iter()
         }
 
@@ -633,6 +639,7 @@ mod tests {
         Arc::get_mut(&mut session.base).unwrap().add_mutator(
             LanguageId::Javascript,
             crate::twig::TwigsIterBuilder::new().with_include_glob("src/**/*.js"),
+            Vec::new(),
         );
 
         let added = session.tend_add_missing_states().unwrap();
@@ -751,6 +758,7 @@ mod tests {
         Arc::get_mut(&mut session.base).unwrap().add_mutator(
             LanguageId::Javascript,
             crate::twig::TwigsIterBuilder::new().with_include_glob("src/**/*.js"),
+            Vec::new(),
         );
 
         let removed = session.tend_remove_stale_states().unwrap();

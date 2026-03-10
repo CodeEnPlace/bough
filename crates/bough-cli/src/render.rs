@@ -145,10 +145,10 @@ fn mutation_hash(m: &Mutation) -> String {
 fn fmt_status_colored(state: &State) -> String {
     match state.status() {
         Some(Status::Caught) | Some(Status::CaughtByTests(_)) => {
-            format!("{GREEN}caught {RESET}")
+            format!("{GREEN}Caught{RESET}")
         }
-        Some(Status::Missed) => format!("{RED}missed {RESET}"),
-        None => format!("{ORANGE}pending{RESET}"),
+        Some(Status::Missed) => format!("{RED}Missed{RESET}"),
+        None => format!("{ORANGE}NotRun{RESET}"),
     }
 }
 
