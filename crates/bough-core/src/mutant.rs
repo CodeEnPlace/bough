@@ -325,6 +325,9 @@ pub enum ArrayDeclKind {
 pub enum LiteralKind {
     BoolTrue,
     BoolFalse,
+    String,
+    EmptyString,
+    Number,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, bough_typed_hash::HashInto, Hash, facet::Facet)]
@@ -667,7 +670,7 @@ mod tests {
     // bough[verify mutant.twig-iter.find]
     #[test]
     fn mutants_iter_walks_tree_and_returns_mutants() {
-        let (_dir, base) = make_js_base("const a = 1;");
+        let (_dir, base) = make_js_base("const a = x;");
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
         let iter = TwigMutantsIter::new(LanguageId::Javascript, &base, &twig).unwrap();
         let mutants: Vec<_> = iter.collect();
