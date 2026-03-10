@@ -123,6 +123,19 @@ impl LanguageDriver for JavascriptDriver {
                 MutantKind::Literal(LiteralKind::BoolFalse),
                 span_from_node(node),
             )),
+            "string" => {
+                let text = node.utf8_text(file_content).ok()?;
+                let kind = if text == "\"\"" || text == "''" {
+                    LiteralKind::EmptyString
+                } else {
+                    LiteralKind::String
+                };
+                Some((MutantKind::Literal(kind), span_from_node(node)))
+            }
+            "number" => Some((
+                MutantKind::Literal(LiteralKind::Number),
+                span_from_node(node),
+            )),
             "member_expression" | "subscript_expression" | "call_expression" => {
                 let oc = (0..node.child_count())
                     .filter_map(|i| node.child(i as u32))
@@ -199,6 +212,16 @@ impl LanguageDriver for JavascriptDriver {
             MutantKind::DictDecl => vec!["{}".into()],
             MutantKind::Literal(LiteralKind::BoolTrue) => vec!["false".into()],
             MutantKind::Literal(LiteralKind::BoolFalse) => vec!["true".into()],
+            MutantKind::Literal(LiteralKind::String) => vec!["\"\"".into()],
+            MutantKind::Literal(LiteralKind::EmptyString) => vec!["\"bough\"".into()],
+            MutantKind::Literal(LiteralKind::Number) => vec![
+                "0".into(),
+                "1".into(),
+                "-1".into(),
+                "Infinity".into(),
+                "-Infinity".into(),
+                "NaN".into(),
+            ],
             MutantKind::OptionalChain(OptionalChainKind::Literal) => vec![".".into()],
             MutantKind::OptionalChain(OptionalChainKind::Indexed) => vec!["".into()],
             MutantKind::OptionalChain(OptionalChainKind::FnCall) => vec!["".into()],
@@ -261,7 +284,7 @@ mod tests {
     fn bin_op_add() {
         let src = "const x = 1 + 2";
         let mutations = all_mutations(src);
-        assert_eq!(mutations.len(), 2);
+        assert_eq!(mutations.len(), 14);
         assert!(mutations.contains(&"const x = 1 - 2".to_string()));
         assert!(mutations.contains(&"const x = 1 * 2".to_string()));
     }
@@ -270,7 +293,7 @@ mod tests {
     fn bin_op_sub() {
         let src = "const x = 1 - 2";
         let mutations = all_mutations(src);
-        assert_eq!(mutations.len(), 2);
+        assert_eq!(mutations.len(), 14);
         assert!(mutations.contains(&"const x = 1 + 2".to_string()));
         assert!(mutations.contains(&"const x = 1 / 2".to_string()));
     }
@@ -279,7 +302,7 @@ mod tests {
     fn bin_op_mul() {
         let src = "const x = 1 * 2";
         let mutations = all_mutations(src);
-        assert_eq!(mutations.len(), 2);
+        assert_eq!(mutations.len(), 14);
         assert!(mutations.contains(&"const x = 1 / 2".to_string()));
         assert!(mutations.contains(&"const x = 1 + 2".to_string()));
     }
@@ -288,7 +311,7 @@ mod tests {
     fn bin_op_div() {
         let src = "const x = 1 / 2";
         let mutations = all_mutations(src);
-        assert_eq!(mutations.len(), 2);
+        assert_eq!(mutations.len(), 14);
         assert!(mutations.contains(&"const x = 1 * 2".to_string()));
         assert!(mutations.contains(&"const x = 1 - 2".to_string()));
     }
@@ -297,7 +320,7 @@ mod tests {
     fn bin_op_rem() {
         let src = "const x = 1 % 2";
         let mutations = all_mutations(src);
-        assert_eq!(mutations.len(), 2);
+        assert_eq!(mutations.len(), 14);
         assert!(mutations.contains(&"const x = 1 * 2".to_string()));
         assert!(mutations.contains(&"const x = 1 / 2".to_string()));
     }
@@ -306,7 +329,7 @@ mod tests {
     fn bin_op_bit_and() {
         let src = "const x = 1 & 2";
         let mutations = all_mutations(src);
-        assert_eq!(mutations.len(), 2);
+        assert_eq!(mutations.len(), 14);
         assert!(mutations.contains(&"const x = 1 | 2".to_string()));
         assert!(mutations.contains(&"const x = 1 ^ 2".to_string()));
     }
@@ -315,7 +338,7 @@ mod tests {
     fn bin_op_bit_or() {
         let src = "const x = 1 | 2";
         let mutations = all_mutations(src);
-        assert_eq!(mutations.len(), 2);
+        assert_eq!(mutations.len(), 14);
         assert!(mutations.contains(&"const x = 1 & 2".to_string()));
         assert!(mutations.contains(&"const x = 1 ^ 2".to_string()));
     }
@@ -324,7 +347,7 @@ mod tests {
     fn bin_op_bit_xor() {
         let src = "const x = 1 ^ 2";
         let mutations = all_mutations(src);
-        assert_eq!(mutations.len(), 2);
+        assert_eq!(mutations.len(), 14);
         assert!(mutations.contains(&"const x = 1 & 2".to_string()));
         assert!(mutations.contains(&"const x = 1 | 2".to_string()));
     }
@@ -333,7 +356,7 @@ mod tests {
     fn bin_op_shl() {
         let src = "const x = 1 << 2";
         let mutations = all_mutations(src);
-        assert_eq!(mutations.len(), 1);
+        assert_eq!(mutations.len(), 13);
         assert!(mutations.contains(&"const x = 1 >> 2".to_string()));
     }
 
@@ -341,7 +364,7 @@ mod tests {
     fn bin_op_shr() {
         let src = "const x = 1 >> 2";
         let mutations = all_mutations(src);
-        assert_eq!(mutations.len(), 1);
+        assert_eq!(mutations.len(), 13);
         assert!(mutations.contains(&"const x = 1 << 2".to_string()));
     }
 
@@ -349,7 +372,7 @@ mod tests {
     fn normal_assign() {
         let src = "x = 1";
         let mutations = all_mutations(src);
-        assert_eq!(mutations.len(), 2);
+        assert_eq!(mutations.len(), 8);
         assert!(mutations.contains(&"x += 1".to_string()));
         assert!(mutations.contains(&"x -= 1".to_string()));
     }
@@ -358,7 +381,7 @@ mod tests {
     fn add_assign() {
         let src = "x += 1";
         let mutations = all_mutations(src);
-        assert_eq!(mutations.len(), 2);
+        assert_eq!(mutations.len(), 8);
         assert!(mutations.contains(&"x -= 1".to_string()));
         assert!(mutations.contains(&"x = 1".to_string()));
     }
@@ -367,7 +390,7 @@ mod tests {
     fn sub_assign() {
         let src = "x -= 1";
         let mutations = all_mutations(src);
-        assert_eq!(mutations.len(), 2);
+        assert_eq!(mutations.len(), 8);
         assert!(mutations.contains(&"x += 1".to_string()));
         assert!(mutations.contains(&"x = 1".to_string()));
     }
@@ -376,7 +399,7 @@ mod tests {
     fn mul_assign() {
         let src = "x *= 1";
         let mutations = all_mutations(src);
-        assert_eq!(mutations.len(), 2);
+        assert_eq!(mutations.len(), 8);
         assert!(mutations.contains(&"x /= 1".to_string()));
         assert!(mutations.contains(&"x = 1".to_string()));
     }
@@ -385,7 +408,7 @@ mod tests {
     fn div_assign() {
         let src = "x /= 1";
         let mutations = all_mutations(src);
-        assert_eq!(mutations.len(), 2);
+        assert_eq!(mutations.len(), 8);
         assert!(mutations.contains(&"x *= 1".to_string()));
         assert!(mutations.contains(&"x = 1".to_string()));
     }
@@ -394,7 +417,7 @@ mod tests {
     fn rem_assign() {
         let src = "x %= 1";
         let mutations = all_mutations(src);
-        assert_eq!(mutations.len(), 2);
+        assert_eq!(mutations.len(), 8);
         assert!(mutations.contains(&"x *= 1".to_string()));
         assert!(mutations.contains(&"x = 1".to_string()));
     }
@@ -403,7 +426,7 @@ mod tests {
     fn bit_and_assign() {
         let src = "x &= 1";
         let mutations = all_mutations(src);
-        assert_eq!(mutations.len(), 2);
+        assert_eq!(mutations.len(), 8);
         assert!(mutations.contains(&"x |= 1".to_string()));
         assert!(mutations.contains(&"x = 1".to_string()));
     }
@@ -412,7 +435,7 @@ mod tests {
     fn bit_or_assign() {
         let src = "x |= 1";
         let mutations = all_mutations(src);
-        assert_eq!(mutations.len(), 2);
+        assert_eq!(mutations.len(), 8);
         assert!(mutations.contains(&"x &= 1".to_string()));
         assert!(mutations.contains(&"x = 1".to_string()));
     }
@@ -421,7 +444,7 @@ mod tests {
     fn bit_xor_assign() {
         let src = "x ^= 1";
         let mutations = all_mutations(src);
-        assert_eq!(mutations.len(), 2);
+        assert_eq!(mutations.len(), 8);
         assert!(mutations.contains(&"x &= 1".to_string()));
         assert!(mutations.contains(&"x = 1".to_string()));
     }
@@ -430,7 +453,7 @@ mod tests {
     fn shl_assign() {
         let src = "x <<= 1";
         let mutations = all_mutations(src);
-        assert_eq!(mutations.len(), 2);
+        assert_eq!(mutations.len(), 8);
         assert!(mutations.contains(&"x >>= 1".to_string()));
         assert!(mutations.contains(&"x = 1".to_string()));
     }
@@ -439,7 +462,7 @@ mod tests {
     fn shr_assign() {
         let src = "x >>= 1";
         let mutations = all_mutations(src);
-        assert_eq!(mutations.len(), 2);
+        assert_eq!(mutations.len(), 8);
         assert!(mutations.contains(&"x <<= 1".to_string()));
         assert!(mutations.contains(&"x = 1".to_string()));
     }
@@ -539,7 +562,7 @@ mod tests {
     fn and_assign() {
         let src = "x &&= 1";
         let mutations = all_mutations(src);
-        assert_eq!(mutations.len(), 2);
+        assert_eq!(mutations.len(), 8);
         assert!(mutations.contains(&"x ||= 1".to_string()));
         assert!(mutations.contains(&"x = 1".to_string()));
     }
@@ -548,7 +571,7 @@ mod tests {
     fn or_assign() {
         let src = "x ||= 1";
         let mutations = all_mutations(src);
-        assert_eq!(mutations.len(), 2);
+        assert_eq!(mutations.len(), 8);
         assert!(mutations.contains(&"x &&= 1".to_string()));
         assert!(mutations.contains(&"x = 1".to_string()));
     }
@@ -557,7 +580,7 @@ mod tests {
     fn array_decl_inline() {
         let src = "[1,2,3]";
         let mutations = all_mutations(src);
-        assert_eq!(mutations.len(), 1);
+        assert_eq!(mutations.len(), 19);
         assert!(mutations.contains(&"[]".to_string()));
     }
 
@@ -565,7 +588,7 @@ mod tests {
     fn array_decl_instance() {
         let src = "new Array(1, 2, 3)";
         let mutations = all_mutations(src);
-        assert_eq!(mutations.len(), 1);
+        assert_eq!(mutations.len(), 19);
         assert!(mutations.contains(&"new Array()".to_string()));
     }
 
@@ -589,7 +612,7 @@ mod tests {
     fn dict_decl() {
         let src = "const x = {foo: 1, bar: null}";
         let mutations = all_mutations(src);
-        assert_eq!(mutations.len(), 1);
+        assert_eq!(mutations.len(), 7);
         assert!(mutations.contains(&"const x = {}".to_string()));
     }
 
@@ -605,7 +628,7 @@ mod tests {
     fn optional_chain_indexed() {
         let src = "const x = y?.['z']";
         let mutations = all_mutations(src);
-        assert_eq!(mutations.len(), 1);
+        assert_eq!(mutations.len(), 2);
         assert!(mutations.contains(&"const x = y['z']".to_string()));
     }
 
@@ -615,5 +638,44 @@ mod tests {
         let mutations = all_mutations(src);
         assert_eq!(mutations.len(), 1);
         assert!(mutations.contains(&"const x = y()".to_string()));
+    }
+
+    #[test]
+    fn literal_string() {
+        let src = "'foo'";
+        let mutations = all_mutations(src);
+        assert_eq!(mutations.len(), 1);
+        assert!(mutations.contains(&"\"\"".to_string()));
+
+        let src = "\"foo\"";
+        let mutations = all_mutations(src);
+        assert_eq!(mutations.len(), 1);
+        assert!(mutations.contains(&"\"\"".to_string()));
+    }
+
+    #[test]
+    fn literal_string_empty() {
+        let src = "''";
+        let mutations = all_mutations(src);
+        assert_eq!(mutations.len(), 1);
+        assert!(mutations.contains(&"\"bough\"".to_string()));
+
+        let src = "\"\"";
+        let mutations = all_mutations(src);
+        assert_eq!(mutations.len(), 1);
+        assert!(mutations.contains(&"\"bough\"".to_string()));
+    }
+
+    #[test]
+    fn literal_number() {
+        let src = "123";
+        let mutations = all_mutations(src);
+        assert_eq!(mutations.len(), 6);
+        assert!(mutations.contains(&"0".to_string()));
+        assert!(mutations.contains(&"1".to_string()));
+        assert!(mutations.contains(&"-1".to_string()));
+        assert!(mutations.contains(&"Infinity".to_string()));
+        assert!(mutations.contains(&"-Infinity".to_string()));
+        assert!(mutations.contains(&"NaN".to_string()));
     }
 }
