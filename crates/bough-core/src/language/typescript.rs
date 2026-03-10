@@ -181,14 +181,14 @@ mod tests {
     }
 
     #[test]
-    fn make_statement_block() {
+    fn statement_block() {
         let src = "function f(): number { return 1; }";
         let mutations = all_mutations(src);
         assert!(mutations.contains(&"function f(): number {}".to_string()));
     }
 
     #[test]
-    fn make_condition() {
+    fn condition() {
         let src = "if (x) { y(); }";
         let mutations = all_mutations(src);
         assert!(mutations.contains(&"if (true) { y(); }".to_string()));
@@ -196,7 +196,7 @@ mod tests {
     }
 
     #[test]
-    fn make_bin_op_add() {
+    fn bin_op_add() {
         let src = "const x = 1 + 2";
         let mutations = all_mutations(src);
         assert_eq!(mutations.len(), 2);
@@ -205,7 +205,7 @@ mod tests {
     }
 
     #[test]
-    fn make_bin_op_sub() {
+    fn bin_op_sub() {
         let src = "const x = 1 - 2";
         let mutations = all_mutations(src);
         assert_eq!(mutations.len(), 2);
@@ -214,7 +214,7 @@ mod tests {
     }
 
     #[test]
-    fn make_bin_op_mul() {
+    fn bin_op_mul() {
         let src = "const x = 1 * 2";
         let mutations = all_mutations(src);
         assert_eq!(mutations.len(), 2);
@@ -223,7 +223,7 @@ mod tests {
     }
 
     #[test]
-    fn make_bin_op_div() {
+    fn bin_op_div() {
         let src = "const x = 1 / 2";
         let mutations = all_mutations(src);
         assert_eq!(mutations.len(), 2);
@@ -232,7 +232,7 @@ mod tests {
     }
 
     #[test]
-    fn make_bin_op_rem() {
+    fn bin_op_rem() {
         let src = "const x = 1 % 2";
         let mutations = all_mutations(src);
         assert_eq!(mutations.len(), 2);
@@ -241,7 +241,7 @@ mod tests {
     }
 
     #[test]
-    fn make_bin_op_bit_and() {
+    fn bin_op_bit_and() {
         let src = "const x = 1 & 2";
         let mutations = all_mutations(src);
         assert_eq!(mutations.len(), 2);
@@ -250,7 +250,7 @@ mod tests {
     }
 
     #[test]
-    fn make_bin_op_bit_or() {
+    fn bin_op_bit_or() {
         let src = "const x = 1 | 2";
         let mutations = all_mutations(src);
         assert_eq!(mutations.len(), 2);
@@ -259,7 +259,7 @@ mod tests {
     }
 
     #[test]
-    fn make_bin_op_bit_xor() {
+    fn bin_op_bit_xor() {
         let src = "const x = 1 ^ 2";
         let mutations = all_mutations(src);
         assert_eq!(mutations.len(), 2);
@@ -268,7 +268,7 @@ mod tests {
     }
 
     #[test]
-    fn make_bin_op_shl() {
+    fn bin_op_shl() {
         let src = "const x = 1 << 2";
         let mutations = all_mutations(src);
         assert_eq!(mutations.len(), 1);
@@ -276,7 +276,7 @@ mod tests {
     }
 
     #[test]
-    fn make_bin_op_shr() {
+    fn bin_op_shr() {
         let src = "const x = 1 >> 2";
         let mutations = all_mutations(src);
         assert_eq!(mutations.len(), 1);
@@ -284,7 +284,7 @@ mod tests {
     }
 
     #[test]
-    fn make_normal_assign() {
+    fn normal_assign() {
         let src = "x = 1";
         let mutations = all_mutations(src);
         assert_eq!(mutations.len(), 2);
@@ -293,7 +293,7 @@ mod tests {
     }
 
     #[test]
-    fn make_add_assign() {
+    fn add_assign() {
         let src = "x += 1";
         let mutations = all_mutations(src);
         assert_eq!(mutations.len(), 2);
@@ -302,7 +302,7 @@ mod tests {
     }
 
     #[test]
-    fn make_sub_assign() {
+    fn sub_assign() {
         let src = "x -= 1";
         let mutations = all_mutations(src);
         assert_eq!(mutations.len(), 2);
@@ -311,7 +311,7 @@ mod tests {
     }
 
     #[test]
-    fn make_mul_assign() {
+    fn mul_assign() {
         let src = "x *= 1";
         let mutations = all_mutations(src);
         assert_eq!(mutations.len(), 2);
@@ -320,7 +320,7 @@ mod tests {
     }
 
     #[test]
-    fn make_div_assign() {
+    fn div_assign() {
         let src = "x /= 1";
         let mutations = all_mutations(src);
         assert_eq!(mutations.len(), 2);
@@ -329,7 +329,7 @@ mod tests {
     }
 
     #[test]
-    fn make_rem_assign() {
+    fn rem_assign() {
         let src = "x %= 1";
         let mutations = all_mutations(src);
         assert_eq!(mutations.len(), 2);
@@ -338,7 +338,7 @@ mod tests {
     }
 
     #[test]
-    fn make_bit_and_assign() {
+    fn bit_and_assign() {
         let src = "x &= 1";
         let mutations = all_mutations(src);
         assert_eq!(mutations.len(), 2);
@@ -347,7 +347,7 @@ mod tests {
     }
 
     #[test]
-    fn make_bit_or_assign() {
+    fn bit_or_assign() {
         let src = "x |= 1";
         let mutations = all_mutations(src);
         assert_eq!(mutations.len(), 2);
@@ -356,7 +356,7 @@ mod tests {
     }
 
     #[test]
-    fn make_bit_xor_assign() {
+    fn bit_xor_assign() {
         let src = "x ^= 1";
         let mutations = all_mutations(src);
         assert_eq!(mutations.len(), 2);
@@ -365,7 +365,7 @@ mod tests {
     }
 
     #[test]
-    fn make_shl_assign() {
+    fn shl_assign() {
         let src = "x <<= 1";
         let mutations = all_mutations(src);
         assert_eq!(mutations.len(), 2);
@@ -374,7 +374,7 @@ mod tests {
     }
 
     #[test]
-    fn make_shr_assign() {
+    fn shr_assign() {
         let src = "x >>= 1";
         let mutations = all_mutations(src);
         assert_eq!(mutations.len(), 2);
@@ -383,7 +383,7 @@ mod tests {
     }
 
     #[test]
-    fn make_bin_op_and() {
+    fn bin_op_and() {
         let src = "const x = a && b";
         let mutations = all_mutations(src);
         assert_eq!(mutations.len(), 1);
@@ -391,7 +391,7 @@ mod tests {
     }
 
     #[test]
-    fn make_bin_op_or() {
+    fn bin_op_or() {
         let src = "const x = a || b";
         let mutations = all_mutations(src);
         assert_eq!(mutations.len(), 1);
@@ -399,14 +399,14 @@ mod tests {
     }
 
     #[test]
-    fn make_bin_op_xor() {
+    fn bin_op_xor() {
         let src = "const x = a ?? b";
         let mutations = all_mutations(src);
         assert_eq!(mutations.len(), 0);
     }
 
     #[test]
-    fn make_bin_op_eq() {
+    fn bin_op_eq() {
         let src = "const x = a == b";
         let mutations = all_mutations(src);
         assert_eq!(mutations.len(), 1);
@@ -414,7 +414,7 @@ mod tests {
     }
 
     #[test]
-    fn make_bin_op_strict_eq() {
+    fn bin_op_strict_eq() {
         let src = "const x = a === b";
         let mutations = all_mutations(src);
         assert_eq!(mutations.len(), 1);
@@ -422,7 +422,7 @@ mod tests {
     }
 
     #[test]
-    fn make_bin_op_ne() {
+    fn bin_op_ne() {
         let src = "const x = a != b";
         let mutations = all_mutations(src);
         assert_eq!(mutations.len(), 1);
@@ -430,7 +430,7 @@ mod tests {
     }
 
     #[test]
-    fn make_bin_op_strict_ne() {
+    fn bin_op_strict_ne() {
         let src = "const x = a !== b";
         let mutations = all_mutations(src);
         assert_eq!(mutations.len(), 1);
@@ -438,7 +438,7 @@ mod tests {
     }
 
     #[test]
-    fn make_bin_op_gt() {
+    fn bin_op_gt() {
         let src = "const x = a > b";
         let mutations = all_mutations(src);
         assert_eq!(mutations.len(), 2);
@@ -447,7 +447,7 @@ mod tests {
     }
 
     #[test]
-    fn make_bin_op_gte() {
+    fn bin_op_gte() {
         let src = "const x = a >= b";
         let mutations = all_mutations(src);
         assert_eq!(mutations.len(), 2);
@@ -456,7 +456,7 @@ mod tests {
     }
 
     #[test]
-    fn make_bin_op_lt() {
+    fn bin_op_lt() {
         let src = "const x = a < b";
         let mutations = all_mutations(src);
         assert_eq!(mutations.len(), 2);
@@ -465,7 +465,7 @@ mod tests {
     }
 
     #[test]
-    fn make_bin_op_lte() {
+    fn bin_op_lte() {
         let src = "const x = a <= b";
         let mutations = all_mutations(src);
         assert_eq!(mutations.len(), 2);
@@ -474,7 +474,7 @@ mod tests {
     }
 
     #[test]
-    fn make_and_assign() {
+    fn and_assign() {
         let src = "x &&= 1";
         let mutations = all_mutations(src);
         assert_eq!(mutations.len(), 2);
@@ -483,7 +483,7 @@ mod tests {
     }
 
     #[test]
-    fn make_or_assign() {
+    fn or_assign() {
         let src = "x ||= 1";
         let mutations = all_mutations(src);
         assert_eq!(mutations.len(), 2);
