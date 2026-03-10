@@ -1,7 +1,7 @@
 use super::LanguageDriver;
 use crate::mutant::{
-    ArrayDeclKind, AssignMutationKind, BinaryOpMutationKind, LiteralKind, MutantKind, Span,
-    span_from_node,
+    ArrayDeclKind, AssignMutationKind, BinaryOpMutationKind, LiteralKind, MutantKind,
+    OptionalChainKind, Span, span_from_node,
 };
 use tracing::trace;
 
@@ -123,6 +123,18 @@ impl LanguageDriver for JavascriptDriver {
                 MutantKind::Literal(LiteralKind::BoolFalse),
                 span_from_node(node),
             )),
+            "member_expression" | "subscript_expression" | "call_expression" => {
+                let oc = (0..node.child_count())
+                    .filter_map(|i| node.child(i as u32))
+                    .find(|c| c.kind() == "?." || c.kind() == "optional_chain")?;
+                let kind = match node.kind() {
+                    "member_expression" => OptionalChainKind::Literal,
+                    "subscript_expression" => OptionalChainKind::Indexed,
+                    "call_expression" => OptionalChainKind::FnCall,
+                    _ => unreachable!(),
+                };
+                Some((MutantKind::OptionalChain(kind), span_from_node(&oc)))
+            }
             _ => None,
         };
         if let Some((ref kind, ref span)) = result {
@@ -187,6 +199,9 @@ impl LanguageDriver for JavascriptDriver {
             MutantKind::DictDecl => vec!["{}".into()],
             MutantKind::Literal(LiteralKind::BoolTrue) => vec!["false".into()],
             MutantKind::Literal(LiteralKind::BoolFalse) => vec!["true".into()],
+            MutantKind::OptionalChain(OptionalChainKind::Literal) => vec![".".into()],
+            MutantKind::OptionalChain(OptionalChainKind::Indexed) => vec!["".into()],
+            MutantKind::OptionalChain(OptionalChainKind::FnCall) => vec!["".into()],
         }
     }
 }
@@ -576,5 +591,29 @@ mod tests {
         let mutations = all_mutations(src);
         assert_eq!(mutations.len(), 1);
         assert!(mutations.contains(&"const x = {}".to_string()));
+    }
+
+    #[test]
+    fn optional_chain_literal() {
+        let src = "const x = y?.z";
+        let mutations = all_mutations(src);
+        assert_eq!(mutations.len(), 1);
+        assert!(mutations.contains(&"const x = y.z".to_string()));
+    }
+
+    #[test]
+    fn optional_chain_indexed() {
+        let src = "const x = y?.['z']";
+        let mutations = all_mutations(src);
+        assert_eq!(mutations.len(), 1);
+        assert!(mutations.contains(&"const x = y['z']".to_string()));
+    }
+
+    #[test]
+    fn optional_chain_fn_call() {
+        let src = "const x = y?.()";
+        let mutations = all_mutations(src);
+        assert_eq!(mutations.len(), 1);
+        assert!(mutations.contains(&"const x = y()".to_string()));
     }
 }

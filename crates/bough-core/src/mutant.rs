@@ -329,6 +329,14 @@ pub enum LiteralKind {
 
 #[derive(Debug, Clone, PartialEq, Eq, bough_typed_hash::HashInto, Hash, facet::Facet)]
 #[repr(u8)]
+pub enum OptionalChainKind {
+    Literal,
+    Indexed,
+    FnCall,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, bough_typed_hash::HashInto, Hash, facet::Facet)]
+#[repr(u8)]
 pub enum MutantKind {
     StatementBlock,
     Condition,
@@ -337,6 +345,7 @@ pub enum MutantKind {
     ArrayDecl(ArrayDeclKind),
     Literal(LiteralKind),
     DictDecl,
+    OptionalChain(OptionalChainKind),
 }
 
 impl<'a, 't> TwigMutantsIter<'a, 't> {
