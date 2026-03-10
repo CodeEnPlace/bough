@@ -361,10 +361,11 @@ fn main() {
                 std::process::exit(1);
             }
 
+            let test_duration = test_outcome.duration();
             let benchmark = render::BenchmarkTimesInBase {
                 init: init_duration,
                 reset: reset_duration,
-                test: test_outcome.duration(),
+                test: test_duration,
             };
             println!("{}", benchmark.render(&cli));
 
@@ -416,7 +417,7 @@ fn main() {
                             .bind_workspace(&workspace_id)
                             .expect("bind workspace");
 
-                        if let Ok(outcome) = workspace.run_init(&cli.config, None) {
+                        if let Ok(outcome) = workspace.run_init(&cli.config, init_duration) {
                             if !cli.progress {
                                 println!(
                                     "{}",
@@ -443,7 +444,7 @@ fn main() {
 
                                 let mutation = mutation_state.mutation();
 
-                                if let Ok(outcome) = workspace.run_reset(&cli.config, None) {
+                                if let Ok(outcome) = workspace.run_reset(&cli.config, reset_duration) {
                                     if !cli.progress {
                                         println!(
                                             "{}",
@@ -458,7 +459,7 @@ fn main() {
 
                                 workspace.write_mutant(&mutation).expect("apply mutation");
                                 let outcome = workspace
-                                    .run_test(&cli.config, None)
+                                    .run_test(&cli.config, Some(test_duration))
                                     .expect("test mutation");
                                 workspace.revert_mutant().expect("revert mutation");
                                 let status = if outcome.exit_code() != 0 {
