@@ -30,6 +30,9 @@ const PATH: &str = "\x1b[34m";
 const HASH: &str = "\x1b[36m";
 const LANG: &str = "\x1b[35m";
 const STRING: &str = "\x1b[33m";
+const GREEN: &str = "\x1b[32m";
+const RED: &str = "\x1b[31m";
+const ORANGE: &str = "\x1b[38;5;208m";
 
 pub trait Render {
     fn markdown(&self) -> String;
@@ -139,11 +142,23 @@ fn mutation_hash(m: &Mutation) -> String {
     format!("{hash}")
 }
 
-fn fmt_mutation_terse(m: &Mutation) -> String {
+fn fmt_status_colored(state: &State) -> String {
+    match state.status() {
+        Some(Status::Caught) | Some(Status::CaughtByTests(_)) => {
+            format!("{GREEN}caught {RESET}")
+        }
+        Some(Status::Missed) => format!("{RED}missed {RESET}"),
+        None => format!("{ORANGE}pending{RESET}"),
+    }
+}
+
+fn fmt_mutation_terse(s: &State) -> String {
+    let m = s.mutation();
     let mutant = m.mutant();
     format!(
-        "{HASH}{}{RESET} {PATH}{}:{}:{}{RESET} {:?} → {STRING}{}{RESET}",
+        "{HASH}{}{RESET} {} {PATH}{}:{}:{}{RESET} {:?} → {STRING}{}{RESET}",
         mutation_hash(m),
+        fmt_status_colored(s),
         mutant.twig().path().display(),
         mutant.span().start().line() + 1,
         mutant.span().start().col() + 1,
@@ -176,11 +191,13 @@ fn fmt_mutation_markdown_table(mutations: &[Mutation]) -> String {
     format!("{MARKDOWN_TABLE_HEADER}\n{}", rows.join("\n"))
 }
 
-fn fmt_mutation_verbose(m: &Mutation) -> String {
+fn fmt_mutation_verbose(s: &State) -> String {
+    let m = s.mutation();
     let mutant = m.mutant();
     format!(
-        "{HASH}{}{RESET} {PATH}{}{RESET} [{LANG}{:?}{RESET}] {:?} @ {}:{}-{}:{} → {STRING}\"{}\"{RESET}",
+        "{HASH}{}{RESET} {} {PATH}{}{RESET} [{LANG}{:?}{RESET}] {:?} @ {}:{}-{}:{} → {STRING}\"{}\"{RESET}",
         mutation_hash(m),
+        fmt_status_colored(s),
         mutant.twig().path().display(),
         mutant.lang(),
         mutant.kind(),
@@ -208,13 +225,14 @@ fn fmt_outcome_at_from_state(state: &State) -> String {
 }
 
 #[derive(Facet)]
-pub struct AllMutations(pub Vec<Mutation>);
+pub struct AllMutations(pub Vec<State>);
 impl Render for AllMutations {
     fn markdown(&self) -> String {
+        let mutations: Vec<_> = self.0.iter().map(|s| s.mutation().clone()).collect();
         format!(
             "# All Mutations\n\n{} total\n\n{}",
             self.0.len(),
-            fmt_mutation_markdown_table(&self.0),
+            fmt_mutation_markdown_table(&mutations),
         )
     }
 
@@ -240,14 +258,15 @@ impl Render for AllMutations {
 }
 
 #[derive(Facet)]
-pub struct LangMutations(pub LanguageId, pub Vec<Mutation>);
+pub struct LangMutations(pub LanguageId, pub Vec<State>);
 impl Render for LangMutations {
     fn markdown(&self) -> String {
+        let mutations: Vec<_> = self.1.iter().map(|s| s.mutation().clone()).collect();
         format!(
             "# {:?} Mutations\n\n{} total\n\n{}",
             self.0,
             self.1.len(),
-            fmt_mutation_markdown_table(&self.1),
+            fmt_mutation_markdown_table(&mutations),
         )
     }
 
@@ -273,14 +292,15 @@ impl Render for LangMutations {
 }
 
 #[derive(Facet)]
-pub struct FileMutations(pub LanguageId, pub PathBuf, pub Vec<Mutation>);
+pub struct FileMutations(pub LanguageId, pub PathBuf, pub Vec<State>);
 impl Render for FileMutations {
     fn markdown(&self) -> String {
+        let mutations: Vec<_> = self.2.iter().map(|s| s.mutation().clone()).collect();
         format!(
             "# Mutations in {}\n\n{} total\n\n{}",
             self.1.display(),
             self.2.len(),
-            fmt_mutation_markdown_table(&self.2),
+            fmt_mutation_markdown_table(&mutations),
         )
     }
 
@@ -375,21 +395,15 @@ impl Render for SingleMutation {
     }
 
     fn terse(&self) -> String {
-        let m = self.state.mutation();
-        format!(
-            "{} {}",
-            fmt_mutation_terse(m),
-            fmt_status_from_state(&self.state)
-        )
+        fmt_mutation_terse(&self.state)
     }
 
     fn verbose(&self) -> String {
-        let m = self.state.mutation();
         let status = fmt_status_from_state(&self.state);
         let at = fmt_outcome_at_from_state(&self.state);
         format!(
             "{}\nStatus: {} ({})\n\n--- before ---\n{}\n\n--- after ---\n{}",
-            fmt_mutation_verbose(m),
+            fmt_mutation_verbose(&self.state),
             status,
             at,
             self.before,

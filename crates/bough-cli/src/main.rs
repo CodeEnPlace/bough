@@ -3,7 +3,7 @@ mod render;
 
 use std::sync::{Arc, Mutex};
 
-use bough_core::{File, Session};
+use bough_core::{File, Mutation, Session, State};
 use bough_typed_hash::TypedHashable;
 use config::{Command, Show, parse};
 use render::{Noop, Render};
@@ -13,6 +13,19 @@ use crate::render::{
     AllMutations, BaseFiles, FileMutations, LangMutations, MutantFiles, SingleMutation,
     find_mutation_by_hash,
 };
+
+fn collect_states(session: &Session<config::Config>, mutations: Vec<Mutation>) -> Vec<State> {
+    mutations
+        .into_iter()
+        .map(|m| {
+            let hash = m.hash().expect("hash");
+            session
+                .get_state()
+                .get(&hash)
+                .expect("state not found for mutation")
+        })
+        .collect()
+}
 
 fn main() {
     let cli = parse();
@@ -66,20 +79,23 @@ fn main() {
                     lang: None,
                     file: _,
                 } => {
-                    let session = Session::new(cli.config.clone()).expect("session creation");
+                    let mut session = Session::new(cli.config.clone()).expect("session creation");
+                    session.tend_add_missing_states().expect("tend states");
                     let base = session.base();
                     let mutations: Vec<_> = base
                         .mutations()
                         .collect::<Result<Vec<_>, _>>()
                         .expect("mutation scan");
-                    Box::new(AllMutations(mutations))
+                    let states = collect_states(&session, mutations);
+                    Box::new(AllMutations(states))
                 }
 
                 Show::Mutations {
                     lang: Some(lang),
                     file: None,
                 } => {
-                    let session = Session::new(cli.config.clone()).expect("session creation");
+                    let mut session = Session::new(cli.config.clone()).expect("session creation");
+                    session.tend_add_missing_states().expect("tend states");
                     let base = session.base();
                     let mutations: Vec<_> = base
                         .mutations()
@@ -88,14 +104,16 @@ fn main() {
                         .into_iter()
                         .filter(|m| m.mutant().lang() == *lang)
                         .collect();
-                    Box::new(LangMutations(*lang, mutations))
+                    let states = collect_states(&session, mutations);
+                    Box::new(LangMutations(*lang, states))
                 }
 
                 Show::Mutations {
                     lang: Some(lang),
                     file: Some(file),
                 } => {
-                    let session = Session::new(cli.config.clone()).expect("session creation");
+                    let mut session = Session::new(cli.config.clone()).expect("session creation");
+                    session.tend_add_missing_states().expect("tend states");
                     let base = session.base();
                     let mutations: Vec<_> = base
                         .mutations()
@@ -106,7 +124,8 @@ fn main() {
                             m.mutant().lang() == *lang && m.mutant().twig().path() == file.as_path()
                         })
                         .collect();
-                    Box::new(FileMutations(*lang, file.clone(), mutations))
+                    let states = collect_states(&session, mutations);
+                    Box::new(FileMutations(*lang, file.clone(), states))
                 }
 
                 Show::Mutation { hash } => {
