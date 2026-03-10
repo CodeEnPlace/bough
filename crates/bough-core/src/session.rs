@@ -139,6 +139,10 @@ impl<C: Config> Session<C> {
         self.mutations_needing_test.pop()
     }
 
+    pub fn get_count_mutation_needing_test(&mut self) -> usize {
+        self.mutations_needing_test.len()
+    }
+
     // bough[impl session.tend.state.add-missing]
     pub fn tend_add_missing_states(&mut self) -> Result<Vec<MutationHash>, Error> {
         let mutations_in_base: HashSet<Mutation> =

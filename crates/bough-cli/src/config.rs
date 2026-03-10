@@ -16,6 +16,9 @@ pub struct Cli {
     #[facet(args::named, args::short = 'f', default)]
     pub format: Format,
 
+    #[facet(args::named, args::short = 'p', default)]
+    pub progress: bool,
+
     #[facet(args::named, default)]
     no_color: bool,
 

@@ -1,6 +1,7 @@
 mod config;
 mod render;
 
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 use bough_core::{File, Mutation, Session, State};
@@ -320,9 +321,42 @@ fn main() {
                 .render(&cli)
             );
 
+            let total = session.get_count_mutation_needing_test() as u64;
             let session = Arc::new(Mutex::new(session));
+            let done = Arc::new(AtomicBool::new(false));
+
+            let pb = if cli.progress {
+                let pb = indicatif::ProgressBar::new(total);
+                pb.set_style(
+                    indicatif::ProgressStyle::with_template(
+                        "{wide_bar:.cyan/blue} {pos}/{len} [{elapsed_precise} elapsed, {eta_precise} remaining]",
+                    )
+                    .unwrap()
+                    .progress_chars("██░"),
+                );
+                pb.enable_steady_tick(std::time::Duration::from_millis(16));
+                Some(pb)
+            } else {
+                None
+            };
 
             std::thread::scope(|scope| {
+                if let Some(ref pb) = pb {
+                    let pb = pb.clone();
+                    let session = Arc::clone(&session);
+                    let done = Arc::clone(&done);
+                    scope.spawn(move || {
+                        while !done.load(Ordering::Relaxed) {
+                            let remaining =
+                                session.lock().unwrap().get_count_mutation_needing_test() as u64;
+                            pb.set_position(total.saturating_sub(remaining));
+                            std::thread::sleep(std::time::Duration::from_millis(16));
+                        }
+                        pb.set_position(total);
+                        pb.finish();
+                    });
+                }
+
                 for workspace_id in workspace_ids {
                     let session = Arc::clone(&session);
                     let cli = cli.clone();
@@ -335,14 +369,16 @@ fn main() {
                             .expect("bind workspace");
 
                         if let Ok(outcome) = workspace.run_init(&cli.config, None) {
-                            println!(
-                                "{}",
-                                render::InitWorkspace {
-                                    workspace_id: workspace_id.clone(),
-                                    outcome,
-                                }
-                                .render(&cli)
-                            );
+                            if !cli.progress {
+                                println!(
+                                    "{}",
+                                    render::InitWorkspace {
+                                        workspace_id: workspace_id.clone(),
+                                        outcome,
+                                    }
+                                    .render(&cli)
+                                );
+                            }
                         }
 
                         loop {
@@ -360,14 +396,16 @@ fn main() {
                                 let mutation = mutation_state.mutation();
 
                                 if let Ok(outcome) = workspace.run_reset(&cli.config, None) {
-                                    println!(
-                                        "{}",
-                                        render::ResetWorkspace {
-                                            workspace_id: workspace_id.clone(),
-                                            outcome,
-                                        }
-                                        .render(&cli)
-                                    );
+                                    if !cli.progress {
+                                        println!(
+                                            "{}",
+                                            render::ResetWorkspace {
+                                                workspace_id: workspace_id.clone(),
+                                                outcome,
+                                            }
+                                            .render(&cli)
+                                        );
+                                    }
                                 }
 
                                 workspace.write_mutant(&mutation).expect("apply mutation");
@@ -393,16 +431,18 @@ fn main() {
                                     .set_state(&mutation, status)
                                     .expect("set state");
 
-                                println!(
-                                    "{}",
-                                    (render::TestMutation {
-                                        workspace_id: workspace_id.clone(),
-                                        mutation_hash: format!("{}", hash_to_test),
-                                        status: status_str,
-                                        duration: outcome.duration(),
-                                    })
-                                    .render(&cli)
-                                );
+                                if !cli.progress {
+                                    println!(
+                                        "{}",
+                                        (render::TestMutation {
+                                            workspace_id: workspace_id.clone(),
+                                            mutation_hash: format!("{}", hash_to_test),
+                                            status: status_str,
+                                            duration: outcome.duration(),
+                                        })
+                                        .render(&cli)
+                                    );
+                                }
                             } else {
                                 break;
                             }
@@ -410,6 +450,8 @@ fn main() {
                     });
                 }
             });
+
+            done.store(true, Ordering::Relaxed);
 
             Box::new(Noop)
         }
