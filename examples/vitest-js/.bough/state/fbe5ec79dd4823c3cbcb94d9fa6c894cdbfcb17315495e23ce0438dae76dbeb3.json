@@ -1,0 +1,1 @@
+{"mutation":{"mutant":{"lang":"js","twig":["src/index.js"],"kind":{"Literal":"String"},"span":{"start":{"line":7,"col":24,"byte":269},"end":{"line":7,"col":39,"byte":284}}},"subst":"\"\""},"outcome":{"status":"Missed","at":"2026-03-10T14:23:54Z"}}

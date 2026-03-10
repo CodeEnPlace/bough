@@ -332,7 +332,7 @@ fn main() {
                         "{wide_bar:.cyan/blue} {pos}/{len} [{elapsed_precise} elapsed, {eta_precise} remaining]",
                     )
                     .unwrap()
-                    .progress_chars("██░"),
+                    .progress_chars("=+ "),
                 );
                 pb.enable_steady_tick(std::time::Duration::from_millis(16));
                 Some(pb)
@@ -360,6 +360,7 @@ fn main() {
                 for workspace_id in workspace_ids {
                     let session = Arc::clone(&session);
                     let cli = cli.clone();
+                    let done = done.clone();
 
                     scope.spawn(move || {
                         let mut workspace = session
@@ -447,11 +448,11 @@ fn main() {
                                 break;
                             }
                         }
+
+                        done.store(true, Ordering::Relaxed);
                     });
                 }
             });
-
-            done.store(true, Ordering::Relaxed);
 
             Box::new(Noop)
         }

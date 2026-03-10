@@ -1,0 +1,1 @@
+{"mutation":{"mutant":{"lang":"js","twig":["src/validate-user-profile.js"],"kind":"DictDecl","span":{"start":{"line":26,"col":9,"byte":1041},"end":{"line":26,"col":30,"byte":1062}}},"subst":"{}"},"outcome":null}

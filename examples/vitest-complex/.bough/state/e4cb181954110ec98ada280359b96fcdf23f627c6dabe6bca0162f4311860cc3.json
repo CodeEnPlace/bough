@@ -1,0 +1,1 @@
+{"mutation":{"mutant":{"lang":"js","twig":["src/validators/role.js"],"kind":{"Literal":"String"},"span":{"start":{"line":4,"col":42,"byte":163},"end":{"line":4,"col":60,"byte":181}}},"subst":"\"\""},"outcome":null}

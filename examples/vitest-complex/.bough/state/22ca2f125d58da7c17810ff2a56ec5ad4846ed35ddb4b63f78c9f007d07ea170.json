@@ -1,0 +1,1 @@
+{"mutation":{"mutant":{"lang":"js","twig":["src/validators/password.js"],"kind":{"Literal":"Number"},"span":{"start":{"line":12,"col":21,"byte":433},"end":{"line":12,"col":26,"byte":438}}},"subst":"-Infinity"},"outcome":{"status":"Caught","at":"2026-03-10T14:38:19Z"}}
