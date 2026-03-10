@@ -1,0 +1,1 @@
+{"mutation":{"mutant":{"lang":"js","twig":["src/validators/username.js"],"kind":{"Literal":"String"},"span":{"start":{"line":16,"col":46,"byte":614},"end":{"line":16,"col":81,"byte":649}}},"subst":"\"\""},"outcome":{"status":"Caught","at":"2026-03-10T14:39:00Z"}}
