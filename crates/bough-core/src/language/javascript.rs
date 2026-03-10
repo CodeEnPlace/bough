@@ -112,8 +112,17 @@ impl LanguageDriver for JavascriptDriver {
                     None
                 }
             }
-            "true" => Some((MutantKind::Literal(LiteralKind::BoolTrue), span_from_node(node))),
-            "false" => Some((MutantKind::Literal(LiteralKind::BoolFalse), span_from_node(node))),
+            "object" if node.named_child_count() > 0 => {
+                Some((MutantKind::DictDecl, span_from_node(node)))
+            }
+            "true" => Some((
+                MutantKind::Literal(LiteralKind::BoolTrue),
+                span_from_node(node),
+            )),
+            "false" => Some((
+                MutantKind::Literal(LiteralKind::BoolFalse),
+                span_from_node(node),
+            )),
             _ => None,
         };
         if let Some((ref kind, ref span)) = result {
@@ -175,6 +184,7 @@ impl LanguageDriver for JavascriptDriver {
             MutantKind::Assign(AssignMutationKind::OrAssign) => vec!["&&=".into(), "=".into()],
             MutantKind::ArrayDecl(ArrayDeclKind::Inline) => vec!["[]".into()],
             MutantKind::ArrayDecl(ArrayDeclKind::Instance) => vec!["new Array()".into()],
+            MutantKind::DictDecl => vec!["{}".into()],
             MutantKind::Literal(LiteralKind::BoolTrue) => vec!["false".into()],
             MutantKind::Literal(LiteralKind::BoolFalse) => vec!["true".into()],
         }
@@ -558,5 +568,13 @@ mod tests {
         let mutations = all_mutations(src);
         assert_eq!(mutations.len(), 1);
         assert!(mutations.contains(&"true".to_string()));
+    }
+
+    #[test]
+    fn dict_decl() {
+        let src = "const x = {foo: 1, bar: null}";
+        let mutations = all_mutations(src);
+        assert_eq!(mutations.len(), 1);
+        assert!(mutations.contains(&"const x = {}".to_string()));
     }
 }
