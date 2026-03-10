@@ -242,6 +242,13 @@ pub enum Error {
     )]
     MissingTestCmd,
 
+    #[error("timeout section must specify at least one of 'absolute' or 'relative'{0}")]
+    #[diagnostic(
+        code(bough::config::empty_timeout),
+        help("add absolute = <seconds> and/or relative = <multiplier>")
+    )]
+    EmptyTimeout(String),
+
     #[cfg(test)]
     #[error("{0}")]
     #[diagnostic(code(bough::config::parse))]
@@ -260,6 +267,18 @@ impl Cli {
         }
         if self.config.test.is_none() {
             errors.push(Error::MissingTestCmd);
+        }
+        if let Some(ref t) = self.config.phase_defaults.timeout {
+            if t.absolute.is_none() && t.relative.is_none() {
+                errors.push(Error::EmptyTimeout("".to_string()));
+            }
+        }
+        for (label, overrides) in self.config.phase_timeout_overrides() {
+            if let Some(ref t) = overrides.timeout {
+                if t.absolute.is_none() && t.relative.is_none() {
+                    errors.push(Error::EmptyTimeout(format!(" (in {label})")));
+                }
+            }
         }
         errors
     }
@@ -1327,6 +1346,157 @@ cmd = "npm test"
     }
 
     #[test]
+    fn timeout_absolute_only_is_valid() {
+        let toml = r#"
+base_root_dir = "."
+include = ["src/**"]
+exclude = []
+
+[timeout]
+absolute = 30
+
+[lang.js]
+include = ["**/*.js"]
+exclude = []
+
+[test]
+cmd = "npm test"
+"#;
+        let cli = parse_ok(&["run"], toml);
+        assert_eq!(
+            bough_core::Config::get_test_timeout_absolute(&cli.config),
+            Some(chrono::Duration::seconds(30))
+        );
+        assert_eq!(
+            bough_core::Config::get_test_timeout_relative(&cli.config),
+            None
+        );
+    }
+
+    #[test]
+    fn timeout_relative_only_is_valid() {
+        let toml = r#"
+base_root_dir = "."
+include = ["src/**"]
+exclude = []
+
+[timeout]
+relative = 3.0
+
+[lang.js]
+include = ["**/*.js"]
+exclude = []
+
+[test]
+cmd = "npm test"
+"#;
+        let cli = parse_ok(&["run"], toml);
+        assert_eq!(
+            bough_core::Config::get_test_timeout_absolute(&cli.config),
+            None
+        );
+        assert_eq!(
+            bough_core::Config::get_test_timeout_relative(&cli.config),
+            Some(3.0)
+        );
+    }
+
+    #[test]
+    fn timeout_both_is_valid() {
+        let toml = r#"
+base_root_dir = "."
+include = ["src/**"]
+exclude = []
+
+[timeout]
+absolute = 30
+relative = 3.0
+
+[lang.js]
+include = ["**/*.js"]
+exclude = []
+
+[test]
+cmd = "npm test"
+"#;
+        let cli = parse_ok(&["run"], toml);
+        assert_eq!(
+            bough_core::Config::get_test_timeout_absolute(&cli.config),
+            Some(chrono::Duration::seconds(30))
+        );
+        assert_eq!(
+            bough_core::Config::get_test_timeout_relative(&cli.config),
+            Some(3.0)
+        );
+    }
+
+    #[test]
+    fn timeout_neither_is_error() {
+        let toml = r#"
+base_root_dir = "."
+include = ["src/**"]
+exclude = []
+
+[timeout]
+
+[lang.js]
+include = ["**/*.js"]
+exclude = []
+
+[test]
+cmd = "npm test"
+"#;
+        parse_err(&["run"], toml);
+    }
+
+    #[test]
+    fn phase_timeout_neither_is_error() {
+        let toml = r#"
+base_root_dir = "."
+include = ["src/**"]
+exclude = []
+
+[lang.js]
+include = ["**/*.js"]
+exclude = []
+
+[test]
+cmd = "npm test"
+
+[test.timeout]
+"#;
+        parse_err(&["run"], toml);
+    }
+
+    #[test]
+    fn phase_timeout_absolute_only_is_valid() {
+        let toml = r#"
+base_root_dir = "."
+include = ["src/**"]
+exclude = []
+
+[lang.js]
+include = ["**/*.js"]
+exclude = []
+
+[test]
+cmd = "npm test"
+
+[test.timeout]
+absolute = 60
+"#;
+        let cli = parse_ok(&["run"], toml);
+        assert_eq!(
+            bough_core::Config::get_test_timeout_absolute(&cli.config),
+            Some(chrono::Duration::seconds(60))
+        );
+        assert_eq!(
+            bough_core::Config::get_test_timeout_relative(&cli.config),
+            None
+        );
+    }
+
+    #[test]
     fn init_cmd_none_by_default() {
         let cli = parse_ok(&["run"], MINIMAL_TOML);
         assert_eq!(bough_core::Config::get_init_cmd(&cli.config), None);
@@ -1575,6 +1745,20 @@ impl Config {
             .as_ref()
             .map(|p| p.phase_overrides().clone())
             .unwrap_or_default()
+    }
+
+    fn phase_timeout_overrides(&self) -> Vec<(&str, &PhaseOverrides)> {
+        let mut out = Vec::new();
+        if let Some(ref t) = self.test {
+            out.push(("test", &t.overrides));
+        }
+        if let Some(ref i) = self.init {
+            out.push(("init", &i.overrides));
+        }
+        if let Some(ref r) = self.reset {
+            out.push(("reset", &r.overrides));
+        }
+        out
     }
 }
 

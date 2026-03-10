@@ -42,6 +42,8 @@ impl State {
     }
 
     pub fn set_outcome(&mut self, status: Status) {
+        //TODO if the status isn't changing, this shouldn't update anything
+        // so we don't get `at` churn
         self.outcome = Some(Outcome {
             status,
             at: Utc::now(),
