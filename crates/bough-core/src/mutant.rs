@@ -315,11 +315,27 @@ pub enum AssignMutationKind {
 
 #[derive(Debug, Clone, PartialEq, Eq, bough_typed_hash::HashInto, Hash, facet::Facet)]
 #[repr(u8)]
+pub enum ArrayDeclKind {
+    Inline,
+    Instance,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, bough_typed_hash::HashInto, Hash, facet::Facet)]
+#[repr(u8)]
+pub enum LiteralKind {
+    BoolTrue,
+    BoolFalse,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, bough_typed_hash::HashInto, Hash, facet::Facet)]
+#[repr(u8)]
 pub enum MutantKind {
     StatementBlock,
     Condition,
     BinaryOp(BinaryOpMutationKind),
     Assign(AssignMutationKind),
+    ArrayDecl(ArrayDeclKind),
+    Literal(LiteralKind),
 }
 
 impl<'a, 't> TwigMutantsIter<'a, 't> {

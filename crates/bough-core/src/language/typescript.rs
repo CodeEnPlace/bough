@@ -1,5 +1,8 @@
 use super::LanguageDriver;
-use crate::mutant::{AssignMutationKind, BinaryOpMutationKind, MutantKind, Span, span_from_node};
+use crate::mutant::{
+    ArrayDeclKind, AssignMutationKind, BinaryOpMutationKind, LiteralKind, MutantKind, Span,
+    span_from_node,
+};
 use tracing::trace;
 
 pub(crate) struct TypescriptDriver;
@@ -83,6 +86,28 @@ impl LanguageDriver for TypescriptDriver {
                     span_from_node(&op_node),
                 ))
             }
+            "array" if node.named_child_count() > 0 => Some((
+                MutantKind::ArrayDecl(ArrayDeclKind::Inline),
+                span_from_node(node),
+            )),
+            "new_expression" => {
+                let callee = node.child_by_field_name("constructor")?;
+                if callee.utf8_text(file_content).ok()? == "Array" {
+                    let args = node.child_by_field_name("arguments")?;
+                    if args.named_child_count() > 0 {
+                        Some((
+                            MutantKind::ArrayDecl(ArrayDeclKind::Instance),
+                            span_from_node(node),
+                        ))
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            }
+            "true" => Some((MutantKind::Literal(LiteralKind::BoolTrue), span_from_node(node))),
+            "false" => Some((MutantKind::Literal(LiteralKind::BoolFalse), span_from_node(node))),
             _ => None,
         };
         if let Some((ref kind, ref span)) = result {
@@ -140,6 +165,10 @@ impl LanguageDriver for TypescriptDriver {
             MutantKind::Assign(AssignMutationKind::ShrAssign) => vec!["<<=".into(), "=".into()],
             MutantKind::Assign(AssignMutationKind::AndAssign) => vec!["||=".into(), "=".into()],
             MutantKind::Assign(AssignMutationKind::OrAssign) => vec!["&&=".into(), "=".into()],
+            MutantKind::ArrayDecl(ArrayDeclKind::Inline) => vec!["[]".into()],
+            MutantKind::ArrayDecl(ArrayDeclKind::Instance) => vec!["new Array()".into()],
+            MutantKind::Literal(LiteralKind::BoolTrue) => vec!["false".into()],
+            MutantKind::Literal(LiteralKind::BoolFalse) => vec!["true".into()],
         }
     }
 }
@@ -489,5 +518,37 @@ mod tests {
         assert_eq!(mutations.len(), 2);
         assert!(mutations.contains(&"x &&= 1".to_string()));
         assert!(mutations.contains(&"x = 1".to_string()));
+    }
+
+    #[test]
+    fn array_decl_inline() {
+        let src = "[1,2,3]";
+        let mutations = all_mutations(src);
+        assert_eq!(mutations.len(), 1);
+        assert!(mutations.contains(&"[]".to_string()));
+    }
+
+    #[test]
+    fn array_decl_instance() {
+        let src = "new Array(1, 2, 3)";
+        let mutations = all_mutations(src);
+        assert_eq!(mutations.len(), 1);
+        assert!(mutations.contains(&"new Array()".to_string()));
+    }
+
+    #[test]
+    fn literal_bool_true() {
+        let src = "true";
+        let mutations = all_mutations(src);
+        assert_eq!(mutations.len(), 1);
+        assert!(mutations.contains(&"false".to_string()));
+    }
+
+    #[test]
+    fn literal_bool_false() {
+        let src = "false";
+        let mutations = all_mutations(src);
+        assert_eq!(mutations.len(), 1);
+        assert!(mutations.contains(&"true".to_string()));
     }
 }
