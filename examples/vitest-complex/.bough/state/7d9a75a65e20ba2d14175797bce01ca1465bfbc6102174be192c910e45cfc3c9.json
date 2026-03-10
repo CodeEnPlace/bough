@@ -1,0 +1,1 @@
+{"mutation":{"mutant":{"lang":"js","twig":["src/validators/email.js"],"kind":{"BinaryOp":"StrictNe"},"span":{"start":{"line":5,"col":19,"byte":172},"end":{"line":5,"col":22,"byte":175}}},"subst":"==="},"outcome":{"status":"Caught","at":"2026-03-09T16:46:09Z"}}
