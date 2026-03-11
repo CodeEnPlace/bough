@@ -1,1 +1,1 @@
-{"mutation":{"mutant":{"lang":"js","twig":["src/validators/website.js"],"kind":{"BinaryOp":"Eq"},"span":{"start":{"line":1,"col":12,"byte":61},"end":{"line":1,"col":14,"byte":63}}},"subst":"!="},"outcome":null}
+{"mutation":{"mutant":{"lang":"js","twig":["src/validators/website.js"],"kind":{"BinaryOp":"Eq"},"span":{"start":{"line":1,"col":12,"byte":61},"end":{"line":1,"col":14,"byte":63}}},"subst":"!="},"outcome":{"status":"Caught","at":"2026-03-11T14:19:29Z"}}

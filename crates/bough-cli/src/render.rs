@@ -150,7 +150,7 @@ fn fmt_status_colored(state: &State) -> String {
             format!("{CAUGHT}Caught {RESET}")
         }
         Some(Status::Timeout) => format!("{TIMEOUT}Timeout{RESET}"),
-        Some(Status::Missed) => format!("{MISSED}Missed  {RESET}"),
+        Some(Status::Missed) => format!("{MISSED}Missed {RESET}"),
         None => format!("{NOT_RUN}Not Run{RESET}"),
     }
 }
