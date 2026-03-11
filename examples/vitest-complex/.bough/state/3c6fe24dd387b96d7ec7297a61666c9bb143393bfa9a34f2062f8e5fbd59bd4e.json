@@ -1,1 +1,0 @@
-{"mutation":{"mutant":{"lang":"js","twig":["src/validators/email.js"],"kind":{"Literal":"Number"},"span":{"start":{"line":13,"col":16,"byte":442},"end":{"line":13,"col":17,"byte":443}}},"subst":"NaN"},"outcome":{"status":"Caught","at":"2026-03-10T14:36:26Z"}}

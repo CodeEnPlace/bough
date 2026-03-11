@@ -1,1 +1,0 @@
-{"mutation":{"mutant":{"lang":"js","twig":["src/validators/website.js"],"kind":{"Literal":"EmptyString"},"span":{"start":{"line":9,"col":56,"byte":431},"end":{"line":9,"col":58,"byte":433}}},"subst":"\"bough\""},"outcome":{"status":"Missed","at":"2026-03-11T13:19:15Z"}}

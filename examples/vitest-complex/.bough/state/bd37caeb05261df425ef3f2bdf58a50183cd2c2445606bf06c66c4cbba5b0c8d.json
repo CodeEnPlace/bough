@@ -1,1 +1,0 @@
-{"mutation":{"mutant":{"lang":"js","twig":["src/validators/role.js"],"kind":{"ArrayDecl":"Inline"},"span":{"start":{"line":0,"col":20,"byte":20},"end":{"line":0,"col":49,"byte":49}}},"subst":"[]"},"outcome":{"status":"Caught","at":"2026-03-11T12:14:41Z"}}

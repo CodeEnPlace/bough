@@ -1,1 +1,0 @@
-{"mutation":{"mutant":{"lang":"js","twig":["src/validators/username.js"],"kind":"DictDecl","span":{"start":{"line":16,"col":16,"byte":584},"end":{"line":16,"col":83,"byte":651}}},"subst":"{}"},"outcome":{"status":"Caught","at":"2026-03-10T14:39:46Z"}}
