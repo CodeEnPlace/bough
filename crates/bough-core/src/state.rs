@@ -1,4 +1,4 @@
-use chrono::{DateTime, Duration, Utc};
+use chrono::{DateTime, Utc};
 use facet::Facet;
 use tracing::trace;
 
@@ -43,7 +43,7 @@ impl State {
     }
 
     pub fn set_outcome(&mut self, status: Status) {
-        if let Some(outcome) = self.outcome {
+        if let Some(outcome) = &self.outcome {
             if outcome.status == status {
                 return;
             }
