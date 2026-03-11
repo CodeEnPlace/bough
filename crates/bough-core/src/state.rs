@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Duration, Utc};
 use facet::Facet;
 use tracing::trace;
 
@@ -9,6 +9,7 @@ use crate::{mutation::Mutation, test_id::TestId};
 pub enum Status {
     Caught,
     CaughtByTests(Vec<TestId>),
+    Timeout,
     Missed,
 }
 
@@ -42,6 +43,11 @@ impl State {
     }
 
     pub fn set_outcome(&mut self, status: Status) {
+        if let Some(outcome) = self {
+            if (outcome.status == status) {
+                return;
+            }
+        }
         //TODO if the status isn't changing, this shouldn't update anything
         // so we don't get `at` churn
         self.outcome = Some(Outcome {
