@@ -25,14 +25,16 @@ fn strip_ansi(s: &str) -> String {
 
 const RESET: &str = "\x1b[0m";
 const BOLD: &str = "\x1b[1m";
-const TITLE: &str = "\x1b[33m";
-const PATH: &str = "\x1b[34m";
-const HASH: &str = "\x1b[36m";
-const LANG: &str = "\x1b[35m";
-const STRING: &str = "\x1b[33m";
-const GREEN: &str = "\x1b[32m";
-const RED: &str = "\x1b[31m";
-const ORANGE: &str = "\x1b[38;5;208m";
+
+const TITLE: &str = "\x1b[33m"; // yellow
+const PATH: &str = "\x1b[34m"; // blue
+const HASH: &str = "\x1b[33m"; // yellow
+const LANG: &str = "\x1b[35m"; //purple
+const STRING: &str = "\x1b[33m"; //yellow
+const CAUGHT: &str = "\x1b[32m"; // green
+const MISSED: &str = "\x1b[31m"; // red
+const TIMEOUT: &str = "\x1b[31m"; // red
+const NOT_RUN: &str = "\x1b[33m"; // yellow
 
 pub trait Render {
     fn markdown(&self) -> String;
@@ -145,10 +147,11 @@ fn mutation_hash(m: &Mutation) -> String {
 fn fmt_status_colored(state: &State) -> String {
     match state.status() {
         Some(Status::Caught) | Some(Status::CaughtByTests(_)) => {
-            format!("{GREEN}Caught{RESET}")
+            format!("{CAUGHT}Caught {RESET}")
         }
-        Some(Status::Missed) => format!("{RED}Missed{RESET}"),
-        None => format!("{ORANGE}NotRun{RESET}"),
+        Some(Status::Timeout) => format!("{TIMEOUT}Timeout{RESET}"),
+        Some(Status::Missed) => format!("{MISSED}Missed  {RESET}"),
+        None => format!("{NOT_RUN}Not Run{RESET}"),
     }
 }
 
@@ -214,6 +217,7 @@ fn fmt_status_from_state(state: &State) -> &'static str {
         None => "pending",
         Some(Status::Caught) | Some(Status::CaughtByTests(_)) => "caught",
         Some(Status::Missed) => "missed",
+        Some(Status::Timeout) => "timed out",
     }
 }
 
