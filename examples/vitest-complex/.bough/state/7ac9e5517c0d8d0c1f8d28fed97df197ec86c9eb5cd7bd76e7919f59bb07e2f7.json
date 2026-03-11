@@ -1,0 +1,1 @@
+{"mutation":{"mutant":{"lang":"js","twig":["src/validate-user-profile.js"],"kind":{"BinaryOp":"Or"},"span":{"start":{"line":10,"col":47,"byte":536},"end":{"line":10,"col":49,"byte":538}}},"subst":"&&"},"outcome":null}

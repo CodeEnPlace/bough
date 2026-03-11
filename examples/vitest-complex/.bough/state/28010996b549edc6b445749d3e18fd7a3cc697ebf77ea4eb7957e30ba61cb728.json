@@ -1,0 +1,1 @@
+{"mutation":{"mutant":{"lang":"js","twig":["src/validators/email.js"],"kind":{"Literal":"String"},"span":{"start":{"line":14,"col":25,"byte":472},"end":{"line":14,"col":32,"byte":479}}},"subst":"\"\""},"outcome":null}

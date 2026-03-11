@@ -1,0 +1,1 @@
+{"mutation":{"mutant":{"lang":"js","twig":["src/validators/email.js"],"kind":{"BinaryOp":"Eq"},"span":{"start":{"line":1,"col":12,"byte":59},"end":{"line":1,"col":14,"byte":61}}},"subst":"!="},"outcome":null}
