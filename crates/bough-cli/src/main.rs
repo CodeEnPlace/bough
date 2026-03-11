@@ -505,6 +505,10 @@ fn main() {
             Box::new(Noop)
         }
 
+        Command::Find { .. } => {
+            todo!("find command")
+        }
+
         Command::Noop => {
             info!("starting run");
             Box::new(Noop)

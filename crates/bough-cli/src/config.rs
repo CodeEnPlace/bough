@@ -1,10 +1,10 @@
-use std::env;
-use std::io::IsTerminal;
-use std::{collections::HashMap, path::PathBuf};
-
+use bough_core::Factor;
 use facet::Facet;
 use figue::{self as args, ConfigFormat, ConfigFormatError, Driver, builder};
 use miette::Diagnostic;
+use std::env;
+use std::io::IsTerminal;
+use std::{collections::HashMap, path::PathBuf};
 use thiserror::Error;
 use tracing::{debug, warn};
 
@@ -67,6 +67,22 @@ pub enum Command {
     Step {
         #[facet(args::subcommand)]
         step: Step,
+    },
+
+    Find {
+        #[facet(args::positional, default)]
+        lang: Option<bough_core::LanguageId>,
+        #[facet(args::positional, default)]
+        file: Option<PathBuf>,
+
+        #[facet(args::named, args::short = 'n', default = 1)]
+        number: u8,
+
+        #[facet(args::named, default = 1)]
+        number_per_file: u8,
+
+        #[facet(args::named, default = vec![Factor::OuterMissedMutations, Factor::TSNodeDepth])]
+        factors: Vec<Factor>,
     },
 
     Run,
@@ -617,6 +633,57 @@ cmd = "npm test"
     fn run_subcommand() {
         let cli = parse_ok(&["run"], MINIMAL_TOML);
         assert!(matches!(cli.command, Command::Run));
+    }
+
+    #[test]
+    fn find_defaults() {
+        let cli = parse_ok(&["find"], MINIMAL_TOML);
+        match cli.command {
+            Command::Find {
+                lang,
+                file,
+                number,
+                number_per_file,
+                factors,
+            } => {
+                assert_eq!(lang, None);
+                assert_eq!(file, None);
+                assert_eq!(number, 1);
+                assert_eq!(number_per_file, 1);
+                assert_eq!(
+                    factors,
+                    vec![Factor::OuterMissedMutations, Factor::TSNodeDepth]
+                );
+            }
+            other => panic!("expected Find, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn find_with_args() {
+        let cli = parse_ok(
+            &["find", "js", "src/foo.js", "-n", "5", "--number-per-file", "3", "--factors", "VcsFileChurn", "--factors", "MutationSeverity"],
+            MINIMAL_TOML,
+        );
+        match cli.command {
+            Command::Find {
+                lang,
+                file,
+                number,
+                number_per_file,
+                factors,
+            } => {
+                assert_eq!(lang, Some(bough_core::LanguageId::Javascript));
+                assert_eq!(file, Some(PathBuf::from("src/foo.js")));
+                assert_eq!(number, 5);
+                assert_eq!(number_per_file, 3);
+                assert_eq!(
+                    factors,
+                    vec![Factor::VcsFileChurn, Factor::MutationSeverity]
+                );
+            }
+            other => panic!("expected Find, got {other:?}"),
+        }
     }
 
     // bough[verify config.include.at-least-one]
