@@ -33,7 +33,7 @@ pub struct Mutant {
     lang: LanguageId,
     twig: Twig,
     kind: MutantKind,
-    span: Span,
+    subst_span: Span,
 }
 
 impl Mutant {
@@ -42,7 +42,7 @@ impl Mutant {
             lang,
             twig,
             kind,
-            span,
+            subst_span: span,
         }
     }
 
@@ -59,7 +59,7 @@ impl Mutant {
     }
 
     pub fn span(&self) -> &Span {
-        &self.span
+        &self.subst_span
     }
 
     pub fn get_contextual_fragment(
@@ -81,11 +81,11 @@ impl Mutant {
 
         let root = tree.root_node();
         let target = root
-            .descendant_for_byte_range(self.span.start().byte(), self.span.end().byte())
+            .descendant_for_byte_range(self.subst_span.start().byte(), self.subst_span.end().byte())
             .unwrap_or(root);
 
-        let mutant_start_line = self.span.start().line();
-        let mutant_end_line = self.span.end().line();
+        let mutant_start_line = self.subst_span.start().line();
+        let mutant_end_line = self.subst_span.end().line();
 
         let mut candidate = target;
         let mut current = target;
@@ -175,7 +175,7 @@ impl<'a> BasedMutant<'a> {
     }
 
     pub fn span(&self) -> &Span {
-        &self.mutant.span
+        &self.mutant.subst_span
     }
 }
 
@@ -192,7 +192,7 @@ impl HashInto for Mutant {
             .as_os_str()
             .as_encoded_bytes()
             .hash_into(state)?;
-        self.span.hash_into(state)?;
+        self.subst_span.hash_into(state)?;
         self.kind.hash_into(state)?;
         Ok(())
     }

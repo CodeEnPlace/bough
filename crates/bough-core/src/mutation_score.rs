@@ -1,4 +1,8 @@
+use std::sync::Arc;
+
 use facet::Facet;
+
+use crate::{Mutation, base::Base};
 
 #[derive(Facet, Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
@@ -19,4 +23,36 @@ pub enum Factor {
     VcsFileChurn,
     /// How recently was this line touched
     VcsLineBlameRecency,
+}
+
+struct OpaqueScore(u64);
+
+pub struct MutationScorer {
+    factor: Factor,
+    base: Arc<Base>,
+}
+
+pub struct MutationScoreViewer {
+    min: u64,
+    max: u64,
+}
+
+impl MutationScorer {
+    pub fn new(base: Arc<Base>, factor: Factor) -> Self {
+        Self { base, factor }
+    }
+
+    pub fn score(&mut self, mutation: Mutation) -> OpaqueScore {
+        todo!()
+    }
+
+    pub fn view(self) -> MutationScoreViewer {
+        todo!()
+    }
+}
+
+impl MutationScoreViewer {
+    fn view(&self, os: OpaqueScore) -> f64 {
+        todo!()
+    }
 }
