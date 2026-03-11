@@ -321,6 +321,53 @@ fn main() {
                 .render(&cli)
             );
 
+            let base = session.base();
+
+            let init_duration = match base.run_init(&cli.config, None) {
+                Ok(outcome) => {
+                    if outcome.exit_code() != 0 {
+                        eprintln!("base init failed (exit {})", outcome.exit_code());
+                        std::process::exit(1);
+                    }
+                    Some(outcome.duration())
+                }
+                Err(bough_core::PhaseError::NoCmdConfigured) => None,
+                Err(e) => {
+                    eprintln!("base init error: {e}");
+                    std::process::exit(1);
+                }
+            };
+
+            let reset_duration = match base.run_reset(&cli.config, None) {
+                Ok(outcome) => {
+                    if outcome.exit_code() != 0 {
+                        eprintln!("base reset failed (exit {})", outcome.exit_code());
+                        std::process::exit(1);
+                    }
+                    Some(outcome.duration())
+                }
+                Err(bough_core::PhaseError::NoCmdConfigured) => None,
+                Err(e) => {
+                    eprintln!("base reset error: {e}");
+                    std::process::exit(1);
+                }
+            };
+
+            let test_outcome = base
+                .run_test(&cli.config, None)
+                .expect("base test execution");
+            if test_outcome.exit_code() != 0 {
+                eprintln!("base test failed (exit {})", test_outcome.exit_code());
+                std::process::exit(1);
+            }
+
+            let benchmark = render::BenchmarkTimesInBase {
+                init: init_duration,
+                reset: reset_duration,
+                test: test_outcome.duration(),
+            };
+            println!("{}", benchmark.render(&cli));
+
             let total = session.get_count_mutation_needing_test() as u64;
             let session = Arc::new(Mutex::new(session));
             let done = Arc::new(AtomicBool::new(false));

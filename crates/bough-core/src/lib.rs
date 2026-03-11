@@ -39,6 +39,7 @@ pub use file::File;
 pub use mutation::Mutation;
 pub use mutation::MutationHash;
 pub use mutation_score::Factor;
+pub use phase::Error as PhaseError;
 pub use phase::PhaseOutcome;
 pub use session::Config;
 pub use session::Session;
