@@ -2,6 +2,7 @@ use crate::base::Base;
 use crate::file::{File, Root, Twig};
 use crate::mutant::Mutant;
 use crate::mutation::Mutation;
+use bough_typed_hash::TypedHashable;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tracing::{debug, info, warn};
@@ -191,9 +192,8 @@ impl Workspace {
             return Err(Error::AlreadyActive);
         }
         debug!(
-            id = %self.id,
-            twig = %mutation.mutant().twig().path().display(),
-            subst = mutation.subst(),
+            workspace = %self.id,
+            mutant = format!("{}",mutation.hash().unwrap()),
             "writing mutant to workspace"
         );
         let mutant = mutation.mutant();

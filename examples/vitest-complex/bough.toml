@@ -6,6 +6,9 @@ base_root_dir = "."
 init.cmd = "npm install"
 test.cmd = "npm run test"
 
+[timeout]
+relative = 3
+
 [lang.js]
 include = [
   "src/**/*.js",

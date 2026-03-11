@@ -1,1 +1,1 @@
-{"mutation":{"mutant":{"lang":"js","twig":["src/validators/email.js"],"kind":{"Literal":"String"},"span":{"start":{"line":2,"col":43,"byte":113},"end":{"line":2,"col":62,"byte":132}}},"subst":"\"\""},"outcome":null}
+{"mutation":{"mutant":{"lang":"js","twig":["src/validators/email.js"],"kind":{"Literal":"String"},"span":{"start":{"line":2,"col":43,"byte":113},"end":{"line":2,"col":62,"byte":132}}},"subst":"\"\""},"outcome":{"status":"Caught","at":"2026-03-11T12:16:49Z"}}
