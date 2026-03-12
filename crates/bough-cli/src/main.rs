@@ -505,8 +505,27 @@ fn main() {
             Box::new(Noop)
         }
 
-        Command::Find { .. } => {
-            todo!("find command")
+        Command::Find { ref lang, ref file } => {
+            let mut session = Session::new(cli.config.clone()).expect("session creation");
+            session.tend_add_missing_states().expect("tend states");
+            let results = session.find_best_mutations().expect("find best mutations");
+            let filtered: Vec<_> = results
+                .into_iter()
+                .filter(|(_, state, _)| {
+                    if let Some(l) = lang {
+                        if state.mutation().mutant().lang() != *l {
+                            return false;
+                        }
+                    }
+                    if let Some(f) = file {
+                        if state.mutation().mutant().twig().path() != f.as_path() {
+                            return false;
+                        }
+                    }
+                    true
+                })
+                .collect();
+            Box::new(render::FindBestMutations(filtered))
         }
 
         Command::Noop => {

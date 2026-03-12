@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use bough_core::{LanguageId, Mutation, State, Status};
+use bough_core::{LanguageId, Mutation, MutationHash, State, Status};
 use bough_typed_hash::{TypedHash, TypedHashable, UnvalidatedHash};
 use facet::Facet;
 
@@ -843,6 +843,93 @@ impl Render for UnapplyMutation {
             r#"{{"workspace_id":"{}","mutation_hash":"{}"}}"#,
             self.workspace_id, self.mutation_hash,
         )
+    }
+}
+
+pub struct FindBestMutations(pub Vec<(MutationHash, State, f64)>);
+
+impl Render for FindBestMutations {
+    fn markdown(&self) -> String {
+        let mut out = format!("# Find Best Mutations\n\n{} selected\n\n", self.0.len());
+        out.push_str("| # | Score | Hash | File | Location | Kind | Subst |\n");
+        out.push_str("|---|-------|------|------|----------|------|-------|\n");
+        for (i, (hash, state, score)) in self.0.iter().enumerate() {
+            let m = state.mutation();
+            let mutant = m.mutant();
+            out.push_str(&format!(
+                "| {} | {:.2} | `{}` | {} | {}:{} | {:?} | `{}` |\n",
+                i + 1,
+                score,
+                hash,
+                mutant.twig().path().display(),
+                mutant.span().start().line() + 1,
+                mutant.span().start().col() + 1,
+                mutant.kind(),
+                m.subst(),
+            ));
+        }
+        out
+    }
+
+    fn terse(&self) -> String {
+        self.0
+            .iter()
+            .map(|(_, state, score)| {
+                let m = state.mutation();
+                let mutant = m.mutant();
+                format!(
+                    "{HASH}{}{RESET} {:.2} {} {PATH}{}:{}:{}{RESET} {:?} → {STRING}{}{RESET}",
+                    mutation_hash(m),
+                    score,
+                    fmt_status_colored(state),
+                    mutant.twig().path().display(),
+                    mutant.span().start().line() + 1,
+                    mutant.span().start().col() + 1,
+                    mutant.kind(),
+                    m.subst(),
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
+
+    fn verbose(&self) -> String {
+        let mut out = format!("{TITLE}Find Best Mutations{RESET} ({} selected)\n", self.0.len());
+        for (i, (hash, state, score)) in self.0.iter().enumerate() {
+            let m = state.mutation();
+            let mutant = m.mutant();
+            out.push_str(&format!(
+                "\n  {HASH}#{}{RESET} score={:.2} {HASH}{}{RESET} {} {PATH}{}:{}:{}{RESET} {:?} → {STRING}{}{RESET}",
+                i + 1,
+                score,
+                hash,
+                fmt_status_colored(state),
+                mutant.twig().path().display(),
+                mutant.span().start().line() + 1,
+                mutant.span().start().col() + 1,
+                mutant.kind(),
+                m.subst(),
+            ));
+        }
+        out
+    }
+
+    fn json(&self) -> String {
+        let items: Vec<String> = self.0.iter().map(|(hash, state, score)| {
+            let m = state.mutation();
+            let mutant = m.mutant();
+            format!(
+                r#"{{"hash":"{}","score":{},"file":"{}","line":{},"col":{},"kind":"{}","subst":"{}"}}"#,
+                hash,
+                score,
+                mutant.twig().path().display(),
+                mutant.span().start().line() + 1,
+                mutant.span().start().col() + 1,
+                format!("{:?}", mutant.kind()),
+                m.subst(),
+            )
+        }).collect();
+        format!("[{}]", items.join(","))
     }
 }
 
