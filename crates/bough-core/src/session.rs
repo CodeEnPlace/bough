@@ -267,6 +267,83 @@ impl<C: Config> Session<C> {
         Ok(())
     }
 
+    pub fn find_best_mutations(&self) -> Result<Vec<(MutationHash, State, f64)>, Error> {
+        if self.mutations_needing_test.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let factors = self.config.get_find_factors();
+        let number = self.config.get_find_number();
+        let number_per_file = self.config.get_find_number_per_file();
+
+        let needing_test: Vec<(MutationHash, State)> = self
+            .mutations_needing_test
+            .iter()
+            .filter_map(|hash| {
+                let state = self.mutations_state.get(hash)?;
+                Some((hash.clone(), state))
+            })
+            .collect();
+
+        let all_states: Vec<State> = self
+            .mutations_state
+            .keys()
+            .filter_map(|k| self.mutations_state.get(&k))
+            .collect();
+
+        let mut scorers: Vec<crate::mutation_score::MutationScorer> = factors
+            .iter()
+            .map(|f| crate::mutation_score::MutationScorer::new(self.base.clone(), *f))
+            .collect();
+
+        let mut scores_per_mutation: Vec<Vec<crate::mutation_score::OpaqueScore>> =
+            Vec::with_capacity(needing_test.len());
+
+        for (_, state) in &needing_test {
+            let mut mutation_scores = Vec::with_capacity(factors.len());
+            for scorer in &mut scorers {
+                let score = scorer.score(state.mutation().clone(), &all_states);
+                mutation_scores.push(score);
+            }
+            scores_per_mutation.push(mutation_scores);
+        }
+
+        let viewers: Vec<crate::mutation_score::MutationScoreViewer> =
+            scorers.into_iter().map(|s| s.into_viewer()).collect();
+
+        let mut scored: Vec<(MutationHash, State, f64)> = needing_test
+            .into_iter()
+            .zip(scores_per_mutation)
+            .map(|((hash, state), scores)| {
+                let composite = if viewers.is_empty() {
+                    0.0
+                } else {
+                    let sum: f64 = scores
+                        .into_iter()
+                        .zip(&viewers)
+                        .map(|(s, v)| v.normalize(s))
+                        .sum();
+                    sum / viewers.len() as f64
+                };
+                (hash, state, composite)
+            })
+            .collect();
+
+        scored.sort_by(|a, b| b.2.partial_cmp(&a.2).unwrap_or(std::cmp::Ordering::Equal));
+
+        let mut per_file_counts: HashMap<crate::file::Twig, usize> = HashMap::new();
+        scored.retain(|(_, state, _)| {
+            let twig = state.mutation().mutant().twig().clone();
+            let count = per_file_counts.entry(twig).or_insert(0);
+            *count += 1;
+            *count <= number_per_file
+        });
+
+        scored.truncate(number);
+
+        Ok(scored)
+    }
+
     pub fn bind_workspace(&self, workspace_id: &WorkspaceId) -> Result<Workspace, Error> {
         let workspaces_dir = self.config.get_bough_state_dir().join("workspaces");
         Ok(Workspace::bind(
@@ -321,6 +398,8 @@ mod tests {
         test_pwd: PathBuf,
         init_cmd: Option<String>,
         reset_cmd: Option<String>,
+        find_number: usize,
+        find_number_per_file: usize,
     }
 
     impl Config for MinimalConfig {
@@ -421,11 +500,11 @@ mod tests {
         }
 
         fn get_find_number(&self) -> usize {
-            1
+            self.find_number
         }
 
         fn get_find_number_per_file(&self) -> usize {
-            1
+            self.find_number_per_file
         }
 
         fn get_find_factors(&self) -> Vec<Factor> {
@@ -445,6 +524,8 @@ mod tests {
             test_pwd: PathBuf::from("."),
             init_cmd: None,
             reset_cmd: None,
+            find_number: 1,
+            find_number_per_file: 1,
         }
     }
 
@@ -462,6 +543,8 @@ mod tests {
             test_pwd: PathBuf::from("."),
             init_cmd: None,
             reset_cmd: None,
+            find_number: 1,
+            find_number_per_file: 1,
         };
         let session = Session::new(config);
         assert!(session.is_ok());
@@ -481,6 +564,8 @@ mod tests {
             test_pwd: PathBuf::from("."),
             init_cmd: None,
             reset_cmd: None,
+            find_number: 1,
+            find_number_per_file: 1,
         };
         let session = Session::new(config);
         assert!(session.is_err());
@@ -500,6 +585,8 @@ mod tests {
             test_pwd: PathBuf::from("."),
             init_cmd: None,
             reset_cmd: None,
+            find_number: 1,
+            find_number_per_file: 1,
         };
         let _session = Session::new(config).unwrap();
         assert!(
@@ -1132,5 +1219,122 @@ mod tests {
         let state = session.get_state().get(&hash).unwrap();
         assert!(state.has_outcome());
         assert_eq!(state.mutation(), &mutation);
+    }
+
+    #[test]
+    fn find_best_mutations_empty_when_no_mutations() {
+        let dir = tempfile::tempdir().unwrap();
+        let config = make_js_config(dir.path());
+        let session = Session::new(config).unwrap();
+        let results = session.find_best_mutations().unwrap();
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn find_best_mutations_returns_mutations_needing_test() {
+        let dir = tempfile::tempdir().unwrap();
+        let config = make_js_config(dir.path());
+        std::fs::write(dir.path().join("src/a.js"), "function foo() { return 1; }").unwrap();
+        let mut session = Session::new(config).unwrap();
+        session.tend_add_missing_states().unwrap();
+        let total = session.get_count_mutation_needing_test();
+        assert!(total > 0);
+
+        let results = session.find_best_mutations().unwrap();
+        assert_eq!(results.len(), 1);
+        let (hash, state, score) = &results[0];
+        assert!(state.mutation().mutant().twig().path().ends_with("a.js"));
+        assert!(*score >= 0.0 && *score <= 1.0);
+        assert!(session.get_state().get(hash).is_some());
+    }
+
+    #[test]
+    fn find_best_mutations_respects_number_limit() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut config = make_js_config(dir.path());
+        std::fs::write(dir.path().join("src/a.js"), "function foo() { return a + b; }").unwrap();
+        config.find_number = 2;
+        config.find_number_per_file = 10;
+        let mut session = Session::new(config).unwrap();
+        session.tend_add_missing_states().unwrap();
+        let total = session.get_count_mutation_needing_test();
+        assert!(total > 2, "need more than 2 mutations to test limit, got {total}");
+
+        let results = session.find_best_mutations().unwrap();
+        assert_eq!(results.len(), 2);
+    }
+
+    #[test]
+    fn find_best_mutations_respects_number_per_file_limit() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut config = make_js_config(dir.path());
+        std::fs::write(dir.path().join("src/a.js"), "function foo() { return a + b; }").unwrap();
+        std::fs::write(dir.path().join("src/b.js"), "function bar() { return c - d; }").unwrap();
+        config.find_number = 100;
+        config.find_number_per_file = 1;
+        let mut session = Session::new(config).unwrap();
+        session.tend_add_missing_states().unwrap();
+
+        let results = session.find_best_mutations().unwrap();
+        let a_count = results.iter().filter(|(_, s, _)| {
+            s.mutation().mutant().twig().path().ends_with("a.js")
+        }).count();
+        let b_count = results.iter().filter(|(_, s, _)| {
+            s.mutation().mutant().twig().path().ends_with("b.js")
+        }).count();
+        assert_eq!(a_count, 1);
+        assert_eq!(b_count, 1);
+    }
+
+    #[test]
+    fn find_best_mutations_excludes_caught() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut config = make_js_config(dir.path());
+        std::fs::write(dir.path().join("src/a.js"), "function foo() { return 1; }").unwrap();
+        config.find_number = 100;
+        config.find_number_per_file = 100;
+        let mut session = Session::new(config).unwrap();
+        session.tend_add_missing_states().unwrap();
+        let total_before = session.get_count_mutation_needing_test();
+
+        let mutation: Mutation = session.base().mutations().next().unwrap().unwrap();
+        session.set_state(&mutation, crate::state::Status::Caught).unwrap();
+        session.mutations_needing_test = Session::<MinimalConfig>::derive_mutations_needing_testing(&session.mutations_state);
+
+        let results = session.find_best_mutations().unwrap();
+        assert_eq!(results.len(), total_before - 1);
+    }
+
+    #[test]
+    fn find_best_mutations_sorted_by_score_descending() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut config = make_js_config(dir.path());
+        std::fs::write(dir.path().join("src/a.js"), "if (x) { return a + b; }").unwrap();
+        config.find_number = 100;
+        config.find_number_per_file = 100;
+        let mut session = Session::new(config).unwrap();
+        session.tend_add_missing_states().unwrap();
+
+        let results = session.find_best_mutations().unwrap();
+        assert!(results.len() > 1);
+        for w in results.windows(2) {
+            assert!(w[0].2 >= w[1].2, "results should be sorted descending by score: {} >= {}", w[0].2, w[1].2);
+        }
+    }
+
+    #[test]
+    fn find_best_mutations_scores_between_zero_and_one() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut config = make_js_config(dir.path());
+        std::fs::write(dir.path().join("src/a.js"), "if (x) { return a + b; }").unwrap();
+        config.find_number = 100;
+        config.find_number_per_file = 100;
+        let mut session = Session::new(config).unwrap();
+        session.tend_add_missing_states().unwrap();
+
+        let results = session.find_best_mutations().unwrap();
+        for (_, _, score) in &results {
+            assert!(*score >= 0.0 && *score <= 1.0, "score {score} out of range");
+        }
     }
 }
