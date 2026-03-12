@@ -74,15 +74,6 @@ pub enum Command {
         lang: Option<bough_core::LanguageId>,
         #[facet(args::positional, default)]
         file: Option<PathBuf>,
-
-        #[facet(args::named, args::short = 'n', default = 1)]
-        number: u8,
-
-        #[facet(args::named, default = 1)]
-        number_per_file: u8,
-
-        #[facet(args::named, default = vec![Factor::EncompasingMissedMutationsCount, Factor::TSNodeDepth])]
-        factors: Vec<Factor>,
     },
 
     Run,
@@ -179,6 +170,21 @@ pub struct Config {
 
     #[facet(default)]
     pub reset: Option<PhaseConfig>,
+
+    #[facet(default)]
+    pub find: FindMutationsConfig,
+}
+
+#[derive(Facet, Debug, Clone)]
+pub struct FindMutationsConfig {
+    #[facet(default = 1)]
+    pub number: usize,
+
+    #[facet(default = 1)]
+    pub number_per_file: usize,
+
+    #[facet(default = vec![Factor::EncompasingMissedMutationsCount, Factor::TSNodeDepth])]
+    pub factors: Vec<Factor>,
 }
 
 #[derive(Facet, Debug, Clone, Default)]
@@ -639,60 +645,55 @@ cmd = "npm test"
     fn find_defaults() {
         let cli = parse_ok(&["find"], MINIMAL_TOML);
         match cli.command {
-            Command::Find {
-                lang,
-                file,
-                number,
-                number_per_file,
-                factors,
-            } => {
+            Command::Find { lang, file } => {
                 assert_eq!(lang, None);
                 assert_eq!(file, None);
-                assert_eq!(number, 1);
-                assert_eq!(number_per_file, 1);
-                assert_eq!(
-                    factors,
-                    vec![Factor::EncompasingMissedMutationsCount, Factor::TSNodeDepth]
-                );
             }
             other => panic!("expected Find, got {other:?}"),
         }
+        assert_eq!(cli.config.find.number, 1);
+        assert_eq!(cli.config.find.number_per_file, 1);
+        assert_eq!(
+            cli.config.find.factors,
+            vec![Factor::EncompasingMissedMutationsCount, Factor::TSNodeDepth]
+        );
     }
 
     #[test]
-    fn find_with_args() {
-        let cli = parse_ok(
-            &[
-                "find",
-                "js",
-                "src/foo.js",
-                "-n",
-                "5",
-                "--number-per-file",
-                "3",
-                "--factors",
-                "VcsFileChurn",
-                "--factors",
-                "MutationSeverity",
-            ],
-            MINIMAL_TOML,
+    fn find_config_from_file() {
+        let toml = r#"
+base_root_dir = "."
+include = ["src/**"]
+exclude = []
+
+[lang.js]
+include = ["**/*.js"]
+exclude = []
+
+[test]
+cmd = "echo test"
+
+[find]
+number = 5
+number_per_file = 3
+factors = ["VcsFileChurn", "MutationSeverity"]
+"#;
+        let cli = parse_ok(&["find"], toml);
+        assert_eq!(cli.config.find.number, 5);
+        assert_eq!(cli.config.find.number_per_file, 3);
+        assert_eq!(
+            cli.config.find.factors,
+            vec![Factor::VcsFileChurn, Factor::MutationSeverity]
         );
+    }
+
+    #[test]
+    fn find_with_lang_and_file_args() {
+        let cli = parse_ok(&["find", "js", "src/foo.js"], MINIMAL_TOML);
         match cli.command {
-            Command::Find {
-                lang,
-                file,
-                number,
-                number_per_file,
-                factors,
-            } => {
+            Command::Find { lang, file } => {
                 assert_eq!(lang, Some(bough_core::LanguageId::Javascript));
                 assert_eq!(file, Some(PathBuf::from("src/foo.js")));
-                assert_eq!(number, 5);
-                assert_eq!(number_per_file, 3);
-                assert_eq!(
-                    factors,
-                    vec![Factor::VcsFileChurn, Factor::MutationSeverity]
-                );
             }
             other => panic!("expected Find, got {other:?}"),
         }
@@ -1992,6 +1993,18 @@ impl bough_core::Config for Config {
     fn get_reset_timeout_relative(&self) -> Option<f64> {
         self.phase_overrides(&self.reset)
             .resolve_timeout_relative(&self.phase_defaults)
+    }
+
+    fn get_find_number(&self) -> usize {
+        self.find.number
+    }
+
+    fn get_find_number_per_file(&self) -> usize {
+        self.find.number_per_file
+    }
+
+    fn get_find_factors(&self) -> Vec<bough_core::Factor> {
+        self.find.factors.clone()
     }
 
     fn get_langs(&self) -> impl Iterator<Item = bough_core::LanguageId> {

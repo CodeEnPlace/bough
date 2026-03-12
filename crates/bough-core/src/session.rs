@@ -9,7 +9,7 @@ use chrono::Duration;
 use tracing::info;
 
 use crate::{
-    LanguageId, Status,
+    Factor, LanguageId, Status,
     base::Base,
     facet_disk_store::FacetDiskStore,
     mutation::{Mutation, MutationHash},
@@ -48,6 +48,10 @@ pub trait Config {
     fn get_reset_env(&self) -> HashMap<String, String>;
     fn get_reset_timeout_absolute(&self) -> Option<Duration>;
     fn get_reset_timeout_relative(&self) -> Option<f64>;
+
+    fn get_find_number(&self) -> usize;
+    fn get_find_number_per_file(&self) -> usize;
+    fn get_find_factors(&self) -> Vec<Factor>;
 }
 
 #[derive(Debug)]
@@ -414,6 +418,18 @@ mod tests {
 
         fn get_reset_timeout_relative(&self) -> Option<f64> {
             None
+        }
+
+        fn get_find_number(&self) -> usize {
+            1
+        }
+
+        fn get_find_number_per_file(&self) -> usize {
+            1
+        }
+
+        fn get_find_factors(&self) -> Vec<Factor> {
+            vec![Factor::EncompasingMissedMutationsCount, Factor::TSNodeDepth]
         }
     }
 
