@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::fs;
 use std::io::Write;
 use std::path::Path;
@@ -22,6 +23,8 @@ fn main() {
         .collect();
     lang_dirs.sort_by_key(|e| e.file_name());
 
+    let mut modules: BTreeMap<String, Vec<(String, String, String, String)>> = BTreeMap::new();
+
     for lang_entry in lang_dirs {
         let lang_name = lang_entry.file_name();
         let lang_str = lang_name.to_str().unwrap();
@@ -45,32 +48,44 @@ fn main() {
             .collect();
         case_dirs.sort_by_key(|e| e.file_name());
 
-        for case_entry in case_dirs {
-            let case_name = case_entry.file_name();
-            let case_str = case_name.to_str().unwrap();
-            let base_file = case_entry.path().join(format!("base.{ext}"));
-            if !base_file.exists() {
-                continue;
-            }
+        let cases: Vec<_> = case_dirs
+            .into_iter()
+            .filter_map(|case_entry| {
+                let case_name = case_entry.file_name();
+                let case_str = case_name.to_str().unwrap().to_string();
+                let base_file = case_entry.path().join(format!("base.{ext}"));
+                if !base_file.exists() {
+                    return None;
+                }
+                let fn_name = case_str.replace('-', "_");
+                let case_path = case_entry
+                    .path()
+                    .canonicalize()
+                    .unwrap()
+                    .to_str()
+                    .unwrap()
+                    .to_string();
+                Some((fn_name, case_path, lang_id.to_string(), ext.to_string()))
+            })
+            .collect();
 
-            let fn_name = format!("{lang_str}__{}", case_str.replace('-', "_"));
-            let case_path = case_entry
-                .path()
-                .canonicalize()
-                .unwrap()
-                .to_str()
-                .unwrap()
-                .to_string();
+        modules.insert(lang_str.to_string(), cases);
+    }
 
-            writeln!(out, "#[test]").unwrap();
-            writeln!(out, "fn {fn_name}() {{").unwrap();
+    for (lang, cases) in &modules {
+        writeln!(out, "mod {lang} {{").unwrap();
+        for (fn_name, case_path, lang_id, ext) in cases {
+            writeln!(out, "    #[test]").unwrap();
+            writeln!(out, "    fn {fn_name}() {{").unwrap();
             writeln!(
                 out,
-                "    crate::corpus_test_runner(\"{case_path}\", {lang_id}, \"{ext}\");",
+                "        crate::corpus_test_runner(\"{case_path}\", {lang_id}, \"{ext}\");",
             )
             .unwrap();
-            writeln!(out, "}}").unwrap();
+            writeln!(out, "    }}").unwrap();
             writeln!(out).unwrap();
         }
+        writeln!(out, "}}").unwrap();
+        writeln!(out).unwrap();
     }
 }
