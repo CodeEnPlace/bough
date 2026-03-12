@@ -33,12 +33,7 @@ impl LanguageDriver for JavascriptDriver {
                 } else {
                     condition
                 };
-                let body_field = match node.kind() {
-                    "if_statement" => "consequence",
-                    _ => "body",
-                };
-                let body = node.child_by_field_name(body_field).unwrap_or(*node);
-                Some((MutantKind::Condition, span_from_node(&inner), span_from_node(&body)))
+                Some((MutantKind::Condition, span_from_node(&inner), span_from_node(node)))
             }
             // bough[impl mutant.twig-iter.find.js.binary.add]
             // bough[impl mutant.twig-iter.find.js.binary.sub]

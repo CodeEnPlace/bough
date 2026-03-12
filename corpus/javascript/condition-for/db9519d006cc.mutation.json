@@ -4,31 +4,33 @@
     "twig": [
       "src/a.js"
     ],
-    "kind": "Condition",
+    "kind": {
+      "Literal": "Number"
+    },
     "subst_span": {
       "start": {
         "line": 0,
-        "col": 4,
-        "byte": 4
+        "col": 20,
+        "byte": 20
       },
       "end": {
         "line": 0,
-        "col": 5,
-        "byte": 5
+        "col": 22,
+        "byte": 22
       }
     },
     "effect_span": {
       "start": {
         "line": 0,
-        "col": 0,
-        "byte": 0
+        "col": 20,
+        "byte": 20
       },
       "end": {
         "line": 0,
-        "col": 15,
-        "byte": 15
+        "col": 22,
+        "byte": 22
       }
     }
   },
-  "subst": "false"
+  "subst": "Infinity"
 }

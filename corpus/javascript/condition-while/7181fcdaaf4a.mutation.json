@@ -4,31 +4,31 @@
     "twig": [
       "src/a.js"
     ],
-    "kind": "Condition",
+    "kind": "StatementBlock",
     "subst_span": {
       "start": {
         "line": 0,
-        "col": 4,
-        "byte": 4
+        "col": 10,
+        "byte": 10
       },
       "end": {
         "line": 0,
-        "col": 5,
-        "byte": 5
+        "col": 18,
+        "byte": 18
       }
     },
     "effect_span": {
       "start": {
         "line": 0,
-        "col": 0,
-        "byte": 0
+        "col": 10,
+        "byte": 10
       },
       "end": {
         "line": 0,
-        "col": 15,
-        "byte": 15
+        "col": 18,
+        "byte": 18
       }
     }
   },
-  "subst": "false"
+  "subst": "{}"
 }

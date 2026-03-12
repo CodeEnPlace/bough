@@ -20,8 +20,8 @@
     "effect_span": {
       "start": {
         "line": 0,
-        "col": 7,
-        "byte": 7
+        "col": 0,
+        "byte": 0
       },
       "end": {
         "line": 0,
