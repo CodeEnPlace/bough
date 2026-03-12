@@ -1,0 +1,24 @@
+{
+  "mutant": {
+    "lang": "js",
+    "twig": [
+      "src/a.js"
+    ],
+    "kind": {
+      "BinaryOp": "Lte"
+    },
+    "subst_span": {
+      "start": {
+        "line": 0,
+        "col": 12,
+        "byte": 12
+      },
+      "end": {
+        "line": 0,
+        "col": 14,
+        "byte": 14
+      }
+    }
+  },
+  "subst": "<"
+}

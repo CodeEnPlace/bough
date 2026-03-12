@@ -1,0 +1,22 @@
+{
+  "mutant": {
+    "lang": "js",
+    "twig": [
+      "src/a.js"
+    ],
+    "kind": "DictDecl",
+    "subst_span": {
+      "start": {
+        "line": 0,
+        "col": 10,
+        "byte": 10
+      },
+      "end": {
+        "line": 0,
+        "col": 29,
+        "byte": 29
+      }
+    }
+  },
+  "subst": "{}"
+}

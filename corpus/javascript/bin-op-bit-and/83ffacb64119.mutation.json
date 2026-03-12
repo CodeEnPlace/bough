@@ -1,0 +1,24 @@
+{
+  "mutant": {
+    "lang": "js",
+    "twig": [
+      "src/a.js"
+    ],
+    "kind": {
+      "Literal": "Number"
+    },
+    "subst_span": {
+      "start": {
+        "line": 0,
+        "col": 14,
+        "byte": 14
+      },
+      "end": {
+        "line": 0,
+        "col": 15,
+        "byte": 15
+      }
+    }
+  },
+  "subst": "NaN"
+}
