@@ -81,7 +81,7 @@ pub enum Command {
         #[facet(args::named, default = 1)]
         number_per_file: u8,
 
-        #[facet(args::named, default = vec![Factor::OuterMissedMutations, Factor::TSNodeDepth])]
+        #[facet(args::named, default = vec![Factor::EncompasingMissedMutationsCount, Factor::TSNodeDepth])]
         factors: Vec<Factor>,
     },
 
@@ -652,7 +652,7 @@ cmd = "npm test"
                 assert_eq!(number_per_file, 1);
                 assert_eq!(
                     factors,
-                    vec![Factor::OuterMissedMutations, Factor::TSNodeDepth]
+                    vec![Factor::EncompasingMissedMutationsCount, Factor::TSNodeDepth]
                 );
             }
             other => panic!("expected Find, got {other:?}"),
@@ -662,7 +662,19 @@ cmd = "npm test"
     #[test]
     fn find_with_args() {
         let cli = parse_ok(
-            &["find", "js", "src/foo.js", "-n", "5", "--number-per-file", "3", "--factors", "VcsFileChurn", "--factors", "MutationSeverity"],
+            &[
+                "find",
+                "js",
+                "src/foo.js",
+                "-n",
+                "5",
+                "--number-per-file",
+                "3",
+                "--factors",
+                "VcsFileChurn",
+                "--factors",
+                "MutationSeverity",
+            ],
             MINIMAL_TOML,
         );
         match cli.command {
