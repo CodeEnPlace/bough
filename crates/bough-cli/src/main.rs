@@ -508,7 +508,7 @@ fn main() {
         }
 
         Command::Find { ref lang, ref file } => {
-            let mut session = Session::new(cli.config.clone()).expect("session creation");
+            let session = Session::new(cli.config.clone()).expect("session creation");
             let results = session.find_best_mutations().expect("find best mutations");
             let filtered: Vec<_> = results
                 .into_iter()
