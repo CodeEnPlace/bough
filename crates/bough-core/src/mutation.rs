@@ -101,6 +101,7 @@ mod tests {
             twig.clone(),
             MutantKind::BinaryOp(BinaryOpMutationKind::Add),
             Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
+            Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
         );
         let iter = MutationIter::new(&mutant);
         assert_eq!(iter.mutant().lang(), crate::LanguageId::Javascript);
@@ -116,6 +117,7 @@ mod tests {
             crate::LanguageId::Javascript,
             twig.clone(),
             MutantKind::BinaryOp(BinaryOpMutationKind::Add),
+            Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
             Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
         );
         let mutations: Vec<Mutation> = MutationIter::new(&mutant).collect();
@@ -133,6 +135,7 @@ mod tests {
             twig.clone(),
             MutantKind::BinaryOp(BinaryOpMutationKind::Add),
             Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
+            Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
         );
         let _mutations: Vec<Mutation> = MutationIter::new(&mutant).collect();
     }
@@ -146,6 +149,7 @@ mod tests {
             crate::LanguageId::Javascript,
             twig.clone(),
             MutantKind::BinaryOp(BinaryOpMutationKind::Add),
+            Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
             Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
         );
         for mutation in MutationIter::new(&mutant) {
@@ -162,6 +166,7 @@ mod tests {
             crate::LanguageId::Javascript,
             twig.clone(),
             MutantKind::BinaryOp(BinaryOpMutationKind::Add),
+            Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
             Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
         );
         for mutation in MutationIter::new(&mutant) {
@@ -182,6 +187,7 @@ mod tests {
             twig.clone(),
             MutantKind::Condition,
             Span::new(Point::new(0, 3, 3), Point::new(0, 10, 10)),
+            Span::new(Point::new(0, 3, 3), Point::new(0, 10, 10)),
         );
         let subs: Vec<String> = MutationIter::new(&mutant)
             .map(|m| m.subst().to_string())
@@ -199,6 +205,7 @@ mod tests {
             crate::LanguageId::Javascript,
             twig.clone(),
             MutantKind::Condition,
+            Span::new(Point::new(0, 3, 3), Point::new(0, 10, 10)),
             Span::new(Point::new(0, 3, 3), Point::new(0, 10, 10)),
         );
         let subs: Vec<String> = MutationIter::new(&mutant)
@@ -218,6 +225,7 @@ mod tests {
             twig.clone(),
             MutantKind::StatementBlock,
             Span::new(Point::new(0, 15, 15), Point::new(0, 28, 28)),
+            Span::new(Point::new(0, 15, 15), Point::new(0, 28, 28)),
         );
         let subs: Vec<String> = MutationIter::new(&mutant)
             .map(|m| m.subst().to_string())
@@ -236,6 +244,7 @@ mod tests {
             twig.clone(),
             MutantKind::BinaryOp(BinaryOpMutationKind::Add),
             Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
+            Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
         );
         let subs: Vec<String> = MutationIter::new(&mutant)
             .map(|m| m.subst().to_string())
@@ -253,6 +262,7 @@ mod tests {
             crate::LanguageId::Javascript,
             twig.clone(),
             MutantKind::BinaryOp(BinaryOpMutationKind::Add),
+            Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
             Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
         );
         let subs: Vec<String> = MutationIter::new(&mutant)
@@ -278,6 +288,7 @@ mod tests {
             twig.clone(),
             MutantKind::BinaryOp(BinaryOpMutationKind::Add),
             Span::new(Point::new(0, 0, 0), Point::new(0, 10, 10)),
+            Span::new(Point::new(0, 0, 0), Point::new(0, 10, 10)),
         );
         let mutation = Mutation {
             mutant: mutant.clone(),
@@ -297,11 +308,13 @@ mod tests {
             twig.clone(),
             MutantKind::BinaryOp(BinaryOpMutationKind::Add),
             Span::new(Point::new(0, 0, 0), Point::new(0, 10, 10)),
+            Span::new(Point::new(0, 0, 0), Point::new(0, 10, 10)),
         );
         let m2 = Mutant::new(
             crate::LanguageId::Javascript,
             twig.clone(),
             MutantKind::Condition,
+            Span::new(Point::new(0, 0, 0), Point::new(0, 10, 10)),
             Span::new(Point::new(0, 0, 0), Point::new(0, 10, 10)),
         );
         let mut1 = Mutation {
@@ -324,6 +337,7 @@ mod tests {
             crate::LanguageId::Javascript,
             twig.clone(),
             MutantKind::BinaryOp(BinaryOpMutationKind::Add),
+            Span::new(Point::new(0, 0, 0), Point::new(0, 10, 10)),
             Span::new(Point::new(0, 0, 0), Point::new(0, 10, 10)),
         );
         let mut1 = Mutation {
@@ -362,6 +376,7 @@ mod tests {
             Twig::new(PathBuf::from("src/a.js")).unwrap(),
             MutantKind::BinaryOp(BinaryOpMutationKind::Add),
             Span::new(Point::new(0, 9, 9), Point::new(0, 10, 10)),
+            Span::new(Point::new(0, 9, 9), Point::new(0, 10, 10)),
         );
         let mutation = Mutation {
             mutant,
@@ -378,6 +393,7 @@ mod tests {
             crate::LanguageId::Javascript,
             Twig::new(PathBuf::from("src/a.js")).unwrap(),
             MutantKind::BinaryOp(BinaryOpMutationKind::Add),
+            Span::new(Point::new(1, 13, 28), Point::new(1, 14, 29)),
             Span::new(Point::new(1, 13, 28), Point::new(1, 14, 29)),
         );
         let mutation = Mutation {
@@ -399,6 +415,7 @@ mod tests {
             Twig::new(PathBuf::from("src/a.js")).unwrap(),
             MutantKind::StatementBlock,
             Span::new(Point::new(0, 7, 7), Point::new(0, 17, 17)),
+            Span::new(Point::new(0, 7, 7), Point::new(0, 17, 17)),
         );
         let mutation = Mutation {
             mutant,
@@ -415,6 +432,7 @@ mod tests {
             crate::LanguageId::Javascript,
             Twig::new(PathBuf::from("src/a.js")).unwrap(),
             MutantKind::Condition,
+            Span::new(Point::new(0, 4, 4), Point::new(0, 9, 9)),
             Span::new(Point::new(0, 4, 4), Point::new(0, 9, 9)),
         );
         let mutation = Mutation {

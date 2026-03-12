@@ -16,9 +16,12 @@ impl LanguageDriver for TypescriptDriver {
         &self,
         node: &tree_sitter::Node<'_>,
         file_content: &[u8],
-    ) -> Option<(MutantKind, Span)> {
+    ) -> Option<(MutantKind, Span, Span)> {
         let result = match node.kind() {
-            "statement_block" => Some((MutantKind::StatementBlock, span_from_node(node))),
+            "statement_block" => {
+                let span = span_from_node(node);
+                Some((MutantKind::StatementBlock, span.clone(), span))
+            }
             "if_statement" | "while_statement" | "for_statement" => {
                 let condition = node.child_by_field_name("condition")?;
                 let inner = if condition.kind() == "parenthesized_expression" {
@@ -26,7 +29,12 @@ impl LanguageDriver for TypescriptDriver {
                 } else {
                     condition
                 };
-                Some((MutantKind::Condition, span_from_node(&inner)))
+                let body_field = match node.kind() {
+                    "if_statement" => "consequence",
+                    _ => "body",
+                };
+                let body = node.child_by_field_name(body_field).unwrap_or(*node);
+                Some((MutantKind::Condition, span_from_node(&inner), span_from_node(&body)))
             }
             "binary_expression" => {
                 let op_node = node.child_by_field_name("operator")?;
@@ -55,7 +63,7 @@ impl LanguageDriver for TypescriptDriver {
                     "<=" => BinaryOpMutationKind::Lte,
                     _ => return None,
                 };
-                Some((MutantKind::BinaryOp(kind), span_from_node(&op_node)))
+                Some((MutantKind::BinaryOp(kind), span_from_node(&op_node), span_from_node(node)))
             }
             "augmented_assignment_expression" => {
                 let op_node = node.child_by_field_name("operator")?;
@@ -75,7 +83,7 @@ impl LanguageDriver for TypescriptDriver {
                     "||=" => AssignMutationKind::OrAssign,
                     _ => return None,
                 };
-                Some((MutantKind::Assign(kind), span_from_node(&op_node)))
+                Some((MutantKind::Assign(kind), span_from_node(&op_node), span_from_node(node)))
             }
             "assignment_expression" => {
                 let op_node = (0..node.child_count())
@@ -84,21 +92,20 @@ impl LanguageDriver for TypescriptDriver {
                 Some((
                     MutantKind::Assign(AssignMutationKind::NormalAssign),
                     span_from_node(&op_node),
+                    span_from_node(node),
                 ))
             }
-            "array" if node.named_child_count() > 0 => Some((
-                MutantKind::ArrayDecl(ArrayDeclKind::Inline),
-                span_from_node(node),
-            )),
+            "array" if node.named_child_count() > 0 => {
+                let span = span_from_node(node);
+                Some((MutantKind::ArrayDecl(ArrayDeclKind::Inline), span.clone(), span))
+            }
             "new_expression" => {
                 let callee = node.child_by_field_name("constructor")?;
                 if callee.utf8_text(file_content).ok()? == "Array" {
                     let args = node.child_by_field_name("arguments")?;
                     if args.named_child_count() > 0 {
-                        Some((
-                            MutantKind::ArrayDecl(ArrayDeclKind::Instance),
-                            span_from_node(node),
-                        ))
+                        let span = span_from_node(node);
+                        Some((MutantKind::ArrayDecl(ArrayDeclKind::Instance), span.clone(), span))
                     } else {
                         None
                     }
@@ -107,16 +114,17 @@ impl LanguageDriver for TypescriptDriver {
                 }
             }
             "object" if node.named_child_count() > 0 => {
-                Some((MutantKind::DictDecl, span_from_node(node)))
+                let span = span_from_node(node);
+                Some((MutantKind::DictDecl, span.clone(), span))
             }
-            "true" => Some((
-                MutantKind::Literal(LiteralKind::BoolTrue),
-                span_from_node(node),
-            )),
-            "false" => Some((
-                MutantKind::Literal(LiteralKind::BoolFalse),
-                span_from_node(node),
-            )),
+            "true" => {
+                let span = span_from_node(node);
+                Some((MutantKind::Literal(LiteralKind::BoolTrue), span.clone(), span))
+            }
+            "false" => {
+                let span = span_from_node(node);
+                Some((MutantKind::Literal(LiteralKind::BoolFalse), span.clone(), span))
+            }
             "string" => {
                 let text = node.utf8_text(file_content).ok()?;
                 let kind = if text == "\"\"" || text == "''" {
@@ -124,12 +132,13 @@ impl LanguageDriver for TypescriptDriver {
                 } else {
                     LiteralKind::String
                 };
-                Some((MutantKind::Literal(kind), span_from_node(node)))
+                let span = span_from_node(node);
+                Some((MutantKind::Literal(kind), span.clone(), span))
             }
-            "number" => Some((
-                MutantKind::Literal(LiteralKind::Number),
-                span_from_node(node),
-            )),
+            "number" => {
+                let span = span_from_node(node);
+                Some((MutantKind::Literal(LiteralKind::Number), span.clone(), span))
+            }
             "member_expression" | "subscript_expression" | "call_expression" => {
                 let oc = (0..node.child_count())
                     .filter_map(|i| node.child(i as u32))
@@ -140,11 +149,11 @@ impl LanguageDriver for TypescriptDriver {
                     "call_expression" => OptionalChainKind::FnCall,
                     _ => unreachable!(),
                 };
-                Some((MutantKind::OptionalChain(kind), span_from_node(&oc)))
+                Some((MutantKind::OptionalChain(kind), span_from_node(&oc), span_from_node(node)))
             }
             _ => None,
         };
-        if let Some((ref kind, ref span)) = result {
+        if let Some((ref kind, ref span, _)) = result {
             trace!(node_kind = node.kind(), mutant_kind = ?kind, start_byte = span.start().byte(), "ts: matched node");
         }
         result

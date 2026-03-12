@@ -534,6 +534,7 @@ mod tests {
             MutantKind::BinaryOp(BinaryOpMutationKind::Add),
             // "a + b" is bytes 10..15
             Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
+            Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
         );
         let mutation = Mutation {
             mutant: mutant.clone(),
@@ -556,6 +557,7 @@ mod tests {
             LanguageId::Javascript,
             twig.clone(),
             MutantKind::BinaryOp(BinaryOpMutationKind::Add),
+            Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
             Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
         );
         let mutation = Mutation {
@@ -580,6 +582,7 @@ mod tests {
             LanguageId::Javascript,
             twig.clone(),
             MutantKind::BinaryOp(BinaryOpMutationKind::Add),
+            Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
             Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
         );
         let mutation = Mutation {
@@ -606,6 +609,7 @@ mod tests {
             LanguageId::Javascript,
             twig.clone(),
             MutantKind::BinaryOp(BinaryOpMutationKind::Add),
+            Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
             Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
         );
         let mutation = Mutation {
@@ -638,6 +642,7 @@ mod tests {
             LanguageId::Javascript,
             twig.clone(),
             MutantKind::BinaryOp(BinaryOpMutationKind::Add),
+            Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
             Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
         );
         let mutation = Mutation {

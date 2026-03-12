@@ -18,6 +18,18 @@
         "col": 7,
         "byte": 7
       }
+    },
+    "effect_span": {
+      "start": {
+        "line": 0,
+        "col": 6,
+        "byte": 6
+      },
+      "end": {
+        "line": 0,
+        "col": 7,
+        "byte": 7
+      }
     }
   },
   "subst": "-Infinity"

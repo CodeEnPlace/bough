@@ -16,6 +16,18 @@
         "col": 15,
         "byte": 15
       }
+    },
+    "effect_span": {
+      "start": {
+        "line": 0,
+        "col": 7,
+        "byte": 7
+      },
+      "end": {
+        "line": 0,
+        "col": 15,
+        "byte": 15
+      }
     }
   },
   "subst": "{}"

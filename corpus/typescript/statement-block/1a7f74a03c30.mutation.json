@@ -18,6 +18,18 @@
         "col": 31,
         "byte": 31
       }
+    },
+    "effect_span": {
+      "start": {
+        "line": 0,
+        "col": 30,
+        "byte": 30
+      },
+      "end": {
+        "line": 0,
+        "col": 31,
+        "byte": 31
+      }
     }
   },
   "subst": "NaN"

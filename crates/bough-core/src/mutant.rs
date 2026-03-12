@@ -34,15 +34,17 @@ pub struct Mutant {
     twig: Twig,
     kind: MutantKind,
     subst_span: Span,
+    effect_span: Span,
 }
 
 impl Mutant {
-    pub fn new(lang: LanguageId, twig: Twig, kind: MutantKind, span: Span) -> Self {
+    pub fn new(lang: LanguageId, twig: Twig, kind: MutantKind, span: Span, effect_span: Span) -> Self {
         Self {
             lang,
             twig,
             kind,
             subst_span: span,
+            effect_span,
         }
     }
 
@@ -60,6 +62,10 @@ impl Mutant {
 
     pub fn span(&self) -> &Span {
         &self.subst_span
+    }
+
+    pub fn effect_span(&self) -> &Span {
+        &self.effect_span
     }
 
     pub fn get_contextual_fragment(
@@ -176,6 +182,10 @@ impl<'a> BasedMutant<'a> {
 
     pub fn span(&self) -> &Span {
         &self.mutant.subst_span
+    }
+
+    pub fn effect_span(&self) -> &Span {
+        &self.mutant.effect_span
     }
 }
 
@@ -448,7 +458,7 @@ impl<'a, 't> Iterator for TwigMutantsIter<'a, 't> {
 
             let Some(node) = node else { continue };
 
-            if let Some((kind, span)) = self.driver.check_node(&node, &self.file_content) {
+            if let Some((kind, span, effect_span)) = self.driver.check_node(&node, &self.file_content) {
                 if self.skip_kinds.contains(&kind) {
                     trace!(?kind, "skipping mutant by kind filter");
                     continue;
@@ -477,7 +487,7 @@ impl<'a, 't> Iterator for TwigMutantsIter<'a, 't> {
                     end = span.end().byte(),
                     "found mutant"
                 );
-                let mutant = Mutant::new(self.lang, self.twig.clone(), kind, span);
+                let mutant = Mutant::new(self.lang, self.twig.clone(), kind, span, effect_span);
                 return Some(BasedMutant::new(mutant, self.base));
             }
         }
@@ -547,6 +557,7 @@ mod tests {
             twig.clone(),
             MutantKind::StatementBlock,
             Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
+            Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
         );
         assert_eq!(m.lang(), LanguageId::Javascript);
     }
@@ -559,6 +570,7 @@ mod tests {
             LanguageId::Javascript,
             twig.clone(),
             MutantKind::StatementBlock,
+            Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
             Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
         );
         assert_eq!(m.twig().path(), std::path::Path::new("src/a.js"));
@@ -573,6 +585,7 @@ mod tests {
             twig.clone(),
             MutantKind::Condition,
             Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
+            Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
         );
         assert!(matches!(m.kind(), MutantKind::Condition));
     }
@@ -585,6 +598,7 @@ mod tests {
             LanguageId::Javascript,
             twig.clone(),
             MutantKind::StatementBlock,
+            Span::new(Point::new(3, 5, 30), Point::new(7, 1, 60)),
             Span::new(Point::new(3, 5, 30), Point::new(7, 1, 60)),
         );
         assert_eq!(m.span().start().line(), 3);
@@ -602,6 +616,7 @@ mod tests {
             twig.clone(),
             MutantKind::StatementBlock,
             Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
+            Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
         );
         let based = BasedMutant::new(mutant.clone(), &base);
         assert_eq!(based.mutant(), &mutant);
@@ -616,6 +631,7 @@ mod tests {
             LanguageId::Javascript,
             twig.clone(),
             MutantKind::StatementBlock,
+            Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
             Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
         );
         let based = BasedMutant::new(mutant, &base);
@@ -811,11 +827,13 @@ mod tests {
             twig.clone(),
             MutantKind::StatementBlock,
             Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
+            Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
         );
         let m2 = Mutant::new(
             LanguageId::Typescript,
             twig.clone(),
             MutantKind::StatementBlock,
+            Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
             Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
         );
         assert_ne!(hash_mutant(&m1), hash_mutant(&m2));
@@ -831,11 +849,13 @@ mod tests {
             twig_a,
             MutantKind::StatementBlock,
             Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
+            Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
         );
         let m2 = Mutant::new(
             LanguageId::Javascript,
             twig_b,
             MutantKind::StatementBlock,
+            Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
             Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
         );
         assert_ne!(hash_mutant(&m1), hash_mutant(&m2));
@@ -850,11 +870,13 @@ mod tests {
             twig.clone(),
             MutantKind::StatementBlock,
             Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
+            Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
         );
         let m2 = Mutant::new(
             LanguageId::Javascript,
             twig.clone(),
             MutantKind::StatementBlock,
+            Span::new(Point::new(5, 3, 40), Point::new(8, 0, 70)),
             Span::new(Point::new(5, 3, 40), Point::new(8, 0, 70)),
         );
         assert_ne!(hash_mutant(&m1), hash_mutant(&m2));
@@ -869,11 +891,13 @@ mod tests {
             twig.clone(),
             MutantKind::StatementBlock,
             Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
+            Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
         );
         let m2 = Mutant::new(
             LanguageId::Javascript,
             twig.clone(),
             MutantKind::Condition,
+            Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
             Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
         );
         assert_ne!(hash_mutant(&m1), hash_mutant(&m2));
@@ -887,6 +911,7 @@ mod tests {
             LanguageId::Javascript,
             twig.clone(),
             MutantKind::StatementBlock,
+            Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
             Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
         );
         let hash = m.hash().unwrap();
@@ -919,6 +944,7 @@ mod tests {
             LanguageId::Javascript,
             twig.clone(),
             MutantKind::StatementBlock,
+            Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
             Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
         );
         let bm1 = BasedMutant::new(mutant.clone(), &base1);
@@ -953,6 +979,7 @@ mod tests {
             twig.clone(),
             MutantKind::StatementBlock,
             Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
+            Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
         );
         let bm1 = BasedMutant::new(mutant.clone(), &base1);
         let bm2 = BasedMutant::new(mutant, &base2);
@@ -968,6 +995,7 @@ mod tests {
             LanguageId::Javascript,
             twig.clone(),
             MutantKind::StatementBlock,
+            Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
             Span::new(Point::new(0, 0, 0), Point::new(1, 0, 10)),
         );
         let based = BasedMutant::new(mutant, &base);

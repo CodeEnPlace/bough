@@ -18,6 +18,18 @@
         "col": 2,
         "byte": 2
       }
+    },
+    "effect_span": {
+      "start": {
+        "line": 0,
+        "col": 1,
+        "byte": 1
+      },
+      "end": {
+        "line": 0,
+        "col": 2,
+        "byte": 2
+      }
     }
   },
   "subst": "1"

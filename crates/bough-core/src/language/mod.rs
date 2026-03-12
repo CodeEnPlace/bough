@@ -14,7 +14,7 @@ pub(crate) trait LanguageDriver {
         &self,
         node: &tree_sitter::Node<'_>,
         file_content: &[u8],
-    ) -> Option<(MutantKind, Span)>;
+    ) -> Option<(MutantKind, Span, Span)>;
 
     fn substitutions(&self, kind: &MutantKind) -> Vec<String>;
 
