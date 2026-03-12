@@ -1,1 +1,1 @@
-{"mutation":{"mutant":{"lang":"js","twig":["src/validators/bio.js"],"kind":{"BinaryOp":"Gt"},"span":{"start":{"line":6,"col":19,"byte":212},"end":{"line":6,"col":20,"byte":213}}},"subst":">="},"outcome":{"status":"Missed","at":"2026-03-11T14:14:48Z"}}
+{"mutation":{"mutant":{"lang":"js","twig":["src/validators/bio.js"],"kind":{"BinaryOp":"Gt"},"subst_span":{"start":{"line":6,"col":19,"byte":212},"end":{"line":6,"col":20,"byte":213}},"effect_span":{"start":{"line":6,"col":6,"byte":199},"end":{"line":6,"col":24,"byte":217}}},"subst":">="},"outcome":null}

@@ -6,6 +6,12 @@ base_root_dir = "."
 init.cmd = "npm install"
 test.cmd = "npm run test"
 
+[find]
+factors = [
+  "EncompasingMissedMutationsCount",
+  "TSNodeDepth",
+]
+
 [timeout]
 relative = 3
 

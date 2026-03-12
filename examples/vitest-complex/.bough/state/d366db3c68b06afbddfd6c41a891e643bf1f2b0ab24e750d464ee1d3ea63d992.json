@@ -1,1 +1,1 @@
-{"mutation":{"mutant":{"lang":"js","twig":["src/validators/password.js"],"kind":"DictDecl","span":{"start":{"line":22,"col":16,"byte":838},"end":{"line":22,"col":79,"byte":901}}},"subst":"{}"},"outcome":{"status":"Missed","at":"2026-03-11T14:15:53Z"}}
+{"mutation":{"mutant":{"lang":"js","twig":["src/validators/password.js"],"kind":"DictDecl","subst_span":{"start":{"line":22,"col":16,"byte":838},"end":{"line":22,"col":79,"byte":901}},"effect_span":{"start":{"line":22,"col":16,"byte":838},"end":{"line":22,"col":79,"byte":901}}},"subst":"{}"},"outcome":null}

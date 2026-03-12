@@ -444,7 +444,9 @@ fn main() {
 
                                 let mutation = mutation_state.mutation();
 
-                                if let Ok(outcome) = workspace.run_reset(&cli.config, reset_duration) {
+                                if let Ok(outcome) =
+                                    workspace.run_reset(&cli.config, reset_duration)
+                                {
                                     if !cli.progress {
                                         println!(
                                             "{}",
@@ -507,7 +509,6 @@ fn main() {
 
         Command::Find { ref lang, ref file } => {
             let mut session = Session::new(cli.config.clone()).expect("session creation");
-            session.tend_add_missing_states().expect("tend states");
             let results = session.find_best_mutations().expect("find best mutations");
             let filtered: Vec<_> = results
                 .into_iter()
