@@ -3,6 +3,7 @@ use std::sync::Arc;
 use facet::Facet;
 
 use crate::{Mutation, base::Base};
+use crate::language::driver_for_lang;
 
 #[derive(Facet, Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
@@ -50,18 +51,46 @@ impl MutationScorer {
     }
 
     pub fn score(&mut self, mutation: Mutation) -> OpaqueScore {
-        match &self.factor {
-            &Factor::TSNodeDepth => todo!(),
+        let value = match &self.factor {
+            Factor::TSNodeDepth => self.score_ts_node_depth(&mutation),
 
-            &Factor::EncompasingMissedMutationsCount => todo!(),
+            Factor::EncompasingMissedMutationsCount => todo!(),
+            Factor::FileAuthorCount => todo!(),
+            Factor::MutationSeverity => todo!(),
+            Factor::SiblingMissedMutations => todo!(),
+            Factor::SiblingOperatorDiversity => todo!(),
+            Factor::VcsFileChurn => todo!(),
+            Factor::VcsLineBlameRecency => todo!(),
+        };
+        self.min = self.min.min(value);
+        self.max = self.max.max(value);
+        OpaqueScore(value)
+    }
 
-            &Factor::FileAuthorCount => todo!(),
-            &Factor::MutationSeverity => todo!(),
-            &Factor::SiblingMissedMutations => todo!(),
-            &Factor::SiblingOperatorDiversity => todo!(),
-            &Factor::VcsFileChurn => todo!(),
-            &Factor::VcsLineBlameRecency => todo!(),
+    fn score_ts_node_depth(&self, mutation: &Mutation) -> u64 {
+        let mutant = mutation.mutant();
+        let file_path = crate::file::File::new(self.base.as_ref(), mutant.twig()).resolve();
+        let content = std::fs::read(&file_path).expect("source file should be readable");
+
+        let driver = driver_for_lang(mutant.lang());
+        let mut parser = tree_sitter::Parser::new();
+        parser
+            .set_language(&driver.ts_language())
+            .expect("language grammar should load");
+        let tree = parser.parse(&content, None).expect("parse should succeed");
+
+        let node = tree
+            .root_node()
+            .descendant_for_byte_range(mutant.span().start().byte(), mutant.span().end().byte())
+            .unwrap_or(tree.root_node());
+
+        let mut depth = 0u64;
+        let mut current = node;
+        while let Some(parent) = current.parent() {
+            depth += 1;
+            current = parent;
         }
+        depth
     }
 
     pub fn into_viewer(self) -> MutationScoreViewer {
@@ -180,7 +209,91 @@ mod tests {
         }
     }
 
-    mod ts_node_depth {}
+    mod ts_node_depth {
+        use super::*;
+        use crate::file::Twig;
+        use crate::mutant::{MutantKind, Mutant, Point, Span, BinaryOpMutationKind, TwigMutantsIter};
+        use crate::mutation::MutationIter;
+        use crate::twig::TwigsIterBuilder;
+        use crate::LanguageId;
+        use std::path::PathBuf;
+
+        fn make_js_base(content: &str) -> (tempfile::TempDir, crate::base::Base) {
+            let dir = tempfile::tempdir().unwrap();
+            std::fs::create_dir_all(dir.path().join("src")).unwrap();
+            std::fs::write(dir.path().join("src/a.js"), content).unwrap();
+            let base = crate::base::Base::new(
+                dir.path().to_path_buf(),
+                TwigsIterBuilder::new().with_include_glob("src/**/*.js"),
+            ).unwrap();
+            (dir, base)
+        }
+
+        fn score_all(base: &crate::base::Base) -> Vec<(MutantKind, u64)> {
+            let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
+            let mut scorer = MutationScorer::new(Arc::new(base.clone()), Factor::TSNodeDepth);
+            TwigMutantsIter::new(LanguageId::Javascript, base, &twig)
+                .unwrap()
+                .flat_map(|bm| {
+                    let mutant = bm.into_mutant();
+                    MutationIter::new(&mutant).collect::<Vec<_>>()
+                })
+                .map(|mutation| {
+                    let kind = mutation.mutant().kind().clone();
+                    let score = scorer.score(mutation);
+                    (kind, score.0)
+                })
+                .collect()
+        }
+
+        #[test]
+        fn top_level_statement_block_is_shallow() {
+            let (_dir, base) = make_js_base("function foo() { return 1; }");
+            let scores = score_all(&base);
+            let block_scores: Vec<_> = scores.iter()
+                .filter(|(k, _)| matches!(k, MutantKind::StatementBlock))
+                .collect();
+            assert_eq!(block_scores.len(), 1);
+            let depth = block_scores[0].1;
+            assert!(depth <= 3, "top-level block depth {depth} should be shallow");
+        }
+
+        #[test]
+        fn nested_mutation_is_deeper_than_outer() {
+            let js = "function foo() { if (x) { return a + b; } }";
+            let (_dir, base) = make_js_base(js);
+            let scores = score_all(&base);
+            let block_depth = scores.iter()
+                .filter(|(k, _)| matches!(k, MutantKind::StatementBlock))
+                .map(|(_, d)| *d)
+                .min().unwrap();
+            let add_depth = scores.iter()
+                .filter(|(k, _)| matches!(k, MutantKind::BinaryOp(BinaryOpMutationKind::Add)))
+                .map(|(_, d)| *d)
+                .next().unwrap();
+            assert!(add_depth > block_depth, "add depth {add_depth} should be deeper than block depth {block_depth}");
+        }
+
+        #[test]
+        fn scorer_updates_min_max() {
+            let js = "function foo() { if (x) { return a + b; } }";
+            let (_dir, base) = make_js_base(js);
+            let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
+            let mut scorer = MutationScorer::new(Arc::new(base.clone()), Factor::TSNodeDepth);
+            let mutations: Vec<_> = TwigMutantsIter::new(LanguageId::Javascript, &base, &twig)
+                .unwrap()
+                .flat_map(|bm| MutationIter::new(&bm.into_mutant()).collect::<Vec<_>>())
+                .collect();
+            let scores: Vec<_> = mutations.into_iter()
+                .map(|m| scorer.score(m))
+                .collect();
+            let viewer = scorer.into_viewer();
+            let min_score = scores.iter().map(|s| s.0).min().unwrap();
+            let max_score = scores.iter().map(|s| s.0).max().unwrap();
+            assert_eq!(viewer.normalize(OpaqueScore(min_score)), 0.0);
+            assert_eq!(viewer.normalize(OpaqueScore(max_score)), 1.0);
+        }
+    }
     mod encompasing_missed_mutations_count {}
     mod file_author_count {}
     mod mutation_severity {}
