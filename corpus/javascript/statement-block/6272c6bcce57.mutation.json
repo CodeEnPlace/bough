@@ -1,0 +1,24 @@
+{
+  "mutant": {
+    "lang": "js",
+    "twig": [
+      "src/a.js"
+    ],
+    "kind": {
+      "Literal": "Number"
+    },
+    "subst_span": {
+      "start": {
+        "line": 0,
+        "col": 22,
+        "byte": 22
+      },
+      "end": {
+        "line": 0,
+        "col": 23,
+        "byte": 23
+      }
+    }
+  },
+  "subst": "Infinity"
+}

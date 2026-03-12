@@ -4,7 +4,7 @@ mod base;
 mod facet_disk_store;
 mod file;
 mod language;
-mod mutant;
+pub mod mutant;
 mod mutation;
 mod mutation_score;
 mod phase;
@@ -35,13 +35,17 @@ pub enum LanguageId {
     Typescript,
 }
 
+pub use base::Base;
 pub use file::File;
+pub use file::Twig;
 pub use mutation::Mutation;
 pub use mutation::MutationHash;
+pub use mutation::MutationIter;
 pub use mutation_score::Factor;
 pub use phase::Error as PhaseError;
 pub use phase::PhaseOutcome;
 pub use session::Config;
 pub use session::Session;
 pub use state::{State, Status};
+pub use twig::TwigsIterBuilder;
 pub use workspace::{Workspace, WorkspaceId};
