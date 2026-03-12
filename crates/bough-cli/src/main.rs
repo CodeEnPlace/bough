@@ -8,7 +8,7 @@ use bough_core::{File, Mutation, Session, State};
 use bough_typed_hash::TypedHashable;
 use config::{Command, Show, parse};
 use render::{Noop, Render};
-use tracing::{Level, debug, info};
+use tracing::{Level, debug, error, info, warn};
 
 use crate::render::{
     AllMutations, BaseFiles, FileMutations, LangMutations, MutantFiles, SingleMutation,
@@ -388,15 +388,19 @@ fn main() {
                 None
             };
 
-            std::thread::scope(|scope| {
+            #[deny(clippy::unwrap_used, clippy::expect_used)]
+            let _: () = std::thread::scope(|scope| {
                 if let Some(ref pb) = pb {
                     let pb = pb.clone();
                     let session = Arc::clone(&session);
                     let done = Arc::clone(&done);
                     scope.spawn(move || {
                         while !done.load(Ordering::Relaxed) {
-                            let remaining =
-                                session.lock().unwrap().get_count_mutation_needing_test() as u64;
+                            let Ok(mut guard) = session.lock() else {
+                                break;
+                            };
+                            let remaining = guard.get_count_mutation_needing_test() as u64;
+                            drop(guard);
                             pb.set_position(total.saturating_sub(remaining));
                             std::thread::sleep(std::time::Duration::from_millis(100));
                         }
@@ -411,11 +415,15 @@ fn main() {
                     let done = done.clone();
 
                     scope.spawn(move || {
-                        let mut workspace = session
-                            .lock()
-                            .unwrap()
-                            .bind_workspace(&workspace_id)
-                            .expect("bind workspace");
+                        let Ok(guard) = session.lock() else {
+                            error!(%workspace_id, "mutex poisoned binding workspace");
+                            return;
+                        };
+                        let Ok(mut workspace) = guard.bind_workspace(&workspace_id) else {
+                            error!(%workspace_id, "failed to bind workspace");
+                            return;
+                        };
+                        drop(guard);
 
                         if let Ok(outcome) = workspace.run_init(&cli.config, init_duration) {
                             if !cli.progress {
@@ -431,71 +439,94 @@ fn main() {
                         }
 
                         loop {
-                            let hash_to_test =
-                                session.lock().unwrap().get_next_mutation_needing_test();
+                            let Ok(mut guard) = session.lock() else {
+                                error!(%workspace_id, "mutex poisoned in worker");
+                                break;
+                            };
+                            let hash_to_test = guard.get_next_mutation_needing_test();
+                            drop(guard);
 
-                            if let Some(hash_to_test) = hash_to_test {
-                                let mutation_state = session
-                                    .lock()
-                                    .unwrap()
-                                    .get_state()
-                                    .get(&hash_to_test)
-                                    .unwrap();
+                            let Some(hash_to_test) = hash_to_test else {
+                                break;
+                            };
 
-                                let mutation = mutation_state.mutation();
+                            let Ok(guard) = session.lock() else {
+                                error!(%workspace_id, "mutex poisoned getting state");
+                                break;
+                            };
+                            let Some(mutation_state) = guard.get_state().get(&hash_to_test) else {
+                                warn!(%workspace_id, %hash_to_test, "state not found for mutation");
+                                continue;
+                            };
+                            let mutation = mutation_state.mutation();
+                            drop(guard);
 
-                                if let Ok(outcome) =
-                                    workspace.run_reset(&cli.config, reset_duration)
-                                {
-                                    if !cli.progress {
-                                        println!(
-                                            "{}",
-                                            render::ResetWorkspace {
-                                                workspace_id: workspace_id.clone(),
-                                                outcome,
-                                            }
-                                            .render(&cli)
-                                        );
-                                    }
-                                }
-
-                                workspace.write_mutant(&mutation).expect("apply mutation");
-                                let outcome = workspace
-                                    .run_test(&cli.config, Some(test_duration))
-                                    .expect("test mutation");
-                                workspace.revert_mutant().expect("revert mutation");
-                                let status = if outcome.exit_code() != 0 {
-                                    bough_core::Status::Caught
-                                } else {
-                                    bough_core::Status::Missed
-                                };
-
-                                let status_str = if outcome.exit_code() != 0 {
-                                    "caught"
-                                } else {
-                                    "missed"
-                                };
-
-                                session
-                                    .lock()
-                                    .unwrap()
-                                    .set_state(&mutation, status)
-                                    .expect("set state");
-
+                            if let Ok(outcome) =
+                                workspace.run_reset(&cli.config, reset_duration)
+                            {
                                 if !cli.progress {
                                     println!(
                                         "{}",
-                                        (render::TestMutation {
+                                        render::ResetWorkspace {
                                             workspace_id: workspace_id.clone(),
-                                            mutation_hash: format!("{}", hash_to_test),
-                                            status: status_str,
-                                            duration: outcome.duration(),
-                                        })
+                                            outcome,
+                                        }
                                         .render(&cli)
                                     );
                                 }
-                            } else {
+                            }
+
+                            if let Err(e) = workspace.write_mutant(&mutation) {
+                                error!(%workspace_id, err = %e, "failed to apply mutation");
+                                continue;
+                            }
+                            let outcome = match workspace
+                                .run_test(&cli.config, Some(test_duration))
+                            {
+                                Ok(o) => o,
+                                Err(e) => {
+                                    error!(%workspace_id, err = %e, "test execution failed");
+                                    let _ = workspace.revert_mutant();
+                                    continue;
+                                }
+                            };
+                            if let Err(e) = workspace.revert_mutant() {
+                                error!(%workspace_id, err = %e, "failed to revert mutation");
                                 break;
+                            }
+
+                            let status = if outcome.exit_code() != 0 {
+                                bough_core::Status::Caught
+                            } else {
+                                bough_core::Status::Missed
+                            };
+
+                            let status_str = if outcome.exit_code() != 0 {
+                                "caught"
+                            } else {
+                                "missed"
+                            };
+
+                            let Ok(mut guard) = session.lock() else {
+                                error!(%workspace_id, "mutex poisoned setting state");
+                                break;
+                            };
+                            if let Err(e) = guard.set_state(&mutation, status) {
+                                error!(%workspace_id, err = ?e, "failed to set state");
+                            }
+                            drop(guard);
+
+                            if !cli.progress {
+                                println!(
+                                    "{}",
+                                    (render::TestMutation {
+                                        workspace_id: workspace_id.clone(),
+                                        mutation_hash: format!("{}", hash_to_test),
+                                        status: status_str,
+                                        duration: outcome.duration(),
+                                    })
+                                    .render(&cli)
+                                );
                             }
                         }
 
