@@ -1,0 +1,24 @@
+{
+  "mutant": {
+    "lang": "ts",
+    "twig": [
+      "src/a.ts"
+    ],
+    "kind": {
+      "ArrayDecl": "Instance"
+    },
+    "subst_span": {
+      "start": {
+        "line": 0,
+        "col": 0,
+        "byte": 0
+      },
+      "end": {
+        "line": 0,
+        "col": 18,
+        "byte": 18
+      }
+    }
+  },
+  "subst": "new Array()"
+}

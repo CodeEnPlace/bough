@@ -1,0 +1,1 @@
+new Array(1, NaN, 3)

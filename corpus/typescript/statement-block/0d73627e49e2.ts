@@ -1,0 +1,1 @@
+function f(): -Infinity { return 1; }
