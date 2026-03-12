@@ -4,6 +4,12 @@ use bough_typed_hash::{HashInto, TypedHashable};
 use tracing::{debug, trace};
 use tree_sitter::StreamingIterator;
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum EncompassError {
+    LangMismatch { outer: LanguageId, inner: LanguageId },
+    TwigMismatch { outer: Twig, inner: Twig },
+}
+
 // bough[impl mutant.twig-iter.twig]
 // bough[impl mutant.twig-iter.base]
 // bough[impl mutant.twig-iter.lang]
@@ -66,6 +72,19 @@ impl Mutant {
 
     pub fn effect_span(&self) -> &Span {
         &self.effect_span
+    }
+
+    pub fn encompasses(&self, inner: &Mutant) -> Result<bool, EncompassError> {
+        if self.lang != inner.lang {
+            return Err(EncompassError::LangMismatch { outer: self.lang, inner: inner.lang });
+        }
+        if self.twig != inner.twig {
+            return Err(EncompassError::TwigMismatch {
+                outer: self.twig.clone(),
+                inner: inner.twig.clone(),
+            });
+        }
+        Ok(self.effect_span.intersects(&inner.subst_span))
     }
 
     pub fn get_contextual_fragment(
@@ -248,6 +267,10 @@ impl Span {
 
     pub fn end(&self) -> &Point {
         &self.end
+    }
+
+    pub fn intersects(&self, other: &Span) -> bool {
+        self.start.byte < other.end.byte && other.start.byte < self.end.byte
     }
 }
 
@@ -603,6 +626,85 @@ mod tests {
         );
         assert_eq!(m.span().start().line(), 3);
         assert_eq!(m.span().end().byte(), 60);
+    }
+
+    #[test]
+    fn encompases_returns_true_when_effect_intersects_inner_subst() {
+        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
+        let outer = Mutant::new(
+            LanguageId::Javascript,
+            twig.clone(),
+            MutantKind::Condition,
+            Span::new(Point::new(0, 4, 4), Point::new(0, 5, 5)),
+            Span::new(Point::new(0, 0, 0), Point::new(0, 20, 20)),
+        );
+        let inner = Mutant::new(
+            LanguageId::Javascript,
+            twig.clone(),
+            MutantKind::StatementBlock,
+            Span::new(Point::new(0, 7, 7), Point::new(0, 15, 15)),
+            Span::new(Point::new(0, 7, 7), Point::new(0, 15, 15)),
+        );
+        assert!(outer.encompasses(&inner).unwrap());
+    }
+
+    #[test]
+    fn encompases_returns_false_when_no_intersection() {
+        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
+        let a = Mutant::new(
+            LanguageId::Javascript,
+            twig.clone(),
+            MutantKind::Condition,
+            Span::new(Point::new(0, 0, 0), Point::new(0, 5, 5)),
+            Span::new(Point::new(0, 0, 0), Point::new(0, 10, 10)),
+        );
+        let b = Mutant::new(
+            LanguageId::Javascript,
+            twig.clone(),
+            MutantKind::StatementBlock,
+            Span::new(Point::new(0, 20, 20), Point::new(0, 30, 30)),
+            Span::new(Point::new(0, 20, 20), Point::new(0, 30, 30)),
+        );
+        assert!(!a.encompasses(&b).unwrap());
+    }
+
+    #[test]
+    fn encompases_errors_on_different_twigs() {
+        let a = Mutant::new(
+            LanguageId::Javascript,
+            Twig::new(PathBuf::from("src/a.js")).unwrap(),
+            MutantKind::Condition,
+            Span::new(Point::new(0, 0, 0), Point::new(0, 10, 10)),
+            Span::new(Point::new(0, 0, 0), Point::new(0, 20, 20)),
+        );
+        let b = Mutant::new(
+            LanguageId::Javascript,
+            Twig::new(PathBuf::from("src/b.js")).unwrap(),
+            MutantKind::StatementBlock,
+            Span::new(Point::new(0, 5, 5), Point::new(0, 15, 15)),
+            Span::new(Point::new(0, 5, 5), Point::new(0, 15, 15)),
+        );
+        assert!(a.encompasses(&b).is_err());
+    }
+
+    #[test]
+    fn encompases_errors_on_different_langs() {
+        let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
+        let a = Mutant::new(
+            LanguageId::Javascript,
+            twig.clone(),
+            MutantKind::Condition,
+            Span::new(Point::new(0, 0, 0), Point::new(0, 10, 10)),
+            Span::new(Point::new(0, 0, 0), Point::new(0, 20, 20)),
+        );
+        let b = Mutant::new(
+            LanguageId::Typescript,
+            twig.clone(),
+            MutantKind::StatementBlock,
+            Span::new(Point::new(0, 5, 5), Point::new(0, 15, 15)),
+            Span::new(Point::new(0, 5, 5), Point::new(0, 15, 15)),
+        );
+        assert!(a.encompasses(&b).is_err());
     }
 
     // bough[verify mutant.based]
@@ -1013,6 +1115,53 @@ mod tests {
         assert_eq!(span.start().col(), 0);
         assert_eq!(span.end().line(), 5);
         assert_eq!(span.end().byte(), 50);
+    }
+
+    #[test]
+    fn span_intersects_overlapping() {
+        let a = Span::new(Point::new(0, 0, 0), Point::new(0, 10, 10));
+        let b = Span::new(Point::new(0, 5, 5), Point::new(0, 15, 15));
+        assert!(a.intersects(&b));
+        assert!(b.intersects(&a));
+    }
+
+    #[test]
+    fn span_intersects_identical() {
+        let a = Span::new(Point::new(0, 0, 0), Point::new(0, 10, 10));
+        let b = Span::new(Point::new(0, 0, 0), Point::new(0, 10, 10));
+        assert!(a.intersects(&b));
+    }
+
+    #[test]
+    fn span_intersects_contained() {
+        let outer = Span::new(Point::new(0, 0, 0), Point::new(0, 20, 20));
+        let inner = Span::new(Point::new(0, 5, 5), Point::new(0, 15, 15));
+        assert!(outer.intersects(&inner));
+        assert!(inner.intersects(&outer));
+    }
+
+    #[test]
+    fn span_no_intersect_disjoint() {
+        let a = Span::new(Point::new(0, 0, 0), Point::new(0, 5, 5));
+        let b = Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15));
+        assert!(!a.intersects(&b));
+        assert!(!b.intersects(&a));
+    }
+
+    #[test]
+    fn span_no_intersect_adjacent() {
+        let a = Span::new(Point::new(0, 0, 0), Point::new(0, 5, 5));
+        let b = Span::new(Point::new(0, 5, 5), Point::new(0, 10, 10));
+        assert!(!a.intersects(&b));
+        assert!(!b.intersects(&a));
+    }
+
+    #[test]
+    fn span_intersects_single_byte_overlap() {
+        let a = Span::new(Point::new(0, 0, 0), Point::new(0, 5, 5));
+        let b = Span::new(Point::new(0, 4, 4), Point::new(0, 10, 10));
+        assert!(a.intersects(&b));
+        assert!(b.intersects(&a));
     }
 
     // bough[verify mutant.twig-iter.skip.kind]
