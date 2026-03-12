@@ -307,64 +307,80 @@ mod tests {
     mod encompasing_missed_mutations_count {
         use super::*;
         use crate::file::Twig;
-        use crate::mutant::{MutantKind, Mutant, Point, Span, BinaryOpMutationKind};
-        use crate::mutation::Mutation;
+        use crate::mutant::{MutantKind, BinaryOpMutationKind, TwigMutantsIter};
+        use crate::mutation::{Mutation, MutationIter};
         use crate::state::{State, Status};
+        use crate::twig::TwigsIterBuilder;
         use crate::LanguageId;
         use std::path::PathBuf;
 
-        fn make_mutant(kind: MutantKind, subst_start: usize, subst_end: usize, effect_start: usize, effect_end: usize) -> Mutant {
-            Mutant::new(
-                LanguageId::Javascript,
-                Twig::new(PathBuf::from("src/a.js")).unwrap(),
-                kind,
-                Span::new(Point::new(0, subst_start, subst_start), Point::new(0, subst_end, subst_end)),
-                Span::new(Point::new(0, effect_start, effect_start), Point::new(0, effect_end, effect_end)),
-            )
+        fn make_js_base(content: &str) -> (tempfile::TempDir, crate::base::Base) {
+            let dir = tempfile::tempdir().unwrap();
+            std::fs::create_dir_all(dir.path().join("src")).unwrap();
+            std::fs::write(dir.path().join("src/a.js"), content).unwrap();
+            let base = crate::base::Base::new(
+                dir.path().to_path_buf(),
+                TwigsIterBuilder::new().with_include_glob("src/**/*.js"),
+            ).unwrap();
+            (dir, base)
         }
 
-        fn make_mutation(mutant: Mutant) -> Mutation {
-            Mutation { mutant, subst: "x".into() }
+        fn all_mutations(base: &crate::base::Base) -> Vec<Mutation> {
+            let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
+            TwigMutantsIter::new(LanguageId::Javascript, base, &twig)
+                .unwrap()
+                .flat_map(|bm| MutationIter::new(&bm.into_mutant()).collect::<Vec<_>>())
+                .collect()
         }
 
-        fn make_missed_state(mutant: Mutant) -> State {
-            let mut state = State::new(make_mutation(mutant));
+        fn first_mutation_of_kind(mutations: &[Mutation], kind: &MutantKind) -> Mutation {
+            mutations.iter()
+                .find(|m| m.mutant().kind() == kind)
+                .unwrap_or_else(|| panic!("no mutation of kind {kind:?}"))
+                .clone()
+        }
+
+        fn make_missed_state(mutation: Mutation) -> State {
+            let mut state = State::new(mutation);
             state.set_outcome(Status::Missed);
             state
         }
 
-        fn make_caught_state(mutant: Mutant) -> State {
-            let mut state = State::new(make_mutation(mutant));
+        fn make_caught_state(mutation: Mutation) -> State {
+            let mut state = State::new(mutation);
             state.set_outcome(Status::Caught);
             state
         }
 
-        fn make_scorer() -> MutationScorer {
-            let base = Arc::new(crate::base::Base::new(
-                std::env::temp_dir(),
-                crate::twig::TwigsIterBuilder::new(),
-            ).unwrap());
-            MutationScorer { base, factor: Factor::EncompasingMissedMutationsCount, min: u64::MAX, max: u64::MIN }
+        fn make_scorer(base: &crate::base::Base) -> MutationScorer {
+            MutationScorer {
+                base: Arc::new(base.clone()),
+                factor: Factor::EncompasingMissedMutationsCount,
+                min: u64::MAX,
+                max: u64::MIN,
+            }
         }
 
         // if (x) { y() + z() }
-        // Condition on x: subst=4..5, effect=0..20
-        // BinaryOp on +: subst=13..14, effect=9..18
-        // Both missed: scoring + → condition encompasses it → count=1
-        //              scoring condition → + does not encompass it → count=0
+        // Condition on x: effect_span covers entire if statement
+        // BinaryOp +: effect_span covers y() + z()
+        // Condition encompasses +, but + does not encompass condition
+
         #[test]
         fn inner_mutation_scores_higher_than_outer() {
-            let condition = make_mutant(MutantKind::Condition, 4, 5, 0, 20);
-            let binop = make_mutant(MutantKind::BinaryOp(BinaryOpMutationKind::Add), 13, 14, 9, 18);
+            let (_dir, base) = make_js_base("if (x) { y() + z() }");
+            let mutations = all_mutations(&base);
+            let condition = first_mutation_of_kind(&mutations, &MutantKind::Condition);
+            let binop = first_mutation_of_kind(&mutations, &MutantKind::BinaryOp(BinaryOpMutationKind::Add));
 
             let states = vec![
                 make_missed_state(condition.clone()),
                 make_missed_state(binop.clone()),
             ];
 
-            let mut scorer = make_scorer();
-            let binop_score = scorer.score(make_mutation(binop), &states);
-            let condition_score = scorer.score(make_mutation(condition), &states);
+            let mut scorer = make_scorer(&base);
+            let binop_score = scorer.score(binop, &states);
+            let condition_score = scorer.score(condition, &states);
 
             assert!(binop_score.0 > condition_score.0,
                 "binop score {} should be higher than condition score {}", binop_score.0, condition_score.0);
@@ -372,103 +388,110 @@ mod tests {
 
         #[test]
         fn condition_not_encompassed_by_binop_scores_zero() {
-            let condition = make_mutant(MutantKind::Condition, 4, 5, 0, 20);
-            let binop = make_mutant(MutantKind::BinaryOp(BinaryOpMutationKind::Add), 13, 14, 9, 18);
+            let (_dir, base) = make_js_base("if (x) { y() + z() }");
+            let mutations = all_mutations(&base);
+            let condition = first_mutation_of_kind(&mutations, &MutantKind::Condition);
+            let binop = first_mutation_of_kind(&mutations, &MutantKind::BinaryOp(BinaryOpMutationKind::Add));
 
-            let states = vec![
-                make_missed_state(binop.clone()),
-            ];
+            let states = vec![make_missed_state(binop)];
 
-            let mut scorer = make_scorer();
-            let score = scorer.score(make_mutation(condition), &states);
+            let mut scorer = make_scorer(&base);
+            let score = scorer.score(condition, &states);
             assert_eq!(score.0, 0);
         }
 
         #[test]
         fn binop_encompassed_by_condition_scores_one() {
-            let condition = make_mutant(MutantKind::Condition, 4, 5, 0, 20);
-            let binop = make_mutant(MutantKind::BinaryOp(BinaryOpMutationKind::Add), 13, 14, 9, 18);
+            let (_dir, base) = make_js_base("if (x) { y() + z() }");
+            let mutations = all_mutations(&base);
+            let condition = first_mutation_of_kind(&mutations, &MutantKind::Condition);
+            let binop = first_mutation_of_kind(&mutations, &MutantKind::BinaryOp(BinaryOpMutationKind::Add));
 
-            let states = vec![
-                make_missed_state(condition.clone()),
-            ];
+            let states = vec![make_missed_state(condition)];
 
-            let mut scorer = make_scorer();
-            let score = scorer.score(make_mutation(binop), &states);
+            let mut scorer = make_scorer(&base);
+            let score = scorer.score(binop, &states);
             assert_eq!(score.0, 1);
         }
 
         #[test]
         fn caught_mutations_are_not_counted() {
-            let condition = make_mutant(MutantKind::Condition, 4, 5, 0, 20);
-            let binop = make_mutant(MutantKind::BinaryOp(BinaryOpMutationKind::Add), 13, 14, 9, 18);
+            let (_dir, base) = make_js_base("if (x) { y() + z() }");
+            let mutations = all_mutations(&base);
+            let condition = first_mutation_of_kind(&mutations, &MutantKind::Condition);
+            let binop = first_mutation_of_kind(&mutations, &MutantKind::BinaryOp(BinaryOpMutationKind::Add));
 
-            let states = vec![
-                make_caught_state(condition.clone()),
-            ];
+            let states = vec![make_caught_state(condition)];
 
-            let mut scorer = make_scorer();
-            let score = scorer.score(make_mutation(binop), &states);
+            let mut scorer = make_scorer(&base);
+            let score = scorer.score(binop, &states);
             assert_eq!(score.0, 0);
         }
 
         #[test]
         fn does_not_count_self() {
-            let condition = make_mutant(MutantKind::Condition, 4, 5, 0, 20);
+            let (_dir, base) = make_js_base("if (x) { y() + z() }");
+            let mutations = all_mutations(&base);
+            let condition = first_mutation_of_kind(&mutations, &MutantKind::Condition);
 
-            let states = vec![
-                make_missed_state(condition.clone()),
-            ];
+            let states = vec![make_missed_state(condition.clone())];
 
-            let mut scorer = make_scorer();
-            let score = scorer.score(make_mutation(condition), &states);
+            let mut scorer = make_scorer(&base);
+            let score = scorer.score(condition, &states);
             assert_eq!(score.0, 0);
         }
 
         #[test]
         fn multiple_encompassing_missed_mutations() {
-            // Two outer conditions both encompassing the inner binop
-            let cond1 = make_mutant(MutantKind::Condition, 4, 5, 0, 30);
-            let cond2 = make_mutant(MutantKind::StatementBlock, 7, 29, 0, 30);
-            let binop = make_mutant(MutantKind::BinaryOp(BinaryOpMutationKind::Add), 13, 14, 9, 18);
+            // Both the condition and the statement block encompass the binop
+            let (_dir, base) = make_js_base("if (x) { return a + b; }");
+            let mutations = all_mutations(&base);
+            let condition = first_mutation_of_kind(&mutations, &MutantKind::Condition);
+            let block = first_mutation_of_kind(&mutations, &MutantKind::StatementBlock);
+            let binop = first_mutation_of_kind(&mutations, &MutantKind::BinaryOp(BinaryOpMutationKind::Add));
 
             let states = vec![
-                make_missed_state(cond1),
-                make_missed_state(cond2),
+                make_missed_state(condition),
+                make_missed_state(block),
             ];
 
-            let mut scorer = make_scorer();
-            let score = scorer.score(make_mutation(binop), &states);
+            let mut scorer = make_scorer(&base);
+            let score = scorer.score(binop, &states);
             assert_eq!(score.0, 2);
         }
 
+        // Two disjoint functions: mutations in one should not encompass mutations in the other
         #[test]
         fn disjoint_missed_mutations_score_zero() {
-            let a = make_mutant(MutantKind::Condition, 0, 5, 0, 10);
-            let b = make_mutant(MutantKind::BinaryOp(BinaryOpMutationKind::Add), 20, 21, 15, 25);
+            let (_dir, base) = make_js_base(
+                "function foo() { return a + b; }\nfunction bar() { return c - d; }"
+            );
+            let mutations = all_mutations(&base);
+            let add = first_mutation_of_kind(&mutations, &MutantKind::BinaryOp(BinaryOpMutationKind::Add));
+            let sub = first_mutation_of_kind(&mutations, &MutantKind::BinaryOp(BinaryOpMutationKind::Sub));
 
-            let states = vec![
-                make_missed_state(a.clone()),
-            ];
+            let states = vec![make_missed_state(sub)];
 
-            let mut scorer = make_scorer();
-            let score = scorer.score(make_mutation(b), &states);
+            let mut scorer = make_scorer(&base);
+            let score = scorer.score(add, &states);
             assert_eq!(score.0, 0);
         }
 
         #[test]
         fn updates_min_max() {
-            let condition = make_mutant(MutantKind::Condition, 4, 5, 0, 20);
-            let binop = make_mutant(MutantKind::BinaryOp(BinaryOpMutationKind::Add), 13, 14, 9, 18);
+            let (_dir, base) = make_js_base("if (x) { y() + z() }");
+            let mutations = all_mutations(&base);
+            let condition = first_mutation_of_kind(&mutations, &MutantKind::Condition);
+            let binop = first_mutation_of_kind(&mutations, &MutantKind::BinaryOp(BinaryOpMutationKind::Add));
 
             let states = vec![
                 make_missed_state(condition.clone()),
                 make_missed_state(binop.clone()),
             ];
 
-            let mut scorer = make_scorer();
-            let s1 = scorer.score(make_mutation(binop), &states);
-            let s2 = scorer.score(make_mutation(condition), &states);
+            let mut scorer = make_scorer(&base);
+            let s1 = scorer.score(binop, &states);
+            let s2 = scorer.score(condition, &states);
             let viewer = scorer.into_viewer();
             assert_eq!(viewer.normalize(OpaqueScore(s1.0)), 1.0);
             assert_eq!(viewer.normalize(OpaqueScore(s2.0)), 0.0);
