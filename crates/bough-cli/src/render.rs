@@ -75,12 +75,12 @@ impl Render for Noop {
 
 
 
-fn mutation_hash(m: &Mutation) -> String {
+pub(crate) fn mutation_hash(m: &Mutation) -> String {
     let hash = m.hash().expect("hashing should not fail");
     format!("{hash}")
 }
 
-fn fmt_status_colored(state: &State) -> String {
+pub(crate) fn fmt_status_colored(state: &State) -> String {
     match state.status() {
         Some(Status::Caught) | Some(Status::CaughtByTests(_)) => {
             format!("{CAUGHT}Caught {RESET}")
@@ -91,7 +91,7 @@ fn fmt_status_colored(state: &State) -> String {
     }
 }
 
-fn fmt_mutation_terse(s: &State) -> String {
+pub(crate) fn fmt_mutation_terse(s: &State) -> String {
     let m = s.mutation();
     let mutant = m.mutant();
     format!(
@@ -106,7 +106,7 @@ fn fmt_mutation_terse(s: &State) -> String {
     )
 }
 
-fn fmt_mutation_markdown_row(m: &Mutation) -> String {
+pub(crate) fn fmt_mutation_markdown_row(m: &Mutation) -> String {
     let mutant = m.mutant();
     format!(
         "| `{}` | {} | {:?} | {:?} | {}:{}-{}:{} | `{}` |",
@@ -125,12 +125,12 @@ fn fmt_mutation_markdown_row(m: &Mutation) -> String {
 const MARKDOWN_TABLE_HEADER: &str =
     "| Hash | File | Lang | Kind | Span | Subst |\n| --- | --- | --- | --- | --- | --- |";
 
-fn fmt_mutation_markdown_table(mutations: &[Mutation]) -> String {
+pub(crate) fn fmt_mutation_markdown_table(mutations: &[Mutation]) -> String {
     let rows: Vec<_> = mutations.iter().map(fmt_mutation_markdown_row).collect();
     format!("{MARKDOWN_TABLE_HEADER}\n{}", rows.join("\n"))
 }
 
-fn fmt_mutation_verbose(s: &State) -> String {
+pub(crate) fn fmt_mutation_verbose(s: &State) -> String {
     let m = s.mutation();
     let mutant = m.mutant();
     format!(
@@ -148,7 +148,7 @@ fn fmt_mutation_verbose(s: &State) -> String {
     )
 }
 
-fn fmt_status_from_state(state: &State) -> &'static str {
+pub(crate) fn fmt_status_from_state(state: &State) -> &'static str {
     match state.status() {
         None => "pending",
         Some(Status::Caught) | Some(Status::CaughtByTests(_)) => "caught",
@@ -157,7 +157,7 @@ fn fmt_status_from_state(state: &State) -> &'static str {
     }
 }
 
-fn fmt_outcome_at_from_state(state: &State) -> String {
+pub(crate) fn fmt_outcome_at_from_state(state: &State) -> String {
     match state.outcome_at() {
         None => "-".to_string(),
         Some(at) => at.format("%Y-%m-%d %H:%M:%S").to_string(),
@@ -361,7 +361,7 @@ pub struct TendState {
     pub removed: Vec<bough_core::MutationHash>,
 }
 
-fn hash_list_json(hashes: &[bough_core::MutationHash]) -> String {
+pub(crate) fn hash_list_json(hashes: &[bough_core::MutationHash]) -> String {
     let items: Vec<String> = hashes.iter().map(|h| format!("\"{h}\"")).collect();
     format!("[{}]", items.join(","))
 }
@@ -457,7 +457,7 @@ pub struct InitWorkspace {
     pub outcome: bough_core::PhaseOutcome,
 }
 
-fn fmt_phase_outcome_terse(outcome: &bough_core::PhaseOutcome) -> String {
+pub(crate) fn fmt_phase_outcome_terse(outcome: &bough_core::PhaseOutcome) -> String {
     format!(
         "exit={} duration={:.2}s{}",
         outcome.exit_code(),
@@ -470,7 +470,7 @@ fn fmt_phase_outcome_terse(outcome: &bough_core::PhaseOutcome) -> String {
     )
 }
 
-fn fmt_phase_outcome_verbose(outcome: &bough_core::PhaseOutcome) -> String {
+pub(crate) fn fmt_phase_outcome_verbose(outcome: &bough_core::PhaseOutcome) -> String {
     let stdout = String::from_utf8_lossy(outcome.stdout());
     let stderr = String::from_utf8_lossy(outcome.stderr());
     let mut out = format!(
@@ -488,7 +488,7 @@ fn fmt_phase_outcome_verbose(outcome: &bough_core::PhaseOutcome) -> String {
     out
 }
 
-fn fmt_phase_outcome_json(outcome: &bough_core::PhaseOutcome) -> String {
+pub(crate) fn fmt_phase_outcome_json(outcome: &bough_core::PhaseOutcome) -> String {
     let stdout = String::from_utf8_lossy(outcome.stdout());
     let stderr = String::from_utf8_lossy(outcome.stderr());
     format!(
