@@ -10,6 +10,7 @@ mod step_apply_mutation;
 mod step_init_workspace;
 mod step_reset_workspace;
 mod step_tend_state;
+mod step_test_mutation;
 mod step_unapply_mutation;
 mod step_tend_workspaces;
 
@@ -115,39 +116,7 @@ fn main() {
                     workspace_id,
                     mutation_hash,
                 } => {
-                    let mut session = Session::new(cli.config.clone()).expect("session creation");
-                    let wid =
-                        bough_core::WorkspaceId::parse(workspace_id).expect("invalid workspace id");
-                    let base = session.base();
-                    let mutations: Vec<_> = base
-                        .mutations()
-                        .collect::<Result<Vec<_>, _>>()
-                        .expect("mutation scan");
-                    let mutation = render::find_mutation_by_hash(mutation_hash, mutations);
-                    let hash_str = mutation.hash().expect("hash").to_string();
-                    let mut workspace = session.bind_workspace(&wid).expect("bind workspace");
-                    workspace.write_mutant(&mutation).expect("apply mutation");
-                    let outcome = workspace
-                        .run_test(&cli.config, None)
-                        .expect("test mutation");
-                    workspace.revert_mutant().expect("revert mutation");
-                    let status = if outcome.exit_code() != 0 {
-                        bough_core::Status::Caught
-                    } else {
-                        bough_core::Status::Missed
-                    };
-                    let status_str = if outcome.exit_code() != 0 {
-                        "caught"
-                    } else {
-                        "missed"
-                    };
-                    session.set_state(&mutation, status).expect("set state");
-                    Box::new(render::TestMutation {
-                        workspace_id: wid,
-                        mutation_hash: hash_str,
-                        status: status_str,
-                        duration: outcome.duration(),
-                    })
+                    step_test_mutation::StepTestMutation::run(cli.config.clone(), workspace_id, mutation_hash)
                 }
             }
         }
