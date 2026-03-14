@@ -1,4 +1,5 @@
 mod config;
+mod find_best_mutations;
 mod render;
 mod show_all_files;
 mod show_all_mutations;
@@ -362,25 +363,7 @@ fn main() {
         }
 
         Command::Find { ref lang, ref file } => {
-            let session = Session::new(cli.config.clone()).expect("session creation");
-            let results = session.find_best_mutations().expect("find best mutations");
-            let filtered: Vec<_> = results
-                .into_iter()
-                .filter(|(_, state, _)| {
-                    if let Some(l) = lang {
-                        if state.mutation().mutant().lang() != *l {
-                            return false;
-                        }
-                    }
-                    if let Some(f) = file {
-                        if state.mutation().mutant().twig().path() != f.as_path() {
-                            return false;
-                        }
-                    }
-                    true
-                })
-                .collect();
-            Box::new(render::FindBestMutations(filtered))
+            find_best_mutations::FindBestMutations::run(cli.config.clone(), *lang, file.clone())
         }
 
         Command::Noop => {
