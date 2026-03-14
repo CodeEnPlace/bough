@@ -6,6 +6,7 @@ mod show_file_mutations;
 mod show_language_files;
 mod show_language_mutations;
 mod show_single_mutation;
+mod step_apply_mutation;
 mod step_init_workspace;
 mod step_reset_workspace;
 mod step_tend_state;
@@ -99,22 +100,7 @@ fn main() {
                     workspace_id,
                     mutation_hash,
                 } => {
-                    let session = Session::new(cli.config.clone()).expect("session creation");
-                    let wid =
-                        bough_core::WorkspaceId::parse(workspace_id).expect("invalid workspace id");
-                    let base = session.base();
-                    let mutations: Vec<_> = base
-                        .mutations()
-                        .collect::<Result<Vec<_>, _>>()
-                        .expect("mutation scan");
-                    let mutation = render::find_mutation_by_hash(mutation_hash, mutations);
-                    let mut workspace = session.bind_workspace(&wid).expect("bind workspace");
-                    workspace.write_mutant(&mutation).expect("apply mutation");
-                    let hash_str = mutation.hash().expect("hash").to_string();
-                    Box::new(render::ApplyMutation {
-                        workspace_id: wid,
-                        mutation_hash: hash_str,
-                    })
+                    step_apply_mutation::StepApplyMutation::run(cli.config.clone(), workspace_id, mutation_hash)
                 }
 
                 config::Step::UnapplyMutation {
