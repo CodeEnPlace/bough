@@ -6,6 +6,7 @@ mod show_file_mutations;
 mod show_language_files;
 mod show_language_mutations;
 mod show_single_mutation;
+mod step_init_workspace;
 mod step_tend_state;
 mod step_tend_workspaces;
 
@@ -86,17 +87,7 @@ fn main() {
                 }
 
                 config::Step::InitWorkspace { workspace_id } => {
-                    let session = Session::new(cli.config.clone()).expect("session creation");
-                    let wid =
-                        bough_core::WorkspaceId::parse(workspace_id).expect("invalid workspace id");
-                    let workspace = session.bind_workspace(&wid).expect("bind workspace");
-                    let outcome = workspace
-                        .run_init(&cli.config, None)
-                        .expect("init workspace");
-                    Box::new(render::InitWorkspace {
-                        workspace_id: wid,
-                        outcome,
-                    })
+                    step_init_workspace::StepInitWorkspace::run(cli.config.clone(), workspace_id)
                 }
 
                 config::Step::ResetWorkspace { workspace_id } => {
