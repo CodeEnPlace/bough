@@ -23,18 +23,18 @@ fn strip_ansi(s: &str) -> String {
     out
 }
 
-const RESET: &str = "\x1b[0m";
-const BOLD: &str = "\x1b[1m";
+pub(crate) const RESET: &str = "\x1b[0m";
+pub(crate) const BOLD: &str = "\x1b[1m";
 
-const TITLE: &str = "\x1b[33m"; // yellow
-const PATH: &str = "\x1b[34m"; // blue
-const HASH: &str = "\x1b[33m"; // yellow
-const LANG: &str = "\x1b[35m"; //purple
-const STRING: &str = "\x1b[33m"; //yellow
-const CAUGHT: &str = "\x1b[32m"; // green
-const MISSED: &str = "\x1b[31m"; // red
-const TIMEOUT: &str = "\x1b[31m"; // red
-const NOT_RUN: &str = "\x1b[33m"; // yellow
+pub(crate) const TITLE: &str = "\x1b[33m"; // yellow
+pub(crate) const PATH: &str = "\x1b[34m"; // blue
+pub(crate) const HASH: &str = "\x1b[33m"; // yellow
+pub(crate) const LANG: &str = "\x1b[35m"; //purple
+pub(crate) const STRING: &str = "\x1b[33m"; //yellow
+pub(crate) const CAUGHT: &str = "\x1b[32m"; // green
+pub(crate) const MISSED: &str = "\x1b[31m"; // red
+pub(crate) const TIMEOUT: &str = "\x1b[31m"; // red
+pub(crate) const NOT_RUN: &str = "\x1b[33m"; // yellow
 
 pub trait Render {
     fn markdown(&self) -> String;
@@ -73,71 +73,7 @@ impl Render for Noop {
     }
 }
 
-#[derive(Facet)]
-pub struct BaseFiles(pub Vec<PathBuf>);
-impl Render for BaseFiles {
-    fn markdown(&self) -> String {
-        format!(
-            "# Files in Base Directory\n\n\tThese files will be coppied into Workspace directories\n\n{}",
-            self.0
-                .iter()
-                .map(|pb| format!("- {}", pb.to_string_lossy()))
-                .collect::<Vec<_>>()
-                .join("\n")
-        )
-    }
-    fn terse(&self) -> String {
-        self.0
-            .iter()
-            .map(|pb| format!("{PATH}{}{RESET}", pb.to_string_lossy()))
-            .collect::<Vec<_>>()
-            .join(" ")
-    }
-    fn verbose(&self) -> String {
-        self.0
-            .iter()
-            .map(|pb| format!("{PATH}{}{RESET}", pb.to_string_lossy()))
-            .collect::<Vec<_>>()
-            .join("\n")
-    }
 
-    fn json(&self) -> String {
-        facet_json::to_string(self).unwrap()
-    }
-}
-
-#[derive(Facet)]
-pub struct MutantFiles(pub LanguageId, pub Vec<PathBuf>);
-impl Render for MutantFiles {
-    fn markdown(&self) -> String {
-        format!(
-            "# {:?} Files that will be Mutated\n\n{}",
-            self.0,
-            self.1
-                .iter()
-                .map(|pb| format!("- {}", pb.to_string_lossy()))
-                .collect::<Vec<_>>()
-                .join("\n")
-        )
-    }
-    fn terse(&self) -> String {
-        self.1
-            .iter()
-            .map(|pb| format!("{PATH}{}{RESET}", pb.to_string_lossy()))
-            .collect::<Vec<_>>()
-            .join(" ")
-    }
-    fn verbose(&self) -> String {
-        self.1
-            .iter()
-            .map(|pb| format!("{PATH}{}{RESET}", pb.to_string_lossy()))
-            .collect::<Vec<_>>()
-            .join("\n")
-    }
-    fn json(&self) -> String {
-        facet_json::to_string(self).unwrap()
-    }
-}
 
 fn mutation_hash(m: &Mutation) -> String {
     let hash = m.hash().expect("hashing should not fail");

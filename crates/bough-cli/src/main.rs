@@ -1,17 +1,19 @@
 mod config;
 mod render;
+mod show_all_files;
+mod show_language_files;
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
-use bough_core::{File, Mutation, Session, State};
+use bough_core::{Mutation, Session, State};
 use bough_typed_hash::TypedHashable;
 use config::{Command, Show, parse};
 use render::{Noop, Render};
 use tracing::{Level, debug, error, info, warn};
 
 use crate::render::{
-    AllMutations, BaseFiles, FileMutations, LangMutations, MutantFiles, SingleMutation,
+    AllMutations, FileMutations, LangMutations, SingleMutation,
     find_mutation_by_hash,
 };
 
@@ -48,32 +50,11 @@ fn main() {
                 Show::Config => Box::new(cli.config.clone()),
 
                 Show::Files { lang: None } => {
-                    let session = Session::new(cli.config.clone()).expect("session creation");
-                    let base = session.base();
-                    let twigs = base.twigs().collect::<Vec<_>>();
-                    let files = twigs
-                        .iter()
-                        .map(|twig| File::new(base, &twig))
-                        .collect::<Vec<_>>();
-
-                    let paths = files.iter().map(|file| file.resolve()).collect();
-
-                    Box::new(BaseFiles(paths))
+                    show_all_files::ShowAllFiles::run(cli.config.clone())
                 }
 
                 Show::Files { lang: Some(lang) } => {
-                    let session = Session::new(cli.config.clone()).expect("session creation");
-                    let base = session.base();
-                    let twigs = base.mutant_twigs().collect::<Vec<_>>();
-                    let files = twigs
-                        .iter()
-                        .filter(|(l, _)| l == lang)
-                        .map(|(_, twig)| File::new(base, &twig))
-                        .collect::<Vec<_>>();
-
-                    let paths = files.iter().map(|file| file.resolve()).collect();
-
-                    Box::new(MutantFiles(*lang, paths))
+                    show_language_files::ShowLanguageFiles::run(cli.config.clone(), *lang)
                 }
 
                 Show::Mutations {
