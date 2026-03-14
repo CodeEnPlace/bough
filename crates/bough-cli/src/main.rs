@@ -3,6 +3,7 @@ mod render;
 mod show_all_files;
 mod show_all_mutations;
 mod show_language_files;
+mod show_language_mutations;
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
@@ -14,7 +15,7 @@ use render::{Noop, Render};
 use tracing::{Level, debug, error, info, warn};
 
 use crate::render::{
-    FileMutations, LangMutations, SingleMutation,
+    FileMutations, SingleMutation,
     find_mutation_by_hash,
 };
 
@@ -69,18 +70,7 @@ fn main() {
                     lang: Some(lang),
                     file: None,
                 } => {
-                    let mut session = Session::new(cli.config.clone()).expect("session creation");
-                    session.tend_add_missing_states().expect("tend states");
-                    let base = session.base();
-                    let mutations: Vec<_> = base
-                        .mutations()
-                        .collect::<Result<Vec<_>, _>>()
-                        .expect("mutation scan")
-                        .into_iter()
-                        .filter(|m| m.mutant().lang() == *lang)
-                        .collect();
-                    let states = collect_states(&session, mutations);
-                    Box::new(LangMutations(*lang, states))
+                    show_language_mutations::ShowLanguageMutations::run(cli.config.clone(), *lang)
                 }
 
                 Show::Mutations {
