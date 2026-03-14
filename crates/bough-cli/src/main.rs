@@ -7,6 +7,7 @@ mod show_language_files;
 mod show_language_mutations;
 mod show_single_mutation;
 mod step_tend_state;
+mod step_tend_workspaces;
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
@@ -81,10 +82,7 @@ fn main() {
                 }
 
                 config::Step::TendWorkspaces => {
-                    let mut session = Session::new(cli.config.clone()).expect("session creation");
-                    let workers = cli.config.workers as usize;
-                    let workspace_ids = session.tend_workspaces(workers).expect("tend workspaces");
-                    Box::new(render::TendWorkspaces { workspace_ids })
+                    step_tend_workspaces::StepTendWorkspaces::run(cli.config.clone())
                 }
 
                 config::Step::InitWorkspace { workspace_id } => {
