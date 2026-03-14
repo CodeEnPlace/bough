@@ -26,3 +26,7 @@ tracing = "0.1"
 
 [dev-dependencies]
 tempfile = "3.26"
+
+[[bin]]
+name = "bough-test-helper"
+path = "src/bin/bough-test-helper.rs"

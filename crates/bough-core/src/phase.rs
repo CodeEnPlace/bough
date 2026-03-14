@@ -569,4 +569,87 @@ mod tests {
         assert!(!outcome.timed_out());
         assert_eq!(outcome.exit_code(), 0);
     }
+
+    fn helper_bin() -> PathBuf {
+        let test_exe = std::env::current_exe().expect("current_exe");
+        let dir = test_exe.parent().unwrap().parent().unwrap();
+        dir.join("bough-test-helper")
+    }
+
+    #[test]
+    fn phase_run_does_not_deadlock_on_large_stdout() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = TestRoot(dir.path().to_path_buf());
+        let phase = Phase {
+            cmd: vec![
+                helper_bin().to_str().unwrap().into(),
+                "flood-stdout".into(),
+                "262144".into(),
+            ],
+            pwd: crate::file::Twig::new(PathBuf::from(".")).unwrap(),
+            timeout_absolute: Some(Duration::from_secs(10)),
+            ..make_phase(&root)
+        };
+        let outcome = phase.run(None).unwrap();
+        assert!(!outcome.timed_out());
+        assert_eq!(outcome.exit_code(), 0);
+        assert!(
+            outcome.stdout().len() > 64 * 1024,
+            "expected >64KB stdout, got {}",
+            outcome.stdout().len()
+        );
+    }
+
+    #[test]
+    fn phase_run_does_not_deadlock_on_large_stderr() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = TestRoot(dir.path().to_path_buf());
+        let phase = Phase {
+            cmd: vec![
+                helper_bin().to_str().unwrap().into(),
+                "flood-stderr".into(),
+                "262144".into(),
+            ],
+            pwd: crate::file::Twig::new(PathBuf::from(".")).unwrap(),
+            timeout_absolute: Some(Duration::from_secs(10)),
+            ..make_phase(&root)
+        };
+        let outcome = phase.run(None).unwrap();
+        assert!(!outcome.timed_out());
+        assert!(
+            outcome.stderr().len() > 64 * 1024,
+            "expected >64KB stderr, got {}",
+            outcome.stderr().len()
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn phase_run_timeout_kills_grandchild_processes() {
+        let dir = tempfile::tempdir().unwrap();
+        let pid_file = dir.path().join("grandchild.pid");
+        let root = TestRoot(dir.path().to_path_buf());
+        let phase = Phase {
+            cmd: vec![
+                helper_bin().to_str().unwrap().into(),
+                "spawn-and-wait".into(),
+                pid_file.to_str().unwrap().into(),
+            ],
+            pwd: crate::file::Twig::new(PathBuf::from(".")).unwrap(),
+            timeout_absolute: Some(Duration::from_millis(500)),
+            ..make_phase(&root)
+        };
+        let outcome = phase.run(None).unwrap();
+        assert!(outcome.timed_out());
+
+        std::thread::sleep(Duration::from_millis(100));
+
+        let pid_str = std::fs::read_to_string(&pid_file).expect("grandchild pid file");
+        let pid: i32 = pid_str.trim().parse().expect("parse pid");
+        let alive = unsafe { libc::kill(pid, 0) } == 0;
+        assert!(
+            !alive,
+            "grandchild process {pid} should have been killed but is still running"
+        );
+    }
 }
