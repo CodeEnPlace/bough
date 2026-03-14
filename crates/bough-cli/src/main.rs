@@ -2,35 +2,23 @@ mod config;
 mod render;
 mod show_all_files;
 mod show_all_mutations;
+mod show_file_mutations;
 mod show_language_files;
 mod show_language_mutations;
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
-use bough_core::{Mutation, Session, State};
+use bough_core::Session;
 use bough_typed_hash::TypedHashable;
 use config::{Command, Show, parse};
 use render::{Noop, Render};
 use tracing::{Level, debug, error, info, warn};
 
 use crate::render::{
-    FileMutations, SingleMutation,
+    SingleMutation,
     find_mutation_by_hash,
 };
-
-fn collect_states(session: &Session<config::Config>, mutations: Vec<Mutation>) -> Vec<State> {
-    mutations
-        .into_iter()
-        .map(|m| {
-            let hash = m.hash().expect("hash");
-            session
-                .get_state()
-                .get(&hash)
-                .expect("state not found for mutation")
-        })
-        .collect()
-}
 
 fn main() {
     let cli = parse();
@@ -77,20 +65,7 @@ fn main() {
                     lang: Some(lang),
                     file: Some(file),
                 } => {
-                    let mut session = Session::new(cli.config.clone()).expect("session creation");
-                    session.tend_add_missing_states().expect("tend states");
-                    let base = session.base();
-                    let mutations: Vec<_> = base
-                        .mutations()
-                        .collect::<Result<Vec<_>, _>>()
-                        .expect("mutation scan")
-                        .into_iter()
-                        .filter(|m| {
-                            m.mutant().lang() == *lang && m.mutant().twig().path() == file.as_path()
-                        })
-                        .collect();
-                    let states = collect_states(&session, mutations);
-                    Box::new(FileMutations(*lang, file.clone(), states))
+                    show_file_mutations::ShowFileMutations::run(cli.config.clone(), *lang, file.clone())
                 }
 
                 Show::Mutation { hash } => {
