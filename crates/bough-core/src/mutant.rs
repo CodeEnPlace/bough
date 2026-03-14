@@ -84,7 +84,7 @@ impl Mutant {
                 inner: inner.twig.clone(),
             });
         }
-        Ok(self.effect_span.intersects(&inner.subst_span))
+        Ok(self.effect_span.contains(&inner.subst_span))
     }
 
     pub fn get_contextual_fragment(
@@ -271,6 +271,10 @@ impl Span {
 
     pub fn intersects(&self, other: &Span) -> bool {
         self.start.byte < other.end.byte && other.start.byte < self.end.byte
+    }
+
+    pub fn contains(&self, inner: &Span) -> bool {
+        self.start.byte <= inner.start.byte && inner.end.byte <= self.end.byte
     }
 }
 
