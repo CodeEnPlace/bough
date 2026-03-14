@@ -10,6 +10,7 @@ mod step_apply_mutation;
 mod step_init_workspace;
 mod step_reset_workspace;
 mod step_tend_state;
+mod step_unapply_mutation;
 mod step_tend_workspaces;
 
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -107,15 +108,7 @@ fn main() {
                     workspace_id,
                     mutation_hash,
                 } => {
-                    let session = Session::new(cli.config.clone()).expect("session creation");
-                    let wid =
-                        bough_core::WorkspaceId::parse(workspace_id).expect("invalid workspace id");
-                    let mut workspace = session.bind_workspace(&wid).expect("bind workspace");
-                    workspace.revert_mutant().expect("unapply mutation");
-                    Box::new(render::UnapplyMutation {
-                        workspace_id: wid,
-                        mutation_hash: mutation_hash.clone(),
-                    })
+                    step_unapply_mutation::StepUnapplyMutation::run(cli.config.clone(), workspace_id, mutation_hash)
                 }
 
                 config::Step::TestMutation {
