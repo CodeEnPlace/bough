@@ -141,6 +141,7 @@ dependencies = [
  "facet-value",
  "figue",
  "ignore",
+ "libc",
  "rand",
  "tempfile",
  "tracing",

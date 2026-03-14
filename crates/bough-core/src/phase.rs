@@ -42,6 +42,20 @@ impl From<crate::file::Error> for Error {
     }
 }
 
+fn kill_process_tree(child: &std::process::Child) {
+    #[cfg(unix)]
+    {
+        let pid = child.id() as i32;
+        unsafe {
+            libc::kill(-pid, libc::SIGKILL);
+        }
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = child.kill();
+    }
+}
+
 // bough[impl phase.root]
 // bough[impl phase.pwd]
 // bough[impl phase.env]
@@ -127,19 +141,41 @@ impl<'a, R: Root> Phase<'a, R> {
         );
 
         let start = std::time::Instant::now();
-        let mut child = std::process::Command::new(&self.cmd[0])
-            .args(&self.cmd[1..])
+        let mut cmd = std::process::Command::new(&self.cmd[0]);
+        cmd.args(&self.cmd[1..])
             .current_dir(&working_dir)
             .envs(&self.env)
             .stdout(std::process::Stdio::piped())
-            .stderr(std::process::Stdio::piped())
-            .spawn()?;
+            .stderr(std::process::Stdio::piped());
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::process::CommandExt;
+            cmd.process_group(0);
+        }
+
+        let mut child = cmd.spawn()?;
+
+        let stdout_handle = child.stdout.take().map(|out| {
+            std::thread::spawn(move || {
+                let mut buf = Vec::new();
+                let mut out = out;
+                std::io::Read::read_to_end(&mut out, &mut buf).map(|_| buf)
+            })
+        });
+        let stderr_handle = child.stderr.take().map(|err| {
+            std::thread::spawn(move || {
+                let mut buf = Vec::new();
+                let mut err = err;
+                std::io::Read::read_to_end(&mut err, &mut buf).map(|_| buf)
+            })
+        });
 
         let timed_out = if let Some(timeout) = effective_timeout {
             match child.wait_timeout(timeout)? {
                 Some(_status) => false,
                 None => {
-                    child.kill()?;
+                    kill_process_tree(&child);
                     child.wait()?;
                     true
                 }
@@ -151,14 +187,14 @@ impl<'a, R: Root> Phase<'a, R> {
 
         let duration = start.elapsed();
 
-        let mut stdout = Vec::new();
-        let mut stderr = Vec::new();
-        if let Some(mut out) = child.stdout.take() {
-            std::io::Read::read_to_end(&mut out, &mut stdout)?;
-        }
-        if let Some(mut err) = child.stderr.take() {
-            std::io::Read::read_to_end(&mut err, &mut stderr)?;
-        }
+        let stdout = stdout_handle
+            .map(|h| h.join().expect("stdout reader panicked"))
+            .transpose()?
+            .unwrap_or_default();
+        let stderr = stderr_handle
+            .map(|h| h.join().expect("stderr reader panicked"))
+            .transpose()?
+            .unwrap_or_default();
 
         let exit_code = if timed_out {
             -1

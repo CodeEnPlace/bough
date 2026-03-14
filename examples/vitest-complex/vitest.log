@@ -1,0 +1,33 @@
+
+ RUN  v3.2.4 /Users/freddie/Documents/bough/examples/vitest-complex
+
+ ✓ .bough/workspaces/work/606c491c/src/validators/username.test.js (5 tests) 2ms
+ ✓ .bough/workspaces/work/6b65031e/src/validators/username.test.js (5 tests) 2ms
+ ✓ src/validators/password.test.js (4 tests) 2ms
+ ✓ .bough/workspaces/work/6b65031e/src/validators/password.test.js (4 tests) 2ms
+ ✓ src/validators/tags.test.js (4 tests) 2ms
+ ✓ src/validate-user-profile.test.js (4 tests) 2ms
+ ✓ src/validators/role.test.js (3 tests) 2ms
+ ✓ src/validators/username.test.js (5 tests) 2ms
+ ✓ .bough/workspaces/work/606c491c/src/validate-user-profile.test.js (4 tests) 2ms
+ ✓ .bough/workspaces/work/6b65031e/src/validate-user-profile.test.js (4 tests) 2ms
+ ✓ .bough/workspaces/work/606c491c/src/validators/password.test.js (4 tests) 2ms
+ ✓ src/validators/email.test.js (4 tests) 2ms
+ ✓ .bough/workspaces/work/606c491c/src/validators/email.test.js (4 tests) 2ms
+ ✓ .bough/workspaces/work/6b65031e/src/validators/email.test.js (4 tests) 2ms
+ ✓ .bough/workspaces/work/606c491c/src/validators/age.test.js (4 tests) 2ms
+ ✓ .bough/workspaces/work/6b65031e/src/validators/age.test.js (4 tests) 2ms
+ ✓ .bough/workspaces/work/606c491c/src/validators/tags.test.js (4 tests) 2ms
+ ✓ .bough/workspaces/work/6b65031e/src/validators/tags.test.js (4 tests) 2ms
+ ✓ src/validators/website.test.js (3 tests) 2ms
+ ✓ src/validators/age.test.js (4 tests) 2ms
+ ✓ .bough/workspaces/work/606c491c/src/validators/role.test.js (3 tests) 2ms
+ ✓ .bough/workspaces/work/6b65031e/src/validators/role.test.js (3 tests) 2ms
+ ✓ .bough/workspaces/work/606c491c/src/validators/website.test.js (3 tests) 2ms
+ ✓ .bough/workspaces/work/6b65031e/src/validators/website.test.js (3 tests) 2ms
+
+ Test Files  24 passed (24)
+      Tests  93 passed (93)
+   Start at  22:54:02
+   Duration  1.82s (transform 58ms, setup 0ms, collect 173ms, tests 42ms, environment 2ms, prepare 761ms)
+
