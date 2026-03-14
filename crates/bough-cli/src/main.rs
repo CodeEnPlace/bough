@@ -6,6 +6,7 @@ mod show_file_mutations;
 mod show_language_files;
 mod show_language_mutations;
 mod show_single_mutation;
+mod step_tend_state;
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
@@ -76,14 +77,7 @@ fn main() {
 
             match step {
                 config::Step::TendState => {
-                    let mut session = Session::new(cli.config.clone()).expect("session creation");
-                    let added = session
-                        .tend_add_missing_states()
-                        .expect("tend add missing states");
-                    let removed = session
-                        .tend_remove_stale_states()
-                        .expect("tend remove stale states");
-                    Box::new(render::TendState { added, removed })
+                    step_tend_state::StepTendState::run(cli.config.clone())
                 }
 
                 config::Step::TendWorkspaces => {
