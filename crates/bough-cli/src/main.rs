@@ -5,6 +5,7 @@ mod show_all_mutations;
 mod show_file_mutations;
 mod show_language_files;
 mod show_language_mutations;
+mod show_single_mutation;
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
@@ -15,10 +16,6 @@ use config::{Command, Show, parse};
 use render::{Noop, Render};
 use tracing::{Level, debug, error, info, warn};
 
-use crate::render::{
-    SingleMutation,
-    find_mutation_by_hash,
-};
 
 fn main() {
     let cli = parse();
@@ -69,42 +66,7 @@ fn main() {
                 }
 
                 Show::Mutation { hash } => {
-                    let mut session = Session::new(cli.config.clone()).expect("session creation");
-                    session.tend_add_missing_states().expect("tend states");
-                    let base = session.base();
-                    let mutations: Vec<_> = base
-                        .mutations()
-                        .collect::<Result<Vec<_>, _>>()
-                        .expect("mutation scan");
-                    let mutation = find_mutation_by_hash(hash, mutations);
-                    let lang = mutation.mutant().lang();
-                    let file_path = bough_core::File::new(base, mutation.mutant().twig()).resolve();
-                    let file_src = std::fs::read_to_string(&file_path).expect("read source file");
-                    let (before, ctx_span) = mutation
-                        .mutant()
-                        .get_contextual_fragment(base, 3)
-                        .expect("context fragment");
-                    let mutated_src = mutation.apply_to_complete_src_string(&file_src);
-                    let original_len = mutation.mutant().span().end().byte()
-                        - mutation.mutant().span().start().byte();
-                    let subst_len = mutation.subst().len();
-                    let end_byte = if subst_len >= original_len {
-                        ctx_span.end().byte() + (subst_len - original_len)
-                    } else {
-                        ctx_span.end().byte() - (original_len - subst_len)
-                    };
-                    let after = &mutated_src[ctx_span.start().byte()..end_byte];
-                    let mutation_hash = mutation.hash().expect("hashing should not fail");
-                    let state = session
-                        .get_state()
-                        .get(&mutation_hash)
-                        .expect("state not found for mutation");
-                    Box::new(SingleMutation {
-                        state,
-                        before,
-                        after: after.to_string(),
-                        lang,
-                    })
+                    show_single_mutation::ShowSingleMutation::run(cli.config.clone(), hash)
                 }
             }
         }
