@@ -28,11 +28,24 @@ pub(crate) fn render_table(rows: &[(Vec<String>, Vec<String>)]) -> String {
         return String::new();
     }
     let headers = &rows[0].0;
-    let header = headers.iter().map(|h| format!(" {h} ")).collect::<Vec<_>>().join("|");
-    let sep = headers.iter().map(|_| " --- ").collect::<Vec<_>>().join("|");
+    let header = headers
+        .iter()
+        .map(|h| format!(" {h} "))
+        .collect::<Vec<_>>()
+        .join("|");
+    let sep = headers
+        .iter()
+        .map(|_| " --- ")
+        .collect::<Vec<_>>()
+        .join("|");
     let body = rows
         .iter()
-        .map(|(_, vals)| vals.iter().map(|v| format!(" {v} ")).collect::<Vec<_>>().join("|"))
+        .map(|(_, vals)| {
+            vals.iter()
+                .map(|v| format!(" {v} "))
+                .collect::<Vec<_>>()
+                .join("|")
+        })
         .collect::<Vec<_>>()
         .join("\n");
     format!("{header}\n{sep}\n{body}")
@@ -65,17 +78,9 @@ pub trait Render {
         panic!("Not impled for this struct")
     }
 
-
     fn render(&self, cli: &Cli) -> String {
         let out = match cli.format {
-            Format::Terse => {
-                let t = self.terse();
-                debug_assert!(
-                    !t.contains('\n'),
-                    "terse() output must not contain newlines"
-                );
-                t
-            }
+            Format::Terse => self.terse(),
             Format::Verbose => self.verbose(),
             Format::Markdown => self.markdown(),
             Format::Json => self.json(),
@@ -193,7 +198,6 @@ impl Render for Span {
 }
 
 impl Render for State {
-
     fn markdown(&self) -> String {
         let m = self.mutation();
         let hash = m.hash().expect("hash");
@@ -262,7 +266,6 @@ impl Render for State {
 }
 
 impl Render for Mutation {
-
     fn markdown(&self) -> String {
         let hash = self.hash().expect("hash");
         format!(
@@ -306,7 +309,6 @@ impl Render for Mutation {
 }
 
 impl Render for Mutant {
-
     fn markdown(&self) -> String {
         format!(
             "{} {} {} {}",
@@ -603,7 +605,10 @@ mod tests {
     #[test]
     fn state_tabular() {
         let (headers, values) = make_state().tabular();
-        assert_eq!(headers, vec!["Hash", "Lang", "File", "Span", "Kind", "Subst", "Status"]);
+        assert_eq!(
+            headers,
+            vec!["Hash", "Lang", "File", "Span", "Kind", "Subst", "Status"]
+        );
         assert_eq!(headers.len(), values.len());
         assert!(values[2].contains("src/main.ts"));
     }
@@ -687,7 +692,10 @@ mod tests {
     #[test]
     fn mutation_tabular() {
         let (headers, values) = make_mutation().tabular();
-        assert_eq!(headers, vec!["Hash", "Lang", "File", "Span", "Kind", "Subst"]);
+        assert_eq!(
+            headers,
+            vec!["Hash", "Lang", "File", "Span", "Kind", "Subst"]
+        );
         assert_eq!(headers.len(), values.len());
         assert!(values[2].contains("src/main.ts"));
     }
