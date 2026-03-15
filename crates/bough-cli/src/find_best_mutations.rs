@@ -4,7 +4,7 @@ use bough_core::{LanguageId, MutationHash, Session, State};
 
 use crate::config::Config;
 use crate::render::{
-    HASH, NOT_RUN, PATH, RESET, STRING, TITLE, Render, fmt_status_colored, mutation_hash,
+    HASH, PATH, RESET, STRING, TITLE, Render, fmt_status_colored, mutation_hash,
 };
 
 pub struct FindBestMutations(pub Vec<(MutationHash, State, f64)>);

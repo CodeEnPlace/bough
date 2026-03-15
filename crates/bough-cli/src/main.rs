@@ -19,7 +19,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 use bough_core::Session;
-use bough_typed_hash::TypedHashable;
+
 use config::{Command, Show, parse};
 use render::{Noop, Render};
 use tracing::{Level, debug, error, info, warn};
