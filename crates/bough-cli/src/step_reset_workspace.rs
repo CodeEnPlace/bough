@@ -1,7 +1,3 @@
-use std::ops::Deref;
-
-use bough_core::Session;
-
 use crate::config::Config;
 use crate::render::{
     HASH, RESET, TITLE, Render, fmt_phase_outcome_json, fmt_phase_outcome_terse,
@@ -14,16 +10,12 @@ pub struct StepResetWorkspace {
 }
 
 impl StepResetWorkspace {
-    pub fn run(session: impl Deref<Target = Session<Config>>, config: &Config, workspace_id: &str) -> Box<Self> {
-        let wid = bough_core::WorkspaceId::parse(workspace_id).expect("invalid workspace id");
-        let workspace = session.bind_workspace(&wid).expect("bind workspace");
-        let outcome = workspace
-            .run_reset(config, None)
-            .expect("reset workspace");
-        Box::new(Self {
-            workspace_id: wid,
+    pub fn run(workspace: &bough_core::Workspace, config: &Config, timeout: Option<std::time::Duration>) -> Result<Box<Self>, bough_core::PhaseError> {
+        let outcome = workspace.run_reset(config, timeout)?;
+        Ok(Box::new(Self {
+            workspace_id: workspace.id().clone(),
             outcome,
-        })
+        }))
     }
 }
 

@@ -84,15 +84,21 @@ fn main() {
                 config::Step::TendState => step_tend_state::StepTendState::run(session.lock().unwrap()),
 
                 config::Step::TendWorkspaces => {
-                    step_tend_workspaces::StepTendWorkspaces::run(session.lock().unwrap(), cli.config.workers as usize)
+                    step_tend_workspaces::StepTendWorkspaces::run(session.lock().unwrap(), &cli.config)
                 }
 
                 config::Step::InitWorkspace { workspace_id } => {
-                    step_init_workspace::StepInitWorkspace::run(session.lock().unwrap(), &cli.config, workspace_id)
+                    let guard = session.lock().unwrap();
+                    let wid = bough_core::WorkspaceId::parse(workspace_id).expect("invalid workspace id");
+                    let workspace = guard.bind_workspace(&wid).expect("bind workspace");
+                    step_init_workspace::StepInitWorkspace::run(&workspace, &cli.config, None).expect("init workspace")
                 }
 
                 config::Step::ResetWorkspace { workspace_id } => {
-                    step_reset_workspace::StepResetWorkspace::run(session.lock().unwrap(), &cli.config, workspace_id)
+                    let guard = session.lock().unwrap();
+                    let wid = bough_core::WorkspaceId::parse(workspace_id).expect("invalid workspace id");
+                    let workspace = guard.bind_workspace(&wid).expect("bind workspace");
+                    step_reset_workspace::StepResetWorkspace::run(&workspace, &cli.config, None).expect("reset workspace")
                 }
 
                 config::Step::ApplyMutation {
@@ -130,16 +136,9 @@ fn main() {
             let tend_state = step_tend_state::StepTendState::run(session.lock().unwrap());
             println!("{}", tend_state.render(&cli));
 
-            let workers = cli.config.workers as usize;
-            let workspace_ids = session.lock().unwrap().tend_workspaces(workers).expect("tend workspaces");
-
-            println!(
-                "{}",
-                (render::TendWorkspaces {
-                    workspace_ids: workspace_ids.clone(),
-                })
-                .render(&cli)
-            );
+            let tend_workspaces = step_tend_workspaces::StepTendWorkspaces::run(session.lock().unwrap(), &cli.config);
+            println!("{}", tend_workspaces.render(&cli));
+            let workspace_ids = tend_workspaces.workspace_ids;
 
             let (init_duration, reset_duration, test_duration, total) = {
                 let mut guard = session.lock().unwrap();
@@ -248,16 +247,9 @@ fn main() {
                         };
                         drop(guard);
 
-                        if let Ok(outcome) = workspace.run_init(&cli.config, init_duration) {
+                        if let Ok(init) = step_init_workspace::StepInitWorkspace::run(&workspace, &cli.config, init_duration) {
                             if !cli.progress {
-                                println!(
-                                    "{}",
-                                    render::InitWorkspace {
-                                        workspace_id: workspace_id.clone(),
-                                        outcome,
-                                    }
-                                    .render(&cli)
-                                );
+                                println!("{}", init.render(&cli));
                             }
                         }
 

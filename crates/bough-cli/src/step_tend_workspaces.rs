@@ -10,7 +10,8 @@ pub struct StepTendWorkspaces {
 }
 
 impl StepTendWorkspaces {
-    pub fn run(mut session: impl DerefMut<Target = Session<Config>>, workers: usize) -> Box<Self> {
+    pub fn run(mut session: impl DerefMut<Target = Session<Config>>, config: &Config) -> Box<Self> {
+        let workers = config.workers as usize;
         let workspace_ids = session.tend_workspaces(workers).expect("tend workspaces");
         Box::new(Self { workspace_ids })
     }
