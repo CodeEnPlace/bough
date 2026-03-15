@@ -63,7 +63,13 @@ impl Render for ShowFileMutations {
     }
 
     fn json(&self) -> String {
-        facet_json::to_string(self).unwrap()
+        let states: Vec<String> = self.2.iter().map(|s| s.json()).collect();
+        format!(
+            r#"{{"lang":{},"file":"{}","states":[{}]}}"#,
+            self.0.json(),
+            self.1.display(),
+            states.join(","),
+        )
     }
 }
 
@@ -114,7 +120,9 @@ mod tests {
     #[test]
     fn json() {
         let out = fixture().json();
-        assert!(out.starts_with('['));
+        assert!(out.starts_with('{'));
+        assert!(out.contains(r#""lang":"ts""#));
+        assert!(out.contains(r#""file":"src/main.ts""#));
     }
 }
 

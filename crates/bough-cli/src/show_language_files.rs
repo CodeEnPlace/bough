@@ -56,7 +56,8 @@ impl Render for ShowLanguageFiles {
     }
 
     fn json(&self) -> String {
-        facet_json::to_string(self).unwrap()
+        let paths: Vec<String> = self.1.iter().map(|p| format!("\"{}\"", p.display())).collect();
+        format!(r#"{{"lang":{},"files":[{}]}}"#, self.0.json(), paths.join(","))
     }
 }
 
@@ -80,6 +81,7 @@ mod tests {
             .markdown()
             .replace(TITLE, "")
             .replace(PATH, "")
+            .replace(crate::render::LANG, "")
             .replace(RESET, "");
         assert_eq!(
             plain,
@@ -117,7 +119,7 @@ TypeScript
     fn json() {
         assert_eq!(
             fixture().json(),
-            r#"["ts",["src/main.ts","src/lib.ts"]]"#
+            r#"{"lang":"ts","files":["src/main.ts","src/lib.ts"]}"#
         );
     }
 }

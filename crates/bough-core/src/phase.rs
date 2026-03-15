@@ -250,7 +250,7 @@ pub struct PhaseOutcome {
 }
 
 impl PhaseOutcome {
-    #[cfg(test)]
+    #[doc(hidden)]
     pub fn new_for_test(exit_code: i32, duration: std::time::Duration, timed_out: bool, stdout: Vec<u8>, stderr: Vec<u8>) -> Self {
         Self { stdout, stderr, exit_code, duration, timed_out }
     }

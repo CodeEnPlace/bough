@@ -2102,7 +2102,7 @@ mod config_render_tests {
     use crate::render::{TITLE, RESET, Render};
 
     fn fixture() -> Config {
-        let json = r#"{"base_root_dir":"."}"#;
+        let json = r#"{"base_root_dir":".","include":[],"exclude":[],"lang":{},"find":{"number":1,"number_per_file":1,"factors":[]}}"#;
         facet_json::from_str::<Config>(json).unwrap()
     }
 

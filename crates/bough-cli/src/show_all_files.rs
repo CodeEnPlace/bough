@@ -51,7 +51,8 @@ impl Render for ShowAllFiles {
     }
 
     fn json(&self) -> String {
-        facet_json::to_string(self).unwrap()
+        let items: Vec<String> = self.0.iter().map(|p| format!("\"{}\"", p.display())).collect();
+        format!("[{}]", items.join(","))
     }
 }
 

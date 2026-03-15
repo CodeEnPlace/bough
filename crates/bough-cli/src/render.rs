@@ -4,7 +4,7 @@ use bough_core::{
 use bough_typed_hash::TypedHashable;
 use facet::Facet;
 
-use crate::config::{Cli, Config, Format};
+use crate::config::{Cli, Format};
 
 fn strip_ansi(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
@@ -553,7 +553,7 @@ mod tests {
 
     #[test]
     fn noop_json() {
-        assert_eq!(Noop.json(), "null");
+        assert_eq!(Noop.json(), "{}");
     }
 
     #[test]
