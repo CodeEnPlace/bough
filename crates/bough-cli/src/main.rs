@@ -115,12 +115,13 @@ fn main() {
 
                 config::Step::UnapplyMutation {
                     workspace_id,
-                    mutation_hash,
-                } => step_unapply_mutation::StepUnapplyMutation::run(
-                    session.lock().unwrap(),
-                    workspace_id,
-                    mutation_hash,
-                ),
+                    mutation_hash: _,
+                } => {
+                    let guard = session.lock().unwrap();
+                    let wid = bough_core::WorkspaceId::parse(workspace_id).expect("invalid workspace id");
+                    let mut workspace = guard.bind_workspace(&wid).expect("bind workspace");
+                    step_unapply_mutation::StepUnapplyMutation::run(&mut workspace).expect("unapply mutation")
+                }
 
                 config::Step::TestMutation {
                     workspace_id,
@@ -298,7 +299,7 @@ fn main() {
                                     continue;
                                 }
                             };
-                            if let Err(e) = workspace.revert_mutant() {
+                            if let Err(e) = step_unapply_mutation::StepUnapplyMutation::run(&mut workspace) {
                                 error!(%workspace_id, err = %e, "failed to revert mutation");
                                 break;
                             }

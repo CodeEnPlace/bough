@@ -1,8 +1,5 @@
-use std::ops::Deref;
+use bough_typed_hash::TypedHashable;
 
-use bough_core::Session;
-
-use crate::config::Config;
 use crate::render::{HASH, RESET, TITLE, Render};
 
 pub struct StepUnapplyMutation {
@@ -11,14 +8,15 @@ pub struct StepUnapplyMutation {
 }
 
 impl StepUnapplyMutation {
-    pub fn run(session: impl Deref<Target = Session<Config>>, workspace_id: &str, mutation_hash: &str) -> Box<Self> {
-        let wid = bough_core::WorkspaceId::parse(workspace_id).expect("invalid workspace id");
-        let mut workspace = session.bind_workspace(&wid).expect("bind workspace");
-        workspace.revert_mutant().expect("unapply mutation");
-        Box::new(Self {
-            workspace_id: wid,
-            mutation_hash: mutation_hash.to_string(),
-        })
+    pub fn run(workspace: &mut bough_core::Workspace) -> Result<Box<Self>, bough_core::WorkspaceError> {
+        let mutation_hash = workspace.active()
+            .map(|a| format!("{}", a.mutation().hash().expect("hash")))
+            .unwrap_or_default();
+        workspace.revert_mutant()?;
+        Ok(Box::new(Self {
+            workspace_id: workspace.id().clone(),
+            mutation_hash,
+        }))
     }
 }
 
