@@ -121,6 +121,13 @@ impl<C: Config> Session<C> {
         &self.base
     }
 
+    pub fn resolve_mutation(&self, unvalidated: bough_typed_hash::UnvalidatedHash) -> Result<Mutation, Error> {
+        let mutations: Vec<Mutation> = self.base.mutations().collect::<Result<_, _>>()?;
+        let hashes: Vec<MutationHash> = mutations.iter().map(|m| m.hash().expect("hash")).collect();
+        let matched = unvalidated.validate(&hashes).expect("hash resolution failed");
+        Ok(mutations.into_iter().find(|m| m.hash().unwrap() == matched).unwrap())
+    }
+
     fn derive_mutations_needing_testing(
         mutations_state: &FacetDiskStore<MutationHash, State>,
     ) -> Vec<MutationHash> {

@@ -1,7 +1,7 @@
 use std::ops::DerefMut;
 
 use bough_core::{LanguageId, Session, State};
-use bough_typed_hash::{TypedHash, TypedHashable, UnvalidatedHash};
+use bough_typed_hash::{TypedHashable, UnvalidatedHash};
 
 use crate::config::Config;
 use crate::render::{
@@ -19,12 +19,8 @@ pub struct ShowSingleMutation {
 impl ShowSingleMutation {
     pub fn run(mut session: impl DerefMut<Target = Session<Config>>, hash: &str) -> Box<Self> {
         session.tend_add_missing_states().expect("tend states");
+        let mutation = session.resolve_mutation(UnvalidatedHash::new(hash.to_string())).expect("resolve mutation");
         let base = session.base();
-        let mutations: Vec<_> = base
-            .mutations()
-            .collect::<Result<Vec<_>, _>>()
-            .expect("mutation scan");
-        let mutation = find_mutation_by_hash(hash, mutations);
         let lang = mutation.mutant().lang();
         let file_path = bough_core::File::new(base, mutation.mutant().twig()).resolve();
         let file_src = std::fs::read_to_string(&file_path).expect("read source file");
@@ -63,21 +59,6 @@ impl ShowSingleMutation {
     }
 }
 
-fn find_mutation_by_hash(hash: &str, mutations: Vec<bough_core::Mutation>) -> bough_core::Mutation {
-    let unvalidated = UnvalidatedHash::new(hash.to_string());
-    let hashes: Vec<_> = mutations
-        .iter()
-        .map(|m| m.hash().expect("hashing should not fail"))
-        .collect();
-    let matched = unvalidated
-        .validate(&hashes)
-        .expect("hash resolution failed");
-    let matched_bytes = matched.as_bytes();
-    mutations
-        .into_iter()
-        .find(|m| m.hash().unwrap().as_bytes() == matched_bytes)
-        .unwrap()
-}
 
 impl Render for ShowSingleMutation {
     fn markdown(&self) -> String {
