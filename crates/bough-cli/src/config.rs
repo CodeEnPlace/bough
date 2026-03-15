@@ -2067,3 +2067,68 @@ impl bough_core::Config for Config {
             .into_iter()
     }
 }
+
+impl crate::render::Render for Config {
+    fn markdown(&self) -> String {
+        format!(
+            "{t}# Bough Config{r}\n\n```json\n{}\n```",
+            facet_json::to_string(self).unwrap(),
+            t = crate::render::TITLE,
+            r = crate::render::RESET,
+        )
+    }
+
+    fn terse(&self) -> String {
+        facet_json::to_string(self).unwrap()
+    }
+
+    fn verbose(&self) -> String {
+        format!(
+            "{t}Bough Config{r}\n\n{}",
+            facet_json::to_string(self).unwrap(),
+            t = crate::render::TITLE,
+            r = crate::render::RESET,
+        )
+    }
+
+    fn json(&self) -> String {
+        facet_json::to_string(self).unwrap()
+    }
+}
+
+#[cfg(test)]
+mod config_render_tests {
+    use super::*;
+    use crate::render::{TITLE, RESET, Render};
+
+    fn fixture() -> Config {
+        let json = r#"{"base_root_dir":"."}"#;
+        facet_json::from_str::<Config>(json).unwrap()
+    }
+
+    #[test]
+    fn markdown() {
+        let plain = fixture().markdown().replace(TITLE, "").replace(RESET, "");
+        assert!(plain.starts_with("# Bough Config\n\n```json\n"));
+    }
+
+    #[test]
+    fn terse() {
+        let out = fixture().terse();
+        assert!(!out.contains('\n'));
+        assert!(out.starts_with('{'));
+    }
+
+    #[test]
+    fn verbose() {
+        let plain = fixture().verbose().replace(TITLE, "").replace(RESET, "");
+        assert!(plain.starts_with("Bough Config\n\n"));
+    }
+
+    #[test]
+    fn json() {
+        let out = fixture().json();
+        assert!(out.starts_with('{'));
+        assert!(out.contains("base_root_dir"));
+    }
+}

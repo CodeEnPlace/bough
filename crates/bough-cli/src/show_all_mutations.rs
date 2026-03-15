@@ -5,7 +5,7 @@ use bough_typed_hash::TypedHashable;
 use facet::Facet;
 
 use crate::config::Config;
-use crate::render::{Render, fmt_mutation_markdown_table, fmt_mutation_terse, fmt_mutation_verbose};
+use crate::render::{TITLE, RESET, Render};
 
 #[derive(Facet)]
 pub struct ShowAllMutations(pub Vec<State>);
@@ -34,31 +34,75 @@ impl ShowAllMutations {
 
 impl Render for ShowAllMutations {
     fn markdown(&self) -> String {
-        let mutations: Vec<_> = self.0.iter().map(|s| s.mutation().clone()).collect();
         format!(
-            "# All Mutations\n\n{} total\n\n{}",
+            "{TITLE}# All Mutations{RESET}\n\n{} total\n\n{}",
             self.0.len(),
-            fmt_mutation_markdown_table(&mutations),
+            self.0.markdown(),
         )
     }
 
     fn terse(&self) -> String {
-        self.0
-            .iter()
-            .map(fmt_mutation_terse)
-            .collect::<Vec<_>>()
-            .join("\n")
+        self.0.terse()
     }
 
     fn verbose(&self) -> String {
-        self.0
-            .iter()
-            .map(fmt_mutation_verbose)
-            .collect::<Vec<_>>()
-            .join("\n")
+        format!(
+            "{TITLE}All Mutations{RESET} ({} total)\n\n{}",
+            self.0.len(),
+            self.0.verbose(),
+        )
     }
 
     fn json(&self) -> String {
         facet_json::to_string(self).unwrap()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bough_core::*;
+
+    fn make_state() -> State {
+        let mutant = Mutant::new(
+            LanguageId::Typescript,
+            Twig::new("src/main.ts".into()).unwrap(),
+            MutantKind::StatementBlock,
+            Span::new(Point::new(0, 0, 0), Point::new(2, 3, 20)),
+            Span::new(Point::new(0, 0, 0), Point::new(2, 3, 20)),
+        );
+        let mutation = MutationIter::new(&mutant).next().unwrap();
+        State::new(mutation)
+    }
+
+    #[test]
+    fn markdown() {
+        let sam = ShowAllMutations(vec![make_state()]);
+        let plain = sam.markdown().replace(TITLE, "").replace(RESET, "");
+        assert!(plain.starts_with("# All Mutations\n\n1 total\n\n"));
+        assert!(plain.contains("src/main.ts"));
+    }
+
+    #[test]
+    fn terse() {
+        let sam = ShowAllMutations(vec![make_state(), make_state()]);
+        assert_eq!(sam.terse().lines().count(), 2);
+    }
+
+    #[test]
+    fn verbose() {
+        let sam = ShowAllMutations(vec![make_state()]);
+        let plain = sam.verbose().replace(TITLE, "").replace(RESET, "");
+        assert!(plain.starts_with("All Mutations (1 total)"));
+    }
+
+    #[test]
+    fn json() {
+        let sam = ShowAllMutations(vec![make_state()]);
+        let out = sam.json();
+        assert!(out.starts_with('['));
+        assert!(out.ends_with(']'));
+    }
+}
+
+

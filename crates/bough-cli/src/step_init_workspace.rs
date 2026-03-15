@@ -1,8 +1,5 @@
 use crate::config::Config;
-use crate::render::{
-    HASH, RESET, TITLE, Render, fmt_phase_outcome_json, fmt_phase_outcome_terse,
-    fmt_phase_outcome_verbose,
-};
+use crate::render::{TITLE, WORKSPACE, RESET, Render};
 
 pub struct StepInitWorkspace {
     pub workspace_id: bough_core::WorkspaceId,
@@ -21,37 +18,26 @@ impl StepInitWorkspace {
 
 impl Render for StepInitWorkspace {
     fn markdown(&self) -> String {
-        let stdout = String::from_utf8_lossy(self.outcome.stdout());
-        let stderr = String::from_utf8_lossy(self.outcome.stderr());
-        let mut out = format!(
-            "# Init Workspace `{}`\n\n- Exit: {}\n- Duration: {:.2}s\n- Timed out: {}",
+        format!(
+            "{TITLE}# Init Workspace{RESET} `{}`\n\n{}",
             self.workspace_id,
-            self.outcome.exit_code(),
-            self.outcome.duration().as_secs_f64(),
-            self.outcome.timed_out(),
-        );
-        if !stdout.is_empty() {
-            out.push_str(&format!("\n\n## stdout\n\n```\n{stdout}\n```"));
-        }
-        if !stderr.is_empty() {
-            out.push_str(&format!("\n\n## stderr\n\n```\n{stderr}\n```"));
-        }
-        out
+            self.outcome.markdown(),
+        )
     }
 
     fn terse(&self) -> String {
         format!(
-            "{HASH}{}{RESET} {}",
+            "{WORKSPACE}{}{RESET} {}",
             self.workspace_id,
-            fmt_phase_outcome_terse(&self.outcome),
+            self.outcome.terse(),
         )
     }
 
     fn verbose(&self) -> String {
         format!(
-            "{TITLE}Init Workspace{RESET} {HASH}{}{RESET}\n\n{}",
+            "{TITLE}Init Workspace{RESET} {WORKSPACE}{}{RESET}\n\n{}",
             self.workspace_id,
-            fmt_phase_outcome_verbose(&self.outcome),
+            self.outcome.verbose(),
         )
     }
 
@@ -59,7 +45,48 @@ impl Render for StepInitWorkspace {
         format!(
             r#"{{"workspace_id":"{}","outcome":{}}}"#,
             self.workspace_id,
-            fmt_phase_outcome_json(&self.outcome),
+            self.outcome.json(),
         )
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bough_core::{PhaseOutcome, WorkspaceId};
+
+    fn fixture() -> StepInitWorkspace {
+        StepInitWorkspace {
+            workspace_id: WorkspaceId::parse("aaaa1111").unwrap(),
+            outcome: PhaseOutcome::new_for_test(0, std::time::Duration::from_secs(1), false, vec![], vec![]),
+        }
+    }
+
+    #[test]
+    fn markdown() {
+        let plain = fixture().markdown().replace(TITLE, "").replace(RESET, "");
+        assert!(plain.starts_with("# Init Workspace `aaaa1111`"));
+    }
+
+    #[test]
+    fn terse() {
+        let out = fixture().terse();
+        assert!(!out.contains('\n'));
+        assert!(out.contains("aaaa1111"));
+    }
+
+    #[test]
+    fn verbose() {
+        let plain = fixture().verbose().replace(TITLE, "").replace(WORKSPACE, "").replace(RESET, "");
+        assert!(plain.starts_with("Init Workspace aaaa1111"));
+    }
+
+    #[test]
+    fn json() {
+        let out = fixture().json();
+        assert!(out.contains(r#""workspace_id":"aaaa1111""#));
+        assert!(out.contains(r#""outcome":"#));
+    }
+}
+
+

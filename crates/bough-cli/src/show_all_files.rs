@@ -5,7 +5,7 @@ use bough_core::{File, Session};
 use facet::Facet;
 
 use crate::config::Config;
-use crate::render::{PATH, RESET, Render};
+use crate::render::{PATH, RESET, TITLE, Render};
 
 #[derive(Facet)]
 pub struct ShowAllFiles(pub Vec<PathBuf>);
@@ -25,30 +25,93 @@ impl ShowAllFiles {
 
 impl Render for ShowAllFiles {
     fn markdown(&self) -> String {
-        format!(
-            "# Files in Base Directory\n\n\tThese files will be coppied into Workspace directories\n\n{}",
-            self.0
-                .iter()
-                .map(|pb| format!("- {}", pb.to_string_lossy()))
-                .collect::<Vec<_>>()
-                .join("\n")
-        )
+        let list = self
+            .0
+            .iter()
+            .map(|p| format!("- {PATH}{}{RESET}", p.display()))
+            .collect::<Vec<_>>()
+            .join("\n");
+        format!("{TITLE}# All Files{RESET}\n\n{list}")
     }
+
     fn terse(&self) -> String {
         self.0
             .iter()
-            .map(|pb| format!("{PATH}{}{RESET}", pb.to_string_lossy()))
+            .map(|p| format!("{PATH}{}{RESET}", p.display()))
             .collect::<Vec<_>>()
             .join(" ")
     }
+
     fn verbose(&self) -> String {
         self.0
             .iter()
-            .map(|pb| format!("{PATH}{}{RESET}", pb.to_string_lossy()))
+            .map(|p| format!("{PATH}{}{RESET}", p.display()))
             .collect::<Vec<_>>()
             .join("\n")
     }
+
     fn json(&self) -> String {
         facet_json::to_string(self).unwrap()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn fixture() -> ShowAllFiles {
+        ShowAllFiles(vec![
+            PathBuf::from("src/main.ts"),
+            PathBuf::from("src/lib.ts"),
+        ])
+    }
+
+    #[test]
+    fn markdown() {
+        let plain = fixture()
+            .markdown()
+            .replace(TITLE, "")
+            .replace(PATH, "")
+            .replace(RESET, "");
+        assert_eq!(
+            plain,
+            "\
+# All Files
+
+- src/main.ts
+- src/lib.ts"
+        );
+    }
+
+    #[test]
+    fn terse() {
+        let out = fixture().terse();
+        assert!(!out.contains('\n'));
+        let plain = out.replace(PATH, "").replace(RESET, "");
+        assert_eq!(plain, "src/main.ts src/lib.ts");
+    }
+
+    #[test]
+    fn verbose() {
+        let plain = fixture()
+            .verbose()
+            .replace(PATH, "")
+            .replace(RESET, "");
+        assert_eq!(
+            plain,
+            "\
+src/main.ts
+src/lib.ts"
+        );
+    }
+
+    #[test]
+    fn json() {
+        assert_eq!(
+            fixture().json(),
+            r#"["src/main.ts","src/lib.ts"]"#
+        );
+    }
+}
+
+

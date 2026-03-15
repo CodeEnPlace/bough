@@ -1,7 +1,7 @@
 use bough_typed_hash::TypedHashable;
 
 use crate::config::Config;
-use crate::render::{HASH, RESET, TITLE, Render};
+use crate::render::{MUTATION, TITLE, WORKSPACE, RESET, Render};
 
 pub struct StepTestMutation {
     pub workspace_id: bough_core::WorkspaceId,
@@ -32,30 +32,30 @@ impl StepTestMutation {
 impl Render for StepTestMutation {
     fn markdown(&self) -> String {
         format!(
-            "# Test Mutation `{}` in `{}`\n\n- Status: {}\n- Duration: {:.2}s",
+            "{TITLE}# Test Mutation{RESET} `{}` in `{}`\n\n- Status: {}\n- Duration: {:.2}s",
             self.mutation_hash,
             self.workspace_id,
-            self.status,
+            self.status_value.markdown(),
             self.duration.as_secs_f64(),
         )
     }
 
     fn terse(&self) -> String {
         format!(
-            "{HASH}{}{RESET} {HASH}{}{RESET} {} {:.2}s",
+            "{WORKSPACE}{}{RESET} {MUTATION}{}{RESET} {} {:.2}s",
             self.workspace_id,
             self.mutation_hash,
-            self.status,
+            self.status_value.terse(),
             self.duration.as_secs_f64(),
         )
     }
 
     fn verbose(&self) -> String {
         format!(
-            "{TITLE}Test Mutation{RESET} {HASH}{}{RESET} in {HASH}{}{RESET}\n\nStatus: {}\nDuration: {:.2}s",
+            "{TITLE}Test Mutation{RESET} {MUTATION}{}{RESET} in {WORKSPACE}{}{RESET}\n\nStatus: {}\nDuration: {:.2}s",
             self.mutation_hash,
             self.workspace_id,
-            self.status,
+            self.status_value.verbose(),
             self.duration.as_secs_f64(),
         )
     }
@@ -70,3 +70,49 @@ impl Render for StepTestMutation {
         )
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn fixture() -> StepTestMutation {
+        StepTestMutation {
+            workspace_id: bough_core::WorkspaceId::parse("aaaa1111").unwrap(),
+            mutation_hash: "abcdef12".to_string(),
+            status: "caught",
+            status_value: bough_core::Status::Caught,
+            duration: std::time::Duration::from_millis(500),
+        }
+    }
+
+    #[test]
+    fn markdown() {
+        let out = fixture().markdown();
+        assert!(out.contains("abcdef12"));
+        assert!(out.contains("aaaa1111"));
+        assert!(out.contains("0.50s"));
+    }
+
+    #[test]
+    fn terse() {
+        let out = fixture().terse();
+        assert!(!out.contains('\n'));
+        assert!(out.contains("aaaa1111"));
+    }
+
+    #[test]
+    fn verbose() {
+        let plain = fixture().verbose()
+            .replace(TITLE, "").replace(MUTATION, "").replace(WORKSPACE, "").replace(RESET, "");
+        assert!(plain.starts_with("Test Mutation abcdef12 in aaaa1111"));
+    }
+
+    #[test]
+    fn json() {
+        let out = fixture().json();
+        assert!(out.contains(r#""status":"caught""#));
+        assert!(out.contains(r#""duration_secs":0.500"#));
+    }
+}
+
+

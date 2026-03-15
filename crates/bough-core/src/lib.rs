@@ -38,6 +38,7 @@ pub enum LanguageId {
 pub use base::Base;
 pub use file::File;
 pub use file::Twig;
+pub use mutant::{Mutant, MutantKind, Point, Span};
 pub use mutation::Mutation;
 pub use mutation::MutationHash;
 pub use mutation::MutationIter;

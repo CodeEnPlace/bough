@@ -5,7 +5,7 @@ use bough_core::{File, LanguageId, Session};
 use facet::Facet;
 
 use crate::config::Config;
-use crate::render::{PATH, RESET, Render};
+use crate::render::{PATH, RESET, TITLE, Render};
 
 #[derive(Facet)]
 pub struct ShowLanguageFiles(pub LanguageId, pub Vec<PathBuf>);
@@ -26,31 +26,100 @@ impl ShowLanguageFiles {
 
 impl Render for ShowLanguageFiles {
     fn markdown(&self) -> String {
-        format!(
-            "# {:?} Files that will be Mutated\n\n{}",
-            self.0,
-            self.1
-                .iter()
-                .map(|pb| format!("- {}", pb.to_string_lossy()))
-                .collect::<Vec<_>>()
-                .join("\n")
-        )
+        let list = self
+            .1
+            .iter()
+            .map(|p| format!("- {PATH}{}{RESET}", p.display()))
+            .collect::<Vec<_>>()
+            .join("\n");
+        format!("{TITLE}# {} Files{RESET}\n\n{list}", self.0.markdown())
     }
+
     fn terse(&self) -> String {
-        self.1
+        let paths = self
+            .1
             .iter()
-            .map(|pb| format!("{PATH}{}{RESET}", pb.to_string_lossy()))
+            .map(|p| format!("{PATH}{}{RESET}", p.display()))
             .collect::<Vec<_>>()
-            .join(" ")
+            .join(" ");
+        format!("{} {paths}", self.0.terse())
     }
+
     fn verbose(&self) -> String {
-        self.1
+        let list = self
+            .1
             .iter()
-            .map(|pb| format!("{PATH}{}{RESET}", pb.to_string_lossy()))
+            .map(|p| format!("  {PATH}{}{RESET}", p.display()))
             .collect::<Vec<_>>()
-            .join("\n")
+            .join("\n");
+        format!("{}\n{list}", self.0.verbose())
     }
+
     fn json(&self) -> String {
         facet_json::to_string(self).unwrap()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn fixture() -> ShowLanguageFiles {
+        ShowLanguageFiles(
+            LanguageId::Typescript,
+            vec![
+                PathBuf::from("src/main.ts"),
+                PathBuf::from("src/lib.ts"),
+            ],
+        )
+    }
+
+    #[test]
+    fn markdown() {
+        let plain = fixture()
+            .markdown()
+            .replace(TITLE, "")
+            .replace(PATH, "")
+            .replace(RESET, "");
+        assert_eq!(
+            plain,
+            "\
+# TypeScript Files
+
+- src/main.ts
+- src/lib.ts"
+        );
+    }
+
+    #[test]
+    fn terse() {
+        let out = fixture().terse();
+        assert!(!out.contains('\n'));
+    }
+
+    #[test]
+    fn verbose() {
+        let plain = fixture()
+            .verbose()
+            .replace(crate::render::LANG, "")
+            .replace(PATH, "")
+            .replace(RESET, "");
+        assert_eq!(
+            plain,
+            "\
+TypeScript
+  src/main.ts
+  src/lib.ts"
+        );
+    }
+
+    #[test]
+    fn json() {
+        assert_eq!(
+            fixture().json(),
+            r#"["ts",["src/main.ts","src/lib.ts"]]"#
+        );
+    }
+}
+
+
