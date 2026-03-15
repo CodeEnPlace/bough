@@ -5,7 +5,7 @@ use bough_typed_hash::TypedHashable;
 use facet::Facet;
 
 use crate::config::Config;
-use crate::render::{TITLE, RESET, Render};
+use crate::render::{TITLE, RESET, Render, render_table};
 
 #[derive(Facet)]
 pub struct ShowLanguageMutations(pub LanguageId, pub Vec<State>);
@@ -37,24 +37,25 @@ impl ShowLanguageMutations {
 
 impl Render for ShowLanguageMutations {
     fn markdown(&self) -> String {
+        let rows: Vec<_> = self.1.iter().map(|s| s.tabular()).collect();
         format!(
             "{TITLE}# {} Mutations{RESET}\n\n{} total\n\n{}",
             self.0.markdown(),
             self.1.len(),
-            self.1.markdown(),
+            render_table(&rows),
         )
     }
 
     fn terse(&self) -> String {
-        self.1.terse()
+        self.1.iter().map(|s| s.terse()).collect::<Vec<_>>().join("\n")
     }
 
     fn verbose(&self) -> String {
+        let list = self.1.iter().map(|s| s.verbose()).collect::<Vec<_>>().join("\n");
         format!(
-            "{TITLE}{} Mutations{RESET} ({} total)\n\n{}",
+            "{TITLE}{} Mutations{RESET} ({} total)\n\n{list}",
             self.0.verbose(),
             self.1.len(),
-            self.1.verbose(),
         )
     }
 

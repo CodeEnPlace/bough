@@ -6,7 +6,7 @@ use bough_typed_hash::TypedHashable;
 use facet::Facet;
 
 use crate::config::Config;
-use crate::render::{PATH, TITLE, RESET, Render};
+use crate::render::{PATH, TITLE, RESET, Render, render_table};
 
 #[derive(Facet)]
 pub struct ShowFileMutations(pub LanguageId, pub PathBuf, pub Vec<State>);
@@ -40,24 +40,25 @@ impl ShowFileMutations {
 
 impl Render for ShowFileMutations {
     fn markdown(&self) -> String {
+        let rows: Vec<_> = self.2.iter().map(|s| s.tabular()).collect();
         format!(
             "{TITLE}# Mutations in {PATH}{}{RESET}\n\n{} total\n\n{}",
             self.1.display(),
             self.2.len(),
-            self.2.markdown(),
+            render_table(&rows),
         )
     }
 
     fn terse(&self) -> String {
-        self.2.terse()
+        self.2.iter().map(|s| s.terse()).collect::<Vec<_>>().join("\n")
     }
 
     fn verbose(&self) -> String {
+        let list = self.2.iter().map(|s| s.verbose()).collect::<Vec<_>>().join("\n");
         format!(
-            "{TITLE}Mutations in{RESET} {PATH}{}{RESET} ({} total)\n\n{}",
+            "{TITLE}Mutations in{RESET} {PATH}{}{RESET} ({} total)\n\n{list}",
             self.1.display(),
             self.2.len(),
-            self.2.verbose(),
         )
     }
 

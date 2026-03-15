@@ -1,4 +1,6 @@
-use bough_core::{LanguageId, Mutant, MutantKind, Mutation, PhaseOutcome, Point, Span, State, Status, Twig};
+use bough_core::{
+    LanguageId, Mutant, MutantKind, Mutation, PhaseOutcome, Point, Span, State, Status, Twig,
+};
 use bough_typed_hash::TypedHashable;
 use facet::Facet;
 
@@ -19,6 +21,21 @@ fn strip_ansi(s: &str) -> String {
         }
     }
     out
+}
+
+pub(crate) fn render_table(rows: &[(Vec<String>, Vec<String>)]) -> String {
+    if rows.is_empty() {
+        return String::new();
+    }
+    let headers = &rows[0].0;
+    let header = headers.iter().map(|h| format!(" {h} ")).collect::<Vec<_>>().join("|");
+    let sep = headers.iter().map(|_| " --- ").collect::<Vec<_>>().join("|");
+    let body = rows
+        .iter()
+        .map(|(_, vals)| vals.iter().map(|v| format!(" {v} ")).collect::<Vec<_>>().join("|"))
+        .collect::<Vec<_>>()
+        .join("\n");
+    format!("{header}\n{sep}\n{body}")
 }
 
 pub(crate) const RESET: &str = "\x1b[0m";
@@ -43,6 +60,11 @@ pub trait Render {
     fn terse(&self) -> String;
     fn verbose(&self) -> String;
     fn json(&self) -> String;
+
+    fn tabular(&self) -> (Vec<String>, Vec<String>) {
+        panic!("Not impled for this struct")
+    }
+
 
     fn render(&self, cli: &Cli) -> String {
         let out = match cli.format {
@@ -100,7 +122,10 @@ impl Render for Status {
         match self {
             Status::Caught => format!("{CAUGHT}caught{RESET}"),
             Status::CaughtByTests(tests) => {
-                let ids: Vec<_> = tests.iter().map(|t| facet_json::to_string(t).unwrap()).collect();
+                let ids: Vec<_> = tests
+                    .iter()
+                    .map(|t| facet_json::to_string(t).unwrap())
+                    .collect();
                 format!("{CAUGHT}caught by [{}]{RESET}", ids.join(", "))
             }
             Status::Timeout => format!("{TIMEOUT}timeout{RESET}"),
@@ -168,6 +193,7 @@ impl Render for Span {
 }
 
 impl Render for State {
+
     fn markdown(&self) -> String {
         let m = self.mutation();
         let hash = m.hash().expect("hash");
@@ -219,64 +245,24 @@ impl Render for State {
         )
     }
 
+    fn tabular(&self) -> (Vec<String>, Vec<String>) {
+        let (mut headers, mut values) = self.mutation().tabular();
+        let status = match self.status() {
+            Some(st) => st.markdown(),
+            None => format!("{NOT_RUN}not run{RESET}"),
+        };
+        headers.push("Status".into());
+        values.push(status);
+        (headers, values)
+    }
+
     fn json(&self) -> String {
         facet_json::to_string(self).unwrap()
     }
 }
 
-impl Render for Vec<State> {
-    fn markdown(&self) -> String {
-        let header = "| Hash | Lang | File | Span | Status | Kind | Subst |\n| --- | --- | --- | --- | --- | --- | --- |";
-        let rows = self
-            .iter()
-            .map(|s| {
-                let m = s.mutation();
-                let hash = m.hash().expect("hash");
-                let status = match s.status() {
-                    Some(st) => st.markdown(),
-                    None => format!("{NOT_RUN}not run{RESET}"),
-                };
-                format!(
-                    "| `{hash}` | {} | {} | {} | {status} | {:?} | `{}` |",
-                    m.mutant().lang().markdown(),
-                    m.mutant().twig().path().display(),
-                    m.mutant().span().markdown(),
-                    m.mutant().kind(),
-                    m.subst(),
-                )
-            })
-            .collect::<Vec<_>>()
-            .join("\n");
-        format!("{header}\n{rows}")
-    }
-
-    fn terse(&self) -> String {
-        self.iter()
-            .map(|s| s.terse())
-            .collect::<Vec<_>>()
-            .join("\n")
-    }
-
-    fn verbose(&self) -> String {
-        let list = self
-            .iter()
-            .map(|s| s.verbose())
-            .collect::<Vec<_>>()
-            .join("\n");
-        format!("{TITLE}States:{RESET}\n{list}")
-    }
-
-    fn json(&self) -> String {
-        let items = self
-            .iter()
-            .map(|s| s.json())
-            .collect::<Vec<_>>()
-            .join(",");
-        format!("[{items}]")
-    }
-}
-
 impl Render for Mutation {
+
     fn markdown(&self) -> String {
         let hash = self.hash().expect("hash");
         format!(
@@ -304,59 +290,23 @@ impl Render for Mutation {
         )
     }
 
+    fn tabular(&self) -> (Vec<String>, Vec<String>) {
+        let hash = self.hash().expect("hash");
+        let (mut headers, mut values) = self.mutant().tabular();
+        headers.insert(0, "Hash".into());
+        values.insert(0, format!("`{hash}`"));
+        headers.push("Subst".into());
+        values.push(format!("`{}`", self.subst()));
+        (headers, values)
+    }
+
     fn json(&self) -> String {
         facet_json::to_string(self).unwrap()
     }
 }
 
-impl Render for Vec<Mutation> {
-    fn markdown(&self) -> String {
-        let header = "| Hash | Lang | File | Span | Kind | Subst |\n| --- | --- | --- | --- | --- | --- |";
-        let rows = self
-            .iter()
-            .map(|m| {
-                let hash = m.hash().expect("hash");
-                format!(
-                    "| `{hash}` | {} | {} | {} | {:?} | `{}` |",
-                    m.mutant().lang().markdown(),
-                    m.mutant().twig().path().display(),
-                    m.mutant().span().markdown(),
-                    m.mutant().kind(),
-                    m.subst(),
-                )
-            })
-            .collect::<Vec<_>>()
-            .join("\n");
-        format!("{header}\n{rows}")
-    }
-
-    fn terse(&self) -> String {
-        self.iter()
-            .map(|m| m.terse())
-            .collect::<Vec<_>>()
-            .join("\n")
-    }
-
-    fn verbose(&self) -> String {
-        let list = self
-            .iter()
-            .map(|m| m.verbose())
-            .collect::<Vec<_>>()
-            .join("\n");
-        format!("{TITLE}Mutations:{RESET}\n{list}")
-    }
-
-    fn json(&self) -> String {
-        let items = self
-            .iter()
-            .map(|m| m.json())
-            .collect::<Vec<_>>()
-            .join(",");
-        format!("[{items}]")
-    }
-}
-
 impl Render for Mutant {
+
     fn markdown(&self) -> String {
         format!(
             "{} {} {} {}",
@@ -387,53 +337,20 @@ impl Render for Mutant {
         )
     }
 
+    fn tabular(&self) -> (Vec<String>, Vec<String>) {
+        (
+            vec!["Lang".into(), "File".into(), "Span".into(), "Kind".into()],
+            vec![
+                self.lang().markdown(),
+                format!("{}", self.twig().path().display()),
+                self.span().markdown(),
+                format!("{:?}", self.kind()),
+            ],
+        )
+    }
+
     fn json(&self) -> String {
         facet_json::to_string(self).unwrap()
-    }
-}
-
-impl Render for Vec<Mutant> {
-    fn markdown(&self) -> String {
-        let header = "| Lang | File | Span | Kind |\n| --- | --- | --- | --- |";
-        let rows = self
-            .iter()
-            .map(|m| {
-                format!(
-                    "| {} | {} | {} | {} |",
-                    m.lang().markdown(),
-                    m.twig().path().display(),
-                    m.span().markdown(),
-                    format!("{:?}", m.kind()),
-                )
-            })
-            .collect::<Vec<_>>()
-            .join("\n");
-        format!("{header}\n{rows}")
-    }
-
-    fn terse(&self) -> String {
-        self.iter()
-            .map(|m| m.terse())
-            .collect::<Vec<_>>()
-            .join("\n")
-    }
-
-    fn verbose(&self) -> String {
-        let list = self
-            .iter()
-            .map(|m| m.verbose())
-            .collect::<Vec<_>>()
-            .join("\n");
-        format!("{TITLE}Mutants:{RESET}\n{list}")
-    }
-
-    fn json(&self) -> String {
-        let items = self
-            .iter()
-            .map(|m| m.json())
-            .collect::<Vec<_>>()
-            .join(",");
-        format!("[{items}]")
     }
 }
 
@@ -542,7 +459,9 @@ impl Render for BenchmarkTimesInBase {
         };
         format!(
             r#"{{"init_secs":{},"reset_secs":{},"test_secs":{:.3}}}"#,
-            init, reset, self.test.as_secs_f64(),
+            init,
+            reset,
+            self.test.as_secs_f64(),
         )
     }
 }
@@ -601,8 +520,14 @@ impl Render for PhaseOutcome {
             self.exit_code(),
             self.duration().as_secs_f64(),
             self.timed_out(),
-            stdout.replace('\\', "\\\\").replace('"', "\\\"").replace('\n', "\\n"),
-            stderr.replace('\\', "\\\\").replace('"', "\\\"").replace('\n', "\\n"),
+            stdout
+                .replace('\\', "\\\\")
+                .replace('"', "\\\"")
+                .replace('\n', "\\n"),
+            stderr
+                .replace('\\', "\\\\")
+                .replace('"', "\\\"")
+                .replace('\n', "\\n"),
         )
     }
 }
@@ -633,7 +558,10 @@ mod tests {
 
     #[test]
     fn status_markdown() {
-        let plain = Status::Caught.markdown().replace(CAUGHT, "").replace(RESET, "");
+        let plain = Status::Caught
+            .markdown()
+            .replace(CAUGHT, "")
+            .replace(RESET, "");
         assert_eq!(plain, "caught");
     }
 
@@ -644,16 +572,25 @@ mod tests {
         let plain = caught.replace(CAUGHT, "").replace(RESET, "");
         assert_eq!(plain, "caught");
 
-        let plain = Status::Missed.terse().replace(MISSED, "").replace(RESET, "");
+        let plain = Status::Missed
+            .terse()
+            .replace(MISSED, "")
+            .replace(RESET, "");
         assert_eq!(plain, "missed");
 
-        let plain = Status::Timeout.terse().replace(TIMEOUT, "").replace(RESET, "");
+        let plain = Status::Timeout
+            .terse()
+            .replace(TIMEOUT, "")
+            .replace(RESET, "");
         assert_eq!(plain, "timeout");
     }
 
     #[test]
     fn status_verbose() {
-        let plain = Status::Missed.verbose().replace(MISSED, "").replace(RESET, "");
+        let plain = Status::Missed
+            .verbose()
+            .replace(MISSED, "")
+            .replace(RESET, "");
         assert_eq!(plain, "missed");
     }
 
@@ -664,31 +601,11 @@ mod tests {
     }
 
     #[test]
-    fn vec_state_markdown() {
-        let states = vec![make_state()];
-        let out = states.markdown();
-        assert!(out.contains("| Hash | Lang | File | Span | Status | Kind | Subst |"));
-    }
-
-    #[test]
-    fn vec_state_terse() {
-        let states = vec![make_state(), make_state()];
-        assert_eq!(states.terse().lines().count(), 2);
-    }
-
-    #[test]
-    fn vec_state_verbose() {
-        let states = vec![make_state()];
-        let plain = states.verbose().replace(TITLE, "").replace(RESET, "");
-        assert!(plain.starts_with("States:\n"));
-    }
-
-    #[test]
-    fn vec_state_json() {
-        let states = vec![make_state()];
-        let out = states.json();
-        assert!(out.starts_with('['));
-        assert!(out.ends_with(']'));
+    fn state_tabular() {
+        let (headers, values) = make_state().tabular();
+        assert_eq!(headers, vec!["Hash", "Lang", "File", "Span", "Kind", "Subst", "Status"]);
+        assert_eq!(headers.len(), values.len());
+        assert!(values[2].contains("src/main.ts"));
     }
 
     fn make_state() -> State {
@@ -724,7 +641,9 @@ mod tests {
     }
 
     fn make_mutation() -> Mutation {
-        bough_core::MutationIter::new(&make_mutant()).next().unwrap()
+        bough_core::MutationIter::new(&make_mutant())
+            .next()
+            .unwrap()
     }
 
     fn make_mutant() -> Mutant {
@@ -766,31 +685,11 @@ mod tests {
     }
 
     #[test]
-    fn vec_mutation_markdown() {
-        let mutations = vec![make_mutation()];
-        let out = mutations.markdown();
-        assert!(out.contains("| Hash | Lang | File | Span | Kind | Subst |"));
-    }
-
-    #[test]
-    fn vec_mutation_terse() {
-        let mutations = vec![make_mutation(), make_mutation()];
-        assert_eq!(mutations.terse().lines().count(), 2);
-    }
-
-    #[test]
-    fn vec_mutation_verbose() {
-        let mutations = vec![make_mutation()];
-        let plain = mutations.verbose().replace(TITLE, "").replace(RESET, "");
-        assert!(plain.starts_with("Mutations:\n"));
-    }
-
-    #[test]
-    fn vec_mutation_json() {
-        let mutations = vec![make_mutation()];
-        let out = mutations.json();
-        assert!(out.starts_with('['));
-        assert!(out.ends_with(']'));
+    fn mutation_tabular() {
+        let (headers, values) = make_mutation().tabular();
+        assert_eq!(headers, vec!["Hash", "Lang", "File", "Span", "Kind", "Subst"]);
+        assert_eq!(headers.len(), values.len());
+        assert!(values[2].contains("src/main.ts"));
     }
 
     #[test]
@@ -829,37 +728,11 @@ mod tests {
     }
 
     #[test]
-    fn vec_mutant_markdown() {
-        let mutants = vec![make_mutant()];
-        let out = mutants.markdown();
-        assert!(out.contains("| Lang | File | Span | Kind |"));
-        assert!(out.contains("src/main.ts"));
-    }
-
-    #[test]
-    fn vec_mutant_terse() {
-        let mutants = vec![make_mutant(), make_mutant()];
-        let lines: Vec<_> = mutants.terse().lines().collect();
-        assert_eq!(lines.len(), 2);
-    }
-
-    #[test]
-    fn vec_mutant_verbose() {
-        let mutants = vec![make_mutant(), make_mutant()];
-        let plain = mutants
-            .verbose()
-            .replace(TITLE, "")
-            .replace(RESET, "");
-        assert!(plain.starts_with("Mutants:\n"));
-        assert_eq!(plain.lines().count(), 3);
-    }
-
-    #[test]
-    fn vec_mutant_json() {
-        let mutants = vec![make_mutant()];
-        let out = mutants.json();
-        assert!(out.starts_with('['));
-        assert!(out.ends_with(']'));
+    fn mutant_tabular() {
+        let (headers, values) = make_mutant().tabular();
+        assert_eq!(headers, vec!["Lang", "File", "Span", "Kind"]);
+        assert_eq!(headers.len(), values.len());
+        assert!(values[1].contains("src/main.ts"));
     }
 
     #[test]
@@ -906,7 +779,10 @@ mod tests {
 
     #[test]
     fn point_json() {
-        assert_eq!(Point::new(0, 5, 10).json(), r#"{"line":0,"col":5,"byte":10}"#);
+        assert_eq!(
+            Point::new(0, 5, 10).json(),
+            r#"{"line":0,"col":5,"byte":10}"#
+        );
     }
 
     #[test]
@@ -939,7 +815,10 @@ mod tests {
     #[test]
     fn mutant_kind_markdown() {
         use bough_core::MutantKind;
-        let plain = MutantKind::StatementBlock.markdown().replace(MUTANT, "").replace(RESET, "");
+        let plain = MutantKind::StatementBlock
+            .markdown()
+            .replace(MUTANT, "")
+            .replace(RESET, "");
         assert_eq!(plain, "StatementBlock");
     }
 
@@ -955,7 +834,10 @@ mod tests {
     #[test]
     fn mutant_kind_verbose() {
         use bough_core::MutantKind;
-        let plain = MutantKind::DictDecl.verbose().replace(MUTANT, "").replace(RESET, "");
+        let plain = MutantKind::DictDecl
+            .verbose()
+            .replace(MUTANT, "")
+            .replace(RESET, "");
         assert_eq!(plain, "DictDecl");
     }
 
@@ -967,24 +849,42 @@ mod tests {
 
     #[test]
     fn language_id_markdown() {
-        let js = LanguageId::Javascript.markdown().replace(LANG, "").replace(RESET, "");
-        let ts = LanguageId::Typescript.markdown().replace(LANG, "").replace(RESET, "");
+        let js = LanguageId::Javascript
+            .markdown()
+            .replace(LANG, "")
+            .replace(RESET, "");
+        let ts = LanguageId::Typescript
+            .markdown()
+            .replace(LANG, "")
+            .replace(RESET, "");
         assert_eq!(js, "JavaScript");
         assert_eq!(ts, "TypeScript");
     }
 
     #[test]
     fn language_id_terse() {
-        let js = LanguageId::Javascript.terse().replace(LANG, "").replace(RESET, "");
-        let ts = LanguageId::Typescript.terse().replace(LANG, "").replace(RESET, "");
+        let js = LanguageId::Javascript
+            .terse()
+            .replace(LANG, "")
+            .replace(RESET, "");
+        let ts = LanguageId::Typescript
+            .terse()
+            .replace(LANG, "")
+            .replace(RESET, "");
         assert_eq!(js, "js");
         assert_eq!(ts, "ts");
     }
 
     #[test]
     fn language_id_verbose() {
-        let js = LanguageId::Javascript.verbose().replace(LANG, "").replace(RESET, "");
-        let ts = LanguageId::Typescript.verbose().replace(LANG, "").replace(RESET, "");
+        let js = LanguageId::Javascript
+            .verbose()
+            .replace(LANG, "")
+            .replace(RESET, "");
+        let ts = LanguageId::Typescript
+            .verbose()
+            .replace(LANG, "")
+            .replace(RESET, "");
         assert_eq!(js, "JavaScript");
         assert_eq!(ts, "TypeScript");
     }
@@ -1005,7 +905,10 @@ mod tests {
 
     #[test]
     fn benchmark_markdown() {
-        let plain = make_benchmark().markdown().replace(TITLE, "").replace(RESET, "");
+        let plain = make_benchmark()
+            .markdown()
+            .replace(TITLE, "")
+            .replace(RESET, "");
         assert!(plain.contains("Init: 1.50s"));
         assert!(!plain.contains("Reset"));
         assert!(plain.contains("Test: 2.00s"));
@@ -1020,7 +923,10 @@ mod tests {
 
     #[test]
     fn benchmark_verbose() {
-        let plain = make_benchmark().verbose().replace(TITLE, "").replace(RESET, "");
+        let plain = make_benchmark()
+            .verbose()
+            .replace(TITLE, "")
+            .replace(RESET, "");
         assert!(plain.contains("Init:  1.50s"));
         assert!(plain.contains("Test:  2.00s"));
     }
