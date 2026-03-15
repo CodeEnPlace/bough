@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 use bough_core::Session;
 
 use crate::config::Config;
@@ -12,12 +14,11 @@ pub struct StepResetWorkspace {
 }
 
 impl StepResetWorkspace {
-    pub fn run(config: Config, workspace_id: &str) -> Box<Self> {
-        let session = Session::new(config.clone()).expect("session creation");
+    pub fn run(session: impl Deref<Target = Session<Config>>, config: &Config, workspace_id: &str) -> Box<Self> {
         let wid = bough_core::WorkspaceId::parse(workspace_id).expect("invalid workspace id");
         let workspace = session.bind_workspace(&wid).expect("bind workspace");
         let outcome = workspace
-            .run_reset(&config, None)
+            .run_reset(config, None)
             .expect("reset workspace");
         Box::new(Self {
             workspace_id: wid,

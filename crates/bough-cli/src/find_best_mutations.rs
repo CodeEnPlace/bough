@@ -1,3 +1,4 @@
+use std::ops::Deref;
 use std::path::PathBuf;
 
 use bough_core::{LanguageId, MutationHash, Session, State};
@@ -10,8 +11,7 @@ use crate::render::{
 pub struct FindBestMutations(pub Vec<(MutationHash, State, f64)>);
 
 impl FindBestMutations {
-    pub fn run(config: Config, lang: Option<LanguageId>, file: Option<PathBuf>) -> Box<Self> {
-        let session = Session::new(config).expect("session creation");
+    pub fn run(session: impl Deref<Target = Session<Config>>, lang: Option<LanguageId>, file: Option<PathBuf>) -> Box<Self> {
         let results = session.find_best_mutations().expect("find best mutations");
         let filtered: Vec<_> = results
             .into_iter()

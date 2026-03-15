@@ -37,7 +37,7 @@ fn main() {
 
     info!(log_level = %log_level, "tracing initialized");
 
-    let mut session = Session::new(cli.config.clone()).expect("session creation");
+    let session = Session::new(cli.config.clone()).expect("session creation");
     let session = Arc::new(Mutex::new(session));
 
     let result: Box<dyn Render> = match cli.command {
@@ -46,33 +46,33 @@ fn main() {
             match show {
                 Show::Config => Box::new(cli.config.clone()),
 
-                Show::Files { lang: None } => show_all_files::ShowAllFiles::run(cli.config.clone()),
+                Show::Files { lang: None } => show_all_files::ShowAllFiles::run(session.lock().unwrap()),
 
                 Show::Files { lang: Some(lang) } => {
-                    show_language_files::ShowLanguageFiles::run(cli.config.clone(), *lang)
+                    show_language_files::ShowLanguageFiles::run(session.lock().unwrap(), *lang)
                 }
 
                 Show::Mutations {
                     lang: None,
                     file: _,
-                } => show_all_mutations::ShowAllMutations::run(cli.config.clone()),
+                } => show_all_mutations::ShowAllMutations::run(session.lock().unwrap()),
 
                 Show::Mutations {
                     lang: Some(lang),
                     file: None,
-                } => show_language_mutations::ShowLanguageMutations::run(cli.config.clone(), *lang),
+                } => show_language_mutations::ShowLanguageMutations::run(session.lock().unwrap(), *lang),
 
                 Show::Mutations {
                     lang: Some(lang),
                     file: Some(file),
                 } => show_file_mutations::ShowFileMutations::run(
-                    cli.config.clone(),
+                    session.lock().unwrap(),
                     *lang,
                     file.clone(),
                 ),
 
                 Show::Mutation { hash } => {
-                    show_single_mutation::ShowSingleMutation::run(cli.config.clone(), hash)
+                    show_single_mutation::ShowSingleMutation::run(session.lock().unwrap(), hash)
                 }
             }
         }
@@ -81,25 +81,25 @@ fn main() {
             debug!(subcommand = ?step, "executing step command");
 
             match step {
-                config::Step::TendState => step_tend_state::StepTendState::run(cli.config.clone()),
+                config::Step::TendState => step_tend_state::StepTendState::run(session.lock().unwrap()),
 
                 config::Step::TendWorkspaces => {
-                    step_tend_workspaces::StepTendWorkspaces::run(cli.config.clone())
+                    step_tend_workspaces::StepTendWorkspaces::run(session.lock().unwrap(), cli.config.workers as usize)
                 }
 
                 config::Step::InitWorkspace { workspace_id } => {
-                    step_init_workspace::StepInitWorkspace::run(cli.config.clone(), workspace_id)
+                    step_init_workspace::StepInitWorkspace::run(session.lock().unwrap(), &cli.config, workspace_id)
                 }
 
                 config::Step::ResetWorkspace { workspace_id } => {
-                    step_reset_workspace::StepResetWorkspace::run(cli.config.clone(), workspace_id)
+                    step_reset_workspace::StepResetWorkspace::run(session.lock().unwrap(), &cli.config, workspace_id)
                 }
 
                 config::Step::ApplyMutation {
                     workspace_id,
                     mutation_hash,
                 } => step_apply_mutation::StepApplyMutation::run(
-                    cli.config.clone(),
+                    session.lock().unwrap(),
                     workspace_id,
                     mutation_hash,
                 ),
@@ -108,7 +108,7 @@ fn main() {
                     workspace_id,
                     mutation_hash,
                 } => step_unapply_mutation::StepUnapplyMutation::run(
-                    cli.config.clone(),
+                    session.lock().unwrap(),
                     workspace_id,
                     mutation_hash,
                 ),
@@ -117,7 +117,8 @@ fn main() {
                     workspace_id,
                     mutation_hash,
                 } => step_test_mutation::StepTestMutation::run(
-                    cli.config.clone(),
+                    session.lock().unwrap(),
+                    &cli.config,
                     workspace_id,
                     mutation_hash,
                 ),
@@ -126,18 +127,17 @@ fn main() {
 
         Command::Run => {
             info!("starting run");
-            let mut session = Session::new(cli.config.clone()).expect("session creation");
-            let added = session
+            let added = session.lock().unwrap()
                 .tend_add_missing_states()
                 .expect("tend add missing states");
-            let removed = session
+            let removed = session.lock().unwrap()
                 .tend_remove_stale_states()
                 .expect("tend remove stale states");
 
             println!("{}", (render::TendState { added, removed }).render(&cli));
 
             let workers = cli.config.workers as usize;
-            let workspace_ids = session.tend_workspaces(workers).expect("tend workspaces");
+            let workspace_ids = session.lock().unwrap().tend_workspaces(workers).expect("tend workspaces");
 
             println!(
                 "{}",
@@ -147,47 +147,52 @@ fn main() {
                 .render(&cli)
             );
 
-            let base = session.base();
+            let (init_duration, reset_duration, test_duration, total) = {
+                let mut guard = session.lock().unwrap();
+                let base = guard.base();
 
-            let init_duration = match base.run_init(&cli.config, None) {
-                Ok(outcome) => {
-                    if outcome.exit_code() != 0 {
-                        eprintln!("base init failed (exit {})", outcome.exit_code());
+                let init_duration = match base.run_init(&cli.config, None) {
+                    Ok(outcome) => {
+                        if outcome.exit_code() != 0 {
+                            eprintln!("base init failed (exit {})", outcome.exit_code());
+                            std::process::exit(1);
+                        }
+                        Some(outcome.duration())
+                    }
+                    Err(bough_core::PhaseError::NoCmdConfigured) => None,
+                    Err(e) => {
+                        eprintln!("base init error: {e}");
                         std::process::exit(1);
                     }
-                    Some(outcome.duration())
-                }
-                Err(bough_core::PhaseError::NoCmdConfigured) => None,
-                Err(e) => {
-                    eprintln!("base init error: {e}");
-                    std::process::exit(1);
-                }
-            };
+                };
 
-            let reset_duration = match base.run_reset(&cli.config, None) {
-                Ok(outcome) => {
-                    if outcome.exit_code() != 0 {
-                        eprintln!("base reset failed (exit {})", outcome.exit_code());
+                let reset_duration = match base.run_reset(&cli.config, None) {
+                    Ok(outcome) => {
+                        if outcome.exit_code() != 0 {
+                            eprintln!("base reset failed (exit {})", outcome.exit_code());
+                            std::process::exit(1);
+                        }
+                        Some(outcome.duration())
+                    }
+                    Err(bough_core::PhaseError::NoCmdConfigured) => None,
+                    Err(e) => {
+                        eprintln!("base reset error: {e}");
                         std::process::exit(1);
                     }
-                    Some(outcome.duration())
-                }
-                Err(bough_core::PhaseError::NoCmdConfigured) => None,
-                Err(e) => {
-                    eprintln!("base reset error: {e}");
+                };
+
+                let test_outcome = base
+                    .run_test(&cli.config, None)
+                    .expect("base test execution");
+                if test_outcome.exit_code() != 0 {
+                    eprintln!("base test failed (exit {})", test_outcome.exit_code());
                     std::process::exit(1);
                 }
+
+                let total = guard.get_count_mutation_needing_test() as u64;
+                (init_duration, reset_duration, test_outcome.duration(), total)
             };
 
-            let test_outcome = base
-                .run_test(&cli.config, None)
-                .expect("base test execution");
-            if test_outcome.exit_code() != 0 {
-                eprintln!("base test failed (exit {})", test_outcome.exit_code());
-                std::process::exit(1);
-            }
-
-            let test_duration = test_outcome.duration();
             let benchmark = render::BenchmarkTimesInBase {
                 init: init_duration,
                 reset: reset_duration,
@@ -195,8 +200,6 @@ fn main() {
             };
             println!("{}", benchmark.render(&cli));
 
-            let total = session.get_count_mutation_needing_test() as u64;
-            let session = Arc::new(Mutex::new(session));
             let done = Arc::new(AtomicBool::new(false));
 
             let pb = if cli.progress {
@@ -362,7 +365,7 @@ fn main() {
         }
 
         Command::Find { ref lang, ref file } => {
-            find_best_mutations::FindBestMutations::run(cli.config.clone(), *lang, file.clone())
+            find_best_mutations::FindBestMutations::run(session.lock().unwrap(), *lang, file.clone())
         }
 
         Command::Noop => {

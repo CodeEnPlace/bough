@@ -1,3 +1,5 @@
+use std::ops::DerefMut;
+
 use bough_core::Session;
 
 use crate::config::Config;
@@ -8,9 +10,7 @@ pub struct StepTendWorkspaces {
 }
 
 impl StepTendWorkspaces {
-    pub fn run(config: Config) -> Box<Self> {
-        let mut session = Session::new(config.clone()).expect("session creation");
-        let workers = config.workers as usize;
+    pub fn run(mut session: impl DerefMut<Target = Session<Config>>, workers: usize) -> Box<Self> {
         let workspace_ids = session.tend_workspaces(workers).expect("tend workspaces");
         Box::new(Self { workspace_ids })
     }

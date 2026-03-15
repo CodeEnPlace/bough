@@ -1,3 +1,4 @@
+use std::ops::Deref;
 use std::path::PathBuf;
 
 use bough_core::{File, LanguageId, Session};
@@ -10,8 +11,7 @@ use crate::render::{PATH, RESET, Render};
 pub struct ShowLanguageFiles(pub LanguageId, pub Vec<PathBuf>);
 
 impl ShowLanguageFiles {
-    pub fn run(config: Config, lang: LanguageId) -> Box<Self> {
-        let session = Session::new(config).expect("session creation");
+    pub fn run(session: impl Deref<Target = Session<Config>>, lang: LanguageId) -> Box<Self> {
         let base = session.base();
         let twigs = base.mutant_twigs().collect::<Vec<_>>();
         let files = twigs

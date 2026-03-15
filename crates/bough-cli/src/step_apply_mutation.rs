@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 use bough_core::Session;
 use bough_typed_hash::{TypedHash, TypedHashable, UnvalidatedHash};
 
@@ -10,8 +12,7 @@ pub struct StepApplyMutation {
 }
 
 impl StepApplyMutation {
-    pub fn run(config: Config, workspace_id: &str, mutation_hash: &str) -> Box<Self> {
-        let session = Session::new(config).expect("session creation");
+    pub fn run(session: impl Deref<Target = Session<Config>>, workspace_id: &str, mutation_hash: &str) -> Box<Self> {
         let wid = bough_core::WorkspaceId::parse(workspace_id).expect("invalid workspace id");
         let base = session.base();
         let mutations: Vec<_> = base

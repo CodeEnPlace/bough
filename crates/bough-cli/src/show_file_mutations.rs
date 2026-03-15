@@ -1,3 +1,4 @@
+use std::ops::DerefMut;
 use std::path::PathBuf;
 
 use bough_core::{LanguageId, Session, State};
@@ -11,8 +12,7 @@ use crate::render::{Render, fmt_mutation_markdown_table, fmt_mutation_terse, fmt
 pub struct ShowFileMutations(pub LanguageId, pub PathBuf, pub Vec<State>);
 
 impl ShowFileMutations {
-    pub fn run(config: Config, lang: LanguageId, file: PathBuf) -> Box<Self> {
-        let mut session = Session::new(config).expect("session creation");
+    pub fn run(mut session: impl DerefMut<Target = Session<Config>>, lang: LanguageId, file: PathBuf) -> Box<Self> {
         session.tend_add_missing_states().expect("tend states");
         let base = session.base();
         let mutations: Vec<_> = base

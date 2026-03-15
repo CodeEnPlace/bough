@@ -1,3 +1,5 @@
+use std::ops::DerefMut;
+
 use bough_core::Session;
 use bough_typed_hash::{TypedHash, TypedHashable, UnvalidatedHash};
 
@@ -12,8 +14,7 @@ pub struct StepTestMutation {
 }
 
 impl StepTestMutation {
-    pub fn run(config: Config, workspace_id: &str, mutation_hash: &str) -> Box<Self> {
-        let mut session = Session::new(config.clone()).expect("session creation");
+    pub fn run(mut session: impl DerefMut<Target = Session<Config>>, config: &Config, workspace_id: &str, mutation_hash: &str) -> Box<Self> {
         let wid = bough_core::WorkspaceId::parse(workspace_id).expect("invalid workspace id");
         let base = session.base();
         let mutations: Vec<_> = base
@@ -25,7 +26,7 @@ impl StepTestMutation {
         let mut workspace = session.bind_workspace(&wid).expect("bind workspace");
         workspace.write_mutant(&mutation).expect("apply mutation");
         let outcome = workspace
-            .run_test(&config, None)
+            .run_test(config, None)
             .expect("test mutation");
         workspace.revert_mutant().expect("revert mutation");
         let status = if outcome.exit_code() != 0 {

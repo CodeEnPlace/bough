@@ -1,3 +1,4 @@
+use std::ops::Deref;
 use std::path::PathBuf;
 
 use bough_core::{File, Session};
@@ -10,8 +11,7 @@ use crate::render::{PATH, RESET, Render};
 pub struct ShowAllFiles(pub Vec<PathBuf>);
 
 impl ShowAllFiles {
-    pub fn run(config: Config) -> Box<Self> {
-        let session = Session::new(config).expect("session creation");
+    pub fn run(session: impl Deref<Target = Session<Config>>) -> Box<Self> {
         let base = session.base();
         let twigs = base.twigs().collect::<Vec<_>>();
         let files = twigs

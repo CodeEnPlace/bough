@@ -1,3 +1,5 @@
+use std::ops::DerefMut;
+
 use bough_core::Session;
 
 use crate::config::Config;
@@ -9,8 +11,7 @@ pub struct StepTendState {
 }
 
 impl StepTendState {
-    pub fn run(config: Config) -> Box<Self> {
-        let mut session = Session::new(config).expect("session creation");
+    pub fn run(mut session: impl DerefMut<Target = Session<Config>>) -> Box<Self> {
         let added = session
             .tend_add_missing_states()
             .expect("tend add missing states");

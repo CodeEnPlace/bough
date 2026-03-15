@@ -1,3 +1,5 @@
+use std::ops::DerefMut;
+
 use bough_core::{LanguageId, Session, State};
 use bough_typed_hash::TypedHashable;
 use facet::Facet;
@@ -9,8 +11,7 @@ use crate::render::{Render, fmt_mutation_markdown_table, fmt_mutation_terse, fmt
 pub struct ShowLanguageMutations(pub LanguageId, pub Vec<State>);
 
 impl ShowLanguageMutations {
-    pub fn run(config: Config, lang: LanguageId) -> Box<Self> {
-        let mut session = Session::new(config).expect("session creation");
+    pub fn run(mut session: impl DerefMut<Target = Session<Config>>, lang: LanguageId) -> Box<Self> {
         session.tend_add_missing_states().expect("tend states");
         let base = session.base();
         let mutations: Vec<_> = base
