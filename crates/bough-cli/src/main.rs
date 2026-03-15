@@ -127,14 +127,8 @@ fn main() {
 
         Command::Run => {
             info!("starting run");
-            let added = session.lock().unwrap()
-                .tend_add_missing_states()
-                .expect("tend add missing states");
-            let removed = session.lock().unwrap()
-                .tend_remove_stale_states()
-                .expect("tend remove stale states");
-
-            println!("{}", (render::TendState { added, removed }).render(&cli));
+            let tend_state = step_tend_state::StepTendState::run(session.lock().unwrap());
+            println!("{}", tend_state.render(&cli));
 
             let workers = cli.config.workers as usize;
             let workspace_ids = session.lock().unwrap().tend_workspaces(workers).expect("tend workspaces");
