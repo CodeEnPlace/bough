@@ -276,16 +276,9 @@ fn main() {
                             let mutation = mutation_state.mutation();
                             drop(guard);
 
-                            if let Ok(outcome) = workspace.run_reset(&cli.config, reset_duration) {
+                            if let Ok(reset) = step_reset_workspace::StepResetWorkspace::run(&workspace, &cli.config, reset_duration) {
                                 if !cli.progress {
-                                    println!(
-                                        "{}",
-                                        render::ResetWorkspace {
-                                            workspace_id: workspace_id.clone(),
-                                            outcome,
-                                        }
-                                        .render(&cli)
-                                    );
+                                    println!("{}", reset.render(&cli));
                                 }
                             }
 
