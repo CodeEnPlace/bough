@@ -4,7 +4,7 @@ use tracing::trace;
 
 use crate::{mutation::Mutation, test_id::TestId};
 
-#[derive(Facet, PartialEq)]
+#[derive(Facet, Clone, PartialEq)]
 #[repr(u8)]
 pub enum Status {
     Caught,

@@ -1,7 +1,4 @@
-use std::ops::DerefMut;
-
-use bough_core::Session;
-use bough_typed_hash::{TypedHashable, UnvalidatedHash};
+use bough_typed_hash::TypedHashable;
 
 use crate::config::Config;
 use crate::render::{HASH, RESET, TITLE, Render};
@@ -10,37 +7,25 @@ pub struct StepTestMutation {
     pub workspace_id: bough_core::WorkspaceId,
     pub mutation_hash: String,
     pub status: &'static str,
+    pub status_value: bough_core::Status,
     pub duration: std::time::Duration,
 }
 
 impl StepTestMutation {
-    pub fn run(mut session: impl DerefMut<Target = Session<Config>>, config: &Config, workspace_id: &str, mutation_hash: &str) -> Box<Self> {
-        let wid = bough_core::WorkspaceId::parse(workspace_id).expect("invalid workspace id");
-        let mutation = session.resolve_mutation(UnvalidatedHash::new(mutation_hash.to_string())).expect("resolve mutation");
-        let hash_str = mutation.hash().expect("hash").to_string();
-        let mut workspace = session.bind_workspace(&wid).expect("bind workspace");
-        workspace.write_mutant(&mutation).expect("apply mutation");
-        let outcome = workspace
-            .run_test(config, None)
-            .expect("test mutation");
-        workspace.revert_mutant().expect("revert mutation");
-        let status = if outcome.exit_code() != 0 {
-            bough_core::Status::Caught
+    pub fn run(workspace: &bough_core::Workspace, config: &Config, mutation: &bough_core::Mutation, timeout: Option<std::time::Duration>) -> Result<Box<Self>, bough_core::PhaseError> {
+        let outcome = workspace.run_test(config, timeout)?;
+        let (status_value, status_str) = if outcome.exit_code() != 0 {
+            (bough_core::Status::Caught, "caught")
         } else {
-            bough_core::Status::Missed
+            (bough_core::Status::Missed, "missed")
         };
-        let status_str = if outcome.exit_code() != 0 {
-            "caught"
-        } else {
-            "missed"
-        };
-        session.set_state(&mutation, status).expect("set state");
-        Box::new(Self {
-            workspace_id: wid,
-            mutation_hash: hash_str,
+        Ok(Box::new(Self {
+            workspace_id: workspace.id().clone(),
+            mutation_hash: mutation.hash().expect("hash").to_string(),
             status: status_str,
+            status_value,
             duration: outcome.duration(),
-        })
+        }))
     }
 }
 

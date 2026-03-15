@@ -126,12 +126,17 @@ fn main() {
                 config::Step::TestMutation {
                     workspace_id,
                     mutation_hash,
-                } => step_test_mutation::StepTestMutation::run(
-                    session.lock().unwrap(),
-                    &cli.config,
-                    workspace_id,
-                    mutation_hash,
-                ),
+                } => {
+                    let mut guard = session.lock().unwrap();
+                    let wid = bough_core::WorkspaceId::parse(workspace_id).expect("invalid workspace id");
+                    let mutation = guard.resolve_mutation(UnvalidatedHash::new(mutation_hash.to_string())).expect("resolve mutation");
+                    let mut workspace = guard.bind_workspace(&wid).expect("bind workspace");
+                    step_apply_mutation::StepApplyMutation::run(&mut workspace, &mutation).expect("apply mutation");
+                    let result = step_test_mutation::StepTestMutation::run(&workspace, &cli.config, &mutation, None).expect("test mutation");
+                    step_unapply_mutation::StepUnapplyMutation::run(&mut workspace).expect("unapply mutation");
+                    guard.set_state(&mutation, result.status_value.clone()).expect("set state");
+                    result
+                }
             }
         }
 
@@ -290,12 +295,11 @@ fn main() {
                                 error!(%workspace_id, err = %e, "failed to apply mutation");
                                 continue;
                             }
-                            let outcome = match workspace.run_test(&cli.config, Some(test_duration))
-                            {
-                                Ok(o) => o,
+                            let test_result = match step_test_mutation::StepTestMutation::run(&workspace, &cli.config, &mutation, Some(test_duration)) {
+                                Ok(r) => r,
                                 Err(e) => {
                                     error!(%workspace_id, err = %e, "test execution failed");
-                                    let _ = workspace.revert_mutant();
+                                    let _ = step_unapply_mutation::StepUnapplyMutation::run(&mut workspace);
                                     continue;
                                 }
                             };
@@ -304,38 +308,17 @@ fn main() {
                                 break;
                             }
 
-                            let status = if outcome.exit_code() != 0 {
-                                bough_core::Status::Caught
-                            } else {
-                                bough_core::Status::Missed
-                            };
-
-                            let status_str = if outcome.exit_code() != 0 {
-                                "caught"
-                            } else {
-                                "missed"
-                            };
-
                             let Ok(mut guard) = session.lock() else {
                                 error!(%workspace_id, "mutex poisoned setting state");
                                 break;
                             };
-                            if let Err(e) = guard.set_state(&mutation, status) {
+                            if let Err(e) = guard.set_state(&mutation, test_result.status_value.clone()) {
                                 error!(%workspace_id, err = ?e, "failed to set state");
                             }
                             drop(guard);
 
                             if !cli.progress {
-                                println!(
-                                    "{}",
-                                    (render::TestMutation {
-                                        workspace_id: workspace_id.clone(),
-                                        mutation_hash: format!("{}", hash_to_test),
-                                        status: status_str,
-                                        duration: outcome.duration(),
-                                    })
-                                    .render(&cli)
-                                );
+                                println!("{}", test_result.render(&cli));
                             }
                         }
 
