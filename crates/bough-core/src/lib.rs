@@ -48,4 +48,4 @@ pub use session::Config;
 pub use session::Session;
 pub use state::{State, Status};
 pub use twig::TwigsIterBuilder;
-pub use workspace::{Workspace, WorkspaceId};
+pub use workspace::{Error as WorkspaceError, Workspace, WorkspaceId};

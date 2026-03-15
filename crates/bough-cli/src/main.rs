@@ -19,10 +19,20 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 use bough_core::Session;
+use bough_typed_hash::{TypedHash, TypedHashable, UnvalidatedHash};
 
 use config::{Command, Show, parse};
 use render::{Noop, Render};
 use tracing::{Level, debug, error, info, warn};
+
+fn resolve_mutation_hash(session: &Session<config::Config>, hash: &str) -> bough_core::Mutation {
+    let mutations: Vec<_> = session.base().mutations().collect::<Result<Vec<_>, _>>().expect("mutation scan");
+    let unvalidated = UnvalidatedHash::new(hash.to_string());
+    let hashes: Vec<_> = mutations.iter().map(|m| m.hash().expect("hash")).collect();
+    let matched = unvalidated.validate(&hashes).expect("hash resolution failed");
+    let matched_bytes = matched.as_bytes();
+    mutations.into_iter().find(|m| m.hash().unwrap().as_bytes() == matched_bytes).unwrap()
+}
 
 fn main() {
     let cli = parse();
@@ -104,11 +114,13 @@ fn main() {
                 config::Step::ApplyMutation {
                     workspace_id,
                     mutation_hash,
-                } => step_apply_mutation::StepApplyMutation::run(
-                    session.lock().unwrap(),
-                    workspace_id,
-                    mutation_hash,
-                ),
+                } => {
+                    let guard = session.lock().unwrap();
+                    let wid = bough_core::WorkspaceId::parse(workspace_id).expect("invalid workspace id");
+                    let mutation = resolve_mutation_hash(&guard, mutation_hash);
+                    let mut workspace = guard.bind_workspace(&wid).expect("bind workspace");
+                    step_apply_mutation::StepApplyMutation::run(&mut workspace, &mutation).expect("apply mutation")
+                }
 
                 config::Step::UnapplyMutation {
                     workspace_id,
@@ -282,7 +294,7 @@ fn main() {
                                 }
                             }
 
-                            if let Err(e) = workspace.write_mutant(&mutation) {
+                            if let Err(e) = step_apply_mutation::StepApplyMutation::run(&mut workspace, &mutation) {
                                 error!(%workspace_id, err = %e, "failed to apply mutation");
                                 continue;
                             }
