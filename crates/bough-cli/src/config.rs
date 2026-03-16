@@ -121,7 +121,9 @@ pub enum Show {
         file: Option<PathBuf>,
     },
 
+    /// Show details of a single mutation by its hash.
     Mutation {
+        /// The mutation hash, as printed by `show mutations` or `find`.
         #[facet(args::positional)]
         hash: String,
     },
