@@ -260,12 +260,17 @@ pub struct FindMutationsConfig {
 /// commands. Phase-level values override top-level defaults.
 #[derive(Facet, Debug, Clone, Default)]
 pub struct PhaseOverrides {
+    /// Working directory for the phase command. Relative to `base_root_dir`.
+    /// Default: `.`.
     #[facet(default)]
     pub pwd: Option<String>,
 
+    /// Extra environment variables. Phase-level values merge with top-level
+    /// defaults; set a key to `""` to remove an inherited variable.
     #[facet(default)]
     pub env: Option<HashMap<String, String>>,
 
+    /// Timeout limits for the phase command.
     #[facet(default)]
     pub timeout: Option<TimeoutConfig>,
 }
