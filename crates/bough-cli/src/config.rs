@@ -19,6 +19,7 @@ pub struct Cli {
     #[facet(args::named, args::short = 'f', default)]
     pub format: Format,
 
+    /// Disable colored output. Also honoured via the `NO_COLOR` environment variable.
     #[facet(args::named, default)]
     no_color: bool,
 
