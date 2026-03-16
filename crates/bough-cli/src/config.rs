@@ -216,6 +216,8 @@ pub struct Config {
     /// At least one language must be configured.
     pub lang: HashMap<bough_core::LanguageId, LanguageConfig>,
 
+    /// Default `pwd`, `env`, and `timeout` applied to all phases unless
+    /// overridden in a specific phase section.
     #[facet(flatten, default)]
     pub phase_defaults: PhaseOverrides,
 
