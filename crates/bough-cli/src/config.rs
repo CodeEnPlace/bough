@@ -81,9 +81,12 @@ pub enum Command {
         step: Step,
     },
 
+    /// Select the best mutations to test next. Optionally filter by language and/or file.
     Find {
+        /// Limit to a specific language.
         #[facet(args::positional, default)]
         lang: Option<bough_core::LanguageId>,
+        /// Limit to a specific source file path.
         #[facet(args::positional, default)]
         file: Option<PathBuf>,
     },
