@@ -198,6 +198,8 @@ pub struct Config {
     #[facet(default = 1)]
     pub threads: u64,
 
+    /// Root directory of the project source tree. Relative paths are resolved
+    /// from the config file's directory. Required.
     // bough[impl config.base-root-path.default]
     pub base_root_dir: String,
 
