@@ -148,7 +148,9 @@ pub enum Step {
         workspace_id: String,
     },
 
+    /// Run the reset phase command in a workspace to restore it to a clean state between tests.
     ResetWorkspace {
+        /// Workspace identifier.
         #[facet(args::positional)]
         workspace_id: String,
     },
