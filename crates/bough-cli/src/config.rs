@@ -57,6 +57,7 @@ pub enum Format {
     /// Human-readable multi-line output with extra detail.
     #[facet(rename = "verbose")]
     Verbose,
+    /// Markdown-formatted output, suitable for reports or piping to a renderer.
     #[facet(rename = "markdown")]
     Markdown,
     #[facet(rename = "json")]
