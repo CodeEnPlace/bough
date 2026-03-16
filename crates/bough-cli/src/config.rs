@@ -242,9 +242,11 @@ pub struct Config {
 /// which ranking factors are used to prioritise them.
 #[derive(Facet, Debug, Clone)]
 pub struct FindMutationsConfig {
+    /// Total number of mutations to return. Default: 1.
     #[facet(default = 1)]
     pub number: usize,
 
+    /// Maximum mutations to return per source file. Default: 1.
     #[facet(default = 1)]
     pub number_per_file: usize,
 
