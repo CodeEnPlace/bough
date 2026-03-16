@@ -8,6 +8,7 @@ use std::{collections::HashMap, path::PathBuf};
 use thiserror::Error;
 use tracing::{debug, warn};
 
+/// Bough — a polyglot mutation testing tool.
 #[derive(Facet, Debug, Clone)]
 pub struct Cli {
     #[facet(args::named, args::short = 'v', args::counted, default)]
