@@ -104,7 +104,9 @@ pub enum Show {
     /// Print the resolved configuration.
     Config,
 
+    /// List source files matched by the include/exclude globs. Optionally filter by language.
     Files {
+        /// Limit to a specific language.
         #[facet(args::positional, default)]
         lang: Option<bough_core::LanguageId>,
     },
