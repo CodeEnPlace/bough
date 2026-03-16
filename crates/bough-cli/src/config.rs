@@ -50,6 +50,7 @@ impl Cli {
 #[derive(Facet, Debug, Clone, Copy, PartialEq, Eq, Default)]
 #[repr(u8)]
 pub enum Format {
+    /// Compact single-line output. Default.
     #[default]
     #[facet(rename = "terse")]
     Terse,
