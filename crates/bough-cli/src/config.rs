@@ -256,6 +256,8 @@ pub struct FindMutationsConfig {
     pub factors: Vec<Factor>,
 }
 
+/// Working directory, environment variables, and timeout limits for phase
+/// commands. Phase-level values override top-level defaults.
 #[derive(Facet, Debug, Clone, Default)]
 pub struct PhaseOverrides {
     #[facet(default)]
