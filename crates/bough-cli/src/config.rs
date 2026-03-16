@@ -60,6 +60,7 @@ pub enum Format {
     /// Markdown-formatted output, suitable for reports or piping to a renderer.
     #[facet(rename = "markdown")]
     Markdown,
+    /// Machine-readable JSON output.
     #[facet(rename = "json")]
     Json,
 }
