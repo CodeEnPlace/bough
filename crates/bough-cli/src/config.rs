@@ -207,6 +207,9 @@ pub struct Config {
     /// At least one is required. Example: `["src/**", "lib/**"]`.
     pub include: Vec<String>,
 
+    /// Glob patterns to exclude from workspace cloning and mutation scanning.
+    /// `.gitignore` patterns, VCS directories, and the `.bough/` state dir are
+    /// always excluded automatically.
     pub exclude: Vec<String>,
 
     pub lang: HashMap<bough_core::LanguageId, LanguageConfig>,
