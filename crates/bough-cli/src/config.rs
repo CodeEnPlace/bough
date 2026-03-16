@@ -27,6 +27,8 @@ pub struct Cli {
     #[facet(args::subcommand)]
     pub command: Command,
 
+    /// Configuration values. Sources in override order: config file →
+    /// `BOUGH_*` env vars → `--config.*` CLI flags.
     #[facet(args::config, args::env_prefix = "BOUGH")]
     pub config: Config,
 }
