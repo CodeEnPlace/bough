@@ -194,6 +194,7 @@ pub struct Config {
     #[facet(default = 1)]
     pub workers: u64,
 
+    /// Number of threads bough uses for analysis and mutation discovery. Default: 1.
     #[facet(default = 1)]
     pub threads: u64,
 
