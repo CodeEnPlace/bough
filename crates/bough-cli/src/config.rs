@@ -75,6 +75,7 @@ pub enum Command {
         show: Show,
     },
 
+    /// Run a single internal pipeline step. Useful for debugging or building custom orchestration.
     Step {
         #[facet(args::subcommand)]
         step: Step,
