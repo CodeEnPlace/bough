@@ -46,6 +46,7 @@ impl Cli {
     }
 }
 
+/// Output format for command results.
 #[derive(Facet, Debug, Clone, Copy, PartialEq, Eq, Default)]
 #[repr(u8)]
 pub enum Format {
