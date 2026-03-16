@@ -11,9 +11,9 @@ mod step_apply_mutation;
 mod step_init_workspace;
 mod step_reset_workspace;
 mod step_tend_state;
+mod step_tend_workspaces;
 mod step_test_mutation;
 mod step_unapply_mutation;
-mod step_tend_workspaces;
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
@@ -23,7 +23,6 @@ use bough_core::Session;
 use config::{Command, Show, parse};
 use render::{Noop, Render};
 use tracing::{Level, debug, error, info, warn};
-
 
 fn main() {
     let cli = parse();
@@ -38,15 +37,16 @@ fn main() {
 
     info!(log_level = %log_level, "tracing initialized");
 
+    let mut session = Session::new(cli.config.clone()).expect("session creation");
+    let session = Arc::new(Mutex::new(session));
+
     let result: Box<dyn Render> = match cli.command {
         Command::Show { ref show } => {
             debug!(subcommand = ?show, "executing show command");
             match show {
                 Show::Config => Box::new(cli.config.clone()),
 
-                Show::Files { lang: None } => {
-                    show_all_files::ShowAllFiles::run(cli.config.clone())
-                }
+                Show::Files { lang: None } => show_all_files::ShowAllFiles::run(cli.config.clone()),
 
                 Show::Files { lang: Some(lang) } => {
                     show_language_files::ShowLanguageFiles::run(cli.config.clone(), *lang)
@@ -55,23 +55,21 @@ fn main() {
                 Show::Mutations {
                     lang: None,
                     file: _,
-                } => {
-                    show_all_mutations::ShowAllMutations::run(cli.config.clone())
-                }
+                } => show_all_mutations::ShowAllMutations::run(cli.config.clone()),
 
                 Show::Mutations {
                     lang: Some(lang),
                     file: None,
-                } => {
-                    show_language_mutations::ShowLanguageMutations::run(cli.config.clone(), *lang)
-                }
+                } => show_language_mutations::ShowLanguageMutations::run(cli.config.clone(), *lang),
 
                 Show::Mutations {
                     lang: Some(lang),
                     file: Some(file),
-                } => {
-                    show_file_mutations::ShowFileMutations::run(cli.config.clone(), *lang, file.clone())
-                }
+                } => show_file_mutations::ShowFileMutations::run(
+                    cli.config.clone(),
+                    *lang,
+                    file.clone(),
+                ),
 
                 Show::Mutation { hash } => {
                     show_single_mutation::ShowSingleMutation::run(cli.config.clone(), hash)
@@ -83,9 +81,7 @@ fn main() {
             debug!(subcommand = ?step, "executing step command");
 
             match step {
-                config::Step::TendState => {
-                    step_tend_state::StepTendState::run(cli.config.clone())
-                }
+                config::Step::TendState => step_tend_state::StepTendState::run(cli.config.clone()),
 
                 config::Step::TendWorkspaces => {
                     step_tend_workspaces::StepTendWorkspaces::run(cli.config.clone())
@@ -102,23 +98,29 @@ fn main() {
                 config::Step::ApplyMutation {
                     workspace_id,
                     mutation_hash,
-                } => {
-                    step_apply_mutation::StepApplyMutation::run(cli.config.clone(), workspace_id, mutation_hash)
-                }
+                } => step_apply_mutation::StepApplyMutation::run(
+                    cli.config.clone(),
+                    workspace_id,
+                    mutation_hash,
+                ),
 
                 config::Step::UnapplyMutation {
                     workspace_id,
                     mutation_hash,
-                } => {
-                    step_unapply_mutation::StepUnapplyMutation::run(cli.config.clone(), workspace_id, mutation_hash)
-                }
+                } => step_unapply_mutation::StepUnapplyMutation::run(
+                    cli.config.clone(),
+                    workspace_id,
+                    mutation_hash,
+                ),
 
                 config::Step::TestMutation {
                     workspace_id,
                     mutation_hash,
-                } => {
-                    step_test_mutation::StepTestMutation::run(cli.config.clone(), workspace_id, mutation_hash)
-                }
+                } => step_test_mutation::StepTestMutation::run(
+                    cli.config.clone(),
+                    workspace_id,
+                    mutation_hash,
+                ),
             }
         }
 
@@ -285,9 +287,7 @@ fn main() {
                             let mutation = mutation_state.mutation();
                             drop(guard);
 
-                            if let Ok(outcome) =
-                                workspace.run_reset(&cli.config, reset_duration)
-                            {
+                            if let Ok(outcome) = workspace.run_reset(&cli.config, reset_duration) {
                                 if !cli.progress {
                                     println!(
                                         "{}",
@@ -304,8 +304,7 @@ fn main() {
                                 error!(%workspace_id, err = %e, "failed to apply mutation");
                                 continue;
                             }
-                            let outcome = match workspace
-                                .run_test(&cli.config, Some(test_duration))
+                            let outcome = match workspace.run_test(&cli.config, Some(test_duration))
                             {
                                 Ok(o) => o,
                                 Err(e) => {
