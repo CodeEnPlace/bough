@@ -1,0 +1,34 @@
+{
+  "mutant": {
+    "lang": "js",
+    "twig": [
+      "src/a.js"
+    ],
+    "kind": "StatementBlock",
+    "subst_span": {
+      "start": {
+        "line": 0,
+        "col": 7,
+        "byte": 7
+      },
+      "end": {
+        "line": 2,
+        "col": 1,
+        "byte": 17
+      }
+    },
+    "effect_span": {
+      "start": {
+        "line": 0,
+        "col": 7,
+        "byte": 7
+      },
+      "end": {
+        "line": 2,
+        "col": 1,
+        "byte": 17
+      }
+    }
+  },
+  "subst": "{}"
+}
