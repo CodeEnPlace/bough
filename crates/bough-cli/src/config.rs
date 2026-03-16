@@ -91,7 +91,9 @@ pub enum Command {
         file: Option<PathBuf>,
     },
 
+    /// Execute the full mutation testing pipeline.
     Run,
+    /// Do nothing. Useful for validating config without running anything.
     Noop,
 }
 
