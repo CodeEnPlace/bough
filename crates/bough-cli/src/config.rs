@@ -313,12 +313,18 @@ pub struct PhaseConfig {
     pub overrides: PhaseOverrides,
 }
 
+/// Per-language file matching and skip rules.
 #[derive(Facet, Debug, Clone)]
 pub struct LanguageConfig {
+    /// Glob patterns matching source files for this language.
+    /// Example: `["**/*.ext"]`.
     pub include: Vec<String>,
 
+    /// Additional exclude globs for this language, appended after the
+    /// top-level `exclude` patterns.
     pub exclude: Vec<String>,
 
+    /// Optional rules for skipping certain AST nodes from mutation.
     #[facet(default)]
     pub skip: Option<LanguageSkipConfig>,
 }
