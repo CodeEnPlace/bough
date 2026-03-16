@@ -97,9 +97,11 @@ pub enum Command {
     Noop,
 }
 
+/// What to inspect via `bough show`.
 #[derive(Facet, Debug, Clone)]
 #[repr(u8)]
 pub enum Show {
+    /// Print the resolved configuration.
     Config,
 
     Files {
