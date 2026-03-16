@@ -221,15 +221,19 @@ pub struct Config {
     #[facet(flatten, default)]
     pub phase_defaults: PhaseOverrides,
 
+    /// Test phase. Required. The command that runs your test suite.
     #[facet(default)]
     pub test: Option<TestPhaseConfig>,
 
+    /// Init phase. Optional command run once per workspace before testing begins.
     #[facet(default)]
     pub init: Option<PhaseConfig>,
 
+    /// Reset phase. Optional command run after each mutation test to restore workspace state.
     #[facet(default)]
     pub reset: Option<PhaseConfig>,
 
+    /// Controls how `bough find` selects and ranks mutations.
     #[facet(default)]
     pub find: FindMutationsConfig,
 }
