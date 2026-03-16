@@ -129,6 +129,8 @@ pub enum Show {
     },
 }
 
+/// Individual pipeline steps. Exposed so you can run them directly for
+/// debugging or custom orchestration. Normally executed automatically by `bough run`.
 #[derive(Facet, Debug, Clone)]
 #[repr(u8)]
 pub enum Step {
