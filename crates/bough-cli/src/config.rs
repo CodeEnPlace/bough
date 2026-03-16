@@ -203,6 +203,8 @@ pub struct Config {
     // bough[impl config.base-root-path.default]
     pub base_root_dir: String,
 
+    /// Glob patterns for files to clone into workspaces and scan for mutations.
+    /// At least one is required. Example: `["src/**", "lib/**"]`.
     pub include: Vec<String>,
 
     pub exclude: Vec<String>,
