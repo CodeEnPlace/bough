@@ -250,6 +250,8 @@ pub struct FindMutationsConfig {
     #[facet(default = 1)]
     pub number_per_file: usize,
 
+    /// Ranking factors used to score and sort candidate mutations.
+    /// Default: `[EncompasingMissedMutationsCount, TSNodeDepth]`.
     #[facet(default = vec![Factor::EncompasingMissedMutationsCount, Factor::TSNodeDepth])]
     pub factors: Vec<Factor>,
 }
