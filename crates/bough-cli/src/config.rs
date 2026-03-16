@@ -284,8 +284,11 @@ pub struct TimeoutConfig {
     pub relative: Option<f64>,
 }
 
+/// Test phase configuration. Defines the command bough runs to determine
+/// whether a mutation is killed.
 #[derive(Facet, Debug, Clone)]
 pub struct TestPhaseConfig {
+    /// Shell command to run the test suite. Required.
     pub cmd: String,
 
     #[facet(flatten, default)]
