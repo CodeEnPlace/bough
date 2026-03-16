@@ -23,6 +23,7 @@ pub struct Cli {
     #[facet(args::named, default)]
     no_color: bool,
 
+    /// Subcommand to run. See `bough <command> --help` for details.
     #[facet(args::subcommand)]
     pub command: Command,
 
