@@ -175,9 +175,12 @@ pub enum Step {
         mutation_hash: String,
     },
 
+    /// Run the test suite against an already-applied mutation and record the result.
     TestMutation {
+        /// Workspace identifier.
         #[facet(args::positional)]
         workspace_id: String,
+        /// Hash of the mutation under test.
         #[facet(args::positional)]
         mutation_hash: String,
     },
