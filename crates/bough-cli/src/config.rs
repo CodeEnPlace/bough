@@ -212,6 +212,8 @@ pub struct Config {
     /// always excluded automatically.
     pub exclude: Vec<String>,
 
+    /// Per-language configuration keyed by language id.
+    /// At least one language must be configured.
     pub lang: HashMap<bough_core::LanguageId, LanguageConfig>,
 
     #[facet(flatten, default)]
