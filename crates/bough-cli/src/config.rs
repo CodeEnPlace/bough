@@ -69,6 +69,7 @@ pub enum Format {
 #[derive(Facet, Debug, Clone)]
 #[repr(u8)]
 pub enum Command {
+    /// Inspect configuration, files, mutations, or session state.
     Show {
         #[facet(args::subcommand)]
         show: Show,
