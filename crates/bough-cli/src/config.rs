@@ -65,6 +65,7 @@ pub enum Format {
     Json,
 }
 
+/// Top-level subcommands.
 #[derive(Facet, Debug, Clone)]
 #[repr(u8)]
 pub enum Command {
