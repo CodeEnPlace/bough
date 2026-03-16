@@ -11,6 +11,7 @@ use tracing::{debug, warn};
 /// Bough — a polyglot mutation testing tool.
 #[derive(Facet, Debug, Clone)]
 pub struct Cli {
+    /// Increase log verbosity. Repeat for more detail: `-v` info, `-vv` debug, `-vvv` trace.
     #[facet(args::named, args::short = 'v', args::counted, default)]
     pub verbose: u8,
 
