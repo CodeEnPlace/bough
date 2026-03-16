@@ -141,7 +141,9 @@ pub enum Step {
     /// Ensure the required number of worker workspaces exist on disk and delete dirty ones.
     TendWorkspaces,
 
+    /// Run the init phase command once in a workspace before testing begins.
     InitWorkspace {
+        /// Workspace identifier.
         #[facet(args::positional)]
         workspace_id: String,
     },
