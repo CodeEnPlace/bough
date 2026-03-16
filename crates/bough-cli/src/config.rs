@@ -54,6 +54,7 @@ pub enum Format {
     #[default]
     #[facet(rename = "terse")]
     Terse,
+    /// Human-readable multi-line output with extra detail.
     #[facet(rename = "verbose")]
     Verbose,
     #[facet(rename = "markdown")]
