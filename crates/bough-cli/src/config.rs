@@ -238,6 +238,8 @@ pub struct Config {
     pub find: FindMutationsConfig,
 }
 
+/// Settings for `bough find` — controls how many mutations are selected and
+/// which ranking factors are used to prioritise them.
 #[derive(Facet, Debug, Clone)]
 pub struct FindMutationsConfig {
     #[facet(default = 1)]
