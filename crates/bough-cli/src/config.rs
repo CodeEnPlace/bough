@@ -190,6 +190,7 @@ pub enum Step {
 /// All fields can also be set via `BOUGH_*` env vars or `--config.*` CLI flags.
 #[derive(Facet, Debug, Clone)]
 pub struct Config {
+    /// Number of parallel worker processes. Each gets its own workspace copy. Default: 1.
     #[facet(default = 1)]
     pub workers: u64,
 
