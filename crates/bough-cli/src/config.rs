@@ -186,6 +186,8 @@ pub enum Step {
     },
 }
 
+/// Project configuration. Typically loaded from `bough.config.toml` or equivalent.
+/// All fields can also be set via `BOUGH_*` env vars or `--config.*` CLI flags.
 #[derive(Facet, Debug, Clone)]
 pub struct Config {
     #[facet(default = 1)]
