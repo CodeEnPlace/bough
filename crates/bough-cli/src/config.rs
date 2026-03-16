@@ -138,6 +138,7 @@ pub enum Step {
     /// Adds newly discovered mutations and removes stale ones.
     TendState,
 
+    /// Ensure the required number of worker workspaces exist on disk and delete dirty ones.
     TendWorkspaces,
 
     InitWorkspace {
