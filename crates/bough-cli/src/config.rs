@@ -155,9 +155,12 @@ pub enum Step {
         workspace_id: String,
     },
 
+    /// Apply a mutation to a workspace's source tree.
     ApplyMutation {
+        /// Workspace identifier.
         #[facet(args::positional)]
         workspace_id: String,
+        /// Hash of the mutation to apply.
         #[facet(args::positional)]
         mutation_hash: String,
     },
