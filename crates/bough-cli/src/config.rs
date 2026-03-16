@@ -329,8 +329,11 @@ pub struct LanguageConfig {
     pub skip: Option<LanguageSkipConfig>,
 }
 
+/// Rules for excluding specific AST nodes from mutation.
 #[derive(Facet, Debug, Clone, Default)]
 pub struct LanguageSkipConfig {
+    /// Tree-sitter query patterns. Any AST node matching one of these
+    /// queries will not be mutated.
     #[facet(default)]
     pub query: Vec<String>,
 }
