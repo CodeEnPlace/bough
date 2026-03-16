@@ -111,9 +111,12 @@ pub enum Show {
         lang: Option<bough_core::LanguageId>,
     },
 
+    /// List all discovered mutations. Optionally filter by language and/or file.
     Mutations {
+        /// Limit to a specific language.
         #[facet(args::positional, default)]
         lang: Option<bough_core::LanguageId>,
+        /// Limit to a specific source file path.
         #[facet(args::positional, default)]
         file: Option<PathBuf>,
     },
