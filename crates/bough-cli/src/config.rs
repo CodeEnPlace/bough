@@ -165,9 +165,12 @@ pub enum Step {
         mutation_hash: String,
     },
 
+    /// Revert a previously applied mutation in a workspace.
     UnapplyMutation {
+        /// Workspace identifier.
         #[facet(args::positional)]
         workspace_id: String,
+        /// Hash of the mutation to revert.
         #[facet(args::positional)]
         mutation_hash: String,
     },
