@@ -134,6 +134,8 @@ pub enum Show {
 #[derive(Facet, Debug, Clone)]
 #[repr(u8)]
 pub enum Step {
+    /// Synchronise the on-disk mutation state with the current source tree.
+    /// Adds newly discovered mutations and removes stale ones.
     TendState,
 
     TendWorkspaces,
