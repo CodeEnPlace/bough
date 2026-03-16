@@ -15,6 +15,7 @@ pub struct Cli {
     #[facet(args::named, args::short = 'v', args::counted, default)]
     pub verbose: u8,
 
+    /// Output format. One of: terse, verbose, markdown, json. Default: terse.
     #[facet(args::named, args::short = 'f', default)]
     pub format: Format,
 
