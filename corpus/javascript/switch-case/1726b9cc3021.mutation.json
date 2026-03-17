@@ -1,0 +1,34 @@
+{
+  "mutant": {
+    "lang": "js",
+    "twig": [
+      "src/a.js"
+    ],
+    "kind": "SwitchCase",
+    "subst_span": {
+      "start": {
+        "line": 5,
+        "col": 2,
+        "byte": 48
+      },
+      "end": {
+        "line": 8,
+        "col": 3,
+        "byte": 83
+      }
+    },
+    "effect_span": {
+      "start": {
+        "line": 0,
+        "col": 0,
+        "byte": 0
+      },
+      "end": {
+        "line": 14,
+        "col": 1,
+        "byte": 125
+      }
+    }
+  },
+  "subst": ""
+}

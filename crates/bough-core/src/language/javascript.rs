@@ -140,6 +140,13 @@ impl LanguageDriver for JavascriptDriver {
                 let span = span_from_node(node);
                 Some((MutantKind::Literal(LiteralKind::Number), span.clone(), span))
             }
+            "switch_case" | "switch_default" => {
+                let parent = node.parent()?;
+                if parent.kind() != "switch_body" { return None; }
+                let switch_stmt = parent.parent()?;
+                let span = span_from_node(node);
+                Some((MutantKind::SwitchCase, span, span_from_node(&switch_stmt)))
+            }
             "member_expression" | "subscript_expression" | "call_expression" => {
                 let oc = (0..node.child_count())
                     .filter_map(|i| node.child(i as u32))
@@ -229,6 +236,7 @@ impl LanguageDriver for JavascriptDriver {
             MutantKind::OptionalChain(OptionalChainKind::Literal) => vec![".".into()],
             MutantKind::OptionalChain(OptionalChainKind::Indexed) => vec!["".into()],
             MutantKind::OptionalChain(OptionalChainKind::FnCall) => vec!["".into()],
+            MutantKind::SwitchCase => vec!["".into()],
         }
     }
 }

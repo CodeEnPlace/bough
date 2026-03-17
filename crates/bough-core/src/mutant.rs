@@ -386,6 +386,7 @@ pub enum MutantKind {
     Literal(LiteralKind),
     DictDecl,
     OptionalChain(OptionalChainKind),
+    SwitchCase,
 }
 
 impl<'a, 't> TwigMutantsIter<'a, 't> {
