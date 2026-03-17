@@ -1,0 +1,18 @@
+[[bin]]
+name = "bough-docs"
+path = "src/main.rs"
+
+[package]
+name = "bough-docs-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+readme.workspace = true
+description = "Documentation site generator for bough"
+
+[dependencies]
+facet = "0.44"
+figue = "2"
+comrak = { version = "0.36", default-features = false }
+tiny_http = "0.12"
