@@ -46,7 +46,6 @@ fn main() {
     match cli.command {
         Command::Build => build::build(),
         Command::Serve => {
-            build::build();
             serve::serve(cli.port);
         }
     }
