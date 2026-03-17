@@ -1,3 +1,4 @@
+use std::io::IsTerminal;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
@@ -84,7 +85,8 @@ impl Run {
 
         let done = Arc::new(AtomicBool::new(false));
 
-        let pb = if cli.progress {
+        let interactive = std::io::stdout().is_terminal();
+        let pb = if interactive {
             let pb = indicatif::ProgressBar::new(total);
             pb.set_style(
                 indicatif::ProgressStyle::with_template(
@@ -141,7 +143,7 @@ impl Run {
                         &cli.config,
                         init_duration,
                     ) {
-                        if !cli.progress {
+                        if !interactive {
                             println!("{}", init.render(&cli));
                         }
                     }
@@ -178,7 +180,7 @@ impl Run {
                             &cli.config,
                             reset_duration,
                         ) {
-                            if !cli.progress {
+                            if !interactive {
                                 println!("{}", reset.render(&cli));
                             }
                         }
@@ -222,7 +224,7 @@ impl Run {
                         }
                         drop(guard);
 
-                        if !cli.progress {
+                        if !interactive {
                             println!("{}", test_result.render(&cli));
                         }
                     }
