@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use comrak::{markdown_to_html, Options};
+use comrak::{Options, markdown_to_html};
 
 const DOCS_DIR: &str = "docs";
 const OUT_DIR: &str = "target/bough-docs-site";
@@ -53,6 +53,12 @@ fn render_page(page: &Page) -> String {
         r#"<!DOCTYPE html>
 <html lang="en">
 <head>
+
+<link href="https://codeenplace.dev/fonts.css" rel="stylesheet" />
+<link href="https://codeenplace.dev/base.css" rel="stylesheet" />
+<link href="https://codeenplace.dev/light.color.css" rel="stylesheet" media="(prefers-color-scheme:light)" />
+<link href="https://codeenplace.dev/dark.color.css" rel="stylesheet" media="(prefers-color-scheme:dark)" />
+                        
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{title}</title>
