@@ -8,13 +8,13 @@ use tracing::trace;
 pub(crate) struct TypescriptDriver;
 
 impl LanguageDriver for TypescriptDriver {
-    fn ts_language(&self) -> tree_sitter::Language {
-        tree_sitter_typescript::LANGUAGE_TYPESCRIPT.into()
+    fn ts_language(&self) -> arborium_tree_sitter::Language {
+        arborium_typescript::language().into()
     }
 
     fn check_node(
         &self,
-        node: &tree_sitter::Node<'_>,
+        node: &arborium_tree_sitter::Node<'_>,
         file_content: &[u8],
     ) -> Option<(MutantKind, Span, Span)> {
         let result = match node.kind() {
@@ -161,7 +161,7 @@ impl LanguageDriver for TypescriptDriver {
         result
     }
 
-    fn is_context_boundary(&self, node: &tree_sitter::Node<'_>) -> bool {
+    fn is_context_boundary(&self, node: &arborium_tree_sitter::Node<'_>) -> bool {
         matches!(
             node.kind(),
             "function_declaration"

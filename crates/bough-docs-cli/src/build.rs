@@ -1,6 +1,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use arborium::Highlighter;
 use comrak::{Options, markdown_to_html};
 use serde::Deserialize;
 
@@ -69,7 +70,14 @@ fn build_toc(dir: &Path, docs_dir: &Path) -> Vec<TocEntry> {
             let href = format!("/{}/", rel.to_string_lossy());
             let children = build_toc(&path, docs_dir);
 
-            items.push((idx, TocEntry { title, href, children }));
+            items.push((
+                idx,
+                TocEntry {
+                    title,
+                    href,
+                    children,
+                },
+            ));
         } else if path.extension().is_some_and(|e| e == "md") {
             let stem = path.file_stem().unwrap_or_default();
             if stem == "index" {
@@ -79,18 +87,85 @@ fn build_toc(dir: &Path, docs_dir: &Path) -> Vec<TocEntry> {
             let content = fs::read_to_string(&path).expect("failed to read md file");
             let (fm, _) = parse_md(&content);
 
-            let title = fm.title.unwrap_or_else(|| stem.to_string_lossy().into_owned());
+            let title = fm
+                .title
+                .unwrap_or_else(|| stem.to_string_lossy().into_owned());
             let idx = fm.idx.unwrap_or(i64::MAX);
 
             let rel = path.strip_prefix(docs_dir).unwrap().with_extension("");
             let href = format!("/{}/", rel.to_string_lossy());
 
-            items.push((idx, TocEntry { title, href, children: Vec::new() }));
+            items.push((
+                idx,
+                TocEntry {
+                    title,
+                    href,
+                    children: Vec::new(),
+                },
+            ));
         }
     }
 
     items.sort_by_key(|(idx, _)| *idx);
     items.into_iter().map(|(_, entry)| entry).collect()
+}
+
+fn highlight_code_blocks(html: &str, hl: &mut Highlighter) -> String {
+    let mut out = String::with_capacity(html.len());
+    let mut rest = html;
+
+    while let Some(pre_start) = rest.find("<pre><code class=\"language-") {
+        out.push_str(&rest[..pre_start]);
+        rest = &rest[pre_start..];
+
+        let Some(lang_start) = rest.find("language-") else {
+            out.push_str(rest);
+            return out;
+        };
+        let after_prefix = &rest[lang_start + 9..];
+        let Some(lang_end) = after_prefix.find('"') else {
+            out.push_str(rest);
+            return out;
+        };
+        let lang = &after_prefix[..lang_end];
+
+        let Some(code_start) = rest
+            .find('>')
+            .and_then(|i| rest[i + 1..].find('>').map(|j| i + 1 + j + 1))
+        else {
+            out.push_str(rest);
+            return out;
+        };
+        let code_body = &rest[code_start..];
+        let Some(code_end) = code_body.find("</code></pre>") else {
+            out.push_str(rest);
+            return out;
+        };
+
+        let raw_code = &code_body[..code_end];
+        let decoded = raw_code
+            .replace("&amp;", "&")
+            .replace("&lt;", "<")
+            .replace("&gt;", ">")
+            .replace("&quot;", "\"")
+            .replace("&#39;", "'");
+
+        match hl.highlight(lang, &decoded) {
+            Ok(highlighted) => {
+                out.push_str("<pre><code>");
+                out.push_str(&highlighted);
+                out.push_str("</code></pre>");
+            }
+            Err(_) => {
+                out.push_str(&rest[..code_start + code_end + 13]);
+            }
+        }
+
+        rest = &code_body[code_end + 13..];
+    }
+
+    out.push_str(rest);
+    out
 }
 
 fn render_toc_entries(entries: &[TocEntry], current_slug: &str) -> String {
@@ -102,8 +177,15 @@ fn render_toc_entries(entries: &[TocEntry], current_slug: &str) -> String {
     for entry in entries {
         let entry_slug = entry.href.trim_matches('/');
         let id = entry_slug.replace('/', "-");
-        let active = if entry_slug == current_slug { " class=\"active\"" } else { "" };
-        out.push_str(&format!("<li id=\"toc-{id}\"{active}><a href=\"{}\">{}</a>", entry.href, entry.title));
+        let active = if entry_slug == current_slug {
+            " class=\"active\""
+        } else {
+            ""
+        };
+        out.push_str(&format!(
+            "<li id=\"toc-{id}\"{active}><a href=\"{}\">{}</a>",
+            entry.href, entry.title
+        ));
         if !entry.children.is_empty() {
             out.push_str(&render_toc_entries(&entry.children, current_slug));
         }
@@ -126,6 +208,24 @@ fn render_page(page: &Page, toc_html: &str) -> String {
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>{title}</title>
+        <style>
+            pre code {{ display: block; padding: 1rem; overflow-x: auto; border-radius: 4px; background: var(--col-bright-bg); color: var(--col-fg); }}
+            a-k, a-kc, a-kd, a-ke, a-kf, a-ki, a-km, a-ko, a-kp, a-kr, a-kt, a-ky {{ color: var(--col-red); }}
+            a-f, a-fb, a-fc, a-fd, a-fm {{ color: var(--col-blue); }}
+            a-s, a-sc, a-se, a-sp, a-ss, a-st {{ color: var(--col-green); }}
+            a-co, a-cn {{ color: var(--col-yellow); }}
+            a-c, a-cb, a-cd, a-ch, a-cs {{ color: var(--col-bright-black); font-style: italic; }}
+            a-o {{ color: var(--col-orange); }}
+            a-t, a-tb, a-td, a-te, a-tf, a-tg, a-tl, a-tq, a-tr, a-tt, a-tu, a-tx {{ color: var(--col-cyan); }}
+            a-at {{ color: var(--col-purple); }}
+            a-v, a-vb, a-vm, a-vp {{ color: var(--col-fg); }}
+            a-n {{ color: var(--col-yellow); }}
+            a-l, a-m {{ color: var(--col-yellow); }}
+            a-p, a-pb, a-pd, a-pp, a-pr, a-ps {{ color: var(--col-bright-fg); }}
+            a-in, a-ex {{ color: var(--col-bright-red); }}
+            a-em {{ font-weight: bold; }}
+            a-dr, a-rp, a-rx {{ color: var(--col-orange); }}
+        </style>
     </head>
 
     <body>
@@ -175,6 +275,7 @@ pub fn build() {
     }
 
     let toc = build_toc(docs_dir, docs_dir);
+    let mut hl = Highlighter::new();
 
     let mut opts = Options::default();
     opts.extension.table = true;
@@ -205,8 +306,13 @@ pub fn build() {
             };
 
             let body_html = markdown_to_html(&body, &opts);
+            let body_html = highlight_code_blocks(&body_html, &mut hl);
 
-            Page { title, slug, body_html }
+            Page {
+                title,
+                slug,
+                body_html,
+            }
         })
         .collect();
 

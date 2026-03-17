@@ -2,7 +2,7 @@ use crate::language::{LanguageDriver, driver_for_lang};
 use crate::{LanguageId, base::Base, file::Twig};
 use bough_typed_hash::{HashInto, TypedHashable};
 use tracing::{debug, trace};
-use tree_sitter::StreamingIterator;
+use arborium_tree_sitter::StreamingIterator;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EncompassError {
@@ -19,12 +19,12 @@ pub struct TwigMutantsIter<'a, 't> {
     twig: &'t Twig,
     driver: Box<dyn LanguageDriver>,
     file_content: Vec<u8>,
-    tree: tree_sitter::Tree,
-    cursor: tree_sitter::TreeCursor<'static>,
+    tree: arborium_tree_sitter::Tree,
+    cursor: arborium_tree_sitter::TreeCursor<'static>,
     did_visit: bool,
     started: bool,
     skip_kinds: Vec<MutantKind>,
-    skip_queries: Vec<tree_sitter::Query>,
+    skip_queries: Vec<arborium_tree_sitter::Query>,
 }
 
 #[derive(bough_typed_hash::TypedHash)]
@@ -96,7 +96,7 @@ impl Mutant {
         let file_content = std::fs::read(&file_path)?;
 
         let driver = driver_for_lang(self.lang);
-        let mut parser = tree_sitter::Parser::new();
+        let mut parser = arborium_tree_sitter::Parser::new();
         parser
             .set_language(&driver.ts_language())
             .expect("language grammar should load");
@@ -115,13 +115,13 @@ impl Mutant {
         let mut candidate = target;
         let mut current = target;
 
-        let has_context = |node: &tree_sitter::Node<'_>| -> bool {
+        let has_context = |node: &arborium_tree_sitter::Node<'_>| -> bool {
             let above = mutant_start_line.saturating_sub(node.start_position().row);
             let below = node.end_position().row.saturating_sub(mutant_end_line);
             above >= context_lines && below >= context_lines
         };
 
-        let line_range = |node: &tree_sitter::Node<'_>| -> (usize, usize) {
+        let line_range = |node: &arborium_tree_sitter::Node<'_>| -> (usize, usize) {
             (node.start_position().row, node.end_position().row)
         };
 
@@ -398,7 +398,7 @@ impl<'a, 't> TwigMutantsIter<'a, 't> {
 
         let driver = driver_for_lang(lang);
 
-        let mut parser = tree_sitter::Parser::new();
+        let mut parser = arborium_tree_sitter::Parser::new();
         parser
             .set_language(&driver.ts_language())
             .expect("language grammar should load");
@@ -409,7 +409,7 @@ impl<'a, 't> TwigMutantsIter<'a, 't> {
         // SAFETY: we store the Tree alongside the TreeCursor and never move or drop
         // the Tree while the cursor is alive. The cursor is invalidated before the tree.
         let cursor = unsafe {
-            std::mem::transmute::<tree_sitter::TreeCursor<'_>, tree_sitter::TreeCursor<'static>>(
+            std::mem::transmute::<arborium_tree_sitter::TreeCursor<'_>, arborium_tree_sitter::TreeCursor<'static>>(
                 tree.walk(),
             )
         };
@@ -453,7 +453,7 @@ impl<'a, 't> TwigMutantsIter<'a, 't> {
     // bough[impl mutant.twig-iter.skip.query.multiple]
     pub fn with_skip_query(mut self, query: &str) -> Self {
         debug!(query, "adding skip query filter");
-        let q = tree_sitter::Query::new(&self.driver.ts_language(), query)
+        let q = arborium_tree_sitter::Query::new(&self.driver.ts_language(), query)
             .expect("skip query should be valid");
         self.skip_queries.push(q);
         self
@@ -492,7 +492,7 @@ impl<'a, 't> Iterator for TwigMutantsIter<'a, 't> {
                     continue;
                 }
                 if self.skip_queries.iter().any(|q| {
-                    let mut qc = tree_sitter::QueryCursor::new();
+                    let mut qc = arborium_tree_sitter::QueryCursor::new();
                     let root = self.tree.root_node();
                     let skip_idx = q
                         .capture_names()
@@ -522,7 +522,7 @@ impl<'a, 't> Iterator for TwigMutantsIter<'a, 't> {
     }
 }
 
-pub(crate) fn span_from_node(node: &tree_sitter::Node<'_>) -> Span {
+pub(crate) fn span_from_node(node: &arborium_tree_sitter::Node<'_>) -> Span {
     let start = node.start_position();
     let end = node.end_position();
     Span::new(

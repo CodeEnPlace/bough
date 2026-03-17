@@ -8,17 +8,17 @@ use crate::mutant::{MutantKind, Span};
 
 // bough[impl mutation.iter.language_driver]
 pub(crate) trait LanguageDriver {
-    fn ts_language(&self) -> tree_sitter::Language;
+    fn ts_language(&self) -> arborium_tree_sitter::Language;
 
     fn check_node(
         &self,
-        node: &tree_sitter::Node<'_>,
+        node: &arborium_tree_sitter::Node<'_>,
         file_content: &[u8],
     ) -> Option<(MutantKind, Span, Span)>;
 
     fn substitutions(&self, kind: &MutantKind) -> Vec<String>;
 
-    fn is_context_boundary(&self, node: &tree_sitter::Node<'_>) -> bool;
+    fn is_context_boundary(&self, node: &arborium_tree_sitter::Node<'_>) -> bool;
 }
 
 pub(crate) fn driver_for_lang(lang: crate::LanguageId) -> Box<dyn LanguageDriver> {

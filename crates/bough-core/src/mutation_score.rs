@@ -73,7 +73,7 @@ impl MutationScorer {
         let content = std::fs::read(&file_path).expect("source file should be readable");
 
         let driver = driver_for_lang(mutant.lang());
-        let mut parser = tree_sitter::Parser::new();
+        let mut parser = arborium_tree_sitter::Parser::new();
         parser
             .set_language(&driver.ts_language())
             .expect("language grammar should load");
