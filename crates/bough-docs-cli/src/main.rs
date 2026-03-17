@@ -1,4 +1,5 @@
 mod build;
+mod facet_reference;
 mod serve;
 
 use facet::Facet;

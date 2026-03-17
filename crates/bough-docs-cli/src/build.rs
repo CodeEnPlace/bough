@@ -268,6 +268,15 @@ pub fn build() {
     }
     fs::create_dir_all(out_dir).expect("failed to create output dir");
 
+    let reference_dir = docs_dir.join("config");
+    fs::create_dir_all(&reference_dir).expect("failed to create config docs dir");
+    let reference_md = format!(
+        "---\ntitle: Configuration Reference\n---\n\n{}",
+        crate::facet_reference::make_facet_reference::<bough_cli::config::Config>()
+    );
+    fs::write(reference_dir.join("reference.md"), reference_md)
+        .expect("failed to write config reference");
+
     let md_files = collect_md_files(docs_dir);
     if md_files.is_empty() {
         eprintln!("no markdown files found in {}", docs_dir.display());

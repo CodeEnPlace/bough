@@ -331,8 +331,10 @@ name = "bough-docs-cli"
 version = "0.0.2"
 dependencies = [
  "arborium",
+ "bough-cli",
  "comrak",
  "facet",
+ "facet-core",
  "figue",
  "markdown-frontmatter",
  "notify",
