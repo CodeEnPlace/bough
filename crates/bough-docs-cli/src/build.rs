@@ -268,8 +268,12 @@ pub fn build() {
     }
     fs::create_dir_all(out_dir).expect("failed to create output dir");
 
-    let reference_dir = docs_dir.join("config");
-    fs::create_dir_all(&reference_dir).expect("failed to create config docs dir");
+    let generated_dir = Path::new("target/bough-docs-generated");
+    if generated_dir.exists() {
+        fs::remove_dir_all(generated_dir).expect("failed to clean generated dir");
+    }
+    let reference_dir = generated_dir.join("config");
+    fs::create_dir_all(&reference_dir).expect("failed to create generated config dir");
     let reference_md = format!(
         "---\ntitle: Configuration Reference\n---\n\n{}",
         crate::facet_reference::make_facet_reference::<bough_cli::config::Config>()
@@ -277,13 +281,15 @@ pub fn build() {
     fs::write(reference_dir.join("reference.md"), reference_md)
         .expect("failed to write config reference");
 
-    let md_files = collect_md_files(docs_dir);
+    let mut md_files = collect_md_files(docs_dir);
+    md_files.extend(collect_md_files(generated_dir));
     if md_files.is_empty() {
         eprintln!("no markdown files found in {}", docs_dir.display());
         return;
     }
 
-    let toc = build_toc(docs_dir, docs_dir);
+    let mut toc = build_toc(docs_dir, docs_dir);
+    toc.extend(build_toc(generated_dir, generated_dir));
     let mut hl = Highlighter::new();
 
     let mut opts = Options::default();
@@ -305,7 +311,10 @@ pub fn build() {
                     .into_owned()
             });
 
-            let rel = path.strip_prefix(docs_dir).unwrap();
+            let rel = path
+                .strip_prefix(docs_dir)
+                .or_else(|_| path.strip_prefix(generated_dir))
+                .unwrap();
             let slug = if rel.file_stem().is_some_and(|s| s == "index") {
                 rel.parent()
                     .map(|p| p.to_string_lossy().into_owned())

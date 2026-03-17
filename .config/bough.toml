@@ -1,8 +1,0 @@
-include = ["**/*"]
-exclude = ["**/target/**", "**/node_modules/**", "**/.bough/**"]
-
-base_root_dir = ".."
-
-[lang.js]
-include = ["**/*.js"]
-exclude = ["**/*.test.*", "**/node_modules/**"]
