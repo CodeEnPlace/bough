@@ -1,6 +1,7 @@
----
-title: Bough
----
++++
+title = "Bough"
+idx = 0
++++
 
 Hello World
 

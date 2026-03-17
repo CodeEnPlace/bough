@@ -2,33 +2,21 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use comrak::{Options, markdown_to_html};
+use serde::Deserialize;
 
 const DOCS_DIR: &str = "docs";
 const OUT_DIR: &str = "target/bough-docs-site";
+
+#[derive(Deserialize, Default)]
+struct Frontmatter {
+    #[serde(default)]
+    title: Option<String>,
+}
 
 struct Page {
     title: String,
     slug: String,
     body_html: String,
-}
-
-fn parse_frontmatter(content: &str) -> (&str, Vec<(&str, &str)>) {
-    let Some(rest) = content.strip_prefix("---\n") else {
-        return (content, Vec::new());
-    };
-    let Some(end) = rest.find("\n---\n") else {
-        return (content, Vec::new());
-    };
-    let fm_block = &rest[..end];
-    let body = &rest[end + 5..];
-    let fields = fm_block
-        .lines()
-        .filter_map(|line| {
-            let (key, val) = line.split_once(':')?;
-            Some((key.trim(), val.trim()))
-        })
-        .collect();
-    (body, fields)
 }
 
 fn collect_md_files(dir: &Path) -> Vec<PathBuf> {
@@ -52,20 +40,23 @@ fn render_page(page: &Page) -> String {
     format!(
         r#"<!DOCTYPE html>
 <html lang="en">
-<head>
-
-<link href="https://codeenplace.dev/fonts.css" rel="stylesheet" />
-<link href="https://codeenplace.dev/base.css" rel="stylesheet" />
-<link href="https://codeenplace.dev/light.color.css" rel="stylesheet" media="(prefers-color-scheme:light)" />
-<link href="https://codeenplace.dev/dark.color.css" rel="stylesheet" media="(prefers-color-scheme:dark)" />
+    <head>
+        <link href="https://codeenplace.dev/fonts.css" rel="stylesheet" />
+        <link href="https://codeenplace.dev/base.css" rel="stylesheet" />
+        <link href="https://codeenplace.dev/light.color.css" rel="stylesheet" media="(prefers-color-scheme:light)" />
+        <link href="https://codeenplace.dev/dark.color.css" rel="stylesheet" media="(prefers-color-scheme:dark)" />
                         
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{title}</title>
-</head>
-<body>
-{body}
-</body>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>{title}</title>
+    </head>
+
+    <body>
+        <main>
+            <h1>{title}</h1>
+            {body}
+        </main>
+    </body>
 </html>"#,
         title = page.title,
         body = page.body_html,
@@ -97,18 +88,18 @@ pub fn build() {
         .iter()
         .map(|path| {
             let content = fs::read_to_string(path).expect("failed to read md file");
-            let (body, fields) = parse_frontmatter(&content);
 
-            let title = fields
-                .iter()
-                .find(|(k, _)| *k == "title")
-                .map(|(_, v)| v.to_string())
-                .unwrap_or_else(|| {
-                    path.file_stem()
-                        .unwrap_or_default()
-                        .to_string_lossy()
-                        .into_owned()
-                });
+            let (fm, body) = match markdown_frontmatter::parse::<Frontmatter>(&content) {
+                Ok((fm, body)) => (fm, body.to_owned()),
+                Err(_) => (Frontmatter::default(), content.clone()),
+            };
+
+            let title = fm.title.unwrap_or_else(|| {
+                path.file_stem()
+                    .unwrap_or_default()
+                    .to_string_lossy()
+                    .into_owned()
+            });
 
             let rel = path.strip_prefix(docs_dir).unwrap();
             let slug = if rel.file_stem().is_some_and(|s| s == "index") {
@@ -119,7 +110,7 @@ pub fn build() {
                 rel.with_extension("").to_string_lossy().into_owned()
             };
 
-            let body_html = markdown_to_html(body, &opts);
+            let body_html = markdown_to_html(&body, &opts);
 
             Page {
                 title,
