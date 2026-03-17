@@ -1,5 +1,5 @@
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Condvar, Mutex};
 use std::time::Duration;
 
@@ -15,14 +15,28 @@ pub fn serve(port: u16) {
     eprintln!("serving at http://localhost:{port}");
 
     let generation = Arc::new((Mutex::new(0u64), Condvar::new()));
+    let watched_path: Arc<Mutex<Option<PathBuf>>> = Arc::new(Mutex::new(None));
 
     let watcher_gen = generation.clone();
-    let mut debouncer = new_debouncer(Duration::from_millis(100), move |_res| {
-        let (lock, cvar) = &*watcher_gen;
-        let mut count = lock.lock().unwrap();
-        *count += 1;
-        cvar.notify_all();
-    })
+    let watcher_path = watched_path.clone();
+    let mut debouncer = new_debouncer(
+        Duration::from_millis(300),
+        move |res: notify_debouncer_mini::DebounceEventResult| {
+            let Ok(events) = res else { return };
+            let target = watcher_path.lock().unwrap();
+            let Some(target) = target.as_ref() else {
+                return;
+            };
+            let matched = events.iter().any(|e| e.path == *target);
+            if !matched {
+                return;
+            }
+            let (lock, cvar) = &*watcher_gen;
+            let mut count = lock.lock().unwrap();
+            *count += 1;
+            cvar.notify_all();
+        },
+    )
     .expect("failed to create file watcher");
 
     debouncer
@@ -37,6 +51,7 @@ pub fn serve(port: u16) {
     for _ in 0..pool_size {
         let server = server.clone();
         let generation = generation.clone();
+        let watched_path = watched_path.clone();
 
         handles.push(std::thread::spawn(move || loop {
             let Ok(request) = server.recv() else {
@@ -90,6 +105,7 @@ pub fn serve(port: u16) {
 
             if content_type == "text/html; charset=utf-8" {
                 eprintln!("  {}", request.url());
+                *watched_path.lock().unwrap() = fs::canonicalize(&file_path).ok();
             }
 
             let content = if content_type == "text/html; charset=utf-8" {
