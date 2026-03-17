@@ -62,13 +62,6 @@ fn render_page(page: &Page) -> String {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{title}</title>
-<style>
-body {{ max-width: 48rem; margin: 2rem auto; padding: 0 1rem; font-family: system-ui, sans-serif; line-height: 1.6; }}
-pre {{ background: #f4f4f4; padding: 1rem; overflow-x: auto; border-radius: 4px; }}
-code {{ font-size: 0.9em; }}
-nav {{ margin-bottom: 2rem; }}
-nav a {{ margin-right: 1rem; }}
-</style>
 </head>
 <body>
 {body}
