@@ -9,7 +9,7 @@ An Incremental Polyglot Mutation Tester
 
 ### Incremental
 
-Whenever `bough` learns new information about you coverage, it should be written to disk; and bough should prefer reading information directly from disk. This means that you can pause a mutation testing run midway through, and seamlessly resume it.
+Whenever `bough` learns new information about your coverage, it should be written to disk; and bough should prefer reading information directly from disk. This means that you can pause a mutation testing run midway through, and seamlessly resume it.
 
 You can also check your coverage metadata directly into git, or share it between developers easily.
 
