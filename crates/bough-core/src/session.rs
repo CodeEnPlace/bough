@@ -268,6 +268,11 @@ impl<C: Config> Session<C> {
         status: crate::state::Status,
     ) -> Result<(), Error> {
         let hash = mutation.hash().expect("hashing should not fail");
+        if let Some(existing) = self.mutations_state.get(&hash) {
+            if existing.status() == Some(&status) {
+                return Ok(());
+            }
+        }
         let mut state = State::new(mutation.clone());
         state.set_outcome(status);
         self.mutations_state.set(hash, state).map_err(Error::Io)?;
@@ -1206,6 +1211,41 @@ mod tests {
             .unwrap();
 
         assert!(second_at > first_at);
+    }
+
+    #[test]
+    fn set_state_skips_write_when_status_unchanged() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(dir.path().join("src")).unwrap();
+        std::fs::write(dir.path().join("src/a.js"), "function foo() { return 1; }").unwrap();
+        let config = make_js_config(dir.path());
+        let mut session = Session::new(config).unwrap();
+        session.tend_add_missing_states().unwrap();
+
+        let mutation: Mutation = session.base().mutations().next().unwrap().unwrap();
+        let hash = mutation.hash().unwrap();
+        session
+            .set_state(&mutation, crate::state::Status::Missed)
+            .unwrap();
+        let first_at = session
+            .get_state()
+            .get(&hash)
+            .unwrap()
+            .outcome_at()
+            .unwrap();
+
+        std::thread::sleep(std::time::Duration::from_secs(1));
+        session
+            .set_state(&mutation, crate::state::Status::Missed)
+            .unwrap();
+        let second_at = session
+            .get_state()
+            .get(&hash)
+            .unwrap()
+            .outcome_at()
+            .unwrap();
+
+        assert_eq!(first_at, second_at);
     }
 
     #[test]
