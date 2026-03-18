@@ -27,8 +27,11 @@ body {
     padding-left: 1rem;
 }
 
+#toc > ol > li + li {
+    margin-top: 0.75rem;
+}
+
 #toc li {
-    margin: 0.15rem 0;
     line-height: 1.5;
 }
 
@@ -59,12 +62,39 @@ main h6 {
 
 main h1 {
     margin-top: 0;
-    align-self: start;
+    margin-bottom: 1rem;
+}
+
+main h2 {
+    margin-top: 2rem;
+    margin-bottom: 0.5rem;
+}
+
+main h3 {
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+}
+
+main p {
+    margin: 0.75rem 0;
+    line-height: 1.6;
+}
+
+main ul,
+main ol {
+    margin: 0.75rem 0;
+    padding-left: 1.5rem;
+}
+
+main li {
+    margin: 0.25rem 0;
+    line-height: 1.6;
 }
 
 main table {
     width: 100%;
     border-collapse: collapse;
+    margin: 1rem 0;
 }
 
 main table th,
@@ -72,4 +102,14 @@ main table td {
     text-align: left;
     padding: 0.35rem 0.75rem;
     vertical-align: top;
+}
+
+main pre {
+    margin: 1rem 0;
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+main code {
+    font-size: 0.875em;
 }
