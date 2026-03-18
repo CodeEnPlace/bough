@@ -1,3 +1,4 @@
 target
 node_modules
 .bough/workspaces
+.vercel

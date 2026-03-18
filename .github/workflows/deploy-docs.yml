@@ -1,0 +1,93 @@
+name: Deploy Docs
+
+on:
+  push:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      deployments: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - run: cargo run --bin bough-docs -- build
+
+      - run: npm install -g vercel@latest
+
+      - name: Deploy to Vercel
+        id: deploy
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          DEPLOY_URL=$(vercel deploy target/bough-docs-site --token=$VERCEL_TOKEN --yes --archive=tgz)
+          echo "deploy_url=$DEPLOY_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Compute aliases
+        id: aliases
+        run: |
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          BRANCH=$(echo "${GITHUB_REF_NAME}" | sed 's/[^a-zA-Z0-9]/-/g' | tr '[:upper:]' '[:lower:]')
+
+          ALIASES="${SHORT_SHA}.bough.codeenplace.dev"
+          ALIASES="${ALIASES},${BRANCH}.bough.codeenplace.dev"
+
+          if [[ "$BRANCH" == "main" ]]; then
+            ALIASES="${ALIASES},bough.codeenplace.dev"
+          fi
+
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            TAG=$(echo "${GITHUB_REF_NAME}" | sed 's/[^a-zA-Z0-9]/-/g' | tr '[:upper:]' '[:lower:]')
+            ALIASES="${ALIASES},${TAG}.bough.codeenplace.dev"
+          fi
+
+          echo "aliases=$ALIASES" >> "$GITHUB_OUTPUT"
+          echo "Aliases: $ALIASES"
+
+      - name: Assign aliases
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          IFS=',' read -ra ALIAS_LIST <<< "${{ steps.aliases.outputs.aliases }}"
+          for alias in "${ALIAS_LIST[@]}"; do
+            echo "Aliasing to $alias"
+            vercel alias set "${{ steps.deploy.outputs.deploy_url }}" "$alias" --token=$VERCEL_TOKEN --scope=code-en-place
+          done
+
+      - name: Create GitHub deployment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const aliases = '${{ steps.aliases.outputs.aliases }}'.split(',');
+            const isMain = context.ref === 'refs/heads/main';
+            const deployment = await github.rest.repos.createDeployment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: context.sha,
+              environment: isMain ? 'production' : 'preview',
+              auto_merge: false,
+              required_contexts: [],
+              transient_environment: !isMain,
+              production_environment: isMain,
+            });
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: deployment.data.id,
+              state: 'success',
+              environment_url: `https://${aliases[0]}`,
+              log_url: `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              description: aliases.join(', '),
+            });
