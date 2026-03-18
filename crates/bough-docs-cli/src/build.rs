@@ -289,7 +289,13 @@ pub fn build() {
     }
 
     let mut toc = build_toc(docs_dir, docs_dir);
-    toc.extend(build_toc(generated_dir, generated_dir));
+    for gen_entry in build_toc(generated_dir, generated_dir) {
+        if let Some(existing) = toc.iter_mut().find(|e| e.href == gen_entry.href) {
+            existing.children.extend(gen_entry.children);
+        } else {
+            toc.push(gen_entry);
+        }
+    }
     let mut hl = Highlighter::new();
 
     let mut opts = Options::default();
