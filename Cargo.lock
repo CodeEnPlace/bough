@@ -136,6 +136,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "arborium-python"
+version = "2.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0a082f841095a9a5c2fbe2b3e37179868c9e1084ed3506dfb56fbe380311ab15"
+dependencies = [
+ "arborium-sysroot",
+ "cc",
+ "tree-sitter-language",
+]
+
+[[package]]
 name = "arborium-rust"
 version = "2.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -298,6 +309,7 @@ name = "bough-core"
 version = "0.0.2"
 dependencies = [
  "arborium-javascript",
+ "arborium-python",
  "arborium-tree-sitter",
  "arborium-typescript",
  "bough-typed-hash",

@@ -53,6 +53,7 @@ impl ShowSingleMutation {
         match self.lang {
             LanguageId::Javascript => "javascript",
             LanguageId::Typescript => "typescript",
+            LanguageId::Python => "python",
         }
     }
 }

@@ -385,6 +385,7 @@ impl Render for LanguageId {
             match self {
                 LanguageId::Javascript => "js",
                 LanguageId::Typescript => "ts",
+                LanguageId::Python => "py",
             }
         )
     }
@@ -395,6 +396,7 @@ impl Render for LanguageId {
             match self {
                 LanguageId::Javascript => "JavaScript",
                 LanguageId::Typescript => "TypeScript",
+                LanguageId::Python => "Python",
             }
         )
     }
@@ -403,6 +405,7 @@ impl Render for LanguageId {
         match self {
             LanguageId::Javascript => r#""js""#.to_string(),
             LanguageId::Typescript => r#""ts""#.to_string(),
+            LanguageId::Python => r#""py""#.to_string(),
         }
     }
 }
@@ -867,6 +870,11 @@ mod tests {
             .replace(RESET, "");
         assert_eq!(js, "JavaScript");
         assert_eq!(ts, "TypeScript");
+        let py = LanguageId::Python
+            .markdown()
+            .replace(LANG, "")
+            .replace(RESET, "");
+        assert_eq!(py, "Python");
     }
 
     #[test]
@@ -881,6 +889,11 @@ mod tests {
             .replace(RESET, "");
         assert_eq!(js, "js");
         assert_eq!(ts, "ts");
+        let py = LanguageId::Python
+            .terse()
+            .replace(LANG, "")
+            .replace(RESET, "");
+        assert_eq!(py, "py");
     }
 
     #[test]
@@ -895,12 +908,18 @@ mod tests {
             .replace(RESET, "");
         assert_eq!(js, "JavaScript");
         assert_eq!(ts, "TypeScript");
+        let py = LanguageId::Python
+            .verbose()
+            .replace(LANG, "")
+            .replace(RESET, "");
+        assert_eq!(py, "Python");
     }
 
     #[test]
     fn language_id_json() {
         assert_eq!(LanguageId::Javascript.json(), r#""js""#);
         assert_eq!(LanguageId::Typescript.json(), r#""ts""#);
+        assert_eq!(LanguageId::Python.json(), r#""py""#);
     }
 
     fn make_benchmark() -> BenchmarkTimesInBase {

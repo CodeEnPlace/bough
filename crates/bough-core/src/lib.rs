@@ -33,6 +33,8 @@ pub enum LanguageId {
     Javascript,
     #[facet(rename = "ts")]
     Typescript,
+    #[facet(rename = "py")]
+    Python,
 }
 
 pub use base::Base;
