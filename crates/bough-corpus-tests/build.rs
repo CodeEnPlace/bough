@@ -32,12 +32,14 @@ fn main() {
         let lang_id = match lang_str {
             "javascript" => "bough_core::LanguageId::Javascript",
             "typescript" => "bough_core::LanguageId::Typescript",
+            "python" => "bough_core::LanguageId::Python",
             _ => continue,
         };
 
         let ext = match lang_str {
             "javascript" => "js",
             "typescript" => "ts",
+            "python" => "py",
             _ => continue,
         };
 
