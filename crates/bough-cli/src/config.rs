@@ -172,6 +172,7 @@ pub enum Step {
         workspace_id: String,
         /// Hash of the mutation to revert.
         #[facet(args::positional)]
+        #[allow(dead_code)]
         mutation_hash: String,
     },
 

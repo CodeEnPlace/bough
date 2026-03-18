@@ -1,9 +1,15 @@
+#[cfg(test)]
 use bough_core::mutant::TwigMutantsIter;
+#[cfg(test)]
 use bough_core::{Base, LanguageId, Mutation, MutationIter, Twig, TwigsIterBuilder};
+#[cfg(test)]
 use sha2::{Digest, Sha256};
+#[cfg(test)]
 use std::collections::HashSet;
+#[cfg(test)]
 use std::path::{Path, PathBuf};
 
+#[cfg(test)]
 fn content_hash(content: &str) -> String {
     let mut hasher = Sha256::new();
     hasher.update(content.as_bytes());
@@ -11,6 +17,7 @@ fn content_hash(content: &str) -> String {
     hex::encode(&result[..6])
 }
 
+#[cfg(test)]
 fn corpus_test_runner(case_dir: &str, lang: LanguageId, ext: &str) {
     let case_path = Path::new(case_dir);
     let base_file = case_path.join(format!("base.{ext}"));
