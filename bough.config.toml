@@ -1,0 +1,5 @@
+base_root_dir = "."
+include = ["**/*"]
+exclude = ["target/**/*"]
+test.cmd = "echo 'run test command'"
+[lang.js]
