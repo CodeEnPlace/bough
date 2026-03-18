@@ -1,0 +1,40 @@
+body {
+    display: grid;
+    grid-template-columns: 16rem 1fr;
+    gap: 0;
+    min-height: 100vh;
+    margin: 0;
+}
+
+#toc {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    padding: 1.5rem 1rem;
+    box-sizing: border-box;
+}
+
+#toc ol {
+    list-style: none;
+    padding-left: 0;
+    margin: 0;
+}
+
+#toc ol ol {
+    padding-left: 1rem;
+}
+
+#toc li {
+    margin: 0.25rem 0;
+}
+
+#toc li a {
+    text-decoration: none;
+    font-size: 0.875rem;
+}
+
+main {
+    padding: 2rem 3rem;
+    max-width: 48rem;
+}

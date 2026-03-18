@@ -202,6 +202,7 @@ fn render_page(page: &Page, toc_html: &str) -> String {
     <head>
         <link href="https://codeenplace.dev/fonts.css" rel="stylesheet" />
         <link href="https://codeenplace.dev/base.css" rel="stylesheet" />
+        <link href="/layout.css" rel="stylesheet" />
         <link href="https://codeenplace.dev/light.color.css" rel="stylesheet" media="(prefers-color-scheme:light)" />
         <link href="https://codeenplace.dev/dark.color.css" rel="stylesheet" media="(prefers-color-scheme:dark)" />
                         
@@ -267,6 +268,8 @@ pub fn build() {
         fs::remove_dir_all(out_dir).expect("failed to clean output dir");
     }
     fs::create_dir_all(out_dir).expect("failed to create output dir");
+
+    fs::write(out_dir.join("layout.css"), include_str!("layout.css")).expect("failed to write layout.css");
 
     let generated_dir = Path::new("target/bough-docs-generated");
     if generated_dir.exists() {
