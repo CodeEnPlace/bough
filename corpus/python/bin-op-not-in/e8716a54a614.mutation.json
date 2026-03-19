@@ -1,0 +1,36 @@
+{
+  "mutant": {
+    "lang": "py",
+    "twig": [
+      "src/a.py"
+    ],
+    "kind": {
+      "Literal": "Number"
+    },
+    "subst_span": {
+      "start": {
+        "line": 0,
+        "col": 11,
+        "byte": 11
+      },
+      "end": {
+        "line": 0,
+        "col": 12,
+        "byte": 12
+      }
+    },
+    "effect_span": {
+      "start": {
+        "line": 0,
+        "col": 11,
+        "byte": 11
+      },
+      "end": {
+        "line": 0,
+        "col": 12,
+        "byte": 12
+      }
+    }
+  },
+  "subst": "1"
+}

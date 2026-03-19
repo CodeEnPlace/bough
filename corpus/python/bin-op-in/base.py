@@ -1,2 +1,1 @@
-a = [1, 2, 3]
-x = 1 in a
+x = needle in haystack

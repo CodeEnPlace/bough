@@ -1,0 +1,36 @@
+{
+  "mutant": {
+    "lang": "py",
+    "twig": [
+      "src/a.py"
+    ],
+    "kind": {
+      "Literal": "Number"
+    },
+    "subst_span": {
+      "start": {
+        "line": 2,
+        "col": 4,
+        "byte": 16
+      },
+      "end": {
+        "line": 2,
+        "col": 5,
+        "byte": 17
+      }
+    },
+    "effect_span": {
+      "start": {
+        "line": 2,
+        "col": 4,
+        "byte": 16
+      },
+      "end": {
+        "line": 2,
+        "col": 5,
+        "byte": 17
+      }
+    }
+  },
+  "subst": "float('inf')"
+}

@@ -1,5 +1,4 @@
-x = True
-if x:
-    pass
+if done:
+    a()
 else:
-    pass
+    b()

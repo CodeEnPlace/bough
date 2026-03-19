@@ -1,0 +1,36 @@
+{
+  "mutant": {
+    "lang": "py",
+    "twig": [
+      "src/a.py"
+    ],
+    "kind": {
+      "Assign": "AddAssign"
+    },
+    "subst_span": {
+      "start": {
+        "line": 1,
+        "col": 2,
+        "byte": 9
+      },
+      "end": {
+        "line": 1,
+        "col": 4,
+        "byte": 11
+      }
+    },
+    "effect_span": {
+      "start": {
+        "line": 1,
+        "col": 0,
+        "byte": 7
+      },
+      "end": {
+        "line": 1,
+        "col": 6,
+        "byte": 13
+      }
+    }
+  },
+  "subst": "="
+}

@@ -251,6 +251,6 @@ mod tests {
     #[test]
     #[ignore]
     fn debug_tree() {
-        dump_tree("with open('f') as fh:\n    pass");
+        dump_tree("x = [1, 2, 3, 4, 5]\ny = x[1:3]");
     }
 }
