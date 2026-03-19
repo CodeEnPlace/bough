@@ -1,0 +1,10 @@
+base_root_dir = "."
+
+include = ["./src/__init__.py"]
+exclude = []
+
+test.cmd = "uv run pytest"
+
+[lang.py]
+include = ["./src/__init__.py"]
+exclude = ["**/*test*.py"]
