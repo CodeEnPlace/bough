@@ -33,6 +33,15 @@ impl LanguageDriver for PythonDriver {
                 };
                 Some((MutantKind::BinaryOp(kind), span_from_node(&op_node), span_from_node(node)))
             }
+            "boolean_operator" => {
+                let op_node = node.child_by_field_name("operator")?;
+                let op_text = op_node.utf8_text(file_content).ok()?;
+                let kind = match op_text {
+                    "and" => BinaryOpMutationKind::And,
+                    _ => return None,
+                };
+                Some((MutantKind::BinaryOp(kind), span_from_node(&op_node), span_from_node(node)))
+            }
             _ => None,
         };
         if let Some((ref kind, ref span, _)) = result {
@@ -53,6 +62,7 @@ impl LanguageDriver for PythonDriver {
             MutantKind::BinaryOp(BinaryOpMutationKind::BitXor) => vec!["&".into(), "|".into()],
             MutantKind::BinaryOp(BinaryOpMutationKind::Shl) => vec![">>".into()],
             MutantKind::BinaryOp(BinaryOpMutationKind::Shr) => vec!["<<".into()],
+            MutantKind::BinaryOp(BinaryOpMutationKind::And) => vec!["or".into()],
             _ => vec![],
         }
     }
@@ -90,6 +100,6 @@ mod tests {
     #[test]
     #[ignore]
     fn debug_tree() {
-        dump_tree("x = 1 + 2");
+        dump_tree("a = True\nb = False\nx = a and b");
     }
 }
