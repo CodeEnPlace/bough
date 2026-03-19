@@ -20,6 +20,7 @@ impl LanguageDriver for PythonDriver {
                 let op_text = op_node.utf8_text(file_content).ok()?;
                 let kind = match op_text {
                     "+" => BinaryOpMutationKind::Add,
+                    "-" => BinaryOpMutationKind::Sub,
                     _ => return None,
                 };
                 Some((MutantKind::BinaryOp(kind), span_from_node(&op_node), span_from_node(node)))
@@ -35,6 +36,7 @@ impl LanguageDriver for PythonDriver {
     fn substitutions(&self, kind: &MutantKind) -> Vec<String> {
         match kind {
             MutantKind::BinaryOp(BinaryOpMutationKind::Add) => vec!["-".into(), "*".into()],
+            MutantKind::BinaryOp(BinaryOpMutationKind::Sub) => vec!["+".into(), "/".into()],
             _ => vec![],
         }
     }
