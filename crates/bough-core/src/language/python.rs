@@ -134,6 +134,6 @@ mod tests {
     #[test]
     #[ignore]
     fn debug_tree() {
-        dump_tree("a = [1, 2, 3]\nx = 4 not in a");
+        dump_tree("a = 1\nb = 2\nc = 3\nx = a < b < c");
     }
 }

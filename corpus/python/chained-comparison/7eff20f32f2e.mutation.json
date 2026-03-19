@@ -1,0 +1,36 @@
+{
+  "mutant": {
+    "lang": "py",
+    "twig": [
+      "src/a.py"
+    ],
+    "kind": {
+      "BinaryOp": "Lt"
+    },
+    "subst_span": {
+      "start": {
+        "line": 3,
+        "col": 6,
+        "byte": 24
+      },
+      "end": {
+        "line": 3,
+        "col": 7,
+        "byte": 25
+      }
+    },
+    "effect_span": {
+      "start": {
+        "line": 3,
+        "col": 4,
+        "byte": 22
+      },
+      "end": {
+        "line": 3,
+        "col": 13,
+        "byte": 31
+      }
+    }
+  },
+  "subst": "<="
+}
