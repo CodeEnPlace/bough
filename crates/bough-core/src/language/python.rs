@@ -113,6 +113,16 @@ impl LanguageDriver for PythonDriver {
                 };
                 Some((MutantKind::BinaryOp(kind), span_from_node(&op_node), span_from_node(node)))
             }
+            "string" => {
+                let text = node.utf8_text(file_content).ok()?;
+                let kind = if text == "\"\"" || text == "''" {
+                    crate::mutant::LiteralKind::EmptyString
+                } else {
+                    crate::mutant::LiteralKind::String
+                };
+                let span = span_from_node(node);
+                Some((MutantKind::Literal(kind), span.clone(), span))
+            }
             "integer" | "float" => {
                 let span = span_from_node(node);
                 Some((MutantKind::Literal(crate::mutant::LiteralKind::Number), span.clone(), span))
@@ -178,6 +188,8 @@ impl LanguageDriver for PythonDriver {
             MutantKind::DictDecl => vec!["{}".into()],
             MutantKind::Literal(crate::mutant::LiteralKind::BoolTrue) => vec!["False".into()],
             MutantKind::Literal(crate::mutant::LiteralKind::BoolFalse) => vec!["True".into()],
+            MutantKind::Literal(crate::mutant::LiteralKind::String) => vec!["\"\"".into()],
+            MutantKind::Literal(crate::mutant::LiteralKind::EmptyString) => vec!["\"bough\"".into()],
             MutantKind::Literal(crate::mutant::LiteralKind::Number) => vec![
                 "0".into(),
                 "1".into(),
