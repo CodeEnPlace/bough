@@ -343,6 +343,7 @@ name = "bough-docs-cli"
 version = "0.0.2"
 dependencies = [
  "arborium",
+ "arborium-theme",
  "bough-cli",
  "bough-core",
  "comrak",
