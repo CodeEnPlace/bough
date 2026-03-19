@@ -230,6 +230,7 @@ impl LanguageDriver for JavascriptDriver {
             MutantKind::ArrayDecl(ArrayDeclKind::Instance) => vec!["new Array()".into()],
             MutantKind::DictDecl => vec!["{}".into()],
             MutantKind::TupleDecl => vec![],
+            MutantKind::UnaryNot => vec![],
             MutantKind::Literal(LiteralKind::BoolTrue) => vec!["false".into()],
             MutantKind::Literal(LiteralKind::BoolFalse) => vec!["true".into()],
             MutantKind::Literal(LiteralKind::String) => vec!["\"\"".into()],

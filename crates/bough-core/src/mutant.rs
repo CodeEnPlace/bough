@@ -394,6 +394,7 @@ pub enum MutantKind {
     Literal(LiteralKind),
     DictDecl,
     TupleDecl,
+    UnaryNot,
     OptionalChain(OptionalChainKind),
     SwitchCase,
 }
