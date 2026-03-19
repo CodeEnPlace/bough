@@ -281,6 +281,25 @@ fn collect_md_files(dir: &Path) -> Vec<PathBuf> {
     files
 }
 
+fn make_mutation_reference(lang: &bough_core::LanguageId) -> String {
+    use std::fmt::Write;
+    let mut out = format!("+++\ntitle = \"{}\"\n+++\n\n", lang.display_name());
+    for kind in bough_core::MutantKind::all_variants() {
+        let subs = lang.substitutions(&kind);
+        if subs.is_empty() {
+            continue;
+        }
+        let _ = writeln!(out, "## {}\n", kind.heading());
+        let _ = writeln!(out, "| Substitution |");
+        let _ = writeln!(out, "|---|");
+        for sub in &subs {
+            let _ = writeln!(out, "| `{}` |", sub);
+        }
+        let _ = writeln!(out);
+    }
+    out
+}
+
 pub fn build() {
     let docs_dir = Path::new(DOCS_DIR);
     let out_dir = Path::new(OUT_DIR);
@@ -299,11 +318,19 @@ pub fn build() {
     let reference_dir = generated_dir.join("config");
     fs::create_dir_all(&reference_dir).expect("failed to create generated config dir");
     let reference_md = format!(
-        "---\ntitle: Configuration Reference\n---\n\n{}",
+        "+++\ntitle = \"Configuration Reference\"\n+++\n\n{}",
         crate::facet_reference::make_facet_reference::<bough_cli::config::Config>()
     );
     fs::write(reference_dir.join("reference.md"), reference_md)
         .expect("failed to write config reference");
+
+    let mutations_dir = generated_dir.join("mutations");
+    fs::create_dir_all(&mutations_dir).expect("failed to create generated mutations dir");
+    for lang in bough_core::LanguageId::ALL {
+        let md = make_mutation_reference(lang);
+        fs::write(mutations_dir.join(format!("{}.md", lang.slug())), md)
+            .expect("failed to write mutation reference");
+    }
 
     let mut md_files = collect_md_files(docs_dir);
     md_files.extend(collect_md_files(generated_dir));

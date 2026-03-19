@@ -400,6 +400,95 @@ pub enum MutantKind {
     SwitchCase,
 }
 
+impl MutantKind {
+    pub fn all_variants() -> Vec<MutantKind> {
+        use BinaryOpMutationKind::*;
+        use AssignMutationKind::*;
+        use ArrayDeclKind::*;
+        use LiteralKind::*;
+        use OptionalChainKind::*;
+
+        vec![
+            MutantKind::StatementBlock,
+            MutantKind::Condition,
+            MutantKind::BinaryOp(Add),
+            MutantKind::BinaryOp(And),
+            MutantKind::BinaryOp(BitAnd),
+            MutantKind::BinaryOp(BitOr),
+            MutantKind::BinaryOp(BitXor),
+            MutantKind::BinaryOp(Div),
+            MutantKind::BinaryOp(Eq),
+            MutantKind::BinaryOp(Exp),
+            MutantKind::BinaryOp(FloorDiv),
+            MutantKind::BinaryOp(Gt),
+            MutantKind::BinaryOp(In),
+            MutantKind::BinaryOp(Is),
+            MutantKind::BinaryOp(IsNot),
+            MutantKind::BinaryOp(NotIn),
+            MutantKind::BinaryOp(Gte),
+            MutantKind::BinaryOp(Lt),
+            MutantKind::BinaryOp(Lte),
+            MutantKind::BinaryOp(Mul),
+            MutantKind::BinaryOp(Or),
+            MutantKind::BinaryOp(Rem),
+            MutantKind::BinaryOp(Shl),
+            MutantKind::BinaryOp(Shr),
+            MutantKind::BinaryOp(StrictEq),
+            MutantKind::BinaryOp(Ne),
+            MutantKind::BinaryOp(StrictNe),
+            MutantKind::BinaryOp(Sub),
+            MutantKind::BinaryOp(Xor),
+            MutantKind::Assign(AddAssign),
+            MutantKind::Assign(AndAssign),
+            MutantKind::Assign(BitAndAssign),
+            MutantKind::Assign(BitOrAssign),
+            MutantKind::Assign(BitXorAssign),
+            MutantKind::Assign(DivAssign),
+            MutantKind::Assign(ExpAssign),
+            MutantKind::Assign(FloorDivAssign),
+            MutantKind::Assign(MulAssign),
+            MutantKind::Assign(NormalAssign),
+            MutantKind::Assign(OrAssign),
+            MutantKind::Assign(RemAssign),
+            MutantKind::Assign(ShlAssign),
+            MutantKind::Assign(ShrAssign),
+            MutantKind::Assign(SubAssign),
+            MutantKind::ArrayDecl(Inline),
+            MutantKind::ArrayDecl(Instance),
+            MutantKind::Literal(BoolTrue),
+            MutantKind::Literal(BoolFalse),
+            MutantKind::Literal(String),
+            MutantKind::Literal(EmptyString),
+            MutantKind::Literal(Number),
+            MutantKind::DictDecl,
+            MutantKind::TupleDecl,
+            MutantKind::Assert,
+            MutantKind::UnaryNot,
+            MutantKind::OptionalChain(Literal),
+            MutantKind::OptionalChain(Indexed),
+            MutantKind::OptionalChain(FnCall),
+            MutantKind::SwitchCase,
+        ]
+    }
+
+    pub fn heading(&self) -> std::string::String {
+        match self {
+            MutantKind::StatementBlock => "StatementBlock".into(),
+            MutantKind::Condition => "Condition".into(),
+            MutantKind::BinaryOp(k) => format!("BinaryOp - {k:?}"),
+            MutantKind::Assign(k) => format!("Assign - {k:?}"),
+            MutantKind::ArrayDecl(k) => format!("ArrayDecl - {k:?}"),
+            MutantKind::Literal(k) => format!("Literal - {k:?}"),
+            MutantKind::DictDecl => "DictDecl".into(),
+            MutantKind::TupleDecl => "TupleDecl".into(),
+            MutantKind::Assert => "Assert".into(),
+            MutantKind::UnaryNot => "UnaryNot".into(),
+            MutantKind::OptionalChain(k) => format!("OptionalChain - {k:?}"),
+            MutantKind::SwitchCase => "SwitchCase".into(),
+        }
+    }
+}
+
 impl<'a, 't> TwigMutantsIter<'a, 't> {
     pub fn new(lang: LanguageId, base: &'a Base, twig: &'t Twig) -> std::io::Result<Self> {
         // bough[impl mutant.twig-iter.file]

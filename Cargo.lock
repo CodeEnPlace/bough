@@ -344,6 +344,7 @@ version = "0.0.2"
 dependencies = [
  "arborium",
  "bough-cli",
+ "bough-core",
  "comrak",
  "facet",
  "facet-core",

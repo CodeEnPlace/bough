@@ -37,6 +37,34 @@ pub enum LanguageId {
     Python,
 }
 
+impl LanguageId {
+    pub const ALL: &[LanguageId] = &[
+        LanguageId::Javascript,
+        LanguageId::Typescript,
+        LanguageId::Python,
+    ];
+
+    pub fn substitutions(&self, kind: &MutantKind) -> Vec<String> {
+        language::driver_for_lang(*self).substitutions(kind)
+    }
+
+    pub fn slug(&self) -> &'static str {
+        match self {
+            LanguageId::Javascript => "js",
+            LanguageId::Typescript => "ts",
+            LanguageId::Python => "py",
+        }
+    }
+
+    pub fn display_name(&self) -> &'static str {
+        match self {
+            LanguageId::Javascript => "JavaScript",
+            LanguageId::Typescript => "TypeScript",
+            LanguageId::Python => "Python",
+        }
+    }
+}
+
 pub use base::Base;
 pub use file::File;
 pub use file::Twig;
