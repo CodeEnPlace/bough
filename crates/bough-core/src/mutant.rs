@@ -347,6 +347,8 @@ pub enum AssignMutationKind {
     BitOrAssign,
     BitXorAssign,
     DivAssign,
+    ExpAssign,
+    FloorDivAssign,
     MulAssign,
     NormalAssign,
     OrAssign,

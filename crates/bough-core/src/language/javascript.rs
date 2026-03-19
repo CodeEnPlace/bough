@@ -224,6 +224,8 @@ impl LanguageDriver for JavascriptDriver {
             MutantKind::Assign(AssignMutationKind::ShrAssign) => vec!["<<=".into(), "=".into()],
             MutantKind::Assign(AssignMutationKind::AndAssign) => vec!["||=".into(), "=".into()],
             MutantKind::Assign(AssignMutationKind::OrAssign) => vec!["&&=".into(), "=".into()],
+            MutantKind::Assign(AssignMutationKind::ExpAssign) => vec![],
+            MutantKind::Assign(AssignMutationKind::FloorDivAssign) => vec![],
             MutantKind::ArrayDecl(ArrayDeclKind::Inline) => vec!["[]".into()],
             MutantKind::ArrayDecl(ArrayDeclKind::Instance) => vec!["new Array()".into()],
             MutantKind::DictDecl => vec!["{}".into()],
