@@ -53,6 +53,15 @@ impl LanguageDriver for PythonDriver {
                 };
                 Some((MutantKind::BinaryOp(kind), span_from_node(&op_node), span_from_node(node)))
             }
+            "augmented_assignment" => {
+                let op_node = node.child_by_field_name("operator")?;
+                let op_text = op_node.utf8_text(file_content).ok()?;
+                let kind = match op_text {
+                    "+=" => AssignMutationKind::AddAssign,
+                    _ => return None,
+                };
+                Some((MutantKind::Assign(kind), span_from_node(&op_node), span_from_node(node)))
+            }
             "assignment" => {
                 let op_node = (0..node.child_count())
                     .filter_map(|i| node.child(i as u32))
@@ -108,6 +117,7 @@ impl LanguageDriver for PythonDriver {
             MutantKind::BinaryOp(BinaryOpMutationKind::In) => vec!["not in".into()],
             MutantKind::BinaryOp(BinaryOpMutationKind::NotIn) => vec!["in".into()],
             MutantKind::Assign(AssignMutationKind::NormalAssign) => vec!["+=".into(), "-=".into()],
+            MutantKind::Assign(AssignMutationKind::AddAssign) => vec!["-=".into(), "=".into()],
             _ => vec![],
         }
     }
@@ -145,6 +155,6 @@ mod tests {
     #[test]
     #[ignore]
     fn debug_tree() {
-        dump_tree("x = 1");
+        dump_tree("x = 0\nx += 1");
     }
 }
