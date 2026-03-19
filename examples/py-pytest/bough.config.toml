@@ -6,5 +6,5 @@ exclude = []
 test.cmd = "uv run pytest"
 
 [lang.py]
-include = ["./src/__init__.py"]
+include = ["src/__init__.py"]
 exclude = ["**/*test*.py"]
