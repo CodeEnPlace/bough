@@ -192,6 +192,7 @@ impl LanguageDriver for TypescriptDriver {
             MutantKind::BinaryOp(BinaryOpMutationKind::In) => vec![],
             MutantKind::BinaryOp(BinaryOpMutationKind::Is) => vec![],
             MutantKind::BinaryOp(BinaryOpMutationKind::IsNot) => vec![],
+            MutantKind::BinaryOp(BinaryOpMutationKind::NotIn) => vec![],
             MutantKind::BinaryOp(BinaryOpMutationKind::Eq) => vec!["!=".into()],
             MutantKind::BinaryOp(BinaryOpMutationKind::StrictEq) => vec!["!==".into()],
             MutantKind::BinaryOp(BinaryOpMutationKind::Ne) => vec!["==".into()],

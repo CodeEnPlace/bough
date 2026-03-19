@@ -322,6 +322,7 @@ pub enum BinaryOpMutationKind {
     In,
     Is,
     IsNot,
+    NotIn,
     Gte,
     Lt,
     Lte,
