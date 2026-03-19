@@ -113,6 +113,14 @@ impl LanguageDriver for PythonDriver {
                 };
                 Some((MutantKind::BinaryOp(kind), span_from_node(&op_node), span_from_node(node)))
             }
+            "true" => {
+                let span = span_from_node(node);
+                Some((MutantKind::Literal(crate::mutant::LiteralKind::BoolTrue), span.clone(), span))
+            }
+            "false" => {
+                let span = span_from_node(node);
+                Some((MutantKind::Literal(crate::mutant::LiteralKind::BoolFalse), span.clone(), span))
+            }
             _ => None,
         };
         if let Some((ref kind, ref span, _)) = result {
@@ -164,6 +172,8 @@ impl LanguageDriver for PythonDriver {
             MutantKind::ArrayDecl(crate::mutant::ArrayDeclKind::Inline) => vec!["[]".into()],
             MutantKind::TupleDecl => vec!["()".into()],
             MutantKind::DictDecl => vec!["{}".into()],
+            MutantKind::Literal(crate::mutant::LiteralKind::BoolTrue) => vec!["False".into()],
+            MutantKind::Literal(crate::mutant::LiteralKind::BoolFalse) => vec!["True".into()],
             MutantKind::Condition => vec!["True".into(), "False".into()],
             _ => vec![],
         }
