@@ -1,0 +1,1 @@
+{"mutation":{"mutant":{"lang":"py","twig":["src/__init__.py"],"kind":{"Literal":"Number"},"subst_span":{"start":{"line":12,"col":8,"byte":260},"end":{"line":12,"col":9,"byte":261}},"effect_span":{"start":{"line":12,"col":8,"byte":260},"end":{"line":12,"col":9,"byte":261}}},"subst":"-1"},"outcome":{"status":"Caught","at":"2026-03-19T14:54:56Z"}}

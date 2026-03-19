@@ -1,0 +1,1 @@
+{"mutation":{"mutant":{"lang":"py","twig":["src/__init__.py"],"kind":{"Literal":"Number"},"subst_span":{"start":{"line":13,"col":8,"byte":286},"end":{"line":13,"col":9,"byte":287}},"effect_span":{"start":{"line":13,"col":8,"byte":286},"end":{"line":13,"col":9,"byte":287}}},"subst":"float('inf')"},"outcome":{"status":"Missed","at":"2026-03-19T14:54:52Z"}}

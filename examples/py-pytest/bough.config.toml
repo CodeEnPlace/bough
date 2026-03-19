@@ -8,3 +8,12 @@ test.cmd = "uv run pytest"
 [lang.py]
 include = ["src/__init__.py"]
 exclude = ["**/*test*.py"]
+
+[lang.py.skip]
+query = [
+  """
+(string
+  (string_content) @_content
+  (#match? @_content ">>>")) @skip
+""",
+]
