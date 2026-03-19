@@ -66,6 +66,7 @@ impl LanguageDriver for PythonDriver {
                     "|=" => AssignMutationKind::BitOrAssign,
                     "^=" => AssignMutationKind::BitXorAssign,
                     "<<=" => AssignMutationKind::ShlAssign,
+                    ">>=" => AssignMutationKind::ShrAssign,
                     _ => return None,
                 };
                 Some((MutantKind::Assign(kind), span_from_node(&op_node), span_from_node(node)))
@@ -134,6 +135,7 @@ impl LanguageDriver for PythonDriver {
             MutantKind::Assign(AssignMutationKind::BitOrAssign) => vec!["&=".into(), "=".into()],
             MutantKind::Assign(AssignMutationKind::BitXorAssign) => vec!["&=".into(), "=".into()],
             MutantKind::Assign(AssignMutationKind::ShlAssign) => vec![">>=".into(), "=".into()],
+            MutantKind::Assign(AssignMutationKind::ShrAssign) => vec!["<<=".into(), "=".into()],
             _ => vec![],
         }
     }
