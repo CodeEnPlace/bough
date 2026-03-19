@@ -95,7 +95,7 @@ impl LanguageDriver for PythonDriver {
                 let span = span_from_node(node);
                 Some((MutantKind::TupleDecl, span.clone(), span))
             }
-            "set_comprehension" | "dictionary" if node.named_child_count() > 0 => {
+            "set_comprehension" | "dictionary_comprehension" | "dictionary" if node.named_child_count() > 0 => {
                 let span = span_from_node(node);
                 Some((MutantKind::DictDecl, span.clone(), span))
             }
@@ -251,6 +251,6 @@ mod tests {
     #[test]
     #[ignore]
     fn debug_tree() {
-        dump_tree("{x for x in [1, 2, 3]}");
+        dump_tree("{k: v for k, v in {\"a\": 1}.items()}");
     }
 }
