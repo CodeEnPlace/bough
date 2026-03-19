@@ -408,7 +408,8 @@ fn make_mutation_reference(lang: &bough_core::LanguageId) -> String {
 
         let key = kind_to_key(&kind);
         if let Some(example) = best.get(&key) {
-            let _ = writeln!(out, "```{ext}\n{}\n```\n", example.source.trim_end());
+            let _ = writeln!(out, "### Before\n\n```{ext}\n{}\n```\n", example.source.trim_end());
+            let _ = writeln!(out, "### After\n");
             for sub in &example.substitutions {
                 let mutated = format!(
                     "{}{}{}",
