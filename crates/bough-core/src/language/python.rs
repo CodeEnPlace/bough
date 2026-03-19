@@ -99,7 +99,7 @@ impl LanguageDriver for PythonDriver {
                 let span = span_from_node(node);
                 Some((MutantKind::DictDecl, span.clone(), span))
             }
-            "list" if node.named_child_count() > 0 => {
+            "list_comprehension" | "list" if node.named_child_count() > 0 => {
                 let span = span_from_node(node);
                 Some((MutantKind::ArrayDecl(crate::mutant::ArrayDeclKind::Inline), span.clone(), span))
             }
@@ -251,6 +251,6 @@ mod tests {
     #[test]
     #[ignore]
     fn debug_tree() {
-        dump_tree("x = 1\nassert x > 0");
+        dump_tree("[x for x in [1, 2, 3]]");
     }
 }
