@@ -1,5 +1,5 @@
 +++
-title = "Configuing for JavaScript"
+title = "JavaScript"
 +++
 
 Include a `[lang.js]` section in your config with `include` and `exclude` globs. These control which files bough will attempt to mutate.

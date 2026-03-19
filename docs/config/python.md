@@ -1,5 +1,5 @@
 +++
-title = "Configuring for Python"
+title = "Python"
 +++
 
 Include a `[lang.py]` section in your config with `include` and `exclude` globs. These control which files bough will attempt to mutate.

@@ -1,5 +1,5 @@
 +++
-title = "Configuing for TypeScript"
+title = "TypeScript"
 +++
 
 Include a `[lang.ts]` section in your config with `include` and `exclude` globs. These control which files bough will attempt to mutate.

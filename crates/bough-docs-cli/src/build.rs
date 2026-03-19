@@ -226,11 +226,6 @@ fn render_page(page: &Page, toc_html: &str) -> String {
             a-in, a-ex {{ color: var(--col-bright-red); }}
             a-em {{ font-weight: bold; }}
             a-dr, a-rp, a-rx {{ color: var(--col-orange); }}
-            pre code del {{ text-decoration: none; border-bottom: 2px solid var(--col-red); }}
-            pre code ins {{ text-decoration: none; border-bottom: 2px solid var(--col-green); }}
-            .mutation-comparison {{ display: flex; gap: 1rem; }}
-            .mutation-before, .mutation-afters {{ flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.5rem; }}
-            .mutation-comparison pre {{ margin: 0; }}
         </style>
     </head>
 
@@ -288,84 +283,6 @@ fn collect_md_files(dir: &Path) -> Vec<PathBuf> {
 
 const CORPUS_DIR: &str = "corpus";
 
-fn highlight_with_diff(
-    hl: &mut Highlighter,
-    lang: &str,
-    source: &str,
-    diff_start: usize,
-    diff_end: usize,
-    diff_tag: &str,
-) -> String {
-    use arborium::advanced::html_escape;
-
-    let spans = hl.highlight_spans(lang, source).unwrap_or_default();
-    let source = source.trim_end_matches('\n');
-
-    let mut sorted = spans;
-    sorted.sort_by(|a, b| a.start.cmp(&b.start).then_with(|| b.end.cmp(&a.end)));
-
-    // (pos, is_start, tag) — None tag means diff marker
-    let mut events: Vec<(usize, bool, Option<String>)> = Vec::new();
-
-    for span in &sorted {
-        if let Some(tag) = arborium_theme::tag_for_capture(&span.capture) {
-            let t = format!("a-{tag}");
-            events.push((span.start as usize, true, Some(t.clone())));
-            events.push((span.end as usize, false, Some(t)));
-        }
-    }
-
-    events.push((diff_start, true, None));
-    events.push((diff_end, false, None));
-
-    events.sort_by(|a, b| a.0.cmp(&b.0).then_with(|| a.1.cmp(&b.1)));
-
-    let mut out = String::from("<pre><code>");
-    let mut pos = 0;
-    let mut syntax_stack: Vec<String> = Vec::new();
-
-    for (ep, is_start, tag) in &events {
-        let ep = (*ep).min(source.len());
-        if ep > pos {
-            out.push_str(&html_escape(&source[pos..ep]));
-            pos = ep;
-        }
-        match tag {
-            None => {
-                if let Some(t) = syntax_stack.last() {
-                    out.push_str(&format!("</{t}>"));
-                }
-                if *is_start {
-                    out.push_str(&format!("<{diff_tag}>"));
-                } else {
-                    out.push_str(&format!("</{diff_tag}>"));
-                }
-                if let Some(t) = syntax_stack.last() {
-                    out.push_str(&format!("<{t}>"));
-                }
-            }
-            Some(t) => {
-                if *is_start {
-                    out.push_str(&format!("<{t}>"));
-                    syntax_stack.push(t.clone());
-                } else {
-                    out.push_str(&format!("</{t}>"));
-                    if let Some(idx) = syntax_stack.iter().rposition(|s| s == t) {
-                        syntax_stack.remove(idx);
-                    }
-                }
-            }
-        }
-    }
-
-    if pos < source.len() {
-        out.push_str(&html_escape(&source[pos..]));
-    }
-
-    out.push_str("</code></pre>");
-    out
-}
-
 #[derive(Deserialize)]
 struct CorpusMutation {
     mutant: CorpusMutant,
@@ -408,7 +325,7 @@ fn kind_key(kind: &serde_json::Value) -> String {
     }
 }
 
-fn make_mutation_reference(lang: &bough_core::LanguageId, hl: &mut Highlighter) -> String {
+fn make_mutation_reference(lang: &bough_core::LanguageId) -> String {
     use std::collections::BTreeMap;
     use std::fmt::Write;
 
@@ -491,11 +408,8 @@ fn make_mutation_reference(lang: &bough_core::LanguageId, hl: &mut Highlighter) 
 
         let key = kind_to_key(&kind);
         if let Some(example) = best.get(&key) {
-            let before_html = highlight_with_diff(
-                hl, ext, &example.source,
-                example.span_start, example.span_end, "del",
-            );
-            let _ = write!(out, "<div class=\"mutation-comparison\"><div class=\"mutation-before\"><h4>Before</h4>{before_html}</div><div class=\"mutation-afters\"><h4>After</h4>");
+            let _ = writeln!(out, "### Before\n\n```{ext}\n{}\n```\n", example.source.trim_end());
+            let _ = writeln!(out, "### After\n");
             for sub in &example.substitutions {
                 let mutated = format!(
                     "{}{}{}",
@@ -503,15 +417,8 @@ fn make_mutation_reference(lang: &bough_core::LanguageId, hl: &mut Highlighter) 
                     sub,
                     &example.source[example.span_end..],
                 );
-                let ins_start = example.span_start;
-                let ins_end = example.span_start + sub.len();
-                let after_html = highlight_with_diff(
-                    hl, ext, &mutated,
-                    ins_start, ins_end, "ins",
-                );
-                let _ = write!(out, "{after_html}");
+                let _ = writeln!(out, "```{ext}\n{}\n```\n", mutated.trim_end());
             }
-            let _ = writeln!(out, "</div></div>\n");
         }
     }
 
@@ -560,12 +467,10 @@ pub fn build() {
     fs::write(reference_dir.join("reference.md"), reference_md)
         .expect("failed to write config reference");
 
-    let mut hl = Highlighter::new();
-
     let mutations_dir = generated_dir.join("mutations");
     fs::create_dir_all(&mutations_dir).expect("failed to create generated mutations dir");
     for lang in bough_core::LanguageId::ALL {
-        let md = make_mutation_reference(lang, &mut hl);
+        let md = make_mutation_reference(lang);
         fs::write(mutations_dir.join(format!("{}.md", lang.slug())), md)
             .expect("failed to write mutation reference");
     }
@@ -585,6 +490,7 @@ pub fn build() {
             toc.push(gen_entry);
         }
     }
+    let mut hl = Highlighter::new();
 
     let mut opts = Options::default();
     opts.extension.table = true;
