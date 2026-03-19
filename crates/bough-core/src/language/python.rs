@@ -91,6 +91,10 @@ impl LanguageDriver for PythonDriver {
                 let condition = node.child_by_field_name("condition")?;
                 Some((MutantKind::Condition, span_from_node(&condition), span_from_node(node)))
             }
+            "tuple" if node.named_child_count() > 0 => {
+                let span = span_from_node(node);
+                Some((MutantKind::TupleDecl, span.clone(), span))
+            }
             "dictionary" if node.named_child_count() > 0 => {
                 let span = span_from_node(node);
                 Some((MutantKind::DictDecl, span.clone(), span))
@@ -158,6 +162,7 @@ impl LanguageDriver for PythonDriver {
             MutantKind::Assign(AssignMutationKind::FloorDivAssign) => vec!["/=".into(), "=".into()],
             MutantKind::StatementBlock => vec!["pass".into()],
             MutantKind::ArrayDecl(crate::mutant::ArrayDeclKind::Inline) => vec!["[]".into()],
+            MutantKind::TupleDecl => vec!["()".into()],
             MutantKind::DictDecl => vec!["{}".into()],
             MutantKind::Condition => vec!["True".into(), "False".into()],
             _ => vec![],
@@ -200,6 +205,6 @@ mod tests {
     #[test]
     #[ignore]
     fn debug_tree() {
-        dump_tree("def f():\n    pass");
+        dump_tree("(1, 2, 3)");
     }
 }

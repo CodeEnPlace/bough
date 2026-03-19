@@ -393,6 +393,7 @@ pub enum MutantKind {
     ArrayDecl(ArrayDeclKind),
     Literal(LiteralKind),
     DictDecl,
+    TupleDecl,
     OptionalChain(OptionalChainKind),
     SwitchCase,
 }
