@@ -228,6 +228,9 @@ fn render_page(page: &Page, toc_html: &str) -> String {
             a-dr, a-rp, a-rx {{ color: var(--col-orange); }}
             pre code del {{ text-decoration: none; border-bottom: 2px solid var(--col-red); }}
             pre code ins {{ text-decoration: none; border-bottom: 2px solid var(--col-green); }}
+            .mutation-comparison {{ display: flex; gap: 1rem; }}
+            .mutation-before, .mutation-afters {{ flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.5rem; }}
+            .mutation-comparison pre {{ margin: 0; }}
         </style>
     </head>
 
@@ -492,8 +495,7 @@ fn make_mutation_reference(lang: &bough_core::LanguageId, hl: &mut Highlighter) 
                 hl, ext, &example.source,
                 example.span_start, example.span_end, "del",
             );
-            let _ = writeln!(out, "### Before\n\n{before_html}\n");
-            let _ = writeln!(out, "### After\n");
+            let _ = write!(out, "<div class=\"mutation-comparison\"><div class=\"mutation-before\"><h4>Before</h4>{before_html}</div><div class=\"mutation-afters\"><h4>After</h4>");
             for sub in &example.substitutions {
                 let mutated = format!(
                     "{}{}{}",
@@ -507,8 +509,9 @@ fn make_mutation_reference(lang: &bough_core::LanguageId, hl: &mut Highlighter) 
                     hl, ext, &mutated,
                     ins_start, ins_end, "ins",
                 );
-                let _ = writeln!(out, "{after_html}\n");
+                let _ = write!(out, "{after_html}");
             }
+            let _ = writeln!(out, "</div></div>\n");
         }
     }
 
