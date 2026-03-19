@@ -235,6 +235,27 @@ fn render_page(page: &Page, toc_html: &str) -> String {
             <h1>{title}</h1>
             {body}
         </main>
+        <script>
+            (function() {{
+                var prefetched = {{}};
+                function prefetch(url) {{
+                    if (prefetched[url] || url === location.pathname) return;
+                    prefetched[url] = true;
+                    var l = document.createElement("link");
+                    l.rel = "prefetch";
+                    l.href = url;
+                    document.head.appendChild(l);
+                }}
+                document.addEventListener("pointerenter", function(e) {{
+                    var a = e.target.closest("a[href^='/']");
+                    if (a) prefetch(a.getAttribute("href"));
+                }}, true);
+                document.addEventListener("focusin", function(e) {{
+                    var a = e.target.closest("a[href^='/']");
+                    if (a) prefetch(a.getAttribute("href"));
+                }});
+            }})();
+        </script>
     </body>
 </html>"#,
         title = page.title,
