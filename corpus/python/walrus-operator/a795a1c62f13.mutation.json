@@ -4,19 +4,17 @@
     "twig": [
       "src/a.py"
     ],
-    "kind": {
-      "Assign": "NormalAssign"
-    },
+    "kind": "Condition",
     "subst_span": {
       "start": {
         "line": 0,
-        "col": 2,
-        "byte": 2
+        "col": 3,
+        "byte": 3
       },
       "end": {
         "line": 0,
-        "col": 3,
-        "byte": 3
+        "col": 14,
+        "byte": 14
       }
     },
     "effect_span": {
@@ -26,11 +24,11 @@
         "byte": 0
       },
       "end": {
-        "line": 0,
-        "col": 13,
-        "byte": 13
+        "line": 1,
+        "col": 8,
+        "byte": 24
       }
     }
   },
-  "subst": "-="
+  "subst": "True"
 }

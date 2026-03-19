@@ -251,6 +251,6 @@ mod tests {
     #[test]
     #[ignore]
     fn debug_tree() {
-        dump_tree("list(x for x in [1, 2, 3])");
+        dump_tree("x = [1, 2, 3]\nif (n := len(x)) > 0:\n    pass");
     }
 }

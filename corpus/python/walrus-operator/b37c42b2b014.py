@@ -1,0 +1,2 @@
+if (n := False):
+    pass
