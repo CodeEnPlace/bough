@@ -1,0 +1,34 @@
+{
+  "mutant": {
+    "lang": "py",
+    "twig": [
+      "src/a.py"
+    ],
+    "kind": "Condition",
+    "subst_span": {
+      "start": {
+        "line": 1,
+        "col": 3,
+        "byte": 9
+      },
+      "end": {
+        "line": 1,
+        "col": 8,
+        "byte": 14
+      }
+    },
+    "effect_span": {
+      "start": {
+        "line": 1,
+        "col": 0,
+        "byte": 6
+      },
+      "end": {
+        "line": 6,
+        "col": 8,
+        "byte": 60
+      }
+    }
+  },
+  "subst": "False"
+}

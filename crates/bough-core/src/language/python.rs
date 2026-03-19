@@ -83,6 +83,10 @@ impl LanguageDriver for PythonDriver {
                     span_from_node(node),
                 ))
             }
+            "if_statement" | "while_statement" => {
+                let condition = node.child_by_field_name("condition")?;
+                Some((MutantKind::Condition, span_from_node(&condition), span_from_node(node)))
+            }
             "boolean_operator" => {
                 let op_node = node.child_by_field_name("operator")?;
                 let op_text = op_node.utf8_text(file_content).ok()?;
@@ -140,6 +144,7 @@ impl LanguageDriver for PythonDriver {
             MutantKind::Assign(AssignMutationKind::ShrAssign) => vec!["<<=".into(), "=".into()],
             MutantKind::Assign(AssignMutationKind::ExpAssign) => vec!["*=".into(), "=".into()],
             MutantKind::Assign(AssignMutationKind::FloorDivAssign) => vec!["/=".into(), "=".into()],
+            MutantKind::Condition => vec!["True".into(), "False".into()],
             _ => vec![],
         }
     }
@@ -177,6 +182,6 @@ mod tests {
     #[test]
     #[ignore]
     fn debug_tree() {
-        dump_tree("x = 0\nx += 1");
+        dump_tree("x = True\nif x:\n    pass");
     }
 }

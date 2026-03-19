@@ -1,0 +1,36 @@
+{
+  "mutant": {
+    "lang": "py",
+    "twig": [
+      "src/a.py"
+    ],
+    "kind": {
+      "Assign": "NormalAssign"
+    },
+    "subst_span": {
+      "start": {
+        "line": 2,
+        "col": 2,
+        "byte": 21
+      },
+      "end": {
+        "line": 2,
+        "col": 3,
+        "byte": 22
+      }
+    },
+    "effect_span": {
+      "start": {
+        "line": 2,
+        "col": 0,
+        "byte": 19
+      },
+      "end": {
+        "line": 2,
+        "col": 10,
+        "byte": 29
+      }
+    }
+  },
+  "subst": "+="
+}
