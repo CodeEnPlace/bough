@@ -59,6 +59,7 @@ dependencies = [
  "arborium-html",
  "arborium-javascript",
  "arborium-json",
+ "arborium-python",
  "arborium-rust",
  "arborium-theme",
  "arborium-toml",
