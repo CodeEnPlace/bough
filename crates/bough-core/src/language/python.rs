@@ -39,6 +39,7 @@ impl LanguageDriver for PythonDriver {
                 let kind = match op_text {
                     "==" => BinaryOpMutationKind::Eq,
                     "!=" => BinaryOpMutationKind::Ne,
+                    ">" => BinaryOpMutationKind::Gt,
                     _ => return None,
                 };
                 Some((MutantKind::BinaryOp(kind), span_from_node(&op_node), span_from_node(node)))
@@ -77,6 +78,7 @@ impl LanguageDriver for PythonDriver {
             MutantKind::BinaryOp(BinaryOpMutationKind::Or) => vec!["and".into()],
             MutantKind::BinaryOp(BinaryOpMutationKind::Eq) => vec!["!=".into()],
             MutantKind::BinaryOp(BinaryOpMutationKind::Ne) => vec!["==".into()],
+            MutantKind::BinaryOp(BinaryOpMutationKind::Gt) => vec!["<=".into(), ">=".into()],
             _ => vec![],
         }
     }
