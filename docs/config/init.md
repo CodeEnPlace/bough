@@ -1,5 +1,6 @@
 +++
-title = "Initalizing Config"
+title = "Init"
+idx = 0
 +++
 
 `bough` reads config formatted as `toml`, `yaml`, and `json`. We will use `toml` for the rest of this tutorial

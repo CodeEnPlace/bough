@@ -177,13 +177,13 @@ fn render_toc_entries(entries: &[TocEntry], current_slug: &str) -> String {
     for entry in entries {
         let entry_slug = entry.href.trim_matches('/');
         let id = entry_slug.replace('/', "-");
-        let active = if entry_slug == current_slug {
-            " class=\"active\""
-        } else {
-            ""
-        };
+        let is_match = entry_slug == current_slug
+            || (!entry_slug.is_empty()
+                && current_slug.starts_with(entry_slug)
+                && current_slug[entry_slug.len()..].starts_with('/'));
+        let class = if is_match { " class=\"active\"" } else { "" };
         out.push_str(&format!(
-            "<li id=\"toc-{id}\"{active}><a href=\"{}\">{}</a>",
+            "<li id=\"toc-{id}\"{class}><a href=\"{}\">{}</a>",
             entry.href, entry.title
         ));
         if !entry.children.is_empty() {
@@ -226,11 +226,12 @@ fn render_page(page: &Page, toc_html: &str) -> String {
             a-in, a-ex {{ color: var(--col-bright-red); }}
             a-em {{ font-weight: bold; }}
             a-dr, a-rp, a-rx {{ color: var(--col-orange); }}
+            #toc .active > a {{ color: var(--col-purple); }}
         </style>
     </head>
 
     <body>
-        <nav id="toc">{toc}</nav>
+        <nav id="toc"><ol><li><a href="/">Bough</a><ol><li><a href="https://github.com/CodeEnPlace/bough">GitHub</a></li></ol></li></ol>{toc}</nav>
         <main>
             <h1>{title}</h1>
             {body}
