@@ -28,6 +28,7 @@ impl LanguageDriver for PythonDriver {
                     "|" => BinaryOpMutationKind::BitOr,
                     "^" => BinaryOpMutationKind::BitXor,
                     "<<" => BinaryOpMutationKind::Shl,
+                    ">>" => BinaryOpMutationKind::Shr,
                     _ => return None,
                 };
                 Some((MutantKind::BinaryOp(kind), span_from_node(&op_node), span_from_node(node)))
@@ -51,6 +52,7 @@ impl LanguageDriver for PythonDriver {
             MutantKind::BinaryOp(BinaryOpMutationKind::BitOr) => vec!["&".into(), "^".into()],
             MutantKind::BinaryOp(BinaryOpMutationKind::BitXor) => vec!["&".into(), "|".into()],
             MutantKind::BinaryOp(BinaryOpMutationKind::Shl) => vec![">>".into()],
+            MutantKind::BinaryOp(BinaryOpMutationKind::Shr) => vec!["<<".into()],
             _ => vec![],
         }
     }
