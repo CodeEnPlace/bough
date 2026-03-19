@@ -113,6 +113,10 @@ impl LanguageDriver for PythonDriver {
                 };
                 Some((MutantKind::BinaryOp(kind), span_from_node(&op_node), span_from_node(node)))
             }
+            "integer" | "float" => {
+                let span = span_from_node(node);
+                Some((MutantKind::Literal(crate::mutant::LiteralKind::Number), span.clone(), span))
+            }
             "true" => {
                 let span = span_from_node(node);
                 Some((MutantKind::Literal(crate::mutant::LiteralKind::BoolTrue), span.clone(), span))
@@ -174,6 +178,14 @@ impl LanguageDriver for PythonDriver {
             MutantKind::DictDecl => vec!["{}".into()],
             MutantKind::Literal(crate::mutant::LiteralKind::BoolTrue) => vec!["False".into()],
             MutantKind::Literal(crate::mutant::LiteralKind::BoolFalse) => vec!["True".into()],
+            MutantKind::Literal(crate::mutant::LiteralKind::Number) => vec![
+                "0".into(),
+                "1".into(),
+                "-1".into(),
+                "float('inf')".into(),
+                "float('-inf')".into(),
+                "float('nan')".into(),
+            ],
             MutantKind::Condition => vec!["True".into(), "False".into()],
             _ => vec![],
         }
@@ -215,6 +227,6 @@ mod tests {
     #[test]
     #[ignore]
     fn debug_tree() {
-        dump_tree("(1, 2, 3)");
+        dump_tree("123");
     }
 }
