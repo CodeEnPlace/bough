@@ -1,0 +1,36 @@
+{
+  "mutant": {
+    "lang": "py",
+    "twig": [
+      "src/a.py"
+    ],
+    "kind": {
+      "Literal": "Number"
+    },
+    "subst_span": {
+      "start": {
+        "line": 0,
+        "col": 23,
+        "byte": 23
+      },
+      "end": {
+        "line": 0,
+        "col": 24,
+        "byte": 24
+      }
+    },
+    "effect_span": {
+      "start": {
+        "line": 0,
+        "col": 23,
+        "byte": 23
+      },
+      "end": {
+        "line": 0,
+        "col": 24,
+        "byte": 24
+      }
+    }
+  },
+  "subst": "float('nan')"
+}

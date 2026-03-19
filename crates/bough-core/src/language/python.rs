@@ -91,7 +91,7 @@ impl LanguageDriver for PythonDriver {
                 let condition = node.child_by_field_name("condition")?;
                 Some((MutantKind::Condition, span_from_node(&condition), span_from_node(node)))
             }
-            "tuple" if node.named_child_count() > 0 => {
+            "generator_expression" | "tuple" if node.named_child_count() > 0 => {
                 let span = span_from_node(node);
                 Some((MutantKind::TupleDecl, span.clone(), span))
             }
@@ -251,6 +251,6 @@ mod tests {
     #[test]
     #[ignore]
     fn debug_tree() {
-        dump_tree("{k: v for k, v in {\"a\": 1}.items()}");
+        dump_tree("list(x for x in [1, 2, 3])");
     }
 }
