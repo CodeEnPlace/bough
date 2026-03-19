@@ -154,8 +154,11 @@ impl LanguageDriver for PythonDriver {
         }
     }
 
-    fn is_context_boundary(&self, _node: &arborium_tree_sitter::Node<'_>) -> bool {
-        false
+    fn is_context_boundary(&self, node: &arborium_tree_sitter::Node<'_>) -> bool {
+        matches!(
+            node.kind(),
+            "function_definition" | "class_definition" | "decorated_definition"
+        )
     }
 }
 
