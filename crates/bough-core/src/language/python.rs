@@ -21,6 +21,7 @@ impl LanguageDriver for PythonDriver {
                 let kind = match op_text {
                     "+" => BinaryOpMutationKind::Add,
                     "-" => BinaryOpMutationKind::Sub,
+                    "*" => BinaryOpMutationKind::Mul,
                     _ => return None,
                 };
                 Some((MutantKind::BinaryOp(kind), span_from_node(&op_node), span_from_node(node)))
@@ -37,6 +38,7 @@ impl LanguageDriver for PythonDriver {
         match kind {
             MutantKind::BinaryOp(BinaryOpMutationKind::Add) => vec!["-".into(), "*".into()],
             MutantKind::BinaryOp(BinaryOpMutationKind::Sub) => vec!["+".into(), "/".into()],
+            MutantKind::BinaryOp(BinaryOpMutationKind::Mul) => vec!["/".into(), "+".into()],
             _ => vec![],
         }
     }
