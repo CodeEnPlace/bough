@@ -1,2 +1,2 @@
 with open("f") as fh:
-    fh.read()
+    pass
