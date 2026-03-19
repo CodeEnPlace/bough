@@ -4,19 +4,17 @@
     "twig": [
       "src/a.py"
     ],
-    "kind": {
-      "Assign": "NormalAssign"
-    },
+    "kind": "Assert",
     "subst_span": {
       "start": {
         "line": 0,
-        "col": 2,
-        "byte": 2
+        "col": 0,
+        "byte": 0
       },
       "end": {
         "line": 0,
-        "col": 3,
-        "byte": 3
+        "col": 11,
+        "byte": 11
       }
     },
     "effect_span": {
@@ -27,10 +25,10 @@
       },
       "end": {
         "line": 0,
-        "col": 5,
-        "byte": 5
+        "col": 11,
+        "byte": 11
       }
     }
   },
-  "subst": "-="
+  "subst": "pass"
 }

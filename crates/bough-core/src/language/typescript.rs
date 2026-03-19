@@ -222,6 +222,7 @@ impl LanguageDriver for TypescriptDriver {
             MutantKind::ArrayDecl(ArrayDeclKind::Instance) => vec!["new Array()".into()],
             MutantKind::DictDecl => vec!["{}".into()],
             MutantKind::TupleDecl => vec![],
+            MutantKind::Assert => vec![],
             MutantKind::UnaryNot => vec![],
             MutantKind::Literal(LiteralKind::BoolTrue) => vec!["false".into()],
             MutantKind::Literal(LiteralKind::BoolFalse) => vec!["true".into()],

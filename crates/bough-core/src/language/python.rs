@@ -127,6 +127,10 @@ impl LanguageDriver for PythonDriver {
                 let span = span_from_node(node);
                 Some((MutantKind::Literal(crate::mutant::LiteralKind::Number), span.clone(), span))
             }
+            "assert_statement" => {
+                let span = span_from_node(node);
+                Some((MutantKind::Assert, span.clone(), span))
+            }
             "not_operator" => {
                 let not_node = (0..node.child_count())
                     .filter_map(|i| node.child(i as u32))
@@ -194,6 +198,7 @@ impl LanguageDriver for PythonDriver {
             MutantKind::DictDecl => vec!["{}".into()],
             MutantKind::Literal(crate::mutant::LiteralKind::BoolTrue) => vec!["False".into()],
             MutantKind::Literal(crate::mutant::LiteralKind::BoolFalse) => vec!["True".into()],
+            MutantKind::Assert => vec!["pass".into()],
             MutantKind::UnaryNot => vec!["".into()],
             MutantKind::Literal(crate::mutant::LiteralKind::String) => vec!["\"\"".into()],
             MutantKind::Literal(crate::mutant::LiteralKind::EmptyString) => vec!["\"bough\"".into()],
@@ -246,6 +251,6 @@ mod tests {
     #[test]
     #[ignore]
     fn debug_tree() {
-        dump_tree("a = True\nx = not a");
+        dump_tree("x = 1\nassert x > 0");
     }
 }

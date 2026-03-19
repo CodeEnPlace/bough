@@ -5,32 +5,32 @@
       "src/a.py"
     ],
     "kind": {
-      "BinaryOp": "Gt"
+      "Literal": "BoolTrue"
     },
     "subst_span": {
       "start": {
-        "line": 1,
-        "col": 9,
-        "byte": 15
+        "line": 0,
+        "col": 7,
+        "byte": 7
       },
       "end": {
-        "line": 1,
-        "col": 10,
-        "byte": 16
+        "line": 0,
+        "col": 11,
+        "byte": 11
       }
     },
     "effect_span": {
       "start": {
-        "line": 1,
+        "line": 0,
         "col": 7,
-        "byte": 13
+        "byte": 7
       },
       "end": {
-        "line": 1,
-        "col": 12,
-        "byte": 18
+        "line": 0,
+        "col": 11,
+        "byte": 11
       }
     }
   },
-  "subst": ">="
+  "subst": "False"
 }
