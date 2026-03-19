@@ -281,23 +281,165 @@ fn collect_md_files(dir: &Path) -> Vec<PathBuf> {
     files
 }
 
+const CORPUS_DIR: &str = "corpus";
+
+#[derive(Deserialize)]
+struct CorpusMutation {
+    mutant: CorpusMutant,
+    subst: String,
+}
+
+#[derive(Deserialize)]
+struct CorpusMutant {
+    kind: serde_json::Value,
+    subst_span: CorpusSpan,
+}
+
+#[derive(Deserialize)]
+struct CorpusSpan {
+    start: CorpusPoint,
+    end: CorpusPoint,
+}
+
+#[derive(Deserialize)]
+struct CorpusPoint {
+    byte: usize,
+}
+
+struct CorpusExample {
+    source: String,
+    span_start: usize,
+    span_end: usize,
+    substitutions: Vec<String>,
+    ratio: f64,
+}
+
+fn kind_key(kind: &serde_json::Value) -> String {
+    match kind {
+        serde_json::Value::String(s) => s.clone(),
+        serde_json::Value::Object(m) => {
+            let (k, v) = m.iter().next().unwrap();
+            format!("{k}:{}", v.as_str().unwrap_or(""))
+        }
+        _ => kind.to_string(),
+    }
+}
+
 fn make_mutation_reference(lang: &bough_core::LanguageId) -> String {
+    use std::collections::BTreeMap;
     use std::fmt::Write;
+
+    let corpus_dir = Path::new(CORPUS_DIR).join(lang.corpus_dir_name());
+    let ext = lang.file_extension();
+
+    let mut best: BTreeMap<String, CorpusExample> = BTreeMap::new();
+
+    if let Ok(case_dirs) = fs::read_dir(&corpus_dir) {
+        for case_entry in case_dirs.flatten() {
+            let case_path = case_entry.path();
+            if !case_path.is_dir() {
+                continue;
+            }
+
+            let base_path = case_path.join(format!("base.{ext}"));
+            let Ok(source) = fs::read_to_string(&base_path) else {
+                continue;
+            };
+            let file_len = source.len();
+            if file_len == 0 {
+                continue;
+            }
+
+            let mut mutations_by_kind: BTreeMap<String, (serde_json::Value, usize, usize, Vec<String>)> = BTreeMap::new();
+
+            let Ok(entries) = fs::read_dir(&case_path) else {
+                continue;
+            };
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if !path.to_string_lossy().ends_with(".mutation.json") {
+                    continue;
+                }
+                let Ok(json) = fs::read_to_string(&path) else {
+                    continue;
+                };
+                let Ok(mutation) = serde_json::from_str::<CorpusMutation>(&json) else {
+                    continue;
+                };
+
+                let key = kind_key(&mutation.mutant.kind);
+                let entry = mutations_by_kind.entry(key).or_insert_with(|| {
+                    (
+                        mutation.mutant.kind.clone(),
+                        mutation.mutant.subst_span.start.byte,
+                        mutation.mutant.subst_span.end.byte,
+                        Vec::new(),
+                    )
+                });
+                entry.3.push(mutation.subst);
+            }
+
+            for (key, (_, span_start, span_end, subs)) in mutations_by_kind {
+                let span_len = span_end.saturating_sub(span_start);
+                let ratio = span_len as f64 / file_len as f64;
+
+                if best.get(&key).is_none_or(|prev| ratio > prev.ratio) {
+                    best.insert(key, CorpusExample {
+                        source: source.clone(),
+                        span_start,
+                        span_end,
+                        substitutions: subs,
+                        ratio,
+                    });
+                }
+            }
+        }
+    }
+
     let mut out = format!("+++\ntitle = \"{}\"\n+++\n\n", lang.display_name());
+
     for kind in bough_core::MutantKind::all_variants() {
         let subs = lang.substitutions(&kind);
         if subs.is_empty() {
             continue;
         }
+
         let _ = writeln!(out, "## {}\n", kind.heading());
-        let _ = writeln!(out, "| Substitution |");
-        let _ = writeln!(out, "|---|");
-        for sub in &subs {
-            let _ = writeln!(out, "| `{}` |", sub);
+
+        let key = kind_to_key(&kind);
+        if let Some(example) = best.get(&key) {
+            let _ = writeln!(out, "```{ext}\n{}\n```\n", example.source.trim_end());
+            for sub in &example.substitutions {
+                let mutated = format!(
+                    "{}{}{}",
+                    &example.source[..example.span_start],
+                    sub,
+                    &example.source[example.span_end..],
+                );
+                let _ = writeln!(out, "```{ext}\n{}\n```\n", mutated.trim_end());
+            }
         }
-        let _ = writeln!(out);
     }
+
     out
+}
+
+fn kind_to_key(kind: &bough_core::MutantKind) -> String {
+    use bough_core::mutant::*;
+    match kind {
+        MutantKind::StatementBlock => "StatementBlock".into(),
+        MutantKind::Condition => "Condition".into(),
+        MutantKind::BinaryOp(k) => format!("BinaryOp:{k:?}"),
+        MutantKind::Assign(k) => format!("Assign:{k:?}"),
+        MutantKind::ArrayDecl(k) => format!("ArrayDecl:{k:?}"),
+        MutantKind::Literal(k) => format!("Literal:{k:?}"),
+        MutantKind::DictDecl => "DictDecl".into(),
+        MutantKind::TupleDecl => "TupleDecl".into(),
+        MutantKind::Assert => "Assert".into(),
+        MutantKind::UnaryNot => "UnaryNot".into(),
+        MutantKind::OptionalChain(k) => format!("OptionalChain:{k:?}"),
+        MutantKind::SwitchCase => "SwitchCase".into(),
+    }
 }
 
 pub fn build() {

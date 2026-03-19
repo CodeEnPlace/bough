@@ -353,6 +353,7 @@ dependencies = [
  "notify",
  "notify-debouncer-mini",
  "serde",
+ "serde_json",
  "tiny_http",
 ]
 

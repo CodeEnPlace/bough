@@ -63,6 +63,18 @@ impl LanguageId {
             LanguageId::Python => "Python",
         }
     }
+
+    pub fn corpus_dir_name(&self) -> &'static str {
+        match self {
+            LanguageId::Javascript => "javascript",
+            LanguageId::Typescript => "typescript",
+            LanguageId::Python => "python",
+        }
+    }
+
+    pub fn file_extension(&self) -> &'static str {
+        self.slug()
+    }
 }
 
 pub use base::Base;
