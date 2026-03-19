@@ -1,5 +1,5 @@
 use super::LanguageDriver;
-use crate::mutant::{BinaryOpMutationKind, MutantKind, Span, span_from_node};
+use crate::mutant::{AssignMutationKind, BinaryOpMutationKind, MutantKind, Span, span_from_node};
 use tracing::trace;
 
 pub(crate) struct PythonDriver;
@@ -53,6 +53,16 @@ impl LanguageDriver for PythonDriver {
                 };
                 Some((MutantKind::BinaryOp(kind), span_from_node(&op_node), span_from_node(node)))
             }
+            "assignment" => {
+                let op_node = (0..node.child_count())
+                    .filter_map(|i| node.child(i as u32))
+                    .find(|c| c.kind() == "=")?;
+                Some((
+                    MutantKind::Assign(AssignMutationKind::NormalAssign),
+                    span_from_node(&op_node),
+                    span_from_node(node),
+                ))
+            }
             "boolean_operator" => {
                 let op_node = node.child_by_field_name("operator")?;
                 let op_text = op_node.utf8_text(file_content).ok()?;
@@ -97,6 +107,7 @@ impl LanguageDriver for PythonDriver {
             MutantKind::BinaryOp(BinaryOpMutationKind::IsNot) => vec!["is".into()],
             MutantKind::BinaryOp(BinaryOpMutationKind::In) => vec!["not in".into()],
             MutantKind::BinaryOp(BinaryOpMutationKind::NotIn) => vec!["in".into()],
+            MutantKind::Assign(AssignMutationKind::NormalAssign) => vec!["+=".into(), "-=".into()],
             _ => vec![],
         }
     }
@@ -134,6 +145,6 @@ mod tests {
     #[test]
     #[ignore]
     fn debug_tree() {
-        dump_tree("a = 1\nb = 2\nc = 3\nx = a < b < c");
+        dump_tree("x = 1");
     }
 }
