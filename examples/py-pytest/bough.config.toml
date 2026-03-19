@@ -1,6 +1,6 @@
 base_root_dir = "."
 
-include = ["./src/__init__.py"]
+include = ["**/*"]
 exclude = []
 
 test.cmd = "uv run pytest"
