@@ -33,6 +33,15 @@ impl LanguageDriver for PythonDriver {
                 };
                 Some((MutantKind::BinaryOp(kind), span_from_node(&op_node), span_from_node(node)))
             }
+            "comparison_operator" => {
+                let op_node = node.child_by_field_name("operators")?;
+                let op_text = op_node.utf8_text(file_content).ok()?;
+                let kind = match op_text {
+                    "==" => BinaryOpMutationKind::Eq,
+                    _ => return None,
+                };
+                Some((MutantKind::BinaryOp(kind), span_from_node(&op_node), span_from_node(node)))
+            }
             "boolean_operator" => {
                 let op_node = node.child_by_field_name("operator")?;
                 let op_text = op_node.utf8_text(file_content).ok()?;
@@ -65,6 +74,7 @@ impl LanguageDriver for PythonDriver {
             MutantKind::BinaryOp(BinaryOpMutationKind::Shr) => vec!["<<".into()],
             MutantKind::BinaryOp(BinaryOpMutationKind::And) => vec!["or".into()],
             MutantKind::BinaryOp(BinaryOpMutationKind::Or) => vec!["and".into()],
+            MutantKind::BinaryOp(BinaryOpMutationKind::Eq) => vec!["!=".into()],
             _ => vec![],
         }
     }
@@ -102,6 +112,6 @@ mod tests {
     #[test]
     #[ignore]
     fn debug_tree() {
-        dump_tree("a = True\nb = False\nx = a and b");
+        dump_tree("a = 1\nb = 2\nx = a == b\ny = a is not None\nz = 1 in [1,2]");
     }
 }
