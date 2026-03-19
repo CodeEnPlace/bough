@@ -1,0 +1,36 @@
+{
+  "mutant": {
+    "lang": "py",
+    "twig": [
+      "src/a.py"
+    ],
+    "kind": {
+      "BinaryOp": "IsNot"
+    },
+    "subst_span": {
+      "start": {
+        "line": 1,
+        "col": 6,
+        "byte": 15
+      },
+      "end": {
+        "line": 1,
+        "col": 12,
+        "byte": 21
+      }
+    },
+    "effect_span": {
+      "start": {
+        "line": 1,
+        "col": 4,
+        "byte": 13
+      },
+      "end": {
+        "line": 1,
+        "col": 17,
+        "byte": 26
+      }
+    }
+  },
+  "subst": "is"
+}

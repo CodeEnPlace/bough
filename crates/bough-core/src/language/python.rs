@@ -46,6 +46,7 @@ impl LanguageDriver for PythonDriver {
                     "<" => BinaryOpMutationKind::Lt,
                     "<=" => BinaryOpMutationKind::Lte,
                     "is" => BinaryOpMutationKind::Is,
+                    "is not" => BinaryOpMutationKind::IsNot,
                     _ => return None,
                 };
                 Some((MutantKind::BinaryOp(kind), span_from_node(&op_node), span_from_node(node)))
@@ -91,6 +92,7 @@ impl LanguageDriver for PythonDriver {
             MutantKind::BinaryOp(BinaryOpMutationKind::Exp) => vec!["*".into(), "//".into()],
             MutantKind::BinaryOp(BinaryOpMutationKind::FloorDiv) => vec!["/".into(), "*".into()],
             MutantKind::BinaryOp(BinaryOpMutationKind::Is) => vec!["is not".into()],
+            MutantKind::BinaryOp(BinaryOpMutationKind::IsNot) => vec!["is".into()],
             _ => vec![],
         }
     }
