@@ -316,6 +316,8 @@ pub enum BinaryOpMutationKind {
     BitXor,
     Div,
     Eq,
+    Exp,
+    FloorDiv,
     Gt,
     Gte,
     Lt,

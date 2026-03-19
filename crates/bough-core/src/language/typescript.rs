@@ -187,6 +187,8 @@ impl LanguageDriver for TypescriptDriver {
             MutantKind::BinaryOp(BinaryOpMutationKind::And) => vec!["||".into()],
             MutantKind::BinaryOp(BinaryOpMutationKind::Or) => vec!["&&".into()],
             MutantKind::BinaryOp(BinaryOpMutationKind::Xor) => vec![],
+            MutantKind::BinaryOp(BinaryOpMutationKind::Exp) => vec![],
+            MutantKind::BinaryOp(BinaryOpMutationKind::FloorDiv) => vec![],
             MutantKind::BinaryOp(BinaryOpMutationKind::Eq) => vec!["!=".into()],
             MutantKind::BinaryOp(BinaryOpMutationKind::StrictEq) => vec!["!==".into()],
             MutantKind::BinaryOp(BinaryOpMutationKind::Ne) => vec!["==".into()],
