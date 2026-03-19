@@ -48,6 +48,7 @@ impl LanguageDriver for PythonDriver {
                     "is" => BinaryOpMutationKind::Is,
                     "is not" => BinaryOpMutationKind::IsNot,
                     "in" => BinaryOpMutationKind::In,
+                    "not in" => BinaryOpMutationKind::NotIn,
                     _ => return None,
                 };
                 Some((MutantKind::BinaryOp(kind), span_from_node(&op_node), span_from_node(node)))
@@ -95,6 +96,7 @@ impl LanguageDriver for PythonDriver {
             MutantKind::BinaryOp(BinaryOpMutationKind::Is) => vec!["is not".into()],
             MutantKind::BinaryOp(BinaryOpMutationKind::IsNot) => vec!["is".into()],
             MutantKind::BinaryOp(BinaryOpMutationKind::In) => vec!["not in".into()],
+            MutantKind::BinaryOp(BinaryOpMutationKind::NotIn) => vec!["in".into()],
             _ => vec![],
         }
     }
@@ -132,6 +134,6 @@ mod tests {
     #[test]
     #[ignore]
     fn debug_tree() {
-        dump_tree("a = 1\nb = 2\nx = a == b\ny = a is not None\nz = 1 in [1,2]");
+        dump_tree("a = [1, 2, 3]\nx = 4 not in a");
     }
 }
