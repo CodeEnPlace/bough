@@ -59,6 +59,7 @@ impl LanguageDriver for PythonDriver {
                 let kind = match op_text {
                     "+=" => AssignMutationKind::AddAssign,
                     "-=" => AssignMutationKind::SubAssign,
+                    "*=" => AssignMutationKind::MulAssign,
                     _ => return None,
                 };
                 Some((MutantKind::Assign(kind), span_from_node(&op_node), span_from_node(node)))
@@ -120,6 +121,7 @@ impl LanguageDriver for PythonDriver {
             MutantKind::Assign(AssignMutationKind::NormalAssign) => vec!["+=".into(), "-=".into()],
             MutantKind::Assign(AssignMutationKind::AddAssign) => vec!["-=".into(), "=".into()],
             MutantKind::Assign(AssignMutationKind::SubAssign) => vec!["+=".into(), "=".into()],
+            MutantKind::Assign(AssignMutationKind::MulAssign) => vec!["/=".into(), "=".into()],
             _ => vec![],
         }
     }
