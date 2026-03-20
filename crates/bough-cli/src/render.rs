@@ -386,6 +386,7 @@ impl Render for LanguageId {
                 LanguageId::Javascript => "js",
                 LanguageId::Typescript => "ts",
                 LanguageId::Python => "py",
+                LanguageId::C => "c",
             }
         )
     }
@@ -397,6 +398,7 @@ impl Render for LanguageId {
                 LanguageId::Javascript => "JavaScript",
                 LanguageId::Typescript => "TypeScript",
                 LanguageId::Python => "Python",
+                LanguageId::C => "C",
             }
         )
     }
@@ -406,6 +408,7 @@ impl Render for LanguageId {
             LanguageId::Javascript => r#""js""#.to_string(),
             LanguageId::Typescript => r#""ts""#.to_string(),
             LanguageId::Python => r#""py""#.to_string(),
+            LanguageId::C => r#""c""#.to_string(),
         }
     }
 }

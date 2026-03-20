@@ -1,0 +1,34 @@
+{
+  "mutant": {
+    "lang": "c",
+    "twig": [
+      "src/a.c"
+    ],
+    "kind": "Condition",
+    "subst_span": {
+      "start": {
+        "line": 0,
+        "col": 15,
+        "byte": 15
+      },
+      "end": {
+        "line": 0,
+        "col": 16,
+        "byte": 16
+      }
+    },
+    "effect_span": {
+      "start": {
+        "line": 0,
+        "col": 11,
+        "byte": 11
+      },
+      "end": {
+        "line": 0,
+        "col": 29,
+        "byte": 29
+      }
+    }
+  },
+  "subst": "0"
+}

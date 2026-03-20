@@ -1,0 +1,36 @@
+{
+  "mutant": {
+    "lang": "c",
+    "twig": [
+      "src/a.c"
+    ],
+    "kind": {
+      "Assign": "ShrAssign"
+    },
+    "subst_span": {
+      "start": {
+        "line": 0,
+        "col": 13,
+        "byte": 13
+      },
+      "end": {
+        "line": 0,
+        "col": 16,
+        "byte": 16
+      }
+    },
+    "effect_span": {
+      "start": {
+        "line": 0,
+        "col": 11,
+        "byte": 11
+      },
+      "end": {
+        "line": 0,
+        "col": 18,
+        "byte": 18
+      }
+    }
+  },
+  "subst": "="
+}

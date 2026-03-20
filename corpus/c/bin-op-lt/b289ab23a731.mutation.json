@@ -1,0 +1,36 @@
+{
+  "mutant": {
+    "lang": "c",
+    "twig": [
+      "src/a.c"
+    ],
+    "kind": {
+      "BinaryOp": "Lt"
+    },
+    "subst_span": {
+      "start": {
+        "line": 0,
+        "col": 10,
+        "byte": 10
+      },
+      "end": {
+        "line": 0,
+        "col": 11,
+        "byte": 11
+      }
+    },
+    "effect_span": {
+      "start": {
+        "line": 0,
+        "col": 8,
+        "byte": 8
+      },
+      "end": {
+        "line": 0,
+        "col": 13,
+        "byte": 13
+      }
+    }
+  },
+  "subst": ">="
+}

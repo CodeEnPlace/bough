@@ -33,6 +33,7 @@ fn main() {
             "javascript" => "bough_core::LanguageId::Javascript",
             "typescript" => "bough_core::LanguageId::Typescript",
             "python" => "bough_core::LanguageId::Python",
+            "c" => "bough_core::LanguageId::C",
             _ => continue,
         };
 
@@ -40,6 +41,7 @@ fn main() {
             "javascript" => "js",
             "typescript" => "ts",
             "python" => "py",
+            "c" => "c",
             _ => continue,
         };
 
