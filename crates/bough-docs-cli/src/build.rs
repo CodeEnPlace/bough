@@ -215,7 +215,7 @@ fn render_page(page: &Page, toc_html: &str) -> String {
             a-f, a-fb, a-fc, a-fd, a-fm {{ color: var(--col-blue); }}
             a-s, a-sc, a-se, a-sp, a-ss, a-st {{ color: var(--col-green); }}
             a-co, a-cn {{ color: var(--col-yellow); }}
-            a-c, a-cb, a-cd, a-ch, a-cs {{ color: var(--col-bright-black); font-style: italic; }}
+            a-c, a-cb, a-cd, a-ch, a-cs {{ color: var(--col-bright-white); font-style: italic; }}
             a-o {{ color: var(--col-orange); }}
             a-t, a-tb, a-td, a-te, a-tf, a-tg, a-tl, a-tq, a-tr, a-tt, a-tu, a-tx {{ color: var(--col-cyan); }}
             a-at {{ color: var(--col-purple); }}
@@ -351,7 +351,10 @@ fn make_mutation_reference(lang: &bough_core::LanguageId) -> String {
                 continue;
             }
 
-            let mut mutations_by_kind: BTreeMap<String, (serde_json::Value, usize, usize, Vec<String>)> = BTreeMap::new();
+            let mut mutations_by_kind: BTreeMap<
+                String,
+                (serde_json::Value, usize, usize, Vec<String>),
+            > = BTreeMap::new();
 
             let Ok(entries) = fs::read_dir(&case_path) else {
                 continue;
@@ -385,13 +388,16 @@ fn make_mutation_reference(lang: &bough_core::LanguageId) -> String {
                 let ratio = span_len as f64 / file_len as f64;
 
                 if best.get(&key).is_none_or(|prev| ratio > prev.ratio) {
-                    best.insert(key, CorpusExample {
-                        source: source.clone(),
-                        span_start,
-                        span_end,
-                        substitutions: subs,
-                        ratio,
-                    });
+                    best.insert(
+                        key,
+                        CorpusExample {
+                            source: source.clone(),
+                            span_start,
+                            span_end,
+                            substitutions: subs,
+                            ratio,
+                        },
+                    );
                 }
             }
         }
@@ -409,7 +415,11 @@ fn make_mutation_reference(lang: &bough_core::LanguageId) -> String {
 
         let key = kind_to_key(&kind);
         if let Some(example) = best.get(&key) {
-            let _ = writeln!(out, "### Before\n\n```{ext}\n{}\n```\n", example.source.trim_end());
+            let _ = writeln!(
+                out,
+                "### Before\n\n```{ext}\n{}\n```\n",
+                example.source.trim_end()
+            );
             let _ = writeln!(out, "### After\n");
             for sub in &example.substitutions {
                 let mutated = format!(
@@ -453,7 +463,8 @@ pub fn build() {
     }
     fs::create_dir_all(out_dir).expect("failed to create output dir");
 
-    fs::write(out_dir.join("layout.css"), include_str!("layout.css")).expect("failed to write layout.css");
+    fs::write(out_dir.join("layout.css"), include_str!("layout.css"))
+        .expect("failed to write layout.css");
 
     let generated_dir = Path::new("target/bough-docs-generated");
     if generated_dir.exists() {

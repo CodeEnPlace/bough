@@ -1,0 +1,38 @@
+# Tells bough what the root of your project is, resolved relative to `bough.config.toml'
+base_root_dir = "."
+
+# Which files are required to run a test
+include =["**/*"]
+
+# Which files should not be coppied over to test workspaces.
+# .gitignore contents are included here automatically, so we don't need to specify `node_modules`
+exclude  = []
+
+# The command to run when setting up a bough workspace to get it ready for testing
+init.cmd = "npm install"
+
+# The command to run the tests
+test.cmd = "npm run test"
+
+# Per language configuration, defines how bough will mutate your project
+[lang.js]
+
+# Which files to run the javascript mutator over
+include = [ "src/**/*.js", "src/**/*.jsx", ]
+
+# Which files NOT to mutate. It doesn't make sense to mutate test files
+exclude = ["**/*.test.*"]
+
+# Specify which parts of the source files not to mutate. This uses tree-sitter's grammar to match nodes
+# Here we're skipping the in-source vitest, but this could also be used to skip comments like // bough-skip
+[lang.js.skip]
+query = [
+  """
+(if_statement
+  condition: (parenthesized_expression
+    (member_expression
+      object: (meta_property)
+      property: (property_identifier) @_prop))
+  (#eq? @_prop "vitest")) @skip
+""",
+]

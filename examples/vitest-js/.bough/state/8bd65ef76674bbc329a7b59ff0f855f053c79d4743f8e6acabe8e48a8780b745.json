@@ -1,0 +1,1 @@
+{"mutation":{"mutant":{"lang":"js","twig":["src/index.js"],"kind":{"BinaryOp":"StrictEq"},"subst_span":{"start":{"line":9,"col":10,"byte":341},"end":{"line":9,"col":13,"byte":344}},"effect_span":{"start":{"line":9,"col":6,"byte":337},"end":{"line":9,"col":15,"byte":346}}},"subst":"!=="},"outcome":{"status":"Missed","at":"2026-03-20T12:08:10Z"}}

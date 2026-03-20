@@ -1,1 +1,1 @@
-{"mutation":{"mutant":{"lang":"js","twig":["src/index.js"],"kind":"Condition","span":{"start":{"line":3,"col":6,"byte":70},"end":{"line":3,"col":15,"byte":79}}},"subst":"false"},"outcome":{"status":"Missed","at":"2026-03-10T14:23:59Z"}}
+{"mutation":{"mutant":{"lang":"js","twig":["src/index.js"],"kind":"Condition","subst_span":{"start":{"line":3,"col":6,"byte":70},"end":{"line":3,"col":15,"byte":79}},"effect_span":{"start":{"line":3,"col":2,"byte":66},"end":{"line":3,"col":60,"byte":124}}},"subst":"false"},"outcome":{"status":"Missed","at":"2026-03-20T12:07:47Z"}}
