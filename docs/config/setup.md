@@ -1,7 +1,17 @@
 +++
-title = "Init"
+title = "Setup"
 idx = 0
 +++
+
+## Installing
+
+While `bough` is still in alpha, the recommended way to install it is directly via `cargo`:
+
+```bash
+cargo install --locked --git https://github.com/CodeEnPlace/bough --bin bough
+```
+
+## Configuring
 
 `bough` reads config formatted as `toml`, `yaml`, and `json`. We will use `toml` for the rest of this tutorial
 
@@ -19,7 +29,7 @@ bough show config
 
 in an uninitialized project to see the full ordered list of config search paths.
 
-## Minimal Config
+### Minimal Config
 
 ```toml
 base_root_dir = "."
