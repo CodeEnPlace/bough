@@ -3,6 +3,8 @@ base_root_dir = "."
 include = ["**/*"]
 exclude = ["target/**/*", "examples/**/*"]
 
+workers = 8
+
 init.cmd = "cargo build"
 test.cmd = "cargo nextest run"
 
