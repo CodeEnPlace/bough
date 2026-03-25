@@ -35,6 +35,7 @@ fn main() {
             "python" => "bough_core::LanguageId::Python",
             "c" => "bough_core::LanguageId::C",
             "go" => "bough_core::LanguageId::Go",
+            "java" => "bough_core::LanguageId::Java",
             _ => continue,
         };
 
@@ -44,6 +45,7 @@ fn main() {
             "python" => "py",
             "c" => "c",
             "go" => "go",
+            "java" => "java",
             _ => continue,
         };
 

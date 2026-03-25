@@ -1,0 +1,36 @@
+{
+  "mutant": {
+    "lang": "java",
+    "twig": [
+      "src/a.java"
+    ],
+    "kind": {
+      "BinaryOp": "Ne"
+    },
+    "subst_span": {
+      "start": {
+        "line": 0,
+        "col": 14,
+        "byte": 14
+      },
+      "end": {
+        "line": 0,
+        "col": 16,
+        "byte": 16
+      }
+    },
+    "effect_span": {
+      "start": {
+        "line": 0,
+        "col": 12,
+        "byte": 12
+      },
+      "end": {
+        "line": 0,
+        "col": 18,
+        "byte": 18
+      }
+    }
+  },
+  "subst": "=="
+}

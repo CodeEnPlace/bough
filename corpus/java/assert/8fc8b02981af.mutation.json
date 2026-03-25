@@ -1,0 +1,36 @@
+{
+  "mutant": {
+    "lang": "java",
+    "twig": [
+      "src/a.java"
+    ],
+    "kind": {
+      "BinaryOp": "Gt"
+    },
+    "subst_span": {
+      "start": {
+        "line": 0,
+        "col": 9,
+        "byte": 9
+      },
+      "end": {
+        "line": 0,
+        "col": 10,
+        "byte": 10
+      }
+    },
+    "effect_span": {
+      "start": {
+        "line": 0,
+        "col": 7,
+        "byte": 7
+      },
+      "end": {
+        "line": 0,
+        "col": 12,
+        "byte": 12
+      }
+    }
+  },
+  "subst": ">="
+}

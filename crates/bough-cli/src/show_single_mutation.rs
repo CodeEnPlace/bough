@@ -56,6 +56,7 @@ impl ShowSingleMutation {
             LanguageId::Python => "python",
             LanguageId::C => "c",
             LanguageId::Go => "go",
+            LanguageId::Java => "java",
         }
     }
 }

@@ -388,6 +388,7 @@ impl Render for LanguageId {
                 LanguageId::Python => "py",
                 LanguageId::C => "c",
                 LanguageId::Go => "go",
+                LanguageId::Java => "java",
             }
         )
     }
@@ -401,6 +402,7 @@ impl Render for LanguageId {
                 LanguageId::Python => "Python",
                 LanguageId::C => "C",
                 LanguageId::Go => "Go",
+                LanguageId::Java => "Java",
             }
         )
     }
@@ -412,6 +414,7 @@ impl Render for LanguageId {
             LanguageId::Python => r#""py""#.to_string(),
             LanguageId::C => r#""c""#.to_string(),
             LanguageId::Go => r#""go""#.to_string(),
+            LanguageId::Java => r#""java""#.to_string(),
         }
     }
 }

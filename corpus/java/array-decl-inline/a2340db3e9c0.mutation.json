@@ -1,0 +1,36 @@
+{
+  "mutant": {
+    "lang": "java",
+    "twig": [
+      "src/a.java"
+    ],
+    "kind": {
+      "ArrayDecl": "Inline"
+    },
+    "subst_span": {
+      "start": {
+        "line": 0,
+        "col": 10,
+        "byte": 10
+      },
+      "end": {
+        "line": 0,
+        "col": 19,
+        "byte": 19
+      }
+    },
+    "effect_span": {
+      "start": {
+        "line": 0,
+        "col": 10,
+        "byte": 10
+      },
+      "end": {
+        "line": 0,
+        "col": 19,
+        "byte": 19
+      }
+    }
+  },
+  "subst": "{}"
+}

@@ -1,0 +1,36 @@
+{
+  "mutant": {
+    "lang": "java",
+    "twig": [
+      "src/a.java"
+    ],
+    "kind": {
+      "Literal": "EmptyString"
+    },
+    "subst_span": {
+      "start": {
+        "line": 0,
+        "col": 11,
+        "byte": 11
+      },
+      "end": {
+        "line": 0,
+        "col": 13,
+        "byte": 13
+      }
+    },
+    "effect_span": {
+      "start": {
+        "line": 0,
+        "col": 11,
+        "byte": 11
+      },
+      "end": {
+        "line": 0,
+        "col": 13,
+        "byte": 13
+      }
+    }
+  },
+  "subst": "\"bough\""
+}
