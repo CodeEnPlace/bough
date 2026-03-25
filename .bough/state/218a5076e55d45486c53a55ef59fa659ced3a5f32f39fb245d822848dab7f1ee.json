@@ -1,0 +1,1 @@
+{"mutation":{"mutant":{"lang":"rs","twig":["crates/bough-cli/src/find_best_mutations.rs"],"kind":{"Literal":"BoolFalse"},"subst_span":{"start":{"line":18,"col":31,"byte":722},"end":{"line":18,"col":36,"byte":727}},"effect_span":{"start":{"line":18,"col":31,"byte":722},"end":{"line":18,"col":36,"byte":727}}},"subst":"true"},"outcome":null}

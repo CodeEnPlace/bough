@@ -1,0 +1,1 @@
+{"mutation":{"mutant":{"lang":"rs","twig":["crates/bough-core/src/language/javascript.rs"],"kind":"MatchPattern","subst_span":{"start":{"line":250,"col":12,"byte":13465},"end":{"line":250,"col":59,"byte":13512}},"effect_span":{"start":{"line":250,"col":12,"byte":13465},"end":{"line":250,"col":70,"byte":13523}}},"subst":"_"},"outcome":null}

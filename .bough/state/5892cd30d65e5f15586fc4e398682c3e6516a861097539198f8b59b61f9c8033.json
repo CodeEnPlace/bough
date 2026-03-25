@@ -1,0 +1,1 @@
+{"mutation":{"mutant":{"lang":"rs","twig":["crates/bough-typed-hash/src/unvalidated.rs"],"kind":{"BinaryOp":"Eq"},"subst_span":{"start":{"line":46,"col":56,"byte":1644},"end":{"line":46,"col":58,"byte":1646}},"effect_span":{"start":{"line":46,"col":43,"byte":1631},"end":{"line":46,"col":76,"byte":1664}}},"subst":"!="},"outcome":null}

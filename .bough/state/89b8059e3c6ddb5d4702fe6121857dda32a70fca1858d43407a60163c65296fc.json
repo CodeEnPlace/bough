@@ -1,0 +1,1 @@
+{"mutation":{"mutant":{"lang":"rs","twig":["crates/bough-core/src/language/javascript.rs"],"kind":{"BinaryOp":"Eq"},"subst_span":{"start":{"line":130,"col":53,"byte":6101},"end":{"line":130,"col":55,"byte":6103}},"effect_span":{"start":{"line":130,"col":48,"byte":6096},"end":{"line":130,"col":60,"byte":6108}}},"subst":"!="},"outcome":null}

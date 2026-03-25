@@ -1,0 +1,1 @@
+{"mutation":{"mutant":{"lang":"rs","twig":["crates/bough-core/src/facet_disk_store.rs"],"kind":{"Literal":"String"},"subst_span":{"start":{"line":68,"col":51,"byte":2239},"end":{"line":68,"col":77,"byte":2265}},"effect_span":{"start":{"line":68,"col":51,"byte":2239},"end":{"line":68,"col":77,"byte":2265}}},"subst":"\"\""},"outcome":null}

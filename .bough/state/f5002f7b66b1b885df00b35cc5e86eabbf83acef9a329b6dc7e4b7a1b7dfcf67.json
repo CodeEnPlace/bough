@@ -1,0 +1,1 @@
+{"mutation":{"mutant":{"lang":"rs","twig":["crates/bough-core/src/language/typescript.rs"],"kind":"TupleDecl","subst_span":{"start":{"line":60,"col":21,"byte":2627},"end":{"line":60,"col":97,"byte":2703}},"effect_span":{"start":{"line":60,"col":21,"byte":2627},"end":{"line":60,"col":97,"byte":2703}}},"subst":"()"},"outcome":null}

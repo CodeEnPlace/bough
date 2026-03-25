@@ -1,1 +1,0 @@
-{"mutation":{"mutant":{"lang":"js","twig":["examples/vitest-complex/src/validators/username.js"],"kind":"StatementBlock","span":{"start":{"line":12,"col":25,"byte":437},"end":{"line":14,"col":3,"byte":533}}},"subst":"{}"},"outcome":null}

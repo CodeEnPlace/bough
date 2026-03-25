@@ -1,0 +1,1 @@
+{"mutation":{"mutant":{"lang":"rs","twig":["crates/bough-core/src/language/rs.rs"],"kind":{"Literal":"String"},"subst_span":{"start":{"line":287,"col":85,"byte":13388},"end":{"line":287,"col":89,"byte":13392}},"effect_span":{"start":{"line":287,"col":85,"byte":13388},"end":{"line":287,"col":89,"byte":13392}}},"subst":"\"\""},"outcome":null}

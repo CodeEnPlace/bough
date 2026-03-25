@@ -1,1 +1,0 @@
-{"mutation":{"mutant":{"lang":"js","twig":["examples/vitest-js/get-test-ids.js"],"kind":"Condition","span":{"start":{"line":17,"col":5,"byte":495},"end":{"line":17,"col":32,"byte":522}}},"subst":"true"},"outcome":null}
