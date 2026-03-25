@@ -1,0 +1,36 @@
+{
+  "mutant": {
+    "lang": "cs",
+    "twig": [
+      "src/a.cs"
+    ],
+    "kind": {
+      "Literal": "Number"
+    },
+    "subst_span": {
+      "start": {
+        "line": 0,
+        "col": 20,
+        "byte": 20
+      },
+      "end": {
+        "line": 0,
+        "col": 22,
+        "byte": 22
+      }
+    },
+    "effect_span": {
+      "start": {
+        "line": 0,
+        "col": 20,
+        "byte": 20
+      },
+      "end": {
+        "line": 0,
+        "col": 22,
+        "byte": 22
+      }
+    }
+  },
+  "subst": "0"
+}

@@ -57,6 +57,7 @@ impl ShowSingleMutation {
             LanguageId::C => "c",
             LanguageId::Go => "go",
             LanguageId::Java => "java",
+            LanguageId::CSharp => "csharp",
         }
     }
 }

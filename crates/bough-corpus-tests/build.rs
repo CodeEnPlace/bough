@@ -36,6 +36,7 @@ fn main() {
             "c" => "bough_core::LanguageId::C",
             "go" => "bough_core::LanguageId::Go",
             "java" => "bough_core::LanguageId::Java",
+            "c-sharp" => "bough_core::LanguageId::CSharp",
             _ => continue,
         };
 
@@ -46,6 +47,7 @@ fn main() {
             "c" => "c",
             "go" => "go",
             "java" => "java",
+            "c-sharp" => "cs",
             _ => continue,
         };
 
@@ -81,7 +83,8 @@ fn main() {
     }
 
     for (lang, cases) in &modules {
-        writeln!(out, "mod {lang} {{").unwrap();
+        let mod_name = lang.replace('-', "_");
+        writeln!(out, "mod {mod_name} {{").unwrap();
         for (fn_name, case_path, lang_id, ext) in cases {
             writeln!(out, "    #[test]").unwrap();
             writeln!(out, "    fn {fn_name}() {{").unwrap();
