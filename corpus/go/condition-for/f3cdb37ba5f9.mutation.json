@@ -1,0 +1,36 @@
+{
+  "mutant": {
+    "lang": "go",
+    "twig": [
+      "src/a.go"
+    ],
+    "kind": {
+      "BinaryOp": "Lt"
+    },
+    "subst_span": {
+      "start": {
+        "line": 0,
+        "col": 36,
+        "byte": 36
+      },
+      "end": {
+        "line": 0,
+        "col": 37,
+        "byte": 37
+      }
+    },
+    "effect_span": {
+      "start": {
+        "line": 0,
+        "col": 34,
+        "byte": 34
+      },
+      "end": {
+        "line": 0,
+        "col": 40,
+        "byte": 40
+      }
+    }
+  },
+  "subst": ">="
+}

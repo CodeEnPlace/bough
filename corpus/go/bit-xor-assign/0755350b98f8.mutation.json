@@ -1,0 +1,36 @@
+{
+  "mutant": {
+    "lang": "go",
+    "twig": [
+      "src/a.go"
+    ],
+    "kind": {
+      "Literal": "Number"
+    },
+    "subst_span": {
+      "start": {
+        "line": 0,
+        "col": 27,
+        "byte": 27
+      },
+      "end": {
+        "line": 0,
+        "col": 28,
+        "byte": 28
+      }
+    },
+    "effect_span": {
+      "start": {
+        "line": 0,
+        "col": 27,
+        "byte": 27
+      },
+      "end": {
+        "line": 0,
+        "col": 28,
+        "byte": 28
+      }
+    }
+  },
+  "subst": "0"
+}

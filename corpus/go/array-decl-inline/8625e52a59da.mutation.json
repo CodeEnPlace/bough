@@ -1,0 +1,36 @@
+{
+  "mutant": {
+    "lang": "go",
+    "twig": [
+      "src/a.go"
+    ],
+    "kind": {
+      "ArrayDecl": "Inline"
+    },
+    "subst_span": {
+      "start": {
+        "line": 0,
+        "col": 24,
+        "byte": 24
+      },
+      "end": {
+        "line": 0,
+        "col": 33,
+        "byte": 33
+      }
+    },
+    "effect_span": {
+      "start": {
+        "line": 0,
+        "col": 19,
+        "byte": 19
+      },
+      "end": {
+        "line": 0,
+        "col": 33,
+        "byte": 33
+      }
+    }
+  },
+  "subst": "{}"
+}

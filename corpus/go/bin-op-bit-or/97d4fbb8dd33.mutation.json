@@ -1,0 +1,36 @@
+{
+  "mutant": {
+    "lang": "go",
+    "twig": [
+      "src/a.go"
+    ],
+    "kind": {
+      "BinaryOp": "BitOr"
+    },
+    "subst_span": {
+      "start": {
+        "line": 0,
+        "col": 21,
+        "byte": 21
+      },
+      "end": {
+        "line": 0,
+        "col": 22,
+        "byte": 22
+      }
+    },
+    "effect_span": {
+      "start": {
+        "line": 0,
+        "col": 19,
+        "byte": 19
+      },
+      "end": {
+        "line": 0,
+        "col": 24,
+        "byte": 24
+      }
+    }
+  },
+  "subst": "&"
+}

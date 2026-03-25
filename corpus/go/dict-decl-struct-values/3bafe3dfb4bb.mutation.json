@@ -1,0 +1,34 @@
+{
+  "mutant": {
+    "lang": "go",
+    "twig": [
+      "src/a.go"
+    ],
+    "kind": "DictDecl",
+    "subst_span": {
+      "start": {
+        "line": 0,
+        "col": 55,
+        "byte": 55
+      },
+      "end": {
+        "line": 0,
+        "col": 69,
+        "byte": 69
+      }
+    },
+    "effect_span": {
+      "start": {
+        "line": 0,
+        "col": 43,
+        "byte": 43
+      },
+      "end": {
+        "line": 0,
+        "col": 69,
+        "byte": 69
+      }
+    }
+  },
+  "subst": "{}"
+}

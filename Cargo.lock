@@ -56,6 +56,7 @@ dependencies = [
  "arborium-bash",
  "arborium-c",
  "arborium-css",
+ "arborium-go",
  "arborium-highlight",
  "arborium-html",
  "arborium-javascript",
@@ -96,6 +97,17 @@ name = "arborium-css"
 version = "2.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "356459e8f05e0d34f11130105a8b41b9ca8d50026d8491de9f8943e46fe4f4d8"
+dependencies = [
+ "arborium-sysroot",
+ "cc",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "arborium-go"
+version = "2.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9ca870be2733159145abdb43c3b265de85f84efb459ca7f612593c6b2cbee48e"
 dependencies = [
  "arborium-sysroot",
  "cc",
@@ -322,6 +334,7 @@ name = "bough-core"
 version = "0.0.2"
 dependencies = [
  "arborium-c",
+ "arborium-go",
  "arborium-javascript",
  "arborium-python",
  "arborium-tree-sitter",

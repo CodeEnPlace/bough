@@ -1,9 +1,11 @@
 mod c;
+mod go;
 mod javascript;
 mod python;
 mod typescript;
 
 pub(crate) use c::CDriver;
+pub(crate) use go::GoDriver;
 pub(crate) use javascript::JavascriptDriver;
 pub(crate) use python::PythonDriver;
 pub(crate) use typescript::TypescriptDriver;
@@ -31,5 +33,6 @@ pub(crate) fn driver_for_lang(lang: crate::LanguageId) -> Box<dyn LanguageDriver
         crate::LanguageId::Typescript => Box::new(TypescriptDriver),
         crate::LanguageId::Python => Box::new(PythonDriver),
         crate::LanguageId::C => Box::new(CDriver),
+        crate::LanguageId::Go => Box::new(GoDriver),
     }
 }

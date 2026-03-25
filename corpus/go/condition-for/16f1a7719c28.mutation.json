@@ -1,0 +1,34 @@
+{
+  "mutant": {
+    "lang": "go",
+    "twig": [
+      "src/a.go"
+    ],
+    "kind": "StatementBlock",
+    "subst_span": {
+      "start": {
+        "line": 0,
+        "col": 46,
+        "byte": 46
+      },
+      "end": {
+        "line": 0,
+        "col": 49,
+        "byte": 49
+      }
+    },
+    "effect_span": {
+      "start": {
+        "line": 0,
+        "col": 46,
+        "byte": 46
+      },
+      "end": {
+        "line": 0,
+        "col": 49,
+        "byte": 49
+      }
+    }
+  },
+  "subst": "{}"
+}

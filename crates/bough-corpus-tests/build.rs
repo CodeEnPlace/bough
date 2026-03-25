@@ -34,6 +34,7 @@ fn main() {
             "typescript" => "bough_core::LanguageId::Typescript",
             "python" => "bough_core::LanguageId::Python",
             "c" => "bough_core::LanguageId::C",
+            "go" => "bough_core::LanguageId::Go",
             _ => continue,
         };
 
@@ -42,6 +43,7 @@ fn main() {
             "typescript" => "ts",
             "python" => "py",
             "c" => "c",
+            "go" => "go",
             _ => continue,
         };
 

@@ -1,0 +1,36 @@
+{
+  "mutant": {
+    "lang": "go",
+    "twig": [
+      "src/a.go"
+    ],
+    "kind": {
+      "Literal": "EmptyString"
+    },
+    "subst_span": {
+      "start": {
+        "line": 0,
+        "col": 46,
+        "byte": 46
+      },
+      "end": {
+        "line": 0,
+        "col": 48,
+        "byte": 48
+      }
+    },
+    "effect_span": {
+      "start": {
+        "line": 0,
+        "col": 46,
+        "byte": 46
+      },
+      "end": {
+        "line": 0,
+        "col": 48,
+        "byte": 48
+      }
+    }
+  },
+  "subst": "\"bough\""
+}
