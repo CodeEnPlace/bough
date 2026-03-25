@@ -390,6 +390,7 @@ impl Render for LanguageId {
                 LanguageId::Go => "go",
                 LanguageId::Java => "java",
                 LanguageId::CSharp => "cs",
+                LanguageId::Rust => "rs",
             }
         )
     }
@@ -405,6 +406,7 @@ impl Render for LanguageId {
                 LanguageId::Go => "Go",
                 LanguageId::Java => "Java",
                 LanguageId::CSharp => "C#",
+                LanguageId::Rust => "Rust",
             }
         )
     }
@@ -418,6 +420,7 @@ impl Render for LanguageId {
             LanguageId::Go => r#""go""#.to_string(),
             LanguageId::Java => r#""java""#.to_string(),
             LanguageId::CSharp => r#""cs""#.to_string(),
+            LanguageId::Rust => r#""rs""#.to_string(),
         }
     }
 }

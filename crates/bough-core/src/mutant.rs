@@ -385,6 +385,14 @@ pub enum OptionalChainKind {
 
 #[derive(Debug, Clone, PartialEq, Eq, bough_typed_hash::HashInto, Hash, facet::Facet)]
 #[repr(u8)]
+pub enum RangeKind {
+    Exclusive,
+    Inclusive,
+    From,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, bough_typed_hash::HashInto, Hash, facet::Facet)]
+#[repr(u8)]
 pub enum MutantKind {
     StatementBlock,
     Condition,
@@ -398,6 +406,8 @@ pub enum MutantKind {
     UnaryNot,
     OptionalChain(OptionalChainKind),
     SwitchCase,
+    Range(RangeKind),
+    MatchPattern,
 }
 
 impl MutantKind {
@@ -468,6 +478,10 @@ impl MutantKind {
             MutantKind::OptionalChain(Indexed),
             MutantKind::OptionalChain(FnCall),
             MutantKind::SwitchCase,
+            MutantKind::Range(RangeKind::Exclusive),
+            MutantKind::Range(RangeKind::Inclusive),
+            MutantKind::Range(RangeKind::From),
+            MutantKind::MatchPattern,
         ]
     }
 
@@ -485,6 +499,8 @@ impl MutantKind {
             MutantKind::UnaryNot => "UnaryNot".into(),
             MutantKind::OptionalChain(k) => format!("OptionalChain - {k:?}"),
             MutantKind::SwitchCase => "SwitchCase".into(),
+            MutantKind::Range(k) => format!("Range - {k:?}"),
+            MutantKind::MatchPattern => "MatchPattern".into(),
         }
     }
 }

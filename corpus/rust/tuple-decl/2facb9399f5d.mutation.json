@@ -1,0 +1,34 @@
+{
+  "mutant": {
+    "lang": "rs",
+    "twig": [
+      "src/a.rs"
+    ],
+    "kind": "TupleDecl",
+    "subst_span": {
+      "start": {
+        "line": 0,
+        "col": 8,
+        "byte": 8
+      },
+      "end": {
+        "line": 0,
+        "col": 17,
+        "byte": 17
+      }
+    },
+    "effect_span": {
+      "start": {
+        "line": 0,
+        "col": 8,
+        "byte": 8
+      },
+      "end": {
+        "line": 0,
+        "col": 17,
+        "byte": 17
+      }
+    }
+  },
+  "subst": "()"
+}

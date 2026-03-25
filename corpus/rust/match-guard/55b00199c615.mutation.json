@@ -1,0 +1,36 @@
+{
+  "mutant": {
+    "lang": "rs",
+    "twig": [
+      "src/a.rs"
+    ],
+    "kind": {
+      "BinaryOp": "Gt"
+    },
+    "subst_span": {
+      "start": {
+        "line": 1,
+        "col": 11,
+        "byte": 21
+      },
+      "end": {
+        "line": 1,
+        "col": 12,
+        "byte": 22
+      }
+    },
+    "effect_span": {
+      "start": {
+        "line": 1,
+        "col": 9,
+        "byte": 19
+      },
+      "end": {
+        "line": 1,
+        "col": 14,
+        "byte": 24
+      }
+    }
+  },
+  "subst": "<="
+}

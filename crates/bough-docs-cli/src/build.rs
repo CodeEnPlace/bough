@@ -451,6 +451,8 @@ fn kind_to_key(kind: &bough_core::MutantKind) -> String {
         MutantKind::UnaryNot => "UnaryNot".into(),
         MutantKind::OptionalChain(k) => format!("OptionalChain:{k:?}"),
         MutantKind::SwitchCase => "SwitchCase".into(),
+        MutantKind::Range(k) => format!("Range:{k:?}"),
+        MutantKind::MatchPattern => "MatchPattern".into(),
     }
 }
 

@@ -248,6 +248,7 @@ impl LanguageDriver for JavascriptDriver {
             MutantKind::OptionalChain(OptionalChainKind::Indexed) => vec!["".into()],
             MutantKind::OptionalChain(OptionalChainKind::FnCall) => vec!["".into()],
             MutantKind::SwitchCase => vec!["".into()],
+            MutantKind::Range(_) | MutantKind::MatchPattern => vec![],
         }
     }
 }

@@ -363,6 +363,7 @@ dependencies = [
  "arborium-java",
  "arborium-javascript",
  "arborium-python",
+ "arborium-rust",
  "arborium-tree-sitter",
  "arborium-typescript",
  "bough-typed-hash",

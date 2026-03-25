@@ -1,0 +1,36 @@
+{
+  "mutant": {
+    "lang": "rs",
+    "twig": [
+      "src/a.rs"
+    ],
+    "kind": {
+      "Literal": "Number"
+    },
+    "subst_span": {
+      "start": {
+        "line": 2,
+        "col": 9,
+        "byte": 40
+      },
+      "end": {
+        "line": 2,
+        "col": 10,
+        "byte": 41
+      }
+    },
+    "effect_span": {
+      "start": {
+        "line": 2,
+        "col": 9,
+        "byte": 40
+      },
+      "end": {
+        "line": 2,
+        "col": 10,
+        "byte": 41
+      }
+    }
+  },
+  "subst": "1"
+}

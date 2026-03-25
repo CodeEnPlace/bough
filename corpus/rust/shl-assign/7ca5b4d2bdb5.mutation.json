@@ -1,0 +1,36 @@
+{
+  "mutant": {
+    "lang": "rs",
+    "twig": [
+      "src/a.rs"
+    ],
+    "kind": {
+      "Assign": "ShlAssign"
+    },
+    "subst_span": {
+      "start": {
+        "line": 0,
+        "col": 2,
+        "byte": 2
+      },
+      "end": {
+        "line": 0,
+        "col": 5,
+        "byte": 5
+      }
+    },
+    "effect_span": {
+      "start": {
+        "line": 0,
+        "col": 0,
+        "byte": 0
+      },
+      "end": {
+        "line": 0,
+        "col": 7,
+        "byte": 7
+      }
+    }
+  },
+  "subst": ">>="
+}

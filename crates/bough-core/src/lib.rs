@@ -43,6 +43,8 @@ pub enum LanguageId {
     Java,
     #[facet(rename = "cs")]
     CSharp,
+    #[facet(rename = "rs")]
+    Rust,
 }
 
 impl LanguageId {
@@ -54,6 +56,7 @@ impl LanguageId {
         LanguageId::Go,
         LanguageId::Java,
         LanguageId::CSharp,
+        LanguageId::Rust,
     ];
 
     pub fn substitutions(&self, kind: &MutantKind) -> Vec<String> {
@@ -69,6 +72,7 @@ impl LanguageId {
             LanguageId::Go => "go",
             LanguageId::Java => "java",
             LanguageId::CSharp => "cs",
+            LanguageId::Rust => "rs",
         }
     }
 
@@ -81,6 +85,7 @@ impl LanguageId {
             LanguageId::Go => "Go",
             LanguageId::Java => "Java",
             LanguageId::CSharp => "C#",
+            LanguageId::Rust => "Rust",
         }
     }
 
@@ -93,6 +98,7 @@ impl LanguageId {
             LanguageId::Go => "go",
             LanguageId::Java => "java",
             LanguageId::CSharp => "c-sharp",
+            LanguageId::Rust => "rust",
         }
     }
 

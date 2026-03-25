@@ -37,6 +37,7 @@ fn main() {
             "go" => "bough_core::LanguageId::Go",
             "java" => "bough_core::LanguageId::Java",
             "c-sharp" => "bough_core::LanguageId::CSharp",
+            "rust" => "bough_core::LanguageId::Rust",
             _ => continue,
         };
 
@@ -48,6 +49,7 @@ fn main() {
             "go" => "go",
             "java" => "java",
             "c-sharp" => "cs",
+            "rust" => "rs",
             _ => continue,
         };
 
