@@ -12,6 +12,7 @@ mod session;
 mod state;
 mod test_id;
 mod twig;
+mod uncovered;
 mod workspace;
 
 #[derive(
