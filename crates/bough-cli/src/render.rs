@@ -486,69 +486,114 @@ impl Render for BenchmarkTimesInBase {
     }
 }
 
+fn phase_stdio_markdown_suffix(outcome: &PhaseOutcome) -> String {
+    let stdout = String::from_utf8_lossy(outcome.stdout());
+    let stderr = String::from_utf8_lossy(outcome.stderr());
+    let mut out = String::new();
+    if !stdout.is_empty() {
+        out.push_str(&format!("\n\n## stdout\n\n```\n{stdout}\n```"));
+    }
+    if !stderr.is_empty() {
+        out.push_str(&format!("\n\n## stderr\n\n```\n{stderr}\n```"));
+    }
+    out
+}
+
+fn phase_stdio_verbose_suffix(outcome: &PhaseOutcome) -> String {
+    let stdout = String::from_utf8_lossy(outcome.stdout());
+    let stderr = String::from_utf8_lossy(outcome.stderr());
+    let mut out = String::new();
+    if !stdout.is_empty() {
+        out.push_str(&format!("\n\n{TITLE}stdout{RESET}\n{stdout}"));
+    }
+    if !stderr.is_empty() {
+        out.push_str(&format!("\n\n{TITLE}stderr{RESET}\n{stderr}"));
+    }
+    out
+}
+
+fn phase_stdio_json_suffix(outcome: &PhaseOutcome) -> String {
+    let stdout = String::from_utf8_lossy(outcome.stdout());
+    let stderr = String::from_utf8_lossy(outcome.stderr());
+    format!(
+        r#","stdout":"{}","stderr":"{}""#,
+        stdout
+            .replace('\\', "\\\\")
+            .replace('"', "\\\"")
+            .replace('\n', "\\n"),
+        stderr
+            .replace('\\', "\\\\")
+            .replace('"', "\\\"")
+            .replace('\n', "\\n"),
+    )
+}
+
 impl Render for PhaseOutcome {
     fn markdown(&self) -> String {
-        let stdout = String::from_utf8_lossy(self.stdout());
-        let stderr = String::from_utf8_lossy(self.stderr());
-        let mut out = format!(
-            "- Exit: {}\n- Duration: {:.2}s\n- Timed out: {}",
-            self.exit_code(),
-            self.duration().as_secs_f64(),
-            self.timed_out(),
-        );
-        if !stdout.is_empty() {
-            out.push_str(&format!("\n\n## stdout\n\n```\n{stdout}\n```"));
-        }
-        if !stderr.is_empty() {
-            out.push_str(&format!("\n\n## stderr\n\n```\n{stderr}\n```"));
-        }
-        out
+        let header = match self {
+            PhaseOutcome::Completed {
+                exit_code,
+                duration,
+                ..
+            } => format!(
+                "- Exit: {exit_code}\n- Duration: {:.2}s",
+                duration.as_secs_f64(),
+            ),
+            PhaseOutcome::TimedOut { duration, .. } => format!(
+                "- Timed out after {:.2}s",
+                duration.as_secs_f64(),
+            ),
+        };
+        format!("{header}{}", phase_stdio_markdown_suffix(self))
     }
 
     fn terse(&self) -> String {
-        format!(
-            "exit={} {:.2}s{}",
-            self.exit_code(),
-            self.duration().as_secs_f64(),
-            if self.timed_out() { " TIMED_OUT" } else { "" },
-        )
+        match self {
+            PhaseOutcome::Completed {
+                exit_code,
+                duration,
+                ..
+            } => format!("exit={exit_code} {:.2}s", duration.as_secs_f64()),
+            PhaseOutcome::TimedOut { duration, .. } => {
+                format!("TIMED_OUT {:.2}s", duration.as_secs_f64())
+            }
+        }
     }
 
     fn verbose(&self) -> String {
-        let stdout = String::from_utf8_lossy(self.stdout());
-        let stderr = String::from_utf8_lossy(self.stderr());
-        let mut out = format!(
-            "Exit: {}\nDuration: {:.2}s\nTimed out: {}",
-            self.exit_code(),
-            self.duration().as_secs_f64(),
-            self.timed_out(),
-        );
-        if !stdout.is_empty() {
-            out.push_str(&format!("\n\n{TITLE}stdout{RESET}\n{stdout}"));
-        }
-        if !stderr.is_empty() {
-            out.push_str(&format!("\n\n{TITLE}stderr{RESET}\n{stderr}"));
-        }
-        out
+        let header = match self {
+            PhaseOutcome::Completed {
+                exit_code,
+                duration,
+                ..
+            } => format!(
+                "Exit: {exit_code}\nDuration: {:.2}s",
+                duration.as_secs_f64(),
+            ),
+            PhaseOutcome::TimedOut { duration, .. } => format!(
+                "Timed out after {:.2}s",
+                duration.as_secs_f64(),
+            ),
+        };
+        format!("{header}{}", phase_stdio_verbose_suffix(self))
     }
 
     fn json(&self) -> String {
-        let stdout = String::from_utf8_lossy(self.stdout());
-        let stderr = String::from_utf8_lossy(self.stderr());
-        format!(
-            r#"{{"exit_code":{},"duration_secs":{:.3},"timed_out":{},"stdout":"{}","stderr":"{}"}}"#,
-            self.exit_code(),
-            self.duration().as_secs_f64(),
-            self.timed_out(),
-            stdout
-                .replace('\\', "\\\\")
-                .replace('"', "\\\"")
-                .replace('\n', "\\n"),
-            stderr
-                .replace('\\', "\\\\")
-                .replace('"', "\\\"")
-                .replace('\n', "\\n"),
-        )
+        let body = match self {
+            PhaseOutcome::Completed {
+                exit_code,
+                duration,
+                ..
+            } => format!(
+                r#"{{"status":"completed","exit_code":{exit_code},"duration_secs":{:.3}"#,
+                duration.as_secs_f64(),
+            ),
+            PhaseOutcome::TimedOut { duration, .. } => format!(
+                r#"{{"status":"timed_out","duration_secs":{:.3}"#,
+                duration.as_secs_f64(),
+            ),
+        };
+        format!("{body}{}}}", phase_stdio_json_suffix(self))
     }
 }
 
@@ -981,13 +1026,12 @@ mod tests {
     }
 
     fn make_phase_outcome() -> PhaseOutcome {
-        PhaseOutcome::new_for_test(
-            0,
-            std::time::Duration::from_millis(1234),
-            false,
-            b"hello\n".to_vec(),
-            vec![],
-        )
+        PhaseOutcome::Completed {
+            exit_code: 0,
+            duration: std::time::Duration::from_millis(1234),
+            stdout: b"hello\n".to_vec(),
+            stderr: vec![],
+        }
     }
 
     #[test]
@@ -1016,6 +1060,6 @@ mod tests {
     fn phase_outcome_json() {
         let out = make_phase_outcome().json();
         assert!(out.contains(r#""exit_code":0"#));
-        assert!(out.contains(r#""timed_out":false"#));
+        assert!(out.contains(r#""status":"completed""#));
     }
 }

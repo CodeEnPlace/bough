@@ -58,7 +58,7 @@ mod tests {
     fn fixture() -> StepResetWorkspace {
         StepResetWorkspace {
             workspace_id: WorkspaceId::parse("aaaa1111").unwrap(),
-            outcome: PhaseOutcome::new_for_test(0, std::time::Duration::from_secs(1), false, vec![], vec![]),
+            outcome: PhaseOutcome::Completed { exit_code: 0, duration: std::time::Duration::from_secs(1), stdout: vec![], stderr: vec![] },
         }
     }
 

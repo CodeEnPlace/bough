@@ -14,17 +14,24 @@ pub struct StepTestMutation {
 impl StepTestMutation {
     pub fn run(workspace: &bough_core::Workspace, config: &Config, mutation: &bough_core::Mutation, timeout: Option<std::time::Duration>) -> Result<Box<Self>, bough_core::PhaseError> {
         let outcome = workspace.run_test(config, timeout)?;
-        let (status_value, status_str) = if outcome.exit_code() != 0 {
-            (bough_core::Status::Caught, "caught")
-        } else {
-            (bough_core::Status::Missed, "missed")
+        let duration = outcome.duration();
+        let (status_value, status_str) = match outcome {
+            bough_core::PhaseOutcome::TimedOut { .. } => {
+                (bough_core::Status::Timeout, "timeout")
+            }
+            bough_core::PhaseOutcome::Completed { exit_code, .. } if exit_code != 0 => {
+                (bough_core::Status::Caught, "caught")
+            }
+            bough_core::PhaseOutcome::Completed { .. } => {
+                (bough_core::Status::Missed, "missed")
+            }
         };
         Ok(Box::new(Self {
             workspace_id: workspace.id().clone(),
             mutation_hash: mutation.hash().expect("hash").to_string(),
             status: status_str,
             status_value,
-            duration: outcome.duration(),
+            duration,
         }))
     }
 }

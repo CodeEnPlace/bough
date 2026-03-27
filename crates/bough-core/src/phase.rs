@@ -66,29 +66,46 @@ pub struct Phase<'a, R: Root> {
     pwd: Twig,
     env: HashMap<String, String>,
     cmd: Vec<String>,
-    timeout_absolute: Option<Duration>,
-    timeout_relative: Option<f64>,
+    timeout: Option<Duration>,
 }
 
-impl<'a, R: Root> Phase<'a, R> {
+impl<'a> Phase<'a, crate::base::Base> {
     pub fn new(
-        root: &'a R,
+        root: &'a crate::base::Base,
         pwd: Twig,
         env: HashMap<String, String>,
         cmd: Vec<String>,
-        timeout_absolute: Option<Duration>,
-        timeout_relative: Option<f64>,
+        timeout: Option<Duration>,
     ) -> Self {
         Self {
             root,
             pwd,
             env,
             cmd,
-            timeout_absolute,
-            timeout_relative,
+            timeout,
         }
     }
+}
 
+impl<'a> Phase<'a, crate::workspace::Workspace> {
+    pub fn new(
+        root: &'a crate::workspace::Workspace,
+        pwd: Twig,
+        env: HashMap<String, String>,
+        cmd: Vec<String>,
+        timeout: Duration,
+    ) -> Self {
+        Self {
+            root,
+            pwd,
+            env,
+            cmd,
+            timeout: Some(timeout),
+        }
+    }
+}
+
+impl<'a, R: Root> Phase<'a, R> {
     pub fn root(&self) -> &R {
         self.root
     }
@@ -105,24 +122,15 @@ impl<'a, R: Root> Phase<'a, R> {
         &self.cmd
     }
 
-    pub fn timeout_absolute(&self) -> Option<Duration> {
-        self.timeout_absolute
-    }
-
-    pub fn timeout_relative(&self) -> Option<f64> {
-        self.timeout_relative
+    pub fn timeout(&self) -> Option<Duration> {
+        self.timeout
     }
 
     // bough[impl phase.run]
     // bough[impl phase.run.pwd]
     // bough[impl phase.run.env]
     // bough[impl phase.run.timeout]
-    // bough[impl phase.run.timeout.absolute]
-    // bough[impl phase.run.timeout.relative]
-    pub fn run(
-        &self,
-        reference_duration: Option<std::time::Duration>,
-    ) -> Result<PhaseOutcome, Error> {
+    pub fn run(&self) -> Result<PhaseOutcome, Error> {
         use wait_timeout::ChildExt;
 
         if self.cmd.is_empty() {
@@ -131,12 +139,11 @@ impl<'a, R: Root> Phase<'a, R> {
         }
 
         let working_dir = File::new(self.root, &self.pwd).resolve();
-        let effective_timeout = self.effective_timeout(reference_duration);
 
         info!(
             cmd = ?self.cmd,
             pwd = %working_dir.display(),
-            timeout = ?effective_timeout,
+            timeout = ?self.timeout,
             "running phase"
         );
 
@@ -171,7 +178,7 @@ impl<'a, R: Root> Phase<'a, R> {
             })
         });
 
-        let timed_out = if let Some(timeout) = effective_timeout {
+        let timed_out = if let Some(timeout) = self.timeout {
             match child.wait_timeout(timeout)? {
                 Some(_status) => false,
                 None => {
@@ -196,42 +203,29 @@ impl<'a, R: Root> Phase<'a, R> {
             .transpose()?
             .unwrap_or_default();
 
-        let exit_code = if timed_out {
-            -1
+        if timed_out {
+            debug!(
+                duration_ms = duration.as_millis() as u64,
+                "phase timed out"
+            );
+            Ok(PhaseOutcome::TimedOut {
+                stdout,
+                stderr,
+                duration,
+            })
         } else {
-            child.try_wait()?.and_then(|s| s.code()).unwrap_or(-1)
-        };
-
-        debug!(
-            exit_code,
-            timed_out,
-            duration_ms = duration.as_millis() as u64,
-            "phase completed"
-        );
-
-        Ok(PhaseOutcome {
-            stdout,
-            stderr,
-            exit_code,
-            duration,
-            timed_out,
-        })
-    }
-
-    fn effective_timeout(
-        &self,
-        reference_duration: Option<std::time::Duration>,
-    ) -> Option<std::time::Duration> {
-        let absolute = self.timeout_absolute;
-        let relative = match (self.timeout_relative, reference_duration) {
-            (Some(multiplier), Some(ref_dur)) => Some(ref_dur * multiplier as u32),
-            _ => None,
-        };
-        match (absolute, relative) {
-            (Some(a), Some(r)) => Some(std::time::Duration::min(a, r)),
-            (Some(a), None) => Some(a),
-            (None, Some(r)) => Some(r),
-            (None, None) => None,
+            let exit_code = child.try_wait()?.and_then(|s| s.code()).unwrap_or(-1);
+            debug!(
+                exit_code,
+                duration_ms = duration.as_millis() as u64,
+                "phase completed"
+            );
+            Ok(PhaseOutcome::Completed {
+                stdout,
+                stderr,
+                exit_code,
+                duration,
+            })
         }
     }
 }
@@ -241,50 +235,70 @@ impl<'a, R: Root> Phase<'a, R> {
 // bough[impl phase.out.exit]
 // bough[impl phase.out.duration]
 #[derive(Debug)]
-pub struct PhaseOutcome {
-    stdout: Vec<u8>,
-    stderr: Vec<u8>,
-    exit_code: i32,
-    duration: std::time::Duration,
-    timed_out: bool,
+pub enum PhaseOutcome {
+    Completed {
+        stdout: Vec<u8>,
+        stderr: Vec<u8>,
+        exit_code: i32,
+        duration: std::time::Duration,
+    },
+    TimedOut {
+        stdout: Vec<u8>,
+        stderr: Vec<u8>,
+        duration: std::time::Duration,
+    },
 }
 
 impl PhaseOutcome {
-    #[doc(hidden)]
-    pub fn new_for_test(exit_code: i32, duration: std::time::Duration, timed_out: bool, stdout: Vec<u8>, stderr: Vec<u8>) -> Self {
-        Self { stdout, stderr, exit_code, duration, timed_out }
-    }
-
     pub fn stdout(&self) -> &[u8] {
-        &self.stdout
+        match self {
+            PhaseOutcome::Completed { stdout, .. } | PhaseOutcome::TimedOut { stdout, .. } => {
+                stdout
+            }
+        }
     }
 
     pub fn stderr(&self) -> &[u8] {
-        &self.stderr
-    }
-
-    pub fn exit_code(&self) -> i32 {
-        self.exit_code
+        match self {
+            PhaseOutcome::Completed { stderr, .. } | PhaseOutcome::TimedOut { stderr, .. } => {
+                stderr
+            }
+        }
     }
 
     pub fn duration(&self) -> std::time::Duration {
-        self.duration
-    }
-
-    pub fn timed_out(&self) -> bool {
-        self.timed_out
+        match self {
+            PhaseOutcome::Completed { duration, .. } | PhaseOutcome::TimedOut { duration, .. } => {
+                *duration
+            }
+        }
     }
 }
 
-pub fn run_phase<R: Root>(
-    root: &R,
+pub fn effective_timeout(
+    timeout_absolute: Option<Duration>,
+    timeout_relative: Option<f64>,
+    reference_duration: Option<Duration>,
+) -> Option<Duration> {
+    let relative = match (timeout_relative, reference_duration) {
+        (Some(multiplier), Some(ref_dur)) => Some(ref_dur * multiplier as u32),
+        _ => None,
+    };
+    match (timeout_absolute, relative) {
+        (Some(a), Some(r)) => Some(Duration::min(a, r)),
+        (Some(a), None) => Some(a),
+        (None, Some(r)) => Some(r),
+        (None, None) => None,
+    }
+}
+
+fn parse_phase_args(
     cmd: &str,
     pwd: std::path::PathBuf,
-    env: HashMap<String, String>,
     timeout_absolute: Option<chrono::Duration>,
     timeout_relative: Option<f64>,
     reference_duration: Option<Duration>,
-) -> Result<PhaseOutcome, Error> {
+) -> Result<(Twig, Vec<String>, Option<Duration>), Error> {
     if pwd.is_absolute() {
         return Err(Error::AbsolutePwd(pwd));
     }
@@ -293,8 +307,40 @@ pub fn run_phase<R: Root>(
     let timeout_abs = timeout_absolute
         .map(|d| d.to_std().map_err(|_| Error::InvalidTimeout))
         .transpose()?;
-    let phase = Phase::new(root, twig, env, cmd_parts, timeout_abs, timeout_relative);
-    phase.run(reference_duration)
+    let timeout = effective_timeout(timeout_abs, timeout_relative, reference_duration);
+    Ok((twig, cmd_parts, timeout))
+}
+
+pub fn run_phase_in_base(
+    root: &crate::base::Base,
+    cmd: &str,
+    pwd: std::path::PathBuf,
+    env: HashMap<String, String>,
+    timeout_absolute: Option<chrono::Duration>,
+    timeout_relative: Option<f64>,
+    reference_duration: Option<Duration>,
+) -> Result<PhaseOutcome, Error> {
+    let (twig, cmd_parts, timeout) =
+        parse_phase_args(cmd, pwd, timeout_absolute, timeout_relative, reference_duration)?;
+    let phase = Phase::<crate::base::Base>::new(root, twig, env, cmd_parts, timeout);
+    phase.run()
+}
+
+pub fn run_phase_in_workspace(
+    root: &crate::workspace::Workspace,
+    cmd: &str,
+    pwd: std::path::PathBuf,
+    env: HashMap<String, String>,
+    timeout_absolute: Option<chrono::Duration>,
+    timeout_relative: Option<f64>,
+    reference_duration: Option<Duration>,
+) -> Result<PhaseOutcome, Error> {
+    let (twig, cmd_parts, timeout) =
+        parse_phase_args(cmd, pwd, timeout_absolute, timeout_relative, reference_duration)?;
+    let timeout =
+        timeout.ok_or(Error::InvalidTimeout)?;
+    let phase = Phase::<crate::workspace::Workspace>::new(root, twig, env, cmd_parts, timeout);
+    phase.run()
 }
 
 #[cfg(test)]
@@ -315,8 +361,7 @@ mod tests {
             pwd: crate::file::Twig::new(PathBuf::from("src")).unwrap(),
             env: HashMap::new(),
             cmd: vec!["echo".into(), "hello".into()],
-            timeout_absolute: None,
-            timeout_relative: None,
+            timeout: None,
         }
     }
 
@@ -369,12 +414,10 @@ mod tests {
     fn phase_holds_timeout() {
         let root = TestRoot(PathBuf::from("/tmp/project"));
         let phase = Phase {
-            timeout_absolute: Some(Duration::from_secs(30)),
-            timeout_relative: Some(3.0),
+            timeout: Some(Duration::from_secs(30)),
             ..make_phase(&root)
         };
-        assert_eq!(phase.timeout_absolute(), Some(Duration::from_secs(30)));
-        assert_eq!(phase.timeout_relative(), Some(3.0));
+        assert_eq!(phase.timeout(), Some(Duration::from_secs(30)));
     }
 
     // bough[verify phase.out]
@@ -382,31 +425,43 @@ mod tests {
     // bough[verify phase.out.exit]
     // bough[verify phase.out.duration]
     #[test]
-    fn phase_outcome_holds_all_fields() {
-        let outcome = PhaseOutcome {
+    fn phase_outcome_completed_holds_all_fields() {
+        let outcome = PhaseOutcome::Completed {
             stdout: b"hello\n".to_vec(),
             stderr: b"warn\n".to_vec(),
             exit_code: 0,
             duration: std::time::Duration::from_millis(150),
-            timed_out: false,
         };
         assert_eq!(outcome.stdout(), b"hello\n");
         assert_eq!(outcome.stderr(), b"warn\n");
-        assert_eq!(outcome.exit_code(), 0);
+        assert!(matches!(outcome, PhaseOutcome::Completed { exit_code: 0, .. }));
         assert_eq!(outcome.duration(), std::time::Duration::from_millis(150));
     }
 
     // bough[verify phase.out.exit]
     #[test]
     fn phase_outcome_nonzero_exit_is_not_error() {
-        let outcome = PhaseOutcome {
+        let outcome = PhaseOutcome::Completed {
             stdout: vec![],
             stderr: b"error\n".to_vec(),
             exit_code: 1,
             duration: std::time::Duration::from_millis(50),
-            timed_out: false,
         };
-        assert_eq!(outcome.exit_code(), 1);
+        assert!(matches!(outcome, PhaseOutcome::Completed { exit_code: 1, .. }));
+    }
+
+    // bough[verify phase.out]
+    #[test]
+    fn phase_outcome_timed_out_holds_fields() {
+        let outcome = PhaseOutcome::TimedOut {
+            stdout: b"partial\n".to_vec(),
+            stderr: vec![],
+            duration: std::time::Duration::from_millis(100),
+        };
+        assert_eq!(outcome.stdout(), b"partial\n");
+        assert_eq!(outcome.stderr(), b"");
+        assert_eq!(outcome.duration(), std::time::Duration::from_millis(100));
+        assert!(matches!(outcome, PhaseOutcome::TimedOut { .. }));
     }
 
     // bough[verify phase.run]
@@ -419,8 +474,8 @@ mod tests {
             pwd: crate::file::Twig::new(PathBuf::from(".")).unwrap(),
             ..make_phase(&root)
         };
-        let outcome = phase.run(None).unwrap();
-        assert_eq!(outcome.exit_code(), 0);
+        let outcome = phase.run().unwrap();
+        assert!(matches!(outcome, PhaseOutcome::Completed { exit_code: 0, .. }));
         assert_eq!(String::from_utf8_lossy(outcome.stdout()).trim(), "hello");
     }
 
@@ -435,8 +490,8 @@ mod tests {
             pwd: crate::file::Twig::new(PathBuf::from(".")).unwrap(),
             ..make_phase(&root)
         };
-        let outcome = phase.run(None).unwrap();
-        assert_eq!(outcome.exit_code(), 42);
+        let outcome = phase.run().unwrap();
+        assert!(matches!(outcome, PhaseOutcome::Completed { exit_code: 42, .. }));
     }
 
     // bough[verify phase.run.pwd]
@@ -451,7 +506,7 @@ mod tests {
             pwd: crate::file::Twig::new(PathBuf::from("subdir")).unwrap(),
             ..make_phase(&root)
         };
-        let outcome = phase.run(None).unwrap();
+        let outcome = phase.run().unwrap();
         let out = String::from_utf8_lossy(outcome.stdout());
         assert!(
             out.trim().ends_with("subdir"),
@@ -470,7 +525,7 @@ mod tests {
             env: HashMap::from([("MY_VAR".into(), "hello_env".into())]),
             ..make_phase(&root)
         };
-        let outcome = phase.run(None).unwrap();
+        let outcome = phase.run().unwrap();
         assert_eq!(
             String::from_utf8_lossy(outcome.stdout()).trim(),
             "hello_env"
@@ -487,7 +542,7 @@ mod tests {
             pwd: crate::file::Twig::new(PathBuf::from(".")).unwrap(),
             ..make_phase(&root)
         };
-        let outcome = phase.run(None).unwrap();
+        let outcome = phase.run().unwrap();
         assert_eq!(String::from_utf8_lossy(outcome.stderr()).trim(), "err");
     }
 
@@ -501,29 +556,27 @@ mod tests {
             pwd: crate::file::Twig::new(PathBuf::from(".")).unwrap(),
             ..make_phase(&root)
         };
-        let outcome = phase.run(None).unwrap();
+        let outcome = phase.run().unwrap();
         assert!(outcome.duration() >= std::time::Duration::from_millis(40));
     }
 
     // bough[verify phase.run.timeout]
-    // bough[verify phase.run.timeout.absolute]
     #[test]
-    fn phase_run_kills_on_absolute_timeout() {
+    fn phase_run_kills_on_timeout() {
         let dir = tempfile::tempdir().unwrap();
         let root = TestRoot(dir.path().to_path_buf());
         let phase = Phase {
             cmd: vec!["sleep".into(), "10".into()],
             pwd: crate::file::Twig::new(PathBuf::from(".")).unwrap(),
-            timeout_absolute: Some(Duration::from_millis(100)),
-            timeout_relative: None,
+            timeout: Some(Duration::from_millis(100)),
             ..make_phase(&root)
         };
-        let outcome = phase.run(None).unwrap();
-        assert!(outcome.timed_out());
+        let outcome = phase.run().unwrap();
+        assert!(matches!(outcome, PhaseOutcome::TimedOut { .. }));
         assert!(outcome.duration() < std::time::Duration::from_secs(5));
     }
 
-    // bough[verify phase.run.timeout.absolute]
+    // bough[verify phase.run.timeout]
     #[test]
     fn phase_run_no_timeout_when_command_finishes_in_time() {
         let dir = tempfile::tempdir().unwrap();
@@ -531,48 +584,11 @@ mod tests {
         let phase = Phase {
             cmd: vec!["echo".into(), "fast".into()],
             pwd: crate::file::Twig::new(PathBuf::from(".")).unwrap(),
-            timeout_absolute: Some(Duration::from_millis(100)),
-            timeout_relative: None,
+            timeout: Some(Duration::from_millis(100)),
             ..make_phase(&root)
         };
-        let outcome = phase.run(None).unwrap();
-        assert!(!outcome.timed_out());
-        assert_eq!(outcome.exit_code(), 0);
-    }
-
-    // bough[verify phase.run.timeout.relative]
-    #[test]
-    fn phase_run_kills_on_relative_timeout() {
-        let dir = tempfile::tempdir().unwrap();
-        let root = TestRoot(dir.path().to_path_buf());
-        let phase = Phase {
-            cmd: vec!["sleep".into(), "10".into()],
-            pwd: crate::file::Twig::new(PathBuf::from(".")).unwrap(),
-            timeout_absolute: None,
-            timeout_relative: Some(2.0),
-            ..make_phase(&root)
-        };
-        let ref_dur = std::time::Duration::from_millis(50);
-        let outcome = phase.run(Some(ref_dur)).unwrap();
-        assert!(outcome.timed_out());
-        assert!(outcome.duration() < std::time::Duration::from_secs(5));
-    }
-
-    // bough[verify phase.run.timeout.relative]
-    #[test]
-    fn phase_run_relative_timeout_ignored_without_reference() {
-        let dir = tempfile::tempdir().unwrap();
-        let root = TestRoot(dir.path().to_path_buf());
-        let phase = Phase {
-            cmd: vec!["echo".into(), "ok".into()],
-            pwd: crate::file::Twig::new(PathBuf::from(".")).unwrap(),
-            timeout_absolute: None,
-            timeout_relative: Some(2.0),
-            ..make_phase(&root)
-        };
-        let outcome = phase.run(None).unwrap();
-        assert!(!outcome.timed_out());
-        assert_eq!(outcome.exit_code(), 0);
+        let outcome = phase.run().unwrap();
+        assert!(matches!(outcome, PhaseOutcome::Completed { exit_code: 0, .. }));
     }
 
     fn helper_bin() -> PathBuf {
@@ -592,12 +608,11 @@ mod tests {
                 "262144".into(),
             ],
             pwd: crate::file::Twig::new(PathBuf::from(".")).unwrap(),
-            timeout_absolute: Some(Duration::from_secs(10)),
+            timeout: Some(Duration::from_secs(10)),
             ..make_phase(&root)
         };
-        let outcome = phase.run(None).unwrap();
-        assert!(!outcome.timed_out());
-        assert_eq!(outcome.exit_code(), 0);
+        let outcome = phase.run().unwrap();
+        assert!(matches!(outcome, PhaseOutcome::Completed { exit_code: 0, .. }));
         assert!(
             outcome.stdout().len() > 64 * 1024,
             "expected >64KB stdout, got {}",
@@ -616,11 +631,11 @@ mod tests {
                 "262144".into(),
             ],
             pwd: crate::file::Twig::new(PathBuf::from(".")).unwrap(),
-            timeout_absolute: Some(Duration::from_secs(10)),
+            timeout: Some(Duration::from_secs(10)),
             ..make_phase(&root)
         };
-        let outcome = phase.run(None).unwrap();
-        assert!(!outcome.timed_out());
+        let outcome = phase.run().unwrap();
+        assert!(matches!(outcome, PhaseOutcome::Completed { .. }));
         assert!(
             outcome.stderr().len() > 64 * 1024,
             "expected >64KB stderr, got {}",
@@ -641,11 +656,11 @@ mod tests {
                 pid_file.to_str().unwrap().into(),
             ],
             pwd: crate::file::Twig::new(PathBuf::from(".")).unwrap(),
-            timeout_absolute: Some(Duration::from_millis(500)),
+            timeout: Some(Duration::from_millis(500)),
             ..make_phase(&root)
         };
-        let outcome = phase.run(None).unwrap();
-        assert!(outcome.timed_out());
+        let outcome = phase.run().unwrap();
+        assert!(matches!(outcome, PhaseOutcome::TimedOut { .. }));
 
         std::thread::sleep(Duration::from_millis(100));
 

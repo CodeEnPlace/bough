@@ -222,7 +222,7 @@ mod tests {
     mod ts_node_depth {
         use super::*;
         use crate::file::Twig;
-        use crate::mutant::{MutantKind, Mutant, Point, Span, BinaryOpMutationKind, TwigMutantsIter};
+        use crate::mutant::{MutantKind, BinaryOpMutationKind, TwigMutantsIter};
         use crate::mutation::MutationIter;
         use crate::twig::TwigsIterBuilder;
         use crate::LanguageId;

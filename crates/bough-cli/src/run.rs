@@ -30,12 +30,16 @@ impl Run {
             let base = guard.base();
 
             let init_duration = match base.run_init(&cli.config, None) {
-                Ok(outcome) => {
-                    if outcome.exit_code() != 0 {
-                        eprintln!("base init failed (exit {})", outcome.exit_code());
+                Ok(bough_core::PhaseOutcome::Completed { exit_code, duration, .. }) => {
+                    if exit_code != 0 {
+                        eprintln!("base init failed (exit {exit_code})");
                         std::process::exit(1);
                     }
-                    Some(outcome.duration())
+                    Some(duration)
+                }
+                Ok(bough_core::PhaseOutcome::TimedOut { .. }) => {
+                    eprintln!("base init timed out");
+                    std::process::exit(1);
                 }
                 Err(bough_core::PhaseError::NoCmdConfigured) => None,
                 Err(e) => {
@@ -45,12 +49,16 @@ impl Run {
             };
 
             let reset_duration = match base.run_reset(&cli.config, None) {
-                Ok(outcome) => {
-                    if outcome.exit_code() != 0 {
-                        eprintln!("base reset failed (exit {})", outcome.exit_code());
+                Ok(bough_core::PhaseOutcome::Completed { exit_code, duration, .. }) => {
+                    if exit_code != 0 {
+                        eprintln!("base reset failed (exit {exit_code})");
                         std::process::exit(1);
                     }
-                    Some(outcome.duration())
+                    Some(duration)
+                }
+                Ok(bough_core::PhaseOutcome::TimedOut { .. }) => {
+                    eprintln!("base reset timed out");
+                    std::process::exit(1);
                 }
                 Err(bough_core::PhaseError::NoCmdConfigured) => None,
                 Err(e) => {
@@ -62,9 +70,16 @@ impl Run {
             let test_outcome = base
                 .run_test(&cli.config, None)
                 .expect("base test execution");
-            if test_outcome.exit_code() != 0 {
-                eprintln!("base test failed (exit {})", test_outcome.exit_code());
-                std::process::exit(1);
+            match &test_outcome {
+                bough_core::PhaseOutcome::Completed { exit_code, .. } if *exit_code != 0 => {
+                    eprintln!("base test failed (exit {exit_code})");
+                    std::process::exit(1);
+                }
+                bough_core::PhaseOutcome::TimedOut { .. } => {
+                    eprintln!("base test timed out");
+                    std::process::exit(1);
+                }
+                _ => {}
             }
 
             let total = guard.get_count_mutation_needing_test() as u64;

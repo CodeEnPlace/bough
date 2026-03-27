@@ -464,7 +464,7 @@ mod tests {
         }
 
         fn get_test_timeout_absolute(&self) -> Option<Duration> {
-            None
+            Some(Duration::seconds(30))
         }
 
         fn get_test_timeout_relative(&self) -> Option<f64> {
@@ -484,7 +484,7 @@ mod tests {
         }
 
         fn get_init_timeout_absolute(&self) -> Option<Duration> {
-            None
+            Some(Duration::seconds(30))
         }
 
         fn get_init_timeout_relative(&self) -> Option<f64> {
@@ -504,7 +504,7 @@ mod tests {
         }
 
         fn get_reset_timeout_absolute(&self) -> Option<Duration> {
-            None
+            Some(Duration::seconds(30))
         }
 
         fn get_reset_timeout_relative(&self) -> Option<f64> {
@@ -907,7 +907,7 @@ mod tests {
         config.test_cmd = "echo hello".to_string();
         let session = Session::new(config.clone()).unwrap();
         let outcome = session.base().run_test(&config, None).unwrap();
-        assert_eq!(outcome.exit_code(), 0);
+        assert!(matches!(outcome, crate::phase::PhaseOutcome::Completed { exit_code: 0, .. }));
         assert_eq!(String::from_utf8_lossy(outcome.stdout()).trim(), "hello");
     }
 
@@ -945,7 +945,7 @@ mod tests {
         config.test_cmd = "false".to_string();
         let session = Session::new(config.clone()).unwrap();
         let outcome = session.base().run_test(&config, None).unwrap();
-        assert_eq!(outcome.exit_code(), 1);
+        assert!(matches!(outcome, crate::phase::PhaseOutcome::Completed { exit_code: 1, .. }));
     }
 
     #[test]
@@ -955,7 +955,7 @@ mod tests {
         config.init_cmd = Some("echo init".to_string());
         let session = Session::new(config.clone()).unwrap();
         let outcome = session.base().run_init(&config, None).unwrap();
-        assert_eq!(outcome.exit_code(), 0);
+        assert!(matches!(outcome, crate::phase::PhaseOutcome::Completed { exit_code: 0, .. }));
         assert_eq!(String::from_utf8_lossy(outcome.stdout()).trim(), "init");
     }
 
@@ -975,7 +975,7 @@ mod tests {
         config.reset_cmd = Some("echo reset".to_string());
         let session = Session::new(config.clone()).unwrap();
         let outcome = session.base().run_reset(&config, None).unwrap();
-        assert_eq!(outcome.exit_code(), 0);
+        assert!(matches!(outcome, crate::phase::PhaseOutcome::Completed { exit_code: 0, .. }));
         assert_eq!(String::from_utf8_lossy(outcome.stdout()).trim(), "reset");
     }
 
@@ -1037,7 +1037,7 @@ mod tests {
         let ids = session.tend_workspaces(1).unwrap();
         let workspace = session.bind_workspace(&ids[0]).unwrap();
         let outcome = workspace.run_init(&config, None).unwrap();
-        assert_eq!(outcome.exit_code(), 0);
+        assert!(matches!(outcome, crate::phase::PhaseOutcome::Completed { exit_code: 0, .. }));
         assert_eq!(
             String::from_utf8_lossy(outcome.stdout()).trim(),
             "workspace_init"
@@ -1066,7 +1066,7 @@ mod tests {
         let ids = session.tend_workspaces(1).unwrap();
         let workspace = session.bind_workspace(&ids[0]).unwrap();
         let outcome = workspace.run_reset(&config, None).unwrap();
-        assert_eq!(outcome.exit_code(), 0);
+        assert!(matches!(outcome, crate::phase::PhaseOutcome::Completed { exit_code: 0, .. }));
         assert_eq!(
             String::from_utf8_lossy(outcome.stdout()).trim(),
             "workspace_reset"
