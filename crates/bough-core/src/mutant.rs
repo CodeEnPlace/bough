@@ -647,6 +647,64 @@ pub(crate) fn span_from_node(node: &arborium_tree_sitter::Node<'_>) -> Span {
     )
 }
 
+/// A mutant found by parsing source code in-memory, without filesystem context.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SourceMutant {
+    pub kind: MutantKind,
+    pub subst_span: Span,
+    pub effect_span: Span,
+}
+
+/// Parse source code in-memory and return all mutants found.
+///
+/// This uses the same tree-sitter walk and `LanguageDriver::check_node` logic
+/// as `TwigMutantsIter`, but operates on a byte slice directly without
+/// requiring a `Base` or `Twig`.
+pub fn find_mutants_in_source(lang: LanguageId, source: &[u8]) -> Vec<SourceMutant> {
+    let driver = driver_for_lang(lang);
+
+    let mut parser = arborium_tree_sitter::Parser::new();
+    parser
+        .set_language(&driver.ts_language())
+        .expect("language grammar should load");
+    let tree = parser.parse(source, None).expect("parse should succeed");
+
+    let mut cursor = tree.walk();
+    let mut results = Vec::new();
+    let mut did_visit = false;
+    let mut started = false;
+
+    loop {
+        let node = if !started {
+            started = true;
+            Some(cursor.node())
+        } else if !did_visit && cursor.goto_first_child() {
+            did_visit = false;
+            Some(cursor.node())
+        } else if cursor.goto_next_sibling() {
+            did_visit = false;
+            Some(cursor.node())
+        } else if cursor.goto_parent() {
+            did_visit = true;
+            None
+        } else {
+            break;
+        };
+
+        let Some(node) = node else { continue };
+
+        if let Some((kind, subst_span, effect_span)) = driver.check_node(&node, source) {
+            results.push(SourceMutant {
+                kind,
+                subst_span,
+                effect_span,
+            });
+        }
+    }
+
+    results
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1473,5 +1531,48 @@ function sub(a, b) {
             "function bar() {\n    const x = 1;\n    const y = 2;\n    return x + y;\n}"
         );
         assert_eq!(span, Span::new(Point::new(0, 0, 0), Point::new(4, 1, 70)));
+    }
+
+    #[test]
+    fn find_mutants_in_source_finds_binary_op() {
+        let source = b"const total = price + tax;";
+        let mutants = find_mutants_in_source(LanguageId::Javascript, source);
+        let add_mutants: Vec<_> = mutants
+            .iter()
+            .filter(|m| m.kind == MutantKind::BinaryOp(BinaryOpMutationKind::Add))
+            .collect();
+        assert_eq!(add_mutants.len(), 1);
+        let m = &add_mutants[0];
+        assert_eq!(m.subst_span.start().byte(), 20);
+        assert_eq!(m.subst_span.end().byte(), 21);
+    }
+
+    #[test]
+    fn find_mutants_in_source_finds_multiple_of_same_kind() {
+        let source = b"const z = a + b + c;";
+        let mutants = find_mutants_in_source(LanguageId::Javascript, source);
+        let add_mutants: Vec<_> = mutants
+            .iter()
+            .filter(|m| m.kind == MutantKind::BinaryOp(BinaryOpMutationKind::Add))
+            .collect();
+        assert_eq!(add_mutants.len(), 2);
+    }
+
+    #[test]
+    fn find_mutants_in_source_returns_empty_for_no_mutants() {
+        let source = b"// just a comment";
+        let mutants = find_mutants_in_source(LanguageId::Javascript, source);
+        assert!(mutants.is_empty());
+    }
+
+    #[test]
+    fn find_mutants_in_source_works_for_python() {
+        let source = b"x = a + b";
+        let mutants = find_mutants_in_source(LanguageId::Python, source);
+        let add_mutants: Vec<_> = mutants
+            .iter()
+            .filter(|m| m.kind == MutantKind::BinaryOp(BinaryOpMutationKind::Add))
+            .collect();
+        assert_eq!(add_mutants.len(), 1);
     }
 }

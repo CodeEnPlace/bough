@@ -111,7 +111,7 @@ impl LanguageId {
 pub use base::Base;
 pub use file::File;
 pub use file::Twig;
-pub use mutant::{Mutant, MutantKind, Point, Span};
+pub use mutant::{Mutant, MutantKind, Point, SourceMutant, Span, find_mutants_in_source};
 pub use mutation::Mutation;
 pub use mutation::MutationHash;
 pub use mutation::MutationIter;
