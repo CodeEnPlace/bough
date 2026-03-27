@@ -320,7 +320,7 @@ fn kind_key(kind: &serde_json::Value) -> String {
         serde_json::Value::String(s) => s.clone(),
         serde_json::Value::Object(m) => {
             let (k, v) = m.iter().next().unwrap();
-            format!("{k}:{}", v.as_str().unwrap_or(""))
+            format!("{k}({})", v.as_str().unwrap_or(""))
         }
         _ => kind.to_string(),
     }
@@ -437,23 +437,7 @@ fn make_mutation_reference(lang: &bough_core::LanguageId) -> String {
 }
 
 fn kind_to_key(kind: &bough_core::MutantKind) -> String {
-    use bough_core::mutant::*;
-    match kind {
-        MutantKind::StatementBlock => "StatementBlock".into(),
-        MutantKind::Condition => "Condition".into(),
-        MutantKind::BinaryOp(k) => format!("BinaryOp:{k:?}"),
-        MutantKind::Assign(k) => format!("Assign:{k:?}"),
-        MutantKind::ArrayDecl(k) => format!("ArrayDecl:{k:?}"),
-        MutantKind::Literal(k) => format!("Literal:{k:?}"),
-        MutantKind::DictDecl => "DictDecl".into(),
-        MutantKind::TupleDecl => "TupleDecl".into(),
-        MutantKind::Assert => "Assert".into(),
-        MutantKind::UnaryNot => "UnaryNot".into(),
-        MutantKind::OptionalChain(k) => format!("OptionalChain:{k:?}"),
-        MutantKind::SwitchCase => "SwitchCase".into(),
-        MutantKind::Range(k) => format!("Range:{k:?}"),
-        MutantKind::MatchPattern => "MatchPattern".into(),
-    }
+    kind.to_key()
 }
 
 pub fn build() {

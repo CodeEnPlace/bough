@@ -503,6 +503,121 @@ impl MutantKind {
             MutantKind::MatchPattern => "MatchPattern".into(),
         }
     }
+
+    /// Serialise this kind to a stable string key.
+    ///
+    /// Simple kinds produce their variant name (e.g. `"StatementBlock"`).
+    /// Parameterised kinds use Rust-enum-style parens (e.g. `"BinaryOp(Add)"`).
+    pub fn to_key(&self) -> String {
+        match self {
+            MutantKind::StatementBlock => "StatementBlock".into(),
+            MutantKind::Condition => "Condition".into(),
+            MutantKind::BinaryOp(k) => format!("BinaryOp({k:?})"),
+            MutantKind::Assign(k) => format!("Assign({k:?})"),
+            MutantKind::ArrayDecl(k) => format!("ArrayDecl({k:?})"),
+            MutantKind::Literal(k) => format!("Literal({k:?})"),
+            MutantKind::DictDecl => "DictDecl".into(),
+            MutantKind::TupleDecl => "TupleDecl".into(),
+            MutantKind::Assert => "Assert".into(),
+            MutantKind::UnaryNot => "UnaryNot".into(),
+            MutantKind::OptionalChain(k) => format!("OptionalChain({k:?})"),
+            MutantKind::SwitchCase => "SwitchCase".into(),
+            MutantKind::Range(k) => format!("Range({k:?})"),
+            MutantKind::MatchPattern => "MatchPattern".into(),
+        }
+    }
+
+    /// Parse a key string (as produced by `to_key`) back into a `MutantKind`.
+    ///
+    /// Returns `None` if the key doesn't match any known kind.
+    pub fn from_key(key: &str) -> Option<MutantKind> {
+        // Simple (no-payload) kinds
+        match key {
+            "StatementBlock" => return Some(MutantKind::StatementBlock),
+            "Condition" => return Some(MutantKind::Condition),
+            "DictDecl" => return Some(MutantKind::DictDecl),
+            "TupleDecl" => return Some(MutantKind::TupleDecl),
+            "Assert" => return Some(MutantKind::Assert),
+            "UnaryNot" => return Some(MutantKind::UnaryNot),
+            "SwitchCase" => return Some(MutantKind::SwitchCase),
+            "MatchPattern" => return Some(MutantKind::MatchPattern),
+            _ => {}
+        }
+
+        // Parameterised kinds: "Outer(Inner)"
+        let open = key.find('(')?;
+        let close = key.strip_suffix(')')?;
+        let outer = &close[..open];
+        let inner = &close[open + 1..];
+
+        match outer {
+            "BinaryOp" => {
+                use BinaryOpMutationKind::*;
+                let k = match inner {
+                    "Add" => Add, "And" => And, "BitAnd" => BitAnd, "BitOr" => BitOr,
+                    "BitXor" => BitXor, "Div" => Div, "Eq" => Eq, "Exp" => Exp,
+                    "FloorDiv" => FloorDiv, "Gt" => Gt, "In" => In, "Is" => Is,
+                    "IsNot" => IsNot, "NotIn" => NotIn, "Gte" => Gte, "Lt" => Lt,
+                    "Lte" => Lte, "Mul" => Mul, "Or" => Or, "Rem" => Rem,
+                    "Shl" => Shl, "Shr" => Shr, "StrictEq" => StrictEq, "Ne" => Ne,
+                    "StrictNe" => StrictNe, "Sub" => Sub, "Xor" => Xor,
+                    _ => return None,
+                };
+                Some(MutantKind::BinaryOp(k))
+            }
+            "Assign" => {
+                use AssignMutationKind::*;
+                let k = match inner {
+                    "AddAssign" => AddAssign, "AndAssign" => AndAssign,
+                    "BitAndAssign" => BitAndAssign, "BitOrAssign" => BitOrAssign,
+                    "BitXorAssign" => BitXorAssign, "DivAssign" => DivAssign,
+                    "ExpAssign" => ExpAssign, "FloorDivAssign" => FloorDivAssign,
+                    "MulAssign" => MulAssign, "NormalAssign" => NormalAssign,
+                    "OrAssign" => OrAssign, "RemAssign" => RemAssign,
+                    "ShlAssign" => ShlAssign, "ShrAssign" => ShrAssign,
+                    "SubAssign" => SubAssign,
+                    _ => return None,
+                };
+                Some(MutantKind::Assign(k))
+            }
+            "ArrayDecl" => {
+                let k = match inner {
+                    "Inline" => ArrayDeclKind::Inline,
+                    "Instance" => ArrayDeclKind::Instance,
+                    _ => return None,
+                };
+                Some(MutantKind::ArrayDecl(k))
+            }
+            "Literal" => {
+                use LiteralKind::*;
+                let k = match inner {
+                    "BoolTrue" => BoolTrue, "BoolFalse" => BoolFalse,
+                    "String" => String, "EmptyString" => EmptyString, "Number" => Number,
+                    _ => return None,
+                };
+                Some(MutantKind::Literal(k))
+            }
+            "OptionalChain" => {
+                let k = match inner {
+                    "Literal" => OptionalChainKind::Literal,
+                    "Indexed" => OptionalChainKind::Indexed,
+                    "FnCall" => OptionalChainKind::FnCall,
+                    _ => return None,
+                };
+                Some(MutantKind::OptionalChain(k))
+            }
+            "Range" => {
+                let k = match inner {
+                    "Exclusive" => RangeKind::Exclusive,
+                    "Inclusive" => RangeKind::Inclusive,
+                    "From" => RangeKind::From,
+                    _ => return None,
+                };
+                Some(MutantKind::Range(k))
+            }
+            _ => None,
+        }
+    }
 }
 
 impl<'a, 't> TwigMutantsIter<'a, 't> {
@@ -1531,6 +1646,56 @@ function sub(a, b) {
             "function bar() {\n    const x = 1;\n    const y = 2;\n    return x + y;\n}"
         );
         assert_eq!(span, Span::new(Point::new(0, 0, 0), Point::new(4, 1, 70)));
+    }
+
+    #[test]
+    fn to_key_simple_kinds() {
+        assert_eq!(MutantKind::StatementBlock.to_key(), "StatementBlock");
+        assert_eq!(MutantKind::Condition.to_key(), "Condition");
+        assert_eq!(MutantKind::DictDecl.to_key(), "DictDecl");
+        assert_eq!(MutantKind::SwitchCase.to_key(), "SwitchCase");
+    }
+
+    #[test]
+    fn to_key_parameterised_kinds() {
+        assert_eq!(
+            MutantKind::BinaryOp(BinaryOpMutationKind::Add).to_key(),
+            "BinaryOp(Add)"
+        );
+        assert_eq!(
+            MutantKind::Assign(AssignMutationKind::NormalAssign).to_key(),
+            "Assign(NormalAssign)"
+        );
+        assert_eq!(
+            MutantKind::Literal(LiteralKind::BoolTrue).to_key(),
+            "Literal(BoolTrue)"
+        );
+        assert_eq!(
+            MutantKind::OptionalChain(OptionalChainKind::FnCall).to_key(),
+            "OptionalChain(FnCall)"
+        );
+        assert_eq!(
+            MutantKind::Range(RangeKind::Exclusive).to_key(),
+            "Range(Exclusive)"
+        );
+    }
+
+    #[test]
+    fn from_key_roundtrips_all_variants() {
+        for kind in MutantKind::all_variants() {
+            let key = kind.to_key();
+            let parsed = MutantKind::from_key(&key)
+                .unwrap_or_else(|| panic!("from_key failed for key: {key}"));
+            assert_eq!(parsed, kind, "roundtrip failed for key: {key}");
+        }
+    }
+
+    #[test]
+    fn from_key_returns_none_for_unknown() {
+        assert_eq!(MutantKind::from_key("Nonsense"), None);
+        assert_eq!(MutantKind::from_key("BinaryOp(Nonsense)"), None);
+        assert_eq!(MutantKind::from_key("Unknown(Add)"), None);
+        assert_eq!(MutantKind::from_key(""), None);
     }
 
     #[test]
