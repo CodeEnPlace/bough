@@ -517,3 +517,34 @@ pub fn build() {
 
     eprintln!("built {} pages into {}", pages.len(), out_dir.display());
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Validates that every language has a complete, well-formed examples TOML file.
+    ///
+    /// This test calls `make_mutation_reference` for each language, which:
+    /// - Loads and parses the TOML file
+    /// - Checks for duplicate keys
+    /// - Checks for unknown or unsupported mutation kinds
+    /// - Verifies every supported kind has an example
+    /// - Parses each snippet and verifies it contains mutants of the expected kind
+    #[test]
+    fn all_example_files_are_valid() {
+        // Tests run from crate dir; examples are relative to workspace root
+        let workspace_root =
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("..").join("..");
+        std::env::set_current_dir(&workspace_root).expect("failed to cd to workspace root");
+
+        for lang in bough_core::LanguageId::ALL {
+            let md = make_mutation_reference(lang);
+            // Sanity: output should contain at least one heading
+            assert!(
+                md.contains("## "),
+                "{}: generated markdown has no headings",
+                lang.display_name()
+            );
+        }
+    }
+}
