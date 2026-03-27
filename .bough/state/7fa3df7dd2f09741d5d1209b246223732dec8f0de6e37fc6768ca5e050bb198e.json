@@ -1,0 +1,1 @@
+{"mutation":{"mutant":{"lang":"rs","twig":["crates/bough-core/src/mutant.rs"],"kind":{"BinaryOp":"Gte"},"subst_span":{"start":{"line":735,"col":46,"byte":23117},"end":{"line":735,"col":48,"byte":23119}},"effect_span":{"start":{"line":735,"col":28,"byte":23099},"end":{"line":735,"col":63,"byte":23134}}},"subst":">"},"outcome":null}

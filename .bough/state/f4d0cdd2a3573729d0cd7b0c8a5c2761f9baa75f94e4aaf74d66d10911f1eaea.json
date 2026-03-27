@@ -1,0 +1,1 @@
+{"mutation":{"mutant":{"lang":"rs","twig":["crates/bough-cli/src/step_init_workspace.rs"],"kind":{"Literal":"String"},"subst_span":{"start":{"line":21,"col":12,"byte":659},"end":{"line":21,"col":55,"byte":702}},"effect_span":{"start":{"line":21,"col":12,"byte":659},"end":{"line":21,"col":55,"byte":702}}},"subst":"\"\""},"outcome":null}
