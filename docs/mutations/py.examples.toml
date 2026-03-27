@@ -1,0 +1,280 @@
+[[mutation]]
+kind = "StatementBlock"
+snippet = """
+def f():
+    pass"""
+
+[[mutation]]
+kind = "Condition"
+snippet = """
+x = True
+if x:
+    pass"""
+
+[[mutation]]
+kind = "BinaryOp(Add)"
+snippet = """
+x = 1 + 2"""
+
+[[mutation]]
+kind = "BinaryOp(And)"
+snippet = """
+a = True
+b = False
+x = a and b"""
+
+[[mutation]]
+kind = "BinaryOp(BitAnd)"
+snippet = """
+x = 1 & 2"""
+
+[[mutation]]
+kind = "BinaryOp(BitOr)"
+snippet = """
+x = 1 | 2"""
+
+[[mutation]]
+kind = "BinaryOp(BitXor)"
+snippet = """
+x = 1 ^ 2"""
+
+[[mutation]]
+kind = "BinaryOp(Div)"
+snippet = """
+x = 1 / 2"""
+
+[[mutation]]
+kind = "BinaryOp(Eq)"
+snippet = """
+a = 1
+b = 2
+x = a == b"""
+
+[[mutation]]
+kind = "BinaryOp(Exp)"
+snippet = """
+x = 2 ** 3"""
+
+[[mutation]]
+kind = "BinaryOp(FloorDiv)"
+snippet = """
+x = 7 // 2"""
+
+[[mutation]]
+kind = "BinaryOp(Gt)"
+snippet = """
+a = 1
+b = 2
+x = a > b"""
+
+[[mutation]]
+kind = "BinaryOp(In)"
+snippet = """
+x = needle in haystack"""
+
+[[mutation]]
+kind = "BinaryOp(Is)"
+snippet = """
+a = None
+x = a is None"""
+
+[[mutation]]
+kind = "BinaryOp(IsNot)"
+snippet = """
+a = None
+x = a is not None"""
+
+[[mutation]]
+kind = "BinaryOp(NotIn)"
+snippet = """
+a = [1, 2, 3]
+x = 4 not in a"""
+
+[[mutation]]
+kind = "BinaryOp(Gte)"
+snippet = """
+a = 1
+b = 2
+x = a >= b"""
+
+[[mutation]]
+kind = "BinaryOp(Lt)"
+snippet = """
+a = 1
+b = 2
+x = a < b"""
+
+[[mutation]]
+kind = "BinaryOp(Lte)"
+snippet = """
+a = 1
+b = 2
+x = a <= b"""
+
+[[mutation]]
+kind = "BinaryOp(Mul)"
+snippet = """
+x = 1 * 2"""
+
+[[mutation]]
+kind = "BinaryOp(Or)"
+snippet = """
+a = True
+b = False
+x = a or b"""
+
+[[mutation]]
+kind = "BinaryOp(Rem)"
+snippet = """
+x = 1 % 2"""
+
+[[mutation]]
+kind = "BinaryOp(Shl)"
+snippet = """
+x = 1 << 2"""
+
+[[mutation]]
+kind = "BinaryOp(Shr)"
+snippet = """
+x = 1 >> 2"""
+
+[[mutation]]
+kind = "BinaryOp(Ne)"
+snippet = """
+a = 1
+b = 2
+x = a != b"""
+
+[[mutation]]
+kind = "BinaryOp(Sub)"
+snippet = """
+x = 1 - 2"""
+
+[[mutation]]
+kind = "Assign(AddAssign)"
+snippet = """
+x = 42
+x += 7"""
+
+[[mutation]]
+kind = "Assign(BitAndAssign)"
+snippet = """
+x = 42
+x &= 7"""
+
+[[mutation]]
+kind = "Assign(BitOrAssign)"
+snippet = """
+x = 42
+x |= 7"""
+
+[[mutation]]
+kind = "Assign(BitXorAssign)"
+snippet = """
+x = 42
+x ^= 7"""
+
+[[mutation]]
+kind = "Assign(DivAssign)"
+snippet = """
+x = 42
+x /= 7"""
+
+[[mutation]]
+kind = "Assign(ExpAssign)"
+snippet = """
+x = 2
+x **= 3"""
+
+[[mutation]]
+kind = "Assign(FloorDivAssign)"
+snippet = """
+x = 7
+x //= 2"""
+
+[[mutation]]
+kind = "Assign(MulAssign)"
+snippet = """
+x = 42
+x *= 7"""
+
+[[mutation]]
+kind = "Assign(NormalAssign)"
+snippet = """
+x = 1"""
+
+[[mutation]]
+kind = "Assign(RemAssign)"
+snippet = """
+x = 42
+x %= 7"""
+
+[[mutation]]
+kind = "Assign(ShlAssign)"
+snippet = """
+x = 42
+x <<= 7"""
+
+[[mutation]]
+kind = "Assign(ShrAssign)"
+snippet = """
+x = 42
+x >>= 7"""
+
+[[mutation]]
+kind = "Assign(SubAssign)"
+snippet = """
+x = 42
+x -= 7"""
+
+[[mutation]]
+kind = "ArrayDecl(Inline)"
+snippet = """
+[1, 2, 3]"""
+
+[[mutation]]
+kind = "Literal(BoolTrue)"
+snippet = """
+True"""
+
+[[mutation]]
+kind = "Literal(BoolFalse)"
+snippet = """
+False"""
+
+[[mutation]]
+kind = "Literal(String)"
+snippet = """
+'foo'"""
+
+[[mutation]]
+kind = "Literal(EmptyString)"
+snippet = """
+''"""
+
+[[mutation]]
+kind = "Literal(Number)"
+snippet = """
+123"""
+
+[[mutation]]
+kind = "DictDecl"
+snippet = """
+{x for x in [1, 2, 3]}"""
+
+[[mutation]]
+kind = "TupleDecl"
+snippet = """
+(1, 2, 3)"""
+
+[[mutation]]
+kind = "Assert"
+snippet = """
+assert True"""
+
+[[mutation]]
+kind = "UnaryNot"
+snippet = """
+a = True
+x = not a"""
+

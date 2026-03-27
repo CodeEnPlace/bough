@@ -1,0 +1,205 @@
+[[mutation]]
+kind = "StatementBlock"
+snippet = """
+if (x) { y(); }"""
+
+[[mutation]]
+kind = "Condition"
+snippet = """
+if (x) { y(); }"""
+
+[[mutation]]
+kind = "BinaryOp(Add)"
+snippet = """
+int x = a + b;"""
+
+[[mutation]]
+kind = "BinaryOp(And)"
+snippet = """
+boolean x = a && b;"""
+
+[[mutation]]
+kind = "BinaryOp(BitAnd)"
+snippet = """
+int x = a & b;"""
+
+[[mutation]]
+kind = "BinaryOp(BitOr)"
+snippet = """
+int x = a | b;"""
+
+[[mutation]]
+kind = "BinaryOp(BitXor)"
+snippet = """
+int x = a ^ b;"""
+
+[[mutation]]
+kind = "BinaryOp(Div)"
+snippet = """
+int x = a / b;"""
+
+[[mutation]]
+kind = "BinaryOp(Eq)"
+snippet = """
+boolean x = a == b;"""
+
+[[mutation]]
+kind = "BinaryOp(Gt)"
+snippet = """
+assert x > 0;"""
+
+[[mutation]]
+kind = "BinaryOp(Gte)"
+snippet = """
+boolean x = a >= b;"""
+
+[[mutation]]
+kind = "BinaryOp(Lt)"
+snippet = """
+boolean x = a < b;"""
+
+[[mutation]]
+kind = "BinaryOp(Lte)"
+snippet = """
+boolean x = a <= b;"""
+
+[[mutation]]
+kind = "BinaryOp(Mul)"
+snippet = """
+int x = a * b;"""
+
+[[mutation]]
+kind = "BinaryOp(Or)"
+snippet = """
+boolean x = a || b;"""
+
+[[mutation]]
+kind = "BinaryOp(Rem)"
+snippet = """
+int x = a % b;"""
+
+[[mutation]]
+kind = "BinaryOp(Shl)"
+snippet = """
+int x = a << b;"""
+
+[[mutation]]
+kind = "BinaryOp(Shr)"
+snippet = """
+int x = a >> b;"""
+
+[[mutation]]
+kind = "BinaryOp(Ne)"
+snippet = """
+boolean x = a != b;"""
+
+[[mutation]]
+kind = "BinaryOp(Sub)"
+snippet = """
+int x = a - b;"""
+
+[[mutation]]
+kind = "Assign(AddAssign)"
+snippet = """
+x += 1;"""
+
+[[mutation]]
+kind = "Assign(BitAndAssign)"
+snippet = """
+x &= 1;"""
+
+[[mutation]]
+kind = "Assign(BitOrAssign)"
+snippet = """
+x |= 1;"""
+
+[[mutation]]
+kind = "Assign(BitXorAssign)"
+snippet = """
+x ^= 1;"""
+
+[[mutation]]
+kind = "Assign(DivAssign)"
+snippet = """
+x /= 1;"""
+
+[[mutation]]
+kind = "Assign(MulAssign)"
+snippet = """
+x *= 1;"""
+
+[[mutation]]
+kind = "Assign(NormalAssign)"
+snippet = """
+x = 1;"""
+
+[[mutation]]
+kind = "Assign(RemAssign)"
+snippet = """
+x %= 1;"""
+
+[[mutation]]
+kind = "Assign(ShlAssign)"
+snippet = """
+x <<= 1;"""
+
+[[mutation]]
+kind = "Assign(ShrAssign)"
+snippet = """
+x >>= 1;"""
+
+[[mutation]]
+kind = "Assign(SubAssign)"
+snippet = """
+x -= 1;"""
+
+[[mutation]]
+kind = "ArrayDecl(Inline)"
+snippet = """
+int[] x = {1, 2, 3};"""
+
+[[mutation]]
+kind = "Literal(BoolTrue)"
+snippet = """
+boolean x = true;"""
+
+[[mutation]]
+kind = "Literal(BoolFalse)"
+snippet = """
+boolean x = false;"""
+
+[[mutation]]
+kind = "Literal(String)"
+snippet = """
+String x = "hello";"""
+
+[[mutation]]
+kind = "Literal(EmptyString)"
+snippet = """
+String x = "";"""
+
+[[mutation]]
+kind = "Literal(Number)"
+snippet = """
+x = 1;"""
+
+[[mutation]]
+kind = "Assert"
+snippet = """
+assert x > 0;"""
+
+[[mutation]]
+kind = "UnaryNot"
+snippet = """
+boolean x = !y;"""
+
+[[mutation]]
+kind = "SwitchCase"
+snippet = """
+switch (x) {
+    case 1:
+        break;
+    case 2:
+        break;
+}"""
+
