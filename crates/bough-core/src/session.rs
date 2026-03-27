@@ -34,20 +34,17 @@ pub trait Config {
     fn get_test_cmd(&self) -> String;
     fn get_test_pwd(&self) -> PathBuf;
     fn get_test_env(&self) -> HashMap<String, String>;
-    fn get_test_timeout_absolute(&self) -> Option<Duration>;
-    fn get_test_timeout_relative(&self) -> Option<f64>;
+    fn get_test_timeout(&self, reference: Option<Duration>) -> Duration;
 
     fn get_init_cmd(&self) -> Option<String>;
     fn get_init_pwd(&self) -> PathBuf;
     fn get_init_env(&self) -> HashMap<String, String>;
-    fn get_init_timeout_absolute(&self) -> Option<Duration>;
-    fn get_init_timeout_relative(&self) -> Option<f64>;
+    fn get_init_timeout(&self, reference: Option<Duration>) -> Duration;
 
     fn get_reset_cmd(&self) -> Option<String>;
     fn get_reset_pwd(&self) -> PathBuf;
     fn get_reset_env(&self) -> HashMap<String, String>;
-    fn get_reset_timeout_absolute(&self) -> Option<Duration>;
-    fn get_reset_timeout_relative(&self) -> Option<f64>;
+    fn get_reset_timeout(&self, reference: Option<Duration>) -> Duration;
 
     fn get_find_number(&self) -> usize;
     fn get_find_number_per_file(&self) -> usize;
@@ -463,12 +460,8 @@ mod tests {
             HashMap::new()
         }
 
-        fn get_test_timeout_absolute(&self) -> Option<Duration> {
-            Some(Duration::seconds(30))
-        }
-
-        fn get_test_timeout_relative(&self) -> Option<f64> {
-            None
+        fn get_test_timeout(&self, _reference: Option<Duration>) -> Duration {
+            Duration::seconds(30)
         }
 
         fn get_init_cmd(&self) -> Option<String> {
@@ -483,12 +476,8 @@ mod tests {
             HashMap::new()
         }
 
-        fn get_init_timeout_absolute(&self) -> Option<Duration> {
-            Some(Duration::seconds(30))
-        }
-
-        fn get_init_timeout_relative(&self) -> Option<f64> {
-            None
+        fn get_init_timeout(&self, _reference: Option<Duration>) -> Duration {
+            Duration::seconds(30)
         }
 
         fn get_reset_cmd(&self) -> Option<String> {
@@ -503,12 +492,8 @@ mod tests {
             HashMap::new()
         }
 
-        fn get_reset_timeout_absolute(&self) -> Option<Duration> {
-            Some(Duration::seconds(30))
-        }
-
-        fn get_reset_timeout_relative(&self) -> Option<f64> {
-            None
+        fn get_reset_timeout(&self, _reference: Option<Duration>) -> Duration {
+            Duration::seconds(30)
         }
 
         fn get_find_number(&self) -> usize {

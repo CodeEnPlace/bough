@@ -35,7 +35,7 @@ impl Run {
                         eprintln!("base init failed (exit {exit_code})");
                         std::process::exit(1);
                     }
-                    Some(duration)
+                    Some(chrono::Duration::from_std(duration).expect("duration overflow"))
                 }
                 Ok(bough_core::PhaseOutcome::TimedOut { .. }) => {
                     eprintln!("base init timed out");
@@ -54,7 +54,7 @@ impl Run {
                         eprintln!("base reset failed (exit {exit_code})");
                         std::process::exit(1);
                     }
-                    Some(duration)
+                    Some(chrono::Duration::from_std(duration).expect("duration overflow"))
                 }
                 Ok(bough_core::PhaseOutcome::TimedOut { .. }) => {
                     eprintln!("base reset timed out");
@@ -86,15 +86,15 @@ impl Run {
             (
                 init_duration,
                 reset_duration,
-                test_outcome.duration(),
+                chrono::Duration::from_std(test_outcome.duration()).expect("duration overflow"),
                 total,
             )
         };
 
         let benchmark = crate::render::BenchmarkTimesInBase {
-            init: init_duration,
-            reset: reset_duration,
-            test: test_duration,
+            init: init_duration.map(|d| d.to_std().expect("duration overflow")),
+            reset: reset_duration.map(|d| d.to_std().expect("duration overflow")),
+            test: test_duration.to_std().expect("duration overflow"),
         };
         println!("{}", benchmark.render(cli));
 

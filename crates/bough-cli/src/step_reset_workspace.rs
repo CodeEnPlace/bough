@@ -7,7 +7,7 @@ pub struct StepResetWorkspace {
 }
 
 impl StepResetWorkspace {
-    pub fn run(workspace: &bough_core::Workspace, config: &Config, timeout: Option<std::time::Duration>) -> Result<Box<Self>, bough_core::PhaseError> {
+    pub fn run(workspace: &bough_core::Workspace, config: &Config, timeout: Option<chrono::Duration>) -> Result<Box<Self>, bough_core::PhaseError> {
         let outcome = workspace.run_reset(config, timeout)?;
         Ok(Box::new(Self {
             workspace_id: workspace.id().clone(),

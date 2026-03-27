@@ -12,7 +12,7 @@ pub struct StepTestMutation {
 }
 
 impl StepTestMutation {
-    pub fn run(workspace: &bough_core::Workspace, config: &Config, mutation: &bough_core::Mutation, timeout: Option<std::time::Duration>) -> Result<Box<Self>, bough_core::PhaseError> {
+    pub fn run(workspace: &bough_core::Workspace, config: &Config, mutation: &bough_core::Mutation, timeout: Option<chrono::Duration>) -> Result<Box<Self>, bough_core::PhaseError> {
         let outcome = workspace.run_test(config, timeout)?;
         let duration = outcome.duration();
         let (status_value, status_str) = match outcome {

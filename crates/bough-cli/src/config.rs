@@ -1440,11 +1440,11 @@ NODE_ENV = ""
     }
 
     #[test]
-    fn test_timeout_absolute_none_by_default() {
+    fn test_timeout_defaults_to_5_minutes() {
         let cli = parse_ok(&["run"], MINIMAL_TOML);
         assert_eq!(
-            bough_core::Config::get_test_timeout_absolute(&cli.config),
-            None
+            bough_core::Config::get_test_timeout(&cli.config, None),
+            chrono::Duration::minutes(5)
         );
     }
 
@@ -1467,8 +1467,8 @@ cmd = "npm test"
 "#;
         let cli = parse_ok(&["run"], toml);
         assert_eq!(
-            bough_core::Config::get_test_timeout_absolute(&cli.config),
-            Some(chrono::Duration::seconds(30))
+            bough_core::Config::get_test_timeout(&cli.config, None),
+            chrono::Duration::seconds(30)
         );
     }
 
@@ -1494,8 +1494,8 @@ absolute = 60
 "#;
         let cli = parse_ok(&["run"], toml);
         assert_eq!(
-            bough_core::Config::get_test_timeout_absolute(&cli.config),
-            Some(chrono::Duration::seconds(60))
+            bough_core::Config::get_test_timeout(&cli.config, None),
+            chrono::Duration::seconds(60)
         );
     }
 
@@ -1518,13 +1518,13 @@ cmd = "npm test"
 "#;
         let cli = parse_ok(&["run"], toml);
         assert_eq!(
-            bough_core::Config::get_test_timeout_relative(&cli.config),
-            Some(3.0)
+            bough_core::Config::get_test_timeout(&cli.config, Some(chrono::Duration::seconds(10))),
+            chrono::Duration::seconds(30)
         );
     }
 
     #[test]
-    fn timeout_absolute_only_is_valid() {
+    fn timeout_absolute_only_uses_absolute() {
         let toml = r#"
 base_root_dir = "."
 include = ["src/**"]
@@ -1542,17 +1542,13 @@ cmd = "npm test"
 "#;
         let cli = parse_ok(&["run"], toml);
         assert_eq!(
-            bough_core::Config::get_test_timeout_absolute(&cli.config),
-            Some(chrono::Duration::seconds(30))
-        );
-        assert_eq!(
-            bough_core::Config::get_test_timeout_relative(&cli.config),
-            None
+            bough_core::Config::get_test_timeout(&cli.config, None),
+            chrono::Duration::seconds(30)
         );
     }
 
     #[test]
-    fn timeout_relative_only_is_valid() {
+    fn timeout_relative_only_uses_relative_with_reference() {
         let toml = r#"
 base_root_dir = "."
 include = ["src/**"]
@@ -1570,17 +1566,37 @@ cmd = "npm test"
 "#;
         let cli = parse_ok(&["run"], toml);
         assert_eq!(
-            bough_core::Config::get_test_timeout_absolute(&cli.config),
-            None
-        );
-        assert_eq!(
-            bough_core::Config::get_test_timeout_relative(&cli.config),
-            Some(3.0)
+            bough_core::Config::get_test_timeout(&cli.config, Some(chrono::Duration::seconds(10))),
+            chrono::Duration::seconds(30)
         );
     }
 
     #[test]
-    fn timeout_both_is_valid() {
+    fn timeout_relative_only_defaults_without_reference() {
+        let toml = r#"
+base_root_dir = "."
+include = ["src/**"]
+exclude = []
+
+[timeout]
+relative = 3.0
+
+[lang.js]
+include = ["**/*.js"]
+exclude = []
+
+[test]
+cmd = "npm test"
+"#;
+        let cli = parse_ok(&["run"], toml);
+        assert_eq!(
+            bough_core::Config::get_test_timeout(&cli.config, None),
+            chrono::Duration::minutes(5)
+        );
+    }
+
+    #[test]
+    fn timeout_both_picks_minimum() {
         let toml = r#"
 base_root_dir = "."
 include = ["src/**"]
@@ -1599,12 +1615,12 @@ cmd = "npm test"
 "#;
         let cli = parse_ok(&["run"], toml);
         assert_eq!(
-            bough_core::Config::get_test_timeout_absolute(&cli.config),
-            Some(chrono::Duration::seconds(30))
+            bough_core::Config::get_test_timeout(&cli.config, Some(chrono::Duration::seconds(5))),
+            chrono::Duration::seconds(15)
         );
         assert_eq!(
-            bough_core::Config::get_test_timeout_relative(&cli.config),
-            Some(3.0)
+            bough_core::Config::get_test_timeout(&cli.config, Some(chrono::Duration::seconds(20))),
+            chrono::Duration::seconds(30)
         );
     }
 
@@ -1665,12 +1681,8 @@ absolute = 60
 "#;
         let cli = parse_ok(&["run"], toml);
         assert_eq!(
-            bough_core::Config::get_test_timeout_absolute(&cli.config),
-            Some(chrono::Duration::seconds(60))
-        );
-        assert_eq!(
-            bough_core::Config::get_test_timeout_relative(&cli.config),
-            None
+            bough_core::Config::get_test_timeout(&cli.config, None),
+            chrono::Duration::seconds(60)
         );
     }
 
@@ -1855,10 +1867,9 @@ cmd = "npm run clean"
             ])
         );
         assert_eq!(
-            bough_core::Config::get_test_timeout_absolute(c),
-            Some(chrono::Duration::seconds(60))
+            bough_core::Config::get_test_timeout(c, None),
+            chrono::Duration::seconds(60)
         );
-        assert_eq!(bough_core::Config::get_test_timeout_relative(c), Some(3.0));
 
         assert_eq!(
             bough_core::Config::get_init_cmd(c),
@@ -1873,10 +1884,9 @@ cmd = "npm run clean"
             HashMap::from([("CI".to_string(), "1".to_string())])
         );
         assert_eq!(
-            bough_core::Config::get_init_timeout_absolute(c),
-            Some(chrono::Duration::seconds(30))
+            bough_core::Config::get_init_timeout(c, None),
+            chrono::Duration::seconds(30)
         );
-        assert_eq!(bough_core::Config::get_init_timeout_relative(c), Some(3.0));
 
         assert_eq!(
             bough_core::Config::get_reset_cmd(c),
@@ -1894,10 +1904,9 @@ cmd = "npm run clean"
             ])
         );
         assert_eq!(
-            bough_core::Config::get_reset_timeout_absolute(c),
-            Some(chrono::Duration::seconds(30))
+            bough_core::Config::get_reset_timeout(c, None),
+            chrono::Duration::seconds(30)
         );
-        assert_eq!(bough_core::Config::get_reset_timeout_relative(c), Some(3.0));
     }
 }
 
@@ -1977,6 +1986,27 @@ impl PhaseOverrides {
             .and_then(|t| t.relative)
             .or_else(|| global.timeout.as_ref().and_then(|t| t.relative))
     }
+
+    fn resolve_timeout(
+        &self,
+        global: &PhaseOverrides,
+        reference: Option<chrono::Duration>,
+    ) -> chrono::Duration {
+        let absolute = self.resolve_timeout_absolute(global);
+        let relative_multiplier = self.resolve_timeout_relative(global);
+        let relative = match (relative_multiplier, reference) {
+            (Some(multiplier), Some(ref_dur)) => {
+                Some(ref_dur * multiplier as i32)
+            }
+            _ => None,
+        };
+        match (absolute, relative) {
+            (Some(a), Some(r)) => std::cmp::min(a, r),
+            (Some(a), None) => a,
+            (None, Some(r)) => r,
+            (None, None) => chrono::Duration::minutes(5),
+        }
+    }
 }
 
 impl bough_core::Config for Config {
@@ -2035,14 +2065,9 @@ impl bough_core::Config for Config {
             .resolve_env(&self.phase_defaults)
     }
 
-    fn get_test_timeout_absolute(&self) -> Option<chrono::Duration> {
-        self.phase_overrides(&self.test)
-            .resolve_timeout_absolute(&self.phase_defaults)
-    }
-
-    fn get_test_timeout_relative(&self) -> Option<f64> {
-        self.phase_overrides(&self.test)
-            .resolve_timeout_relative(&self.phase_defaults)
+    fn get_test_timeout(&self, reference: Option<chrono::Duration>) -> chrono::Duration {
+        let overrides = self.phase_overrides(&self.test);
+        overrides.resolve_timeout(&self.phase_defaults, reference)
     }
 
     fn get_init_cmd(&self) -> Option<String> {
@@ -2059,14 +2084,9 @@ impl bough_core::Config for Config {
             .resolve_env(&self.phase_defaults)
     }
 
-    fn get_init_timeout_absolute(&self) -> Option<chrono::Duration> {
-        self.phase_overrides(&self.init)
-            .resolve_timeout_absolute(&self.phase_defaults)
-    }
-
-    fn get_init_timeout_relative(&self) -> Option<f64> {
-        self.phase_overrides(&self.init)
-            .resolve_timeout_relative(&self.phase_defaults)
+    fn get_init_timeout(&self, reference: Option<chrono::Duration>) -> chrono::Duration {
+        let overrides = self.phase_overrides(&self.init);
+        overrides.resolve_timeout(&self.phase_defaults, reference)
     }
 
     fn get_reset_cmd(&self) -> Option<String> {
@@ -2083,14 +2103,9 @@ impl bough_core::Config for Config {
             .resolve_env(&self.phase_defaults)
     }
 
-    fn get_reset_timeout_absolute(&self) -> Option<chrono::Duration> {
-        self.phase_overrides(&self.reset)
-            .resolve_timeout_absolute(&self.phase_defaults)
-    }
-
-    fn get_reset_timeout_relative(&self) -> Option<f64> {
-        self.phase_overrides(&self.reset)
-            .resolve_timeout_relative(&self.phase_defaults)
+    fn get_reset_timeout(&self, reference: Option<chrono::Duration>) -> chrono::Duration {
+        let overrides = self.phase_overrides(&self.reset);
+        overrides.resolve_timeout(&self.phase_defaults, reference)
     }
 
     fn get_find_number(&self) -> usize {

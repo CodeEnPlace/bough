@@ -275,40 +275,13 @@ impl PhaseOutcome {
     }
 }
 
-pub fn effective_timeout(
-    timeout_absolute: Option<Duration>,
-    timeout_relative: Option<f64>,
-    reference_duration: Option<Duration>,
-) -> Option<Duration> {
-    let relative = match (timeout_relative, reference_duration) {
-        (Some(multiplier), Some(ref_dur)) => Some(ref_dur * multiplier as u32),
-        _ => None,
-    };
-    match (timeout_absolute, relative) {
-        (Some(a), Some(r)) => Some(Duration::min(a, r)),
-        (Some(a), None) => Some(a),
-        (None, Some(r)) => Some(r),
-        (None, None) => None,
-    }
-}
-
-fn parse_phase_args(
-    cmd: &str,
-    pwd: std::path::PathBuf,
-    timeout_absolute: Option<chrono::Duration>,
-    timeout_relative: Option<f64>,
-    reference_duration: Option<Duration>,
-) -> Result<(Twig, Vec<String>, Option<Duration>), Error> {
+fn parse_cmd_and_pwd(cmd: &str, pwd: std::path::PathBuf) -> Result<(Twig, Vec<String>), Error> {
     if pwd.is_absolute() {
         return Err(Error::AbsolutePwd(pwd));
     }
     let twig = Twig::new(pwd).map_err(crate::file::Error::from)?;
     let cmd_parts: Vec<String> = cmd.split_whitespace().map(String::from).collect();
-    let timeout_abs = timeout_absolute
-        .map(|d| d.to_std().map_err(|_| Error::InvalidTimeout))
-        .transpose()?;
-    let timeout = effective_timeout(timeout_abs, timeout_relative, reference_duration);
-    Ok((twig, cmd_parts, timeout))
+    Ok((twig, cmd_parts))
 }
 
 pub fn run_phase_in_base(
@@ -316,13 +289,13 @@ pub fn run_phase_in_base(
     cmd: &str,
     pwd: std::path::PathBuf,
     env: HashMap<String, String>,
-    timeout_absolute: Option<chrono::Duration>,
-    timeout_relative: Option<f64>,
-    reference_duration: Option<Duration>,
+    timeout: Option<chrono::Duration>,
 ) -> Result<PhaseOutcome, Error> {
-    let (twig, cmd_parts, timeout) =
-        parse_phase_args(cmd, pwd, timeout_absolute, timeout_relative, reference_duration)?;
-    let phase = Phase::<crate::base::Base>::new(root, twig, env, cmd_parts, timeout);
+    let (twig, cmd_parts) = parse_cmd_and_pwd(cmd, pwd)?;
+    let std_timeout = timeout
+        .map(|d| d.to_std().map_err(|_| Error::InvalidTimeout))
+        .transpose()?;
+    let phase = Phase::<crate::base::Base>::new(root, twig, env, cmd_parts, std_timeout);
     phase.run()
 }
 
@@ -331,15 +304,11 @@ pub fn run_phase_in_workspace(
     cmd: &str,
     pwd: std::path::PathBuf,
     env: HashMap<String, String>,
-    timeout_absolute: Option<chrono::Duration>,
-    timeout_relative: Option<f64>,
-    reference_duration: Option<Duration>,
+    timeout: chrono::Duration,
 ) -> Result<PhaseOutcome, Error> {
-    let (twig, cmd_parts, timeout) =
-        parse_phase_args(cmd, pwd, timeout_absolute, timeout_relative, reference_duration)?;
-    let timeout =
-        timeout.ok_or(Error::InvalidTimeout)?;
-    let phase = Phase::<crate::workspace::Workspace>::new(root, twig, env, cmd_parts, timeout);
+    let (twig, cmd_parts) = parse_cmd_and_pwd(cmd, pwd)?;
+    let std_timeout = timeout.to_std().map_err(|_| Error::InvalidTimeout)?;
+    let phase = Phase::<crate::workspace::Workspace>::new(root, twig, env, cmd_parts, std_timeout);
     phase.run()
 }
 
