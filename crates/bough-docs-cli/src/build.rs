@@ -282,124 +282,70 @@ fn collect_md_files(dir: &Path) -> Vec<PathBuf> {
     files
 }
 
-const CORPUS_DIR: &str = "corpus";
+const EXAMPLES_DIR: &str = "docs/mutations";
 
 #[derive(Deserialize)]
-struct CorpusMutation {
-    mutant: CorpusMutant,
-    subst: String,
-}
-
-#[derive(Deserialize)]
-struct CorpusMutant {
-    kind: serde_json::Value,
-    subst_span: CorpusSpan,
+struct ExamplesFile {
+    mutation: Vec<MutationExample>,
 }
 
 #[derive(Deserialize)]
-struct CorpusSpan {
-    start: CorpusPoint,
-    end: CorpusPoint,
-}
-
-#[derive(Deserialize)]
-struct CorpusPoint {
-    byte: usize,
-}
-
-struct CorpusExample {
-    source: String,
-    span_start: usize,
-    span_end: usize,
-    substitutions: Vec<String>,
-    ratio: f64,
-}
-
-fn kind_key(kind: &serde_json::Value) -> String {
-    match kind {
-        serde_json::Value::String(s) => s.clone(),
-        serde_json::Value::Object(m) => {
-            let (k, v) = m.iter().next().unwrap();
-            format!("{k}({})", v.as_str().unwrap_or(""))
-        }
-        _ => kind.to_string(),
-    }
+struct MutationExample {
+    kind: String,
+    snippet: String,
 }
 
 fn make_mutation_reference(lang: &bough_core::LanguageId) -> String {
     use std::collections::BTreeMap;
     use std::fmt::Write;
 
-    let corpus_dir = Path::new(CORPUS_DIR).join(lang.corpus_dir_name());
     let ext = lang.file_extension();
+    let examples_path = Path::new(EXAMPLES_DIR).join(format!("{}.examples.toml", lang.slug()));
+    let toml_content = fs::read_to_string(&examples_path).unwrap_or_else(|e| {
+        panic!(
+            "failed to read examples file {}: {e}",
+            examples_path.display()
+        )
+    });
+    let examples_file: ExamplesFile = toml::from_str(&toml_content).unwrap_or_else(|e| {
+        panic!(
+            "failed to parse examples file {}: {e}",
+            examples_path.display()
+        )
+    });
 
-    let mut best: BTreeMap<String, CorpusExample> = BTreeMap::new();
+    // Build kind key → snippet map, checking for duplicates
+    let mut snippets: BTreeMap<String, String> = BTreeMap::new();
+    for example in &examples_file.mutation {
+        if snippets.contains_key(&example.kind) {
+            panic!(
+                "{}: duplicate example for kind '{}'",
+                examples_path.display(),
+                example.kind
+            );
+        }
+        // Validate the kind key is recognised
+        if bough_core::MutantKind::from_key(&example.kind).is_none() {
+            panic!(
+                "{}: unknown mutation kind '{}'",
+                examples_path.display(),
+                example.kind
+            );
+        }
+        snippets.insert(example.kind.clone(), example.snippet.clone());
+    }
 
-    if let Ok(case_dirs) = fs::read_dir(&corpus_dir) {
-        for case_entry in case_dirs.flatten() {
-            let case_path = case_entry.path();
-            if !case_path.is_dir() {
-                continue;
-            }
-
-            let base_path = case_path.join(format!("base.{ext}"));
-            let Ok(source) = fs::read_to_string(&base_path) else {
-                continue;
-            };
-            let file_len = source.len();
-            if file_len == 0 {
-                continue;
-            }
-
-            let mut mutations_by_kind: BTreeMap<
-                String,
-                (serde_json::Value, usize, usize, Vec<String>),
-            > = BTreeMap::new();
-
-            let Ok(entries) = fs::read_dir(&case_path) else {
-                continue;
-            };
-            for entry in entries.flatten() {
-                let path = entry.path();
-                if !path.to_string_lossy().ends_with(".mutation.json") {
-                    continue;
-                }
-                let Ok(json) = fs::read_to_string(&path) else {
-                    continue;
-                };
-                let Ok(mutation) = serde_json::from_str::<CorpusMutation>(&json) else {
-                    continue;
-                };
-
-                let key = kind_key(&mutation.mutant.kind);
-                let entry = mutations_by_kind.entry(key).or_insert_with(|| {
-                    (
-                        mutation.mutant.kind.clone(),
-                        mutation.mutant.subst_span.start.byte,
-                        mutation.mutant.subst_span.end.byte,
-                        Vec::new(),
-                    )
-                });
-                entry.3.push(mutation.subst);
-            }
-
-            for (key, (_, span_start, span_end, subs)) in mutations_by_kind {
-                let span_len = span_end.saturating_sub(span_start);
-                let ratio = span_len as f64 / file_len as f64;
-
-                if best.get(&key).is_none_or(|prev| ratio > prev.ratio) {
-                    best.insert(
-                        key,
-                        CorpusExample {
-                            source: source.clone(),
-                            span_start,
-                            span_end,
-                            substitutions: subs,
-                            ratio,
-                        },
-                    );
-                }
-            }
+    // Check for extraneous keys (kinds the language doesn't support)
+    for key in snippets.keys() {
+        let kind = bough_core::MutantKind::from_key(key).unwrap();
+        let subs = lang.substitutions(&kind);
+        if subs.is_empty() {
+            panic!(
+                "{}: example for kind '{}' but language {} doesn't support it (empty substitutions)",
+                examples_path.display(),
+                key,
+                lang.display_name()
+            );
         }
     }
 
@@ -411,22 +357,47 @@ fn make_mutation_reference(lang: &bough_core::LanguageId) -> String {
             continue;
         }
 
-        let _ = writeln!(out, "## {}\n", kind.heading());
+        let key = kind.to_key();
+        let snippet = snippets.get(&key).unwrap_or_else(|| {
+            panic!(
+                "{}: missing example for supported kind '{}'",
+                examples_path.display(),
+                key
+            )
+        });
 
-        let key = kind_to_key(&kind);
-        if let Some(example) = best.get(&key) {
-            let _ = writeln!(
-                out,
-                "### Before\n\n```{ext}\n{}\n```\n",
-                example.source.trim_end()
+        // Parse the snippet in-memory to find mutants of this kind
+        let source_mutants = bough_core::find_mutants_in_source(*lang, snippet.as_bytes());
+        let matching: Vec<_> = source_mutants
+            .iter()
+            .filter(|m| m.kind == kind)
+            .collect();
+
+        if matching.is_empty() {
+            panic!(
+                "{}: snippet for kind '{}' doesn't contain any mutants of that kind when parsed",
+                examples_path.display(),
+                key
             );
-            let _ = writeln!(out, "### After\n");
-            for sub in &example.substitutions {
+        }
+
+        let _ = writeln!(out, "## {}\n", kind.heading());
+        let _ = writeln!(
+            out,
+            "### Before\n\n```{ext}\n{}\n```\n",
+            snippet.trim_end()
+        );
+        let _ = writeln!(out, "### After\n");
+
+        for mutant in &matching {
+            let span_start = mutant.subst_span.start().byte();
+            let span_end = mutant.subst_span.end().byte();
+            for sub in &subs {
                 let mutated = format!(
                     "{}{}{}",
-                    &example.source[..example.span_start],
+                    &snippet[..span_start],
                     sub,
-                    &example.source[example.span_end..],
+                    &snippet[span_end..],
                 );
                 let _ = writeln!(out, "```{ext}\n{}\n```\n", mutated.trim_end());
             }
@@ -434,10 +405,6 @@ fn make_mutation_reference(lang: &bough_core::LanguageId) -> String {
     }
 
     out
-}
-
-fn kind_to_key(kind: &bough_core::MutantKind) -> String {
-    kind.to_key()
 }
 
 pub fn build() {
