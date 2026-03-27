@@ -614,6 +614,42 @@ mod tests {
 
     #[cfg(unix)]
     #[test]
+    fn phase_run_timeout_kills_deep_process_tree() {
+        let dir = tempfile::tempdir().unwrap();
+        let pid_dir = dir.path().join("pids");
+        std::fs::create_dir_all(&pid_dir).unwrap();
+        let root = TestRoot(dir.path().to_path_buf());
+        let phase = Phase {
+            cmd: vec![
+                helper_bin().to_str().unwrap().into(),
+                "spawn-chain".into(),
+                pid_dir.to_str().unwrap().into(),
+                "3".into(),
+            ],
+            pwd: crate::file::Twig::new(PathBuf::from(".")).unwrap(),
+            timeout: Some(Duration::from_millis(500)),
+            ..make_phase(&root)
+        };
+        let outcome = phase.run().unwrap();
+        assert!(matches!(outcome, PhaseOutcome::TimedOut { .. }));
+
+        std::thread::sleep(Duration::from_millis(200));
+
+        for depth in 0..=3 {
+            let pid_file = pid_dir.join(format!("depth-{depth}.pid"));
+            let pid_str = std::fs::read_to_string(&pid_file)
+                .unwrap_or_else(|_| panic!("missing pid file for depth {depth}"));
+            let pid: i32 = pid_str.trim().parse().expect("parse pid");
+            let alive = unsafe { libc::kill(pid, 0) } == 0;
+            assert!(
+                !alive,
+                "process at depth {depth} (pid {pid}) should have been killed but is still running"
+            );
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
     fn phase_run_timeout_kills_grandchild_processes() {
         let dir = tempfile::tempdir().unwrap();
         let pid_file = dir.path().join("grandchild.pid");

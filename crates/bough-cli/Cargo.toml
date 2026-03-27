@@ -25,6 +25,7 @@ tracing = "0.1"
 tracing-subscriber = "0.3"
 indicatif = "0.17"
 chrono = "0.4.44"
+ctrlc = "3"
 
 [dev-dependencies]
 serial_test = "3"

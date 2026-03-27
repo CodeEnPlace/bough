@@ -6,10 +6,11 @@ fn main() {
         Some("flood-stdout") => flood(std::io::stdout(), &args[1..]),
         Some("flood-stderr") => flood(std::io::stderr(), &args[1..]),
         Some("spawn-and-wait") => spawn_and_wait(&args[1..]),
+        Some("spawn-chain") => spawn_chain(&args[1..]),
         Some("sleep") => std::thread::sleep(std::time::Duration::from_secs(1000)),
         _ => {
             eprintln!(
-                "usage: bough-test-helper <flood-stdout|flood-stderr|spawn-and-wait|sleep> [args...]"
+                "usage: bough-test-helper <flood-stdout|flood-stderr|spawn-and-wait|spawn-chain|sleep> [args...]"
             );
             std::process::exit(1);
         }
@@ -29,6 +30,26 @@ fn flood(mut w: impl Write, args: &[String]) {
         written += n;
     }
     w.flush().unwrap();
+}
+
+fn spawn_chain(args: &[String]) {
+    let pid_dir = args.first().expect("spawn-chain requires a pid-dir path");
+    let depth: usize = args
+        .get(1)
+        .and_then(|s| s.parse().ok())
+        .expect("spawn-chain requires a depth");
+
+    let pid_file = std::path::Path::new(pid_dir).join(format!("depth-{depth}.pid"));
+    std::fs::write(&pid_file, std::process::id().to_string()).unwrap();
+
+    if depth > 0 {
+        let _child = std::process::Command::new(std::env::current_exe().unwrap())
+            .args(["spawn-chain", pid_dir, &(depth - 1).to_string()])
+            .spawn()
+            .expect("spawn child");
+    }
+
+    std::thread::sleep(std::time::Duration::from_secs(1000));
 }
 
 fn spawn_and_wait(args: &[String]) {

@@ -100,6 +100,16 @@ impl Run {
 
         let done = Arc::new(AtomicBool::new(false));
 
+        // https://github.com/CodeEnPlace/bough/issues/40 — escalating signal handling
+        let done_for_handler = done.clone();
+        ctrlc::set_handler(move || {
+            done_for_handler.store(true, Ordering::SeqCst);
+            eprintln!("\nInterrupted. Waiting for in-flight tests to finish...");
+            eprintln!("Repeated Ctrl-C will NOT force-kill — this avoids orphaning test processes.");
+            eprintln!("If you must kill bough, send SIGKILL and clean up child processes manually.");
+        })
+        .expect("failed to set ctrl-c handler");
+
         let interactive = std::io::stdout().is_terminal();
         let pb = if interactive {
             let pb = indicatif::ProgressBar::new(total);
@@ -164,6 +174,11 @@ impl Run {
                     }
 
                     loop {
+                        if done.load(Ordering::Relaxed) {
+                            info!(%workspace_id, "shutting down worker");
+                            break;
+                        }
+
                         let Ok(mut guard) = session.lock() else {
                             error!(%workspace_id, "mutex poisoned in worker");
                             break;
