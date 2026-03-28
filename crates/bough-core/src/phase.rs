@@ -42,13 +42,22 @@ impl From<crate::file::Error> for Error {
     }
 }
 
-fn kill_process_tree(child: &std::process::Child) {
+const GRACEFUL_SHUTDOWN_PERIOD: Duration = Duration::from_secs(10);
+
+fn kill_process_tree(child: &mut std::process::Child) {
     #[cfg(unix)]
     {
+        use wait_timeout::ChildExt;
         let pid = child.id() as i32;
-        unsafe {
-            libc::kill(-pid, libc::SIGKILL);
+
+        unsafe { libc::kill(-pid, libc::SIGTERM); }
+
+        match child.wait_timeout(GRACEFUL_SHUTDOWN_PERIOD) {
+            Ok(Some(_)) => return,
+            _ => {}
         }
+
+        unsafe { libc::kill(-pid, libc::SIGKILL); }
     }
     #[cfg(not(unix))]
     {
@@ -182,7 +191,7 @@ impl<'a, R: Root> Phase<'a, R> {
             match child.wait_timeout(timeout)? {
                 Some(_status) => false,
                 None => {
-                    kill_process_tree(&child);
+                    kill_process_tree(&mut child);
                     child.wait()?;
                     true
                 }
@@ -648,6 +657,52 @@ mod tests {
                 "process at depth {depth} (pid {pid}) should have been killed but is still running"
             );
         }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn phase_run_timeout_gracefully_terminates_nested_process_groups() {
+        let dir = tempfile::tempdir().unwrap();
+        let pid_dir = dir.path().join("pids");
+        std::fs::create_dir_all(&pid_dir).unwrap();
+        let root = TestRoot(dir.path().to_path_buf());
+        let phase = Phase {
+            cmd: vec![
+                helper_bin().to_str().unwrap().into(),
+                "spawn-own-pgroup".into(),
+                pid_dir.to_str().unwrap().into(),
+            ],
+            pwd: crate::file::Twig::new(PathBuf::from(".")).unwrap(),
+            timeout: Some(Duration::from_millis(500)),
+            ..make_phase(&root)
+        };
+        let outcome = phase.run().unwrap();
+        assert!(matches!(outcome, PhaseOutcome::TimedOut { .. }));
+
+        std::thread::sleep(Duration::from_millis(500));
+
+        let parent_pid: i32 = std::fs::read_to_string(pid_dir.join("parent.pid"))
+            .expect("parent pid file")
+            .trim()
+            .parse()
+            .expect("parse parent pid");
+        let child_pid: i32 = std::fs::read_to_string(pid_dir.join("child.pid"))
+            .expect("child pid file")
+            .trim()
+            .parse()
+            .expect("parse child pid");
+
+        let parent_alive = unsafe { libc::kill(parent_pid, 0) } == 0;
+        let child_alive = unsafe { libc::kill(child_pid, 0) } == 0;
+
+        assert!(
+            !parent_alive,
+            "parent (pid {parent_pid}) should have been killed but is still running"
+        );
+        assert!(
+            !child_alive,
+            "child in own pgroup (pid {child_pid}) should have been killed but is still running"
+        );
     }
 
     #[cfg(unix)]
