@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use std::{collections::HashMap, time::Duration};
 
 use crate::file::{File, Root, Twig};
-use tracing::{debug, info, warn};
+use tracing::{info, warn};
 
 #[derive(Debug)]
 pub enum Error {
@@ -204,7 +204,8 @@ impl<'a, R: Root> Phase<'a, R> {
             .unwrap_or_default();
 
         if timed_out {
-            debug!(
+            info!(
+                cmd = ?self.cmd,
                 duration_ms = duration.as_millis() as u64,
                 "phase timed out"
             );
@@ -215,7 +216,8 @@ impl<'a, R: Root> Phase<'a, R> {
             })
         } else {
             let exit_code = child.try_wait()?.and_then(|s| s.code()).unwrap_or(-1);
-            debug!(
+            info!(
+                cmd = ?self.cmd,
                 exit_code,
                 duration_ms = duration.as_millis() as u64,
                 "phase completed"

@@ -1,1 +1,0 @@
-{"mutation":{"mutant":{"lang":"rs","twig":["crates/bough-typed-hash/src/tests.rs"],"kind":{"ArrayDecl":"Inline"},"subst_span":{"start":{"line":304,"col":32,"byte":7119},"end":{"line":304,"col":39,"byte":7126}},"effect_span":{"start":{"line":304,"col":32,"byte":7119},"end":{"line":304,"col":39,"byte":7126}}},"subst":"[]"},"outcome":null}

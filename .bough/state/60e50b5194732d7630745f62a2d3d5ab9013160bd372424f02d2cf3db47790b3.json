@@ -1,1 +1,0 @@
-{"mutation":{"mutant":{"lang":"rs","twig":["crates/bough-cli/src/show_all_mutations.rs"],"kind":{"Literal":"String"},"subst_span":{"start":{"line":23,"col":43,"byte":737},"end":{"line":23,"col":49,"byte":743}},"effect_span":{"start":{"line":23,"col":43,"byte":737},"end":{"line":23,"col":49,"byte":743}}},"subst":"\"\""},"outcome":{"status":"Missed","at":"2026-03-25T23:33:23Z"}}

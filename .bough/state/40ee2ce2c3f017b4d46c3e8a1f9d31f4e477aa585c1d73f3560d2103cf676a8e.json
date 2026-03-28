@@ -1,1 +1,0 @@
-{"mutation":{"mutant":{"lang":"rs","twig":["crates/bough-core/src/language/javascript.rs"],"kind":"SwitchCase","subst_span":{"start":{"line":77,"col":20,"byte":3605},"end":{"line":77,"col":61,"byte":3646}},"effect_span":{"start":{"line":77,"col":20,"byte":3605},"end":{"line":77,"col":61,"byte":3646}}},"subst":""},"outcome":null}

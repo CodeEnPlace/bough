@@ -1,1 +1,0 @@
-{"mutation":{"mutant":{"lang":"rs","twig":["crates/bough-core/src/mutant.rs"],"kind":"StatementBlock","subst_span":{"start":{"line":582,"col":27,"byte":17632},"end":{"line":589,"col":13,"byte":17903}},"effect_span":{"start":{"line":582,"col":27,"byte":17632},"end":{"line":589,"col":13,"byte":17903}}},"subst":"{}"},"outcome":null}

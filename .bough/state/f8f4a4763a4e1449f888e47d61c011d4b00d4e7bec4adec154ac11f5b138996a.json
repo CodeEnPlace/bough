@@ -1,1 +1,0 @@
-{"mutation":{"mutant":{"lang":"rs","twig":["crates/bough-core/src/facet_disk_store.rs"],"kind":"StatementBlock","subst_span":{"start":{"line":84,"col":32,"byte":2790},"end":{"line":88,"col":13,"byte":2972}},"effect_span":{"start":{"line":84,"col":32,"byte":2790},"end":{"line":88,"col":13,"byte":2972}}},"subst":"{}"},"outcome":{"status":"Caught","at":"2026-03-26T04:53:48Z"}}

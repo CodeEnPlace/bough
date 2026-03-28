@@ -1,1 +1,0 @@
-{"mutation":{"mutant":{"lang":"rs","twig":["crates/bough-core/src/mutation_score.rs"],"kind":{"BinaryOp":"Ne"},"subst_span":{"start":{"line":100,"col":46,"byte":3374},"end":{"line":100,"col":48,"byte":3376}},"effect_span":{"start":{"line":100,"col":24,"byte":3352},"end":{"line":100,"col":55,"byte":3383}}},"subst":"=="},"outcome":{"status":"Caught","at":"2026-03-26T00:06:41Z"}}

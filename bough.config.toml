@@ -8,6 +8,8 @@ workers = 8
 init.cmd = "cargo build"
 test.cmd = "cargo nextest run"
 
+timeout.relative = 3.0
+
 [env]
 CARGO_BUILD_JOBS = 1
 NEXTEST_TEST_THREADS = 1

@@ -1,1 +1,0 @@
-{"mutation":{"mutant":{"lang":"rs","twig":["crates/bough-typed-hash/src/tests.rs"],"kind":{"Literal":"String"},"subst_span":{"start":{"line":213,"col":35,"byte":4881},"end":{"line":213,"col":39,"byte":4885}},"effect_span":{"start":{"line":213,"col":35,"byte":4881},"end":{"line":213,"col":39,"byte":4885}}},"subst":"\"\""},"outcome":{"status":"Caught","at":"2026-03-25T23:44:02Z"}}
