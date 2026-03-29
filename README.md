@@ -1,20 +1,66 @@
 # Bough
 
-An Incremental Polyglot Mutation Tester
+A polyglot incremental mutation tester.
 
 > [!WARNING]
 > Pre-Alpha software, highly likely to change and no guarantee of correctness as of yet
 
-## Foundational Ideas
+📖 **[Documentation](https://bough.codeenplace.dev/)**
 
-### Incremental
+## Features
 
-Whenever `bough` learns new information about your coverage, it should be written to disk; and bough should prefer reading information directly from disk. This means that you can pause a mutation testing run midway through, and seamlessly resume it.
+- **Incremental** — mutation testing can take a long time. Bough stores all results to disk, so you can stop a run midway through and resume later. Check your mutation state into git and share coverage data across your team.
+- **Polyglot** — built on tree-sitter, so adding new languages reuses most of the mutation testing machinery.
+- **Config, not plugins** — no plugin ecosystem to navigate. A single config file controls everything: file globs, test commands, skip patterns via tree-sitter queries.
 
-You can also check your coverage metadata directly into git, or share it between developers easily.
+## Installation
 
-### Config, Not Plugins
+```bash
+cargo install --locked --git https://github.com/CodeEnPlace/bough --bin bough
+```
 
-A mutation testing system that tightly integrates with your language ecosystem is great until you deviate from the ecosystem. Plugins create a 2-tier experience where the core maintainer owns a list of "blessed" plugins, and anything outside of that set is subject to breakage.
+## Quick Start
 
-By instead creating an API surface with config that is as generalized as possible, I hope to make software that is more flexible.
+Create a `bough.config.toml` in your project root:
+
+```toml
+base_root_dir = "."
+include = ["**/*"]
+exclude = []
+
+init.cmd = "npm install"
+test.cmd = "npm run test"
+
+[lang.js]
+include = ["src/**/*.js"]
+exclude = ["**/*.test.*"]
+```
+
+Then run:
+
+```bash
+bough show mutations  # see what bough will mutate
+bough run             # run mutation testing
+bough find            # find the most important missed mutations
+```
+
+See the [tutorial](https://bough.codeenplace.dev/tutorials/using-bough/) for a full walkthrough.
+
+## Supported Languages
+
+| Language   | ID     |
+|------------|--------|
+| JavaScript | `js`   |
+| TypeScript | `ts`   |
+| Python     | `py`   |
+| Rust       | `rs`   |
+| Go         | `go`   |
+| C          | `c`    |
+| Java       | `java` |
+| C#         | `cs`   |
+
+Is your language not supported? [Open an issue or PR on GitHub.](https://github.com/CodeEnPlace/bough/issues)
+
+## License
+
+MIT
