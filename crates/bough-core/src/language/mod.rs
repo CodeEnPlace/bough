@@ -1,19 +1,19 @@
 mod c;
 mod cs;
 mod go;
-mod rs;
 mod java;
 mod javascript;
 mod python;
+mod rs;
 mod typescript;
 
 pub(crate) use c::CDriver;
 pub(crate) use cs::CSharpDriver;
 pub(crate) use go::GoDriver;
-pub(crate) use rs::RustDriver;
 pub(crate) use java::JavaDriver;
 pub(crate) use javascript::JavascriptDriver;
 pub(crate) use python::PythonDriver;
+pub(crate) use rs::RustDriver;
 pub(crate) use typescript::TypescriptDriver;
 
 use crate::mutant::{MutantKind, Span};

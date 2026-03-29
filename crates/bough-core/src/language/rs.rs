@@ -53,10 +53,7 @@ impl LanguageDriver for RustDriver {
                 // See https://github.com/CodeEnPlace/bough/issues/38
                 let left = node.child_by_field_name("left")?;
                 if left.kind() == "range_expression" {
-                    let has_left_operand = left
-                        .child(0)
-                        .map(|c| c.kind() != "..")
-                        .unwrap_or(false);
+                    let has_left_operand = left.child(0).map(|c| c.kind() != "..").unwrap_or(false);
                     if !has_left_operand {
                         let eq_node = (0..node.child_count())
                             .filter_map(|i| node.child(i as u32))
@@ -170,19 +167,11 @@ impl LanguageDriver for RustDriver {
                 }
                 let pattern_span = span_from_node(node);
                 let arm = node.parent()?;
-                Some((
-                    MutantKind::MatchPattern,
-                    pattern_span,
-                    span_from_node(&arm),
-                ))
+                Some((MutantKind::MatchPattern, pattern_span, span_from_node(&arm)))
             }
             "integer_literal" | "float_literal" => {
                 let span = span_from_node(node);
-                Some((
-                    MutantKind::Literal(LiteralKind::Number),
-                    span.clone(),
-                    span,
-                ))
+                Some((MutantKind::Literal(LiteralKind::Number), span.clone(), span))
             }
             "string_literal" => {
                 let text = node.utf8_text(file_content).ok()?;
@@ -304,12 +293,7 @@ impl LanguageDriver for RustDriver {
     fn is_context_boundary(&self, node: &arborium_tree_sitter::Node<'_>) -> bool {
         matches!(
             node.kind(),
-            "function_item"
-                | "impl_item"
-                | "struct_item"
-                | "enum_item"
-                | "trait_item"
-                | "mod_item"
+            "function_item" | "impl_item" | "struct_item" | "enum_item" | "trait_item" | "mod_item"
         )
     }
 }
@@ -325,7 +309,11 @@ mod tests {
             let text = node.utf8_text(src).unwrap_or("");
             let field = node.parent().and_then(|p| {
                 (0..p.child_count())
-                    .find(|&i| p.child(i as u32).map(|c| c.id() == node.id()).unwrap_or(false))
+                    .find(|&i| {
+                        p.child(i as u32)
+                            .map(|c| c.id() == node.id())
+                            .unwrap_or(false)
+                    })
                     .and_then(|i| p.field_name_for_child(i as u32))
             });
             let field_str = field.map(|f| format!("{f}: ")).unwrap_or_default();

@@ -30,7 +30,11 @@ impl Run {
             let base = guard.base();
 
             let init_duration = match base.run_init(&cli.config, None) {
-                Ok(bough_core::PhaseOutcome::Completed { exit_code, duration, .. }) => {
+                Ok(bough_core::PhaseOutcome::Completed {
+                    exit_code,
+                    duration,
+                    ..
+                }) => {
                     if exit_code != 0 {
                         eprintln!("base init failed (exit {exit_code})");
                         std::process::exit(1);
@@ -49,7 +53,11 @@ impl Run {
             };
 
             let reset_duration = match base.run_reset(&cli.config, None) {
-                Ok(bough_core::PhaseOutcome::Completed { exit_code, duration, .. }) => {
+                Ok(bough_core::PhaseOutcome::Completed {
+                    exit_code,
+                    duration,
+                    ..
+                }) => {
                     if exit_code != 0 {
                         eprintln!("base reset failed (exit {exit_code})");
                         std::process::exit(1);
@@ -105,8 +113,12 @@ impl Run {
         ctrlc::set_handler(move || {
             done_for_handler.store(true, Ordering::SeqCst);
             eprintln!("\nInterrupted. Waiting for in-flight tests to finish...");
-            eprintln!("Repeated Ctrl-C will NOT force-kill — this avoids orphaning test processes.");
-            eprintln!("If you must kill bough, send SIGKILL and clean up child processes manually.");
+            eprintln!(
+                "Repeated Ctrl-C will NOT force-kill — this avoids orphaning test processes."
+            );
+            eprintln!(
+                "If you must kill bough, send SIGKILL and clean up child processes manually."
+            );
         })
         .expect("failed to set ctrl-c handler");
 
@@ -230,9 +242,8 @@ impl Run {
                             Ok(r) => r,
                             Err(e) => {
                                 error!(%workspace_id, err = %e, "test execution failed");
-                                let _ = step_unapply_mutation::StepUnapplyMutation::run(
-                                    &mut workspace,
-                                );
+                                let _ =
+                                    step_unapply_mutation::StepUnapplyMutation::run(&mut workspace);
                                 continue;
                             }
                         };
@@ -247,8 +258,7 @@ impl Run {
                             error!(%workspace_id, "mutex poisoned setting state");
                             break;
                         };
-                        if let Err(e) =
-                            guard.set_state(&mutation, test_result.status_value.clone())
+                        if let Err(e) = guard.set_state(&mutation, test_result.status_value.clone())
                         {
                             error!(%workspace_id, err = ?e, "failed to set state");
                         }

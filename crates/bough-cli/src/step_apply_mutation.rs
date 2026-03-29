@@ -1,6 +1,6 @@
 use bough_typed_hash::TypedHashable;
 
-use crate::render::{MUTATION, TITLE, WORKSPACE, RESET, Render};
+use crate::render::{MUTATION, RESET, Render, TITLE, WORKSPACE};
 
 pub struct StepApplyMutation {
     pub workspace_id: bough_core::WorkspaceId,
@@ -8,7 +8,10 @@ pub struct StepApplyMutation {
 }
 
 impl StepApplyMutation {
-    pub fn run(workspace: &mut bough_core::Workspace, mutation: &bough_core::Mutation) -> Result<Box<Self>, bough_core::WorkspaceError> {
+    pub fn run(
+        workspace: &mut bough_core::Workspace,
+        mutation: &bough_core::Mutation,
+    ) -> Result<Box<Self>, bough_core::WorkspaceError> {
         workspace.write_mutant(mutation)?;
         Ok(Box::new(Self {
             workspace_id: workspace.id().clone(),
@@ -73,8 +76,12 @@ mod tests {
 
     #[test]
     fn verbose() {
-        let plain = fixture().verbose()
-            .replace(TITLE, "").replace(MUTATION, "").replace(WORKSPACE, "").replace(RESET, "");
+        let plain = fixture()
+            .verbose()
+            .replace(TITLE, "")
+            .replace(MUTATION, "")
+            .replace(WORKSPACE, "")
+            .replace(RESET, "");
         assert_eq!(plain, "Apply Mutation abcdef12 to aaaa1111");
     }
 
@@ -85,5 +92,3 @@ mod tests {
         assert!(out.contains(r#""mutation_hash":"abcdef12""#));
     }
 }
-
-

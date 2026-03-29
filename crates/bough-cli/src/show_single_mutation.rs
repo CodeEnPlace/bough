@@ -4,7 +4,7 @@ use bough_core::{LanguageId, Session, State};
 use bough_typed_hash::{TypedHashable, UnvalidatedHash};
 
 use crate::config::Config;
-use crate::render::{BOLD, TITLE, RESET, Render};
+use crate::render::{BOLD, RESET, Render, TITLE};
 
 // TODO: decompose into smaller types (e.g. CodeDiff) and delegate Render to them
 pub struct ShowSingleMutation {
@@ -17,7 +17,9 @@ pub struct ShowSingleMutation {
 impl ShowSingleMutation {
     pub fn run(mut session: impl DerefMut<Target = Session<Config>>, hash: &str) -> Box<Self> {
         session.tend_add_missing_states().expect("tend states");
-        let mutation = session.resolve_mutation(UnvalidatedHash::new(hash.to_string())).expect("resolve mutation");
+        let mutation = session
+            .resolve_mutation(UnvalidatedHash::new(hash.to_string()))
+            .expect("resolve mutation");
         let base = session.base();
         let lang = mutation.mutant().lang();
         let file_path = bough_core::File::new(base, mutation.mutant().twig()).resolve();
@@ -119,8 +121,7 @@ mod tests {
 
     #[test]
     fn markdown() {
-        let plain = fixture().markdown()
-            .replace(TITLE, "").replace(RESET, "");
+        let plain = fixture().markdown().replace(TITLE, "").replace(RESET, "");
         assert!(plain.starts_with("# Mutation"));
         assert!(plain.contains("```typescript\nconst x = 1;\n```"));
         assert!(plain.contains("```typescript\nconst x = 2;\n```"));
@@ -134,8 +135,7 @@ mod tests {
 
     #[test]
     fn verbose() {
-        let plain = fixture().verbose()
-            .replace(BOLD, "").replace(RESET, "");
+        let plain = fixture().verbose().replace(BOLD, "").replace(RESET, "");
         assert!(plain.contains("Before:\nconst x = 1;"));
         assert!(plain.contains("After:\nconst x = 2;"));
     }
@@ -147,5 +147,3 @@ mod tests {
         assert!(out.contains("mutation"));
     }
 }
-
-

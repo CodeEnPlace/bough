@@ -1,13 +1,19 @@
 use crate::language::{LanguageDriver, driver_for_lang};
 use crate::{LanguageId, base::Base, file::Twig};
+use arborium_tree_sitter::StreamingIterator;
 use bough_typed_hash::{HashInto, TypedHashable};
 use tracing::{debug, trace};
-use arborium_tree_sitter::StreamingIterator;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EncompassError {
-    LangMismatch { outer: LanguageId, inner: LanguageId },
-    TwigMismatch { outer: Twig, inner: Twig },
+    LangMismatch {
+        outer: LanguageId,
+        inner: LanguageId,
+    },
+    TwigMismatch {
+        outer: Twig,
+        inner: Twig,
+    },
 }
 
 // bough[impl mutant.twig-iter.twig]
@@ -44,7 +50,13 @@ pub struct Mutant {
 }
 
 impl Mutant {
-    pub fn new(lang: LanguageId, twig: Twig, kind: MutantKind, span: Span, effect_span: Span) -> Self {
+    pub fn new(
+        lang: LanguageId,
+        twig: Twig,
+        kind: MutantKind,
+        span: Span,
+        effect_span: Span,
+    ) -> Self {
         Self {
             lang,
             twig,
@@ -76,7 +88,10 @@ impl Mutant {
 
     pub fn encompasses(&self, inner: &Mutant) -> Result<bool, EncompassError> {
         if self.lang != inner.lang {
-            return Err(EncompassError::LangMismatch { outer: self.lang, inner: inner.lang });
+            return Err(EncompassError::LangMismatch {
+                outer: self.lang,
+                inner: inner.lang,
+            });
         }
         if self.twig != inner.twig {
             return Err(EncompassError::TwigMismatch {
@@ -412,9 +427,9 @@ pub enum MutantKind {
 
 impl MutantKind {
     pub fn all_variants() -> Vec<MutantKind> {
-        use BinaryOpMutationKind::*;
-        use AssignMutationKind::*;
         use ArrayDeclKind::*;
+        use AssignMutationKind::*;
+        use BinaryOpMutationKind::*;
         use LiteralKind::*;
         use OptionalChainKind::*;
 
@@ -554,13 +569,33 @@ impl MutantKind {
             "BinaryOp" => {
                 use BinaryOpMutationKind::*;
                 let k = match inner {
-                    "Add" => Add, "And" => And, "BitAnd" => BitAnd, "BitOr" => BitOr,
-                    "BitXor" => BitXor, "Div" => Div, "Eq" => Eq, "Exp" => Exp,
-                    "FloorDiv" => FloorDiv, "Gt" => Gt, "In" => In, "Is" => Is,
-                    "IsNot" => IsNot, "NotIn" => NotIn, "Gte" => Gte, "Lt" => Lt,
-                    "Lte" => Lte, "Mul" => Mul, "Or" => Or, "Rem" => Rem,
-                    "Shl" => Shl, "Shr" => Shr, "StrictEq" => StrictEq, "Ne" => Ne,
-                    "StrictNe" => StrictNe, "Sub" => Sub, "Xor" => Xor,
+                    "Add" => Add,
+                    "And" => And,
+                    "BitAnd" => BitAnd,
+                    "BitOr" => BitOr,
+                    "BitXor" => BitXor,
+                    "Div" => Div,
+                    "Eq" => Eq,
+                    "Exp" => Exp,
+                    "FloorDiv" => FloorDiv,
+                    "Gt" => Gt,
+                    "In" => In,
+                    "Is" => Is,
+                    "IsNot" => IsNot,
+                    "NotIn" => NotIn,
+                    "Gte" => Gte,
+                    "Lt" => Lt,
+                    "Lte" => Lte,
+                    "Mul" => Mul,
+                    "Or" => Or,
+                    "Rem" => Rem,
+                    "Shl" => Shl,
+                    "Shr" => Shr,
+                    "StrictEq" => StrictEq,
+                    "Ne" => Ne,
+                    "StrictNe" => StrictNe,
+                    "Sub" => Sub,
+                    "Xor" => Xor,
                     _ => return None,
                 };
                 Some(MutantKind::BinaryOp(k))
@@ -568,13 +603,20 @@ impl MutantKind {
             "Assign" => {
                 use AssignMutationKind::*;
                 let k = match inner {
-                    "AddAssign" => AddAssign, "AndAssign" => AndAssign,
-                    "BitAndAssign" => BitAndAssign, "BitOrAssign" => BitOrAssign,
-                    "BitXorAssign" => BitXorAssign, "DivAssign" => DivAssign,
-                    "ExpAssign" => ExpAssign, "FloorDivAssign" => FloorDivAssign,
-                    "MulAssign" => MulAssign, "NormalAssign" => NormalAssign,
-                    "OrAssign" => OrAssign, "RemAssign" => RemAssign,
-                    "ShlAssign" => ShlAssign, "ShrAssign" => ShrAssign,
+                    "AddAssign" => AddAssign,
+                    "AndAssign" => AndAssign,
+                    "BitAndAssign" => BitAndAssign,
+                    "BitOrAssign" => BitOrAssign,
+                    "BitXorAssign" => BitXorAssign,
+                    "DivAssign" => DivAssign,
+                    "ExpAssign" => ExpAssign,
+                    "FloorDivAssign" => FloorDivAssign,
+                    "MulAssign" => MulAssign,
+                    "NormalAssign" => NormalAssign,
+                    "OrAssign" => OrAssign,
+                    "RemAssign" => RemAssign,
+                    "ShlAssign" => ShlAssign,
+                    "ShrAssign" => ShrAssign,
                     "SubAssign" => SubAssign,
                     _ => return None,
                 };
@@ -591,8 +633,11 @@ impl MutantKind {
             "Literal" => {
                 use LiteralKind::*;
                 let k = match inner {
-                    "BoolTrue" => BoolTrue, "BoolFalse" => BoolFalse,
-                    "String" => String, "EmptyString" => EmptyString, "Number" => Number,
+                    "BoolTrue" => BoolTrue,
+                    "BoolFalse" => BoolFalse,
+                    "String" => String,
+                    "EmptyString" => EmptyString,
+                    "Number" => Number,
                     _ => return None,
                 };
                 Some(MutantKind::Literal(k))
@@ -640,9 +685,10 @@ impl<'a, 't> TwigMutantsIter<'a, 't> {
         // SAFETY: we store the Tree alongside the TreeCursor and never move or drop
         // the Tree while the cursor is alive. The cursor is invalidated before the tree.
         let cursor = unsafe {
-            std::mem::transmute::<arborium_tree_sitter::TreeCursor<'_>, arborium_tree_sitter::TreeCursor<'static>>(
-                tree.walk(),
-            )
+            std::mem::transmute::<
+                arborium_tree_sitter::TreeCursor<'_>,
+                arborium_tree_sitter::TreeCursor<'static>,
+            >(tree.walk())
         };
 
         Ok(Self {
@@ -717,7 +763,9 @@ impl<'a, 't> Iterator for TwigMutantsIter<'a, 't> {
 
             let Some(node) = node else { continue };
 
-            if let Some((kind, span, effect_span)) = self.driver.check_node(&node, &self.file_content) {
+            if let Some((kind, span, effect_span)) =
+                self.driver.check_node(&node, &self.file_content)
+            {
                 if self.skip_kinds.contains(&kind) {
                     trace!(?kind, "skipping mutant by kind filter");
                     continue;

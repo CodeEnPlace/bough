@@ -47,7 +47,9 @@ fn main() {
             match show {
                 Show::Config => Box::new(cli.config.clone()),
 
-                Show::Files { lang: None } => show_all_files::ShowAllFiles::run(session.lock().unwrap()),
+                Show::Files { lang: None } => {
+                    show_all_files::ShowAllFiles::run(session.lock().unwrap())
+                }
 
                 Show::Files { lang: Some(lang) } => {
                     show_language_files::ShowLanguageFiles::run(session.lock().unwrap(), *lang)
@@ -61,7 +63,10 @@ fn main() {
                 Show::Mutations {
                     lang: Some(lang),
                     file: None,
-                } => show_language_mutations::ShowLanguageMutations::run(session.lock().unwrap(), *lang),
+                } => show_language_mutations::ShowLanguageMutations::run(
+                    session.lock().unwrap(),
+                    *lang,
+                ),
 
                 Show::Mutations {
                     lang: Some(lang),
@@ -82,24 +87,31 @@ fn main() {
             debug!(subcommand = ?step, "executing step command");
 
             match step {
-                config::Step::TendState => step_tend_state::StepTendState::run(session.lock().unwrap()),
-
-                config::Step::TendWorkspaces => {
-                    step_tend_workspaces::StepTendWorkspaces::run(session.lock().unwrap(), &cli.config)
+                config::Step::TendState => {
+                    step_tend_state::StepTendState::run(session.lock().unwrap())
                 }
+
+                config::Step::TendWorkspaces => step_tend_workspaces::StepTendWorkspaces::run(
+                    session.lock().unwrap(),
+                    &cli.config,
+                ),
 
                 config::Step::InitWorkspace { workspace_id } => {
                     let guard = session.lock().unwrap();
-                    let wid = bough_core::WorkspaceId::parse(workspace_id).expect("invalid workspace id");
+                    let wid =
+                        bough_core::WorkspaceId::parse(workspace_id).expect("invalid workspace id");
                     let workspace = guard.bind_workspace(&wid).expect("bind workspace");
-                    step_init_workspace::StepInitWorkspace::run(&workspace, &cli.config, None).expect("init workspace")
+                    step_init_workspace::StepInitWorkspace::run(&workspace, &cli.config, None)
+                        .expect("init workspace")
                 }
 
                 config::Step::ResetWorkspace { workspace_id } => {
                     let guard = session.lock().unwrap();
-                    let wid = bough_core::WorkspaceId::parse(workspace_id).expect("invalid workspace id");
+                    let wid =
+                        bough_core::WorkspaceId::parse(workspace_id).expect("invalid workspace id");
                     let workspace = guard.bind_workspace(&wid).expect("bind workspace");
-                    step_reset_workspace::StepResetWorkspace::run(&workspace, &cli.config, None).expect("reset workspace")
+                    step_reset_workspace::StepResetWorkspace::run(&workspace, &cli.config, None)
+                        .expect("reset workspace")
                 }
 
                 config::Step::ApplyMutation {
@@ -107,10 +119,14 @@ fn main() {
                     mutation_hash,
                 } => {
                     let guard = session.lock().unwrap();
-                    let wid = bough_core::WorkspaceId::parse(workspace_id).expect("invalid workspace id");
-                    let mutation = guard.resolve_mutation(UnvalidatedHash::new(mutation_hash.to_string())).expect("resolve mutation");
+                    let wid =
+                        bough_core::WorkspaceId::parse(workspace_id).expect("invalid workspace id");
+                    let mutation = guard
+                        .resolve_mutation(UnvalidatedHash::new(mutation_hash.to_string()))
+                        .expect("resolve mutation");
                     let mut workspace = guard.bind_workspace(&wid).expect("bind workspace");
-                    step_apply_mutation::StepApplyMutation::run(&mut workspace, &mutation).expect("apply mutation")
+                    step_apply_mutation::StepApplyMutation::run(&mut workspace, &mutation)
+                        .expect("apply mutation")
                 }
 
                 config::Step::UnapplyMutation {
@@ -118,9 +134,11 @@ fn main() {
                     mutation_hash: _,
                 } => {
                     let guard = session.lock().unwrap();
-                    let wid = bough_core::WorkspaceId::parse(workspace_id).expect("invalid workspace id");
+                    let wid =
+                        bough_core::WorkspaceId::parse(workspace_id).expect("invalid workspace id");
                     let mut workspace = guard.bind_workspace(&wid).expect("bind workspace");
-                    step_unapply_mutation::StepUnapplyMutation::run(&mut workspace).expect("unapply mutation")
+                    step_unapply_mutation::StepUnapplyMutation::run(&mut workspace)
+                        .expect("unapply mutation")
                 }
 
                 config::Step::TestMutation {
@@ -128,13 +146,26 @@ fn main() {
                     mutation_hash,
                 } => {
                     let mut guard = session.lock().unwrap();
-                    let wid = bough_core::WorkspaceId::parse(workspace_id).expect("invalid workspace id");
-                    let mutation = guard.resolve_mutation(UnvalidatedHash::new(mutation_hash.to_string())).expect("resolve mutation");
+                    let wid =
+                        bough_core::WorkspaceId::parse(workspace_id).expect("invalid workspace id");
+                    let mutation = guard
+                        .resolve_mutation(UnvalidatedHash::new(mutation_hash.to_string()))
+                        .expect("resolve mutation");
                     let mut workspace = guard.bind_workspace(&wid).expect("bind workspace");
-                    step_apply_mutation::StepApplyMutation::run(&mut workspace, &mutation).expect("apply mutation");
-                    let result = step_test_mutation::StepTestMutation::run(&workspace, &cli.config, &mutation, None).expect("test mutation");
-                    step_unapply_mutation::StepUnapplyMutation::run(&mut workspace).expect("unapply mutation");
-                    guard.set_state(&mutation, result.status_value.clone()).expect("set state");
+                    step_apply_mutation::StepApplyMutation::run(&mut workspace, &mutation)
+                        .expect("apply mutation");
+                    let result = step_test_mutation::StepTestMutation::run(
+                        &workspace,
+                        &cli.config,
+                        &mutation,
+                        None,
+                    )
+                    .expect("test mutation");
+                    step_unapply_mutation::StepUnapplyMutation::run(&mut workspace)
+                        .expect("unapply mutation");
+                    guard
+                        .set_state(&mutation, result.status_value.clone())
+                        .expect("set state");
                     result
                 }
             }
@@ -142,9 +173,11 @@ fn main() {
 
         Command::Run => run::Run::run(Arc::clone(&session), &cli),
 
-        Command::Find { ref lang, ref file } => {
-            find_best_mutations::FindBestMutations::run(session.lock().unwrap(), *lang, file.clone())
-        }
+        Command::Find { ref lang, ref file } => find_best_mutations::FindBestMutations::run(
+            session.lock().unwrap(),
+            *lang,
+            file.clone(),
+        ),
 
         Command::Noop => {
             info!("starting run");

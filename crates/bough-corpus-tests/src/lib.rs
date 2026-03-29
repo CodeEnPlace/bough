@@ -69,7 +69,8 @@ fn corpus_test_runner(case_dir: &str, lang: LanguageId, ext: &str) {
         } else {
             let existing = std::fs::read_to_string(&src_path).unwrap();
             assert_eq!(
-                existing, *mutated_src,
+                existing,
+                *mutated_src,
                 "mutation content mismatch in {}",
                 src_path.display()
             );
@@ -84,13 +85,12 @@ fn corpus_test_runner(case_dir: &str, lang: LanguageId, ext: &str) {
         } else {
             let existing = std::fs::read_to_string(&json_path).unwrap();
             assert_eq!(
-                existing, json,
+                existing,
+                json,
                 "mutation json mismatch in {}",
                 json_path.display()
             );
         }
-
-
     }
 
     produced_files.insert(format!("base.{ext}"));

@@ -368,10 +368,7 @@ fn make_mutation_reference(lang: &bough_core::LanguageId) -> String {
 
         // Parse the snippet in-memory to find mutants of this kind
         let source_mutants = bough_core::find_mutants_in_source(*lang, snippet.as_bytes());
-        let matching: Vec<_> = source_mutants
-            .iter()
-            .filter(|m| m.kind == kind)
-            .collect();
+        let matching: Vec<_> = source_mutants.iter().filter(|m| m.kind == kind).collect();
 
         if matching.is_empty() {
             panic!(
@@ -382,23 +379,14 @@ fn make_mutation_reference(lang: &bough_core::LanguageId) -> String {
         }
 
         let _ = writeln!(out, "## {}\n", kind.heading());
-        let _ = writeln!(
-            out,
-            "### Before\n\n```{ext}\n{}\n```\n",
-            snippet.trim_end()
-        );
+        let _ = writeln!(out, "### Before\n\n```{ext}\n{}\n```\n", snippet.trim_end());
         let _ = writeln!(out, "### After\n");
 
         for mutant in &matching {
             let span_start = mutant.subst_span.start().byte();
             let span_end = mutant.subst_span.end().byte();
             for sub in &subs {
-                let mutated = format!(
-                    "{}{}{}",
-                    &snippet[..span_start],
-                    sub,
-                    &snippet[span_end..],
-                );
+                let mutated = format!("{}{}{}", &snippet[..span_start], sub, &snippet[span_end..],);
                 let _ = writeln!(out, "```{ext}\n{}\n```\n", mutated.trim_end());
             }
         }
@@ -533,8 +521,7 @@ mod tests {
     #[test]
     fn all_example_files_are_valid() {
         // Tests run from crate dir; examples are relative to workspace root
-        let workspace_root =
-            Path::new(env!("CARGO_MANIFEST_DIR")).join("..").join("..");
+        let workspace_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("..").join("..");
         std::env::set_current_dir(&workspace_root).expect("failed to cd to workspace root");
 
         for lang in bough_core::LanguageId::ALL {

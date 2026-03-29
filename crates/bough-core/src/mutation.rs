@@ -174,8 +174,6 @@ mod tests {
         }
     }
 
-
-
     // bough[verify mutation.subst.js.cond.false]
     #[test]
     fn js_condition_mutant_has_false_substitution() {

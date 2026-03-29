@@ -1,6 +1,6 @@
 use bough_typed_hash::TypedHashable;
 
-use crate::render::{MUTATION, TITLE, WORKSPACE, RESET, Render};
+use crate::render::{MUTATION, RESET, Render, TITLE, WORKSPACE};
 
 pub struct StepUnapplyMutation {
     pub workspace_id: bough_core::WorkspaceId,
@@ -8,8 +8,11 @@ pub struct StepUnapplyMutation {
 }
 
 impl StepUnapplyMutation {
-    pub fn run(workspace: &mut bough_core::Workspace) -> Result<Box<Self>, bough_core::WorkspaceError> {
-        let mutation_hash = workspace.active()
+    pub fn run(
+        workspace: &mut bough_core::Workspace,
+    ) -> Result<Box<Self>, bough_core::WorkspaceError> {
+        let mutation_hash = workspace
+            .active()
             .map(|a| format!("{}", a.mutation().hash().expect("hash")))
             .unwrap_or_default();
         workspace.revert_mutant()?;
@@ -76,8 +79,12 @@ mod tests {
 
     #[test]
     fn verbose() {
-        let plain = fixture().verbose()
-            .replace(TITLE, "").replace(MUTATION, "").replace(WORKSPACE, "").replace(RESET, "");
+        let plain = fixture()
+            .verbose()
+            .replace(TITLE, "")
+            .replace(MUTATION, "")
+            .replace(WORKSPACE, "")
+            .replace(RESET, "");
         assert_eq!(plain, "Unapply Mutation abcdef12 from aaaa1111");
     }
 
@@ -88,5 +95,3 @@ mod tests {
         assert!(out.contains(r#""mutation_hash":"abcdef12""#));
     }
 }
-
-

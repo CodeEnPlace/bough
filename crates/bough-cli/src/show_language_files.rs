@@ -5,7 +5,7 @@ use bough_core::{File, LanguageId, Session};
 use facet::Facet;
 
 use crate::config::Config;
-use crate::render::{PATH, RESET, TITLE, Render};
+use crate::render::{PATH, RESET, Render, TITLE};
 
 #[derive(Facet)]
 pub struct ShowLanguageFiles(pub LanguageId, pub Vec<PathBuf>);
@@ -56,8 +56,16 @@ impl Render for ShowLanguageFiles {
     }
 
     fn json(&self) -> String {
-        let paths: Vec<String> = self.1.iter().map(|p| format!("\"{}\"", p.display())).collect();
-        format!(r#"{{"lang":{},"files":[{}]}}"#, self.0.json(), paths.join(","))
+        let paths: Vec<String> = self
+            .1
+            .iter()
+            .map(|p| format!("\"{}\"", p.display()))
+            .collect();
+        format!(
+            r#"{{"lang":{},"files":[{}]}}"#,
+            self.0.json(),
+            paths.join(",")
+        )
     }
 }
 
@@ -68,10 +76,7 @@ mod tests {
     fn fixture() -> ShowLanguageFiles {
         ShowLanguageFiles(
             LanguageId::Typescript,
-            vec![
-                PathBuf::from("src/main.ts"),
-                PathBuf::from("src/lib.ts"),
-            ],
+            vec![PathBuf::from("src/main.ts"), PathBuf::from("src/lib.ts")],
         )
     }
 
@@ -123,5 +128,3 @@ TypeScript
         );
     }
 }
-
-

@@ -33,7 +33,11 @@ impl LanguageDriver for PythonDriver {
                     "//" => BinaryOpMutationKind::FloorDiv,
                     _ => return None,
                 };
-                Some((MutantKind::BinaryOp(kind), span_from_node(&op_node), span_from_node(node)))
+                Some((
+                    MutantKind::BinaryOp(kind),
+                    span_from_node(&op_node),
+                    span_from_node(node),
+                ))
             }
             "comparison_operator" => {
                 let op_node = node.child_by_field_name("operators")?;
@@ -51,7 +55,11 @@ impl LanguageDriver for PythonDriver {
                     "not in" => BinaryOpMutationKind::NotIn,
                     _ => return None,
                 };
-                Some((MutantKind::BinaryOp(kind), span_from_node(&op_node), span_from_node(node)))
+                Some((
+                    MutantKind::BinaryOp(kind),
+                    span_from_node(&op_node),
+                    span_from_node(node),
+                ))
             }
             "augmented_assignment" => {
                 let op_node = node.child_by_field_name("operator")?;
@@ -71,7 +79,11 @@ impl LanguageDriver for PythonDriver {
                     "//=" => AssignMutationKind::FloorDivAssign,
                     _ => return None,
                 };
-                Some((MutantKind::Assign(kind), span_from_node(&op_node), span_from_node(node)))
+                Some((
+                    MutantKind::Assign(kind),
+                    span_from_node(&op_node),
+                    span_from_node(node),
+                ))
             }
             "assignment" => {
                 let op_node = (0..node.child_count())
@@ -89,19 +101,29 @@ impl LanguageDriver for PythonDriver {
             }
             "if_statement" | "while_statement" => {
                 let condition = node.child_by_field_name("condition")?;
-                Some((MutantKind::Condition, span_from_node(&condition), span_from_node(node)))
+                Some((
+                    MutantKind::Condition,
+                    span_from_node(&condition),
+                    span_from_node(node),
+                ))
             }
             "generator_expression" | "tuple" if node.named_child_count() > 0 => {
                 let span = span_from_node(node);
                 Some((MutantKind::TupleDecl, span.clone(), span))
             }
-            "set_comprehension" | "dictionary_comprehension" | "dictionary" if node.named_child_count() > 0 => {
+            "set_comprehension" | "dictionary_comprehension" | "dictionary"
+                if node.named_child_count() > 0 =>
+            {
                 let span = span_from_node(node);
                 Some((MutantKind::DictDecl, span.clone(), span))
             }
             "list_comprehension" | "list" if node.named_child_count() > 0 => {
                 let span = span_from_node(node);
-                Some((MutantKind::ArrayDecl(crate::mutant::ArrayDeclKind::Inline), span.clone(), span))
+                Some((
+                    MutantKind::ArrayDecl(crate::mutant::ArrayDeclKind::Inline),
+                    span.clone(),
+                    span,
+                ))
             }
             "boolean_operator" => {
                 let op_node = node.child_by_field_name("operator")?;
@@ -111,7 +133,11 @@ impl LanguageDriver for PythonDriver {
                     "or" => BinaryOpMutationKind::Or,
                     _ => return None,
                 };
-                Some((MutantKind::BinaryOp(kind), span_from_node(&op_node), span_from_node(node)))
+                Some((
+                    MutantKind::BinaryOp(kind),
+                    span_from_node(&op_node),
+                    span_from_node(node),
+                ))
             }
             "string" => {
                 let text = node.utf8_text(file_content).ok()?;
@@ -125,7 +151,11 @@ impl LanguageDriver for PythonDriver {
             }
             "integer" | "float" => {
                 let span = span_from_node(node);
-                Some((MutantKind::Literal(crate::mutant::LiteralKind::Number), span.clone(), span))
+                Some((
+                    MutantKind::Literal(crate::mutant::LiteralKind::Number),
+                    span.clone(),
+                    span,
+                ))
             }
             "assert_statement" => {
                 let span = span_from_node(node);
@@ -135,15 +165,27 @@ impl LanguageDriver for PythonDriver {
                 let not_node = (0..node.child_count())
                     .filter_map(|i| node.child(i as u32))
                     .find(|c| c.kind() == "not")?;
-                Some((MutantKind::UnaryNot, span_from_node(&not_node), span_from_node(node)))
+                Some((
+                    MutantKind::UnaryNot,
+                    span_from_node(&not_node),
+                    span_from_node(node),
+                ))
             }
             "true" => {
                 let span = span_from_node(node);
-                Some((MutantKind::Literal(crate::mutant::LiteralKind::BoolTrue), span.clone(), span))
+                Some((
+                    MutantKind::Literal(crate::mutant::LiteralKind::BoolTrue),
+                    span.clone(),
+                    span,
+                ))
             }
             "false" => {
                 let span = span_from_node(node);
-                Some((MutantKind::Literal(crate::mutant::LiteralKind::BoolFalse), span.clone(), span))
+                Some((
+                    MutantKind::Literal(crate::mutant::LiteralKind::BoolFalse),
+                    span.clone(),
+                    span,
+                ))
             }
             _ => None,
         };
@@ -201,7 +243,9 @@ impl LanguageDriver for PythonDriver {
             MutantKind::Assert => vec!["pass".into()],
             MutantKind::UnaryNot => vec!["".into()],
             MutantKind::Literal(crate::mutant::LiteralKind::String) => vec!["\"\"".into()],
-            MutantKind::Literal(crate::mutant::LiteralKind::EmptyString) => vec!["\"bough\"".into()],
+            MutantKind::Literal(crate::mutant::LiteralKind::EmptyString) => {
+                vec!["\"bough\"".into()]
+            }
             MutantKind::Literal(crate::mutant::LiteralKind::Number) => vec![
                 "0".into(),
                 "1".into(),
@@ -234,11 +278,22 @@ mod tests {
             let text = node.utf8_text(src).unwrap_or("");
             let field = node.parent().and_then(|p| {
                 (0..p.child_count())
-                    .find(|&i| p.child(i as u32).map(|c| c.id() == node.id()).unwrap_or(false))
+                    .find(|&i| {
+                        p.child(i as u32)
+                            .map(|c| c.id() == node.id())
+                            .unwrap_or(false)
+                    })
                     .and_then(|i| p.field_name_for_child(i as u32))
             });
             let field_str = field.map(|f| format!("{f}: ")).unwrap_or_default();
-            eprintln!("{:indent$}{field_str}{} [{}-{}] {text:?}", "", node.kind(), node.start_byte(), node.end_byte(), indent=indent);
+            eprintln!(
+                "{:indent$}{field_str}{} [{}-{}] {text:?}",
+                "",
+                node.kind(),
+                node.start_byte(),
+                node.end_byte(),
+                indent = indent
+            );
             for i in 0..node.child_count() {
                 if let Some(child) = node.child(i as u32) {
                     print_node(&child, src, indent + 2);

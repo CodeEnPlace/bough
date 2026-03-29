@@ -539,10 +539,9 @@ impl Render for PhaseOutcome {
                 "- Exit: {exit_code}\n- Duration: {:.2}s",
                 duration.as_secs_f64(),
             ),
-            PhaseOutcome::TimedOut { duration, .. } => format!(
-                "- Timed out after {:.2}s",
-                duration.as_secs_f64(),
-            ),
+            PhaseOutcome::TimedOut { duration, .. } => {
+                format!("- Timed out after {:.2}s", duration.as_secs_f64(),)
+            }
         };
         format!("{header}{}", phase_stdio_markdown_suffix(self))
     }
@@ -570,10 +569,9 @@ impl Render for PhaseOutcome {
                 "Exit: {exit_code}\nDuration: {:.2}s",
                 duration.as_secs_f64(),
             ),
-            PhaseOutcome::TimedOut { duration, .. } => format!(
-                "Timed out after {:.2}s",
-                duration.as_secs_f64(),
-            ),
+            PhaseOutcome::TimedOut { duration, .. } => {
+                format!("Timed out after {:.2}s", duration.as_secs_f64(),)
+            }
         };
         format!("{header}{}", phase_stdio_verbose_suffix(self))
     }

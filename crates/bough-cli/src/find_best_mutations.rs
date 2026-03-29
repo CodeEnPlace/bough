@@ -4,12 +4,16 @@ use std::path::PathBuf;
 use bough_core::{LanguageId, MutationHash, Session, State};
 
 use crate::config::Config;
-use crate::render::{BOLD, TITLE, RESET, Render};
+use crate::render::{BOLD, RESET, Render, TITLE};
 
 pub struct FindBestMutations(pub Vec<(MutationHash, State, f64)>);
 
 impl FindBestMutations {
-    pub fn run(session: impl Deref<Target = Session<Config>>, lang: Option<LanguageId>, file: Option<PathBuf>) -> Box<Self> {
+    pub fn run(
+        session: impl Deref<Target = Session<Config>>,
+        lang: Option<LanguageId>,
+        file: Option<PathBuf>,
+    ) -> Box<Self> {
         let results = session.find_best_mutations().expect("find best mutations");
         let filtered: Vec<_> = results
             .into_iter()
@@ -85,7 +89,9 @@ impl Render for FindBestMutations {
             .map(|(hash, state, score)| {
                 format!(
                     r#"{{"hash":"{}","score":{},"state":{}}}"#,
-                    hash, score, state.json(),
+                    hash,
+                    score,
+                    state.json(),
                 )
             })
             .collect();
@@ -115,8 +121,7 @@ mod tests {
 
     #[test]
     fn markdown() {
-        let plain = fixture().markdown()
-            .replace(TITLE, "").replace(RESET, "");
+        let plain = fixture().markdown().replace(TITLE, "").replace(RESET, "");
         assert!(plain.starts_with("# Best Mutations\n\n1 selected"));
         assert!(plain.contains("0.75"));
     }
@@ -130,8 +135,11 @@ mod tests {
 
     #[test]
     fn verbose() {
-        let plain = fixture().verbose()
-            .replace(TITLE, "").replace(BOLD, "").replace(RESET, "");
+        let plain = fixture()
+            .verbose()
+            .replace(TITLE, "")
+            .replace(BOLD, "")
+            .replace(RESET, "");
         assert!(plain.starts_with("Best Mutations (1 selected)"));
         assert!(plain.contains("score=0.75"));
     }
@@ -143,5 +151,3 @@ mod tests {
         assert!(out.contains(r#""score":0.75"#));
     }
 }
-
-

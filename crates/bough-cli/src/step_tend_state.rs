@@ -3,7 +3,7 @@ use std::ops::DerefMut;
 use bough_core::Session;
 
 use crate::config::Config;
-use crate::render::{MUTATION, TITLE, RESET, Render};
+use crate::render::{MUTATION, RESET, Render, TITLE};
 
 pub struct StepTendState {
     pub added: Vec<bough_core::MutationHash>,
@@ -75,7 +75,11 @@ mod tests {
             Span::new(Point::new(0, 0, 0), Point::new(2, 3, 20)),
             Span::new(Point::new(0, 0, 0), Point::new(2, 3, 20)),
         );
-        let hash = MutationIter::new(&mutant).next().unwrap().hash().expect("hash");
+        let hash = MutationIter::new(&mutant)
+            .next()
+            .unwrap()
+            .hash()
+            .expect("hash");
         StepTendState {
             added: vec![hash],
             removed: vec![],
@@ -96,7 +100,10 @@ mod tests {
     #[test]
     fn verbose() {
         let out = fixture().verbose();
-        let plain = out.replace(TITLE, "").replace(MUTATION, "").replace(RESET, "");
+        let plain = out
+            .replace(TITLE, "")
+            .replace(MUTATION, "")
+            .replace(RESET, "");
         assert!(plain.starts_with("Tend State +1 -0\n"));
     }
 
@@ -107,5 +114,3 @@ mod tests {
         assert!(out.contains(r#""removed":[]"#));
     }
 }
-
-

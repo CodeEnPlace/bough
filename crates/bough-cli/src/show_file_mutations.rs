@@ -6,13 +6,17 @@ use bough_typed_hash::TypedHashable;
 use facet::Facet;
 
 use crate::config::Config;
-use crate::render::{PATH, TITLE, RESET, Render, render_table};
+use crate::render::{PATH, RESET, Render, TITLE, render_table};
 
 #[derive(Facet)]
 pub struct ShowFileMutations(pub LanguageId, pub PathBuf, pub Vec<State>);
 
 impl ShowFileMutations {
-    pub fn run(mut session: impl DerefMut<Target = Session<Config>>, lang: LanguageId, file: PathBuf) -> Box<Self> {
+    pub fn run(
+        mut session: impl DerefMut<Target = Session<Config>>,
+        lang: LanguageId,
+        file: PathBuf,
+    ) -> Box<Self> {
         session.tend_add_missing_states().expect("tend states");
         let base = session.base();
         let mutations: Vec<_> = base
@@ -20,9 +24,7 @@ impl ShowFileMutations {
             .collect::<Result<Vec<_>, _>>()
             .expect("mutation scan")
             .into_iter()
-            .filter(|m| {
-                m.mutant().lang() == lang && m.mutant().twig().path() == file.as_path()
-            })
+            .filter(|m| m.mutant().lang() == lang && m.mutant().twig().path() == file.as_path())
             .collect();
         let states = mutations
             .into_iter()
@@ -50,11 +52,20 @@ impl Render for ShowFileMutations {
     }
 
     fn terse(&self) -> String {
-        self.2.iter().map(|s| s.terse()).collect::<Vec<_>>().join("\n")
+        self.2
+            .iter()
+            .map(|s| s.terse())
+            .collect::<Vec<_>>()
+            .join("\n")
     }
 
     fn verbose(&self) -> String {
-        let list = self.2.iter().map(|s| s.verbose()).collect::<Vec<_>>().join("\n");
+        let list = self
+            .2
+            .iter()
+            .map(|s| s.verbose())
+            .collect::<Vec<_>>()
+            .join("\n");
         format!(
             "{TITLE}Mutations in{RESET} {PATH}{}{RESET} ({} total)\n\n{list}",
             self.1.display(),
@@ -99,8 +110,11 @@ mod tests {
 
     #[test]
     fn markdown() {
-        let plain = fixture().markdown()
-            .replace(TITLE, "").replace(PATH, "").replace(RESET, "");
+        let plain = fixture()
+            .markdown()
+            .replace(TITLE, "")
+            .replace(PATH, "")
+            .replace(RESET, "");
         assert!(plain.starts_with("# Mutations in src/main.ts\n\n1 total"));
     }
 
@@ -112,8 +126,11 @@ mod tests {
 
     #[test]
     fn verbose() {
-        let plain = fixture().verbose()
-            .replace(TITLE, "").replace(PATH, "").replace(RESET, "");
+        let plain = fixture()
+            .verbose()
+            .replace(TITLE, "")
+            .replace(PATH, "")
+            .replace(RESET, "");
         assert!(plain.starts_with("Mutations in src/main.ts (1 total)"));
     }
 
@@ -125,5 +142,3 @@ mod tests {
         assert!(out.contains(r#""file":"src/main.ts""#));
     }
 }
-
-

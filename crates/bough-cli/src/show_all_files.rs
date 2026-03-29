@@ -5,7 +5,7 @@ use bough_core::{File, Session};
 use facet::Facet;
 
 use crate::config::Config;
-use crate::render::{PATH, RESET, TITLE, Render};
+use crate::render::{PATH, RESET, Render, TITLE};
 
 #[derive(Facet)]
 pub struct ShowAllFiles(pub Vec<PathBuf>);
@@ -51,7 +51,11 @@ impl Render for ShowAllFiles {
     }
 
     fn json(&self) -> String {
-        let items: Vec<String> = self.0.iter().map(|p| format!("\"{}\"", p.display())).collect();
+        let items: Vec<String> = self
+            .0
+            .iter()
+            .map(|p| format!("\"{}\"", p.display()))
+            .collect();
         format!("[{}]", items.join(","))
     }
 }
@@ -94,10 +98,7 @@ mod tests {
 
     #[test]
     fn verbose() {
-        let plain = fixture()
-            .verbose()
-            .replace(PATH, "")
-            .replace(RESET, "");
+        let plain = fixture().verbose().replace(PATH, "").replace(RESET, "");
         assert_eq!(
             plain,
             "\
@@ -108,11 +109,6 @@ src/lib.ts"
 
     #[test]
     fn json() {
-        assert_eq!(
-            fixture().json(),
-            r#"["src/main.ts","src/lib.ts"]"#
-        );
+        assert_eq!(fixture().json(), r#"["src/main.ts","src/lib.ts"]"#);
     }
 }
-
-

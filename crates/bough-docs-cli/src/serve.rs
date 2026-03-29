@@ -59,8 +59,7 @@ pub fn serve(port: u16) {
                     .wait_while(lock.lock().unwrap(), |g| *g == current)
                     .unwrap();
 
-                let header =
-                    Header::from_bytes("Content-Type", "application/javascript").unwrap();
+                let header = Header::from_bytes("Content-Type", "application/javascript").unwrap();
                 let _ = request
                     .respond(Response::from_string("window.location.reload()").with_header(header));
             });
@@ -102,7 +101,9 @@ pub fn serve(port: u16) {
 
         let content = if content_type == "text/html; charset=utf-8" {
             let mut html = String::from_utf8_lossy(&content).into_owned();
-            html.push_str("\n<script>fetch('/js/dev-server-refresh.js').then(()=>location.reload())</script>");
+            html.push_str(
+                "\n<script>fetch('/js/dev-server-refresh.js').then(()=>location.reload())</script>",
+            );
             html.into_bytes()
         } else {
             content

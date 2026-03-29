@@ -1,7 +1,7 @@
 use bough_typed_hash::TypedHashable;
 
 use crate::config::Config;
-use crate::render::{MUTATION, TITLE, WORKSPACE, RESET, Render};
+use crate::render::{MUTATION, RESET, Render, TITLE, WORKSPACE};
 
 pub struct StepTestMutation {
     pub workspace_id: bough_core::WorkspaceId,
@@ -12,19 +12,20 @@ pub struct StepTestMutation {
 }
 
 impl StepTestMutation {
-    pub fn run(workspace: &bough_core::Workspace, config: &Config, mutation: &bough_core::Mutation, timeout: Option<chrono::Duration>) -> Result<Box<Self>, bough_core::PhaseError> {
+    pub fn run(
+        workspace: &bough_core::Workspace,
+        config: &Config,
+        mutation: &bough_core::Mutation,
+        timeout: Option<chrono::Duration>,
+    ) -> Result<Box<Self>, bough_core::PhaseError> {
         let outcome = workspace.run_test(config, timeout)?;
         let duration = outcome.duration();
         let (status_value, status_str) = match outcome {
-            bough_core::PhaseOutcome::TimedOut { .. } => {
-                (bough_core::Status::Timeout, "timeout")
-            }
+            bough_core::PhaseOutcome::TimedOut { .. } => (bough_core::Status::Timeout, "timeout"),
             bough_core::PhaseOutcome::Completed { exit_code, .. } if exit_code != 0 => {
                 (bough_core::Status::Caught, "caught")
             }
-            bough_core::PhaseOutcome::Completed { .. } => {
-                (bough_core::Status::Missed, "missed")
-            }
+            bough_core::PhaseOutcome::Completed { .. } => (bough_core::Status::Missed, "missed"),
         };
         Ok(Box::new(Self {
             workspace_id: workspace.id().clone(),
@@ -109,8 +110,12 @@ mod tests {
 
     #[test]
     fn verbose() {
-        let plain = fixture().verbose()
-            .replace(TITLE, "").replace(MUTATION, "").replace(WORKSPACE, "").replace(RESET, "");
+        let plain = fixture()
+            .verbose()
+            .replace(TITLE, "")
+            .replace(MUTATION, "")
+            .replace(WORKSPACE, "")
+            .replace(RESET, "");
         assert!(plain.starts_with("Test Mutation abcdef12 in aaaa1111"));
     }
 
@@ -121,5 +126,3 @@ mod tests {
         assert!(out.contains(r#""duration_secs":0.500"#));
     }
 }
-
-

@@ -50,14 +50,18 @@ fn kill_process_tree(child: &mut std::process::Child) {
         use wait_timeout::ChildExt;
         let pid = child.id() as i32;
 
-        unsafe { libc::kill(-pid, libc::SIGTERM); }
+        unsafe {
+            libc::kill(-pid, libc::SIGTERM);
+        }
 
         match child.wait_timeout(GRACEFUL_SHUTDOWN_PERIOD) {
             Ok(Some(_)) => return,
             _ => {}
         }
 
-        unsafe { libc::kill(-pid, libc::SIGKILL); }
+        unsafe {
+            libc::kill(-pid, libc::SIGKILL);
+        }
     }
     #[cfg(not(unix))]
     {
@@ -414,7 +418,10 @@ mod tests {
         };
         assert_eq!(outcome.stdout(), b"hello\n");
         assert_eq!(outcome.stderr(), b"warn\n");
-        assert!(matches!(outcome, PhaseOutcome::Completed { exit_code: 0, .. }));
+        assert!(matches!(
+            outcome,
+            PhaseOutcome::Completed { exit_code: 0, .. }
+        ));
         assert_eq!(outcome.duration(), std::time::Duration::from_millis(150));
     }
 
@@ -427,7 +434,10 @@ mod tests {
             exit_code: 1,
             duration: std::time::Duration::from_millis(50),
         };
-        assert!(matches!(outcome, PhaseOutcome::Completed { exit_code: 1, .. }));
+        assert!(matches!(
+            outcome,
+            PhaseOutcome::Completed { exit_code: 1, .. }
+        ));
     }
 
     // bough[verify phase.out]
@@ -455,7 +465,10 @@ mod tests {
             ..make_phase(&root)
         };
         let outcome = phase.run().unwrap();
-        assert!(matches!(outcome, PhaseOutcome::Completed { exit_code: 0, .. }));
+        assert!(matches!(
+            outcome,
+            PhaseOutcome::Completed { exit_code: 0, .. }
+        ));
         assert_eq!(String::from_utf8_lossy(outcome.stdout()).trim(), "hello");
     }
 
@@ -471,7 +484,10 @@ mod tests {
             ..make_phase(&root)
         };
         let outcome = phase.run().unwrap();
-        assert!(matches!(outcome, PhaseOutcome::Completed { exit_code: 42, .. }));
+        assert!(matches!(
+            outcome,
+            PhaseOutcome::Completed { exit_code: 42, .. }
+        ));
     }
 
     // bough[verify phase.run.pwd]
@@ -568,7 +584,10 @@ mod tests {
             ..make_phase(&root)
         };
         let outcome = phase.run().unwrap();
-        assert!(matches!(outcome, PhaseOutcome::Completed { exit_code: 0, .. }));
+        assert!(matches!(
+            outcome,
+            PhaseOutcome::Completed { exit_code: 0, .. }
+        ));
     }
 
     fn helper_bin() -> PathBuf {
@@ -592,7 +611,10 @@ mod tests {
             ..make_phase(&root)
         };
         let outcome = phase.run().unwrap();
-        assert!(matches!(outcome, PhaseOutcome::Completed { exit_code: 0, .. }));
+        assert!(matches!(
+            outcome,
+            PhaseOutcome::Completed { exit_code: 0, .. }
+        ));
         assert!(
             outcome.stdout().len() > 64 * 1024,
             "expected >64KB stdout, got {}",

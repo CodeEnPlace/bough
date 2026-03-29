@@ -29,7 +29,11 @@ impl LanguageDriver for TypescriptDriver {
                 } else {
                     condition
                 };
-                Some((MutantKind::Condition, span_from_node(&inner), span_from_node(node)))
+                Some((
+                    MutantKind::Condition,
+                    span_from_node(&inner),
+                    span_from_node(node),
+                ))
             }
             "binary_expression" => {
                 let op_node = node.child_by_field_name("operator")?;
@@ -58,7 +62,11 @@ impl LanguageDriver for TypescriptDriver {
                     "<=" => BinaryOpMutationKind::Lte,
                     _ => return None,
                 };
-                Some((MutantKind::BinaryOp(kind), span_from_node(&op_node), span_from_node(node)))
+                Some((
+                    MutantKind::BinaryOp(kind),
+                    span_from_node(&op_node),
+                    span_from_node(node),
+                ))
             }
             "augmented_assignment_expression" => {
                 let op_node = node.child_by_field_name("operator")?;
@@ -78,7 +86,11 @@ impl LanguageDriver for TypescriptDriver {
                     "||=" => AssignMutationKind::OrAssign,
                     _ => return None,
                 };
-                Some((MutantKind::Assign(kind), span_from_node(&op_node), span_from_node(node)))
+                Some((
+                    MutantKind::Assign(kind),
+                    span_from_node(&op_node),
+                    span_from_node(node),
+                ))
             }
             "assignment_expression" => {
                 let op_node = (0..node.child_count())
@@ -92,7 +104,11 @@ impl LanguageDriver for TypescriptDriver {
             }
             "array" if node.named_child_count() > 0 => {
                 let span = span_from_node(node);
-                Some((MutantKind::ArrayDecl(ArrayDeclKind::Inline), span.clone(), span))
+                Some((
+                    MutantKind::ArrayDecl(ArrayDeclKind::Inline),
+                    span.clone(),
+                    span,
+                ))
             }
             "new_expression" => {
                 let callee = node.child_by_field_name("constructor")?;
@@ -100,7 +116,11 @@ impl LanguageDriver for TypescriptDriver {
                     let args = node.child_by_field_name("arguments")?;
                     if args.named_child_count() > 0 {
                         let span = span_from_node(node);
-                        Some((MutantKind::ArrayDecl(ArrayDeclKind::Instance), span.clone(), span))
+                        Some((
+                            MutantKind::ArrayDecl(ArrayDeclKind::Instance),
+                            span.clone(),
+                            span,
+                        ))
                     } else {
                         None
                     }
@@ -114,11 +134,19 @@ impl LanguageDriver for TypescriptDriver {
             }
             "true" => {
                 let span = span_from_node(node);
-                Some((MutantKind::Literal(LiteralKind::BoolTrue), span.clone(), span))
+                Some((
+                    MutantKind::Literal(LiteralKind::BoolTrue),
+                    span.clone(),
+                    span,
+                ))
             }
             "false" => {
                 let span = span_from_node(node);
-                Some((MutantKind::Literal(LiteralKind::BoolFalse), span.clone(), span))
+                Some((
+                    MutantKind::Literal(LiteralKind::BoolFalse),
+                    span.clone(),
+                    span,
+                ))
             }
             "string" => {
                 let text = node.utf8_text(file_content).ok()?;
@@ -136,7 +164,9 @@ impl LanguageDriver for TypescriptDriver {
             }
             "switch_case" | "switch_default" => {
                 let parent = node.parent()?;
-                if parent.kind() != "switch_body" { return None; }
+                if parent.kind() != "switch_body" {
+                    return None;
+                }
                 let switch_stmt = parent.parent()?;
                 let span = span_from_node(node);
                 Some((MutantKind::SwitchCase, span, span_from_node(&switch_stmt)))
@@ -151,7 +181,11 @@ impl LanguageDriver for TypescriptDriver {
                     "call_expression" => OptionalChainKind::FnCall,
                     _ => unreachable!(),
                 };
-                Some((MutantKind::OptionalChain(kind), span_from_node(&oc), span_from_node(node)))
+                Some((
+                    MutantKind::OptionalChain(kind),
+                    span_from_node(&oc),
+                    span_from_node(node),
+                ))
             }
             _ => None,
         };
@@ -244,4 +278,3 @@ impl LanguageDriver for TypescriptDriver {
         }
     }
 }
-

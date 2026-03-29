@@ -5,13 +5,16 @@ use bough_typed_hash::TypedHashable;
 use facet::Facet;
 
 use crate::config::Config;
-use crate::render::{TITLE, RESET, Render, render_table};
+use crate::render::{RESET, Render, TITLE, render_table};
 
 #[derive(Facet)]
 pub struct ShowLanguageMutations(pub LanguageId, pub Vec<State>);
 
 impl ShowLanguageMutations {
-    pub fn run(mut session: impl DerefMut<Target = Session<Config>>, lang: LanguageId) -> Box<Self> {
+    pub fn run(
+        mut session: impl DerefMut<Target = Session<Config>>,
+        lang: LanguageId,
+    ) -> Box<Self> {
         session.tend_add_missing_states().expect("tend states");
         let base = session.base();
         let mutations: Vec<_> = base
@@ -47,11 +50,20 @@ impl Render for ShowLanguageMutations {
     }
 
     fn terse(&self) -> String {
-        self.1.iter().map(|s| s.terse()).collect::<Vec<_>>().join("\n")
+        self.1
+            .iter()
+            .map(|s| s.terse())
+            .collect::<Vec<_>>()
+            .join("\n")
     }
 
     fn verbose(&self) -> String {
-        let list = self.1.iter().map(|s| s.verbose()).collect::<Vec<_>>().join("\n");
+        let list = self
+            .1
+            .iter()
+            .map(|s| s.verbose())
+            .collect::<Vec<_>>()
+            .join("\n");
         format!(
             "{TITLE}{} Mutations{RESET} ({} total)\n\n{list}",
             self.0.verbose(),
@@ -86,8 +98,11 @@ mod tests {
 
     #[test]
     fn markdown() {
-        let plain = fixture().markdown()
-            .replace(TITLE, "").replace(crate::render::LANG, "").replace(RESET, "");
+        let plain = fixture()
+            .markdown()
+            .replace(TITLE, "")
+            .replace(crate::render::LANG, "")
+            .replace(RESET, "");
         assert!(plain.starts_with("# TypeScript Mutations\n\n1 total"));
     }
 
@@ -98,8 +113,11 @@ mod tests {
 
     #[test]
     fn verbose() {
-        let plain = fixture().verbose()
-            .replace(TITLE, "").replace(crate::render::LANG, "").replace(RESET, "");
+        let plain = fixture()
+            .verbose()
+            .replace(TITLE, "")
+            .replace(crate::render::LANG, "")
+            .replace(RESET, "");
         assert!(plain.starts_with("TypeScript Mutations (1 total)"));
     }
 
@@ -109,5 +127,3 @@ mod tests {
         assert!(out.starts_with('['));
     }
 }
-
-

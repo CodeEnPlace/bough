@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use facet::Facet;
 
-use crate::{Mutation, base::Base};
 use crate::language::driver_for_lang;
+use crate::{Mutation, base::Base};
 
 #[derive(Facet, Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
@@ -54,7 +54,9 @@ impl MutationScorer {
         let value = match &self.factor {
             Factor::TSNodeDepth => self.score_ts_node_depth(&mutation),
 
-            Factor::EncompasingMissedMutationsCount => self.score_encompassing_missed(&mutation, states),
+            Factor::EncompasingMissedMutationsCount => {
+                self.score_encompassing_missed(&mutation, states)
+            }
             Factor::FileAuthorCount => todo!(),
             Factor::MutationSeverity => todo!(),
             Factor::SiblingMissedMutations => todo!(),
@@ -93,7 +95,11 @@ impl MutationScorer {
         depth
     }
 
-    fn score_encompassing_missed(&self, mutation: &Mutation, states: &[crate::state::State]) -> u64 {
+    fn score_encompassing_missed(
+        &self,
+        mutation: &Mutation,
+        states: &[crate::state::State],
+    ) -> u64 {
         let target = mutation.mutant();
         states
             .iter()
@@ -135,11 +141,16 @@ mod tests {
         use super::*;
 
         fn make_scorer(min: u64, max: u64) -> MutationScorer {
-            let base = Arc::new(crate::base::Base::new(
-                std::env::temp_dir(),
-                crate::twig::TwigsIterBuilder::new(),
-            ).unwrap());
-            MutationScorer { base, factor: Factor::TSNodeDepth, min, max }
+            let base = Arc::new(
+                crate::base::Base::new(std::env::temp_dir(), crate::twig::TwigsIterBuilder::new())
+                    .unwrap(),
+            );
+            MutationScorer {
+                base,
+                factor: Factor::TSNodeDepth,
+                min,
+                max,
+            }
         }
 
         #[test]
@@ -221,11 +232,11 @@ mod tests {
 
     mod ts_node_depth {
         use super::*;
+        use crate::LanguageId;
         use crate::file::Twig;
-        use crate::mutant::{MutantKind, BinaryOpMutationKind, TwigMutantsIter};
+        use crate::mutant::{BinaryOpMutationKind, MutantKind, TwigMutantsIter};
         use crate::mutation::MutationIter;
         use crate::twig::TwigsIterBuilder;
-        use crate::LanguageId;
         use std::path::PathBuf;
 
         fn make_js_base(content: &str) -> (tempfile::TempDir, crate::base::Base) {
@@ -235,7 +246,8 @@ mod tests {
             let base = crate::base::Base::new(
                 dir.path().to_path_buf(),
                 TwigsIterBuilder::new().with_include_glob("src/**/*.js"),
-            ).unwrap();
+            )
+            .unwrap();
             (dir, base)
         }
 
@@ -260,12 +272,16 @@ mod tests {
         fn top_level_statement_block_is_shallow() {
             let (_dir, base) = make_js_base("function foo() { return 1; }");
             let scores = score_all(&base);
-            let block_scores: Vec<_> = scores.iter()
+            let block_scores: Vec<_> = scores
+                .iter()
                 .filter(|(k, _)| matches!(k, MutantKind::StatementBlock))
                 .collect();
             assert_eq!(block_scores.len(), 1);
             let depth = block_scores[0].1;
-            assert!(depth <= 3, "top-level block depth {depth} should be shallow");
+            assert!(
+                depth <= 3,
+                "top-level block depth {depth} should be shallow"
+            );
         }
 
         #[test]
@@ -273,15 +289,22 @@ mod tests {
             let js = "function foo() { if (x) { return a + b; } }";
             let (_dir, base) = make_js_base(js);
             let scores = score_all(&base);
-            let block_depth = scores.iter()
+            let block_depth = scores
+                .iter()
                 .filter(|(k, _)| matches!(k, MutantKind::StatementBlock))
                 .map(|(_, d)| *d)
-                .min().unwrap();
-            let add_depth = scores.iter()
+                .min()
+                .unwrap();
+            let add_depth = scores
+                .iter()
                 .filter(|(k, _)| matches!(k, MutantKind::BinaryOp(BinaryOpMutationKind::Add)))
                 .map(|(_, d)| *d)
-                .next().unwrap();
-            assert!(add_depth > block_depth, "add depth {add_depth} should be deeper than block depth {block_depth}");
+                .next()
+                .unwrap();
+            assert!(
+                add_depth > block_depth,
+                "add depth {add_depth} should be deeper than block depth {block_depth}"
+            );
         }
 
         #[test]
@@ -294,7 +317,8 @@ mod tests {
                 .unwrap()
                 .flat_map(|bm| MutationIter::new(&bm.into_mutant()).collect::<Vec<_>>())
                 .collect();
-            let scores: Vec<_> = mutations.into_iter()
+            let scores: Vec<_> = mutations
+                .into_iter()
                 .map(|m| scorer.score(m, &[]))
                 .collect();
             let viewer = scorer.into_viewer();
@@ -306,12 +330,12 @@ mod tests {
     }
     mod encompasing_missed_mutations_count {
         use super::*;
+        use crate::LanguageId;
         use crate::file::Twig;
-        use crate::mutant::{MutantKind, BinaryOpMutationKind, TwigMutantsIter};
+        use crate::mutant::{BinaryOpMutationKind, MutantKind, TwigMutantsIter};
         use crate::mutation::{Mutation, MutationIter};
         use crate::state::{State, Status};
         use crate::twig::TwigsIterBuilder;
-        use crate::LanguageId;
         use std::path::PathBuf;
 
         fn make_js_base(content: &str) -> (tempfile::TempDir, crate::base::Base) {
@@ -321,7 +345,8 @@ mod tests {
             let base = crate::base::Base::new(
                 dir.path().to_path_buf(),
                 TwigsIterBuilder::new().with_include_glob("src/**/*.js"),
-            ).unwrap();
+            )
+            .unwrap();
             (dir, base)
         }
 
@@ -334,7 +359,8 @@ mod tests {
         }
 
         fn first_mutation_of_kind(mutations: &[Mutation], kind: &MutantKind) -> Mutation {
-            mutations.iter()
+            mutations
+                .iter()
                 .find(|m| m.mutant().kind() == kind)
                 .unwrap_or_else(|| panic!("no mutation of kind {kind:?}"))
                 .clone()
@@ -371,7 +397,10 @@ mod tests {
             let (_dir, base) = make_js_base("if (x) { y() + z() }");
             let mutations = all_mutations(&base);
             let condition = first_mutation_of_kind(&mutations, &MutantKind::Condition);
-            let binop = first_mutation_of_kind(&mutations, &MutantKind::BinaryOp(BinaryOpMutationKind::Add));
+            let binop = first_mutation_of_kind(
+                &mutations,
+                &MutantKind::BinaryOp(BinaryOpMutationKind::Add),
+            );
 
             let states = vec![
                 make_missed_state(condition.clone()),
@@ -382,8 +411,12 @@ mod tests {
             let binop_score = scorer.score(binop, &states);
             let condition_score = scorer.score(condition, &states);
 
-            assert!(binop_score.0 > condition_score.0,
-                "binop score {} should be higher than condition score {}", binop_score.0, condition_score.0);
+            assert!(
+                binop_score.0 > condition_score.0,
+                "binop score {} should be higher than condition score {}",
+                binop_score.0,
+                condition_score.0
+            );
         }
 
         #[test]
@@ -391,7 +424,10 @@ mod tests {
             let (_dir, base) = make_js_base("if (x) { y() + z() }");
             let mutations = all_mutations(&base);
             let condition = first_mutation_of_kind(&mutations, &MutantKind::Condition);
-            let binop = first_mutation_of_kind(&mutations, &MutantKind::BinaryOp(BinaryOpMutationKind::Add));
+            let binop = first_mutation_of_kind(
+                &mutations,
+                &MutantKind::BinaryOp(BinaryOpMutationKind::Add),
+            );
 
             let states = vec![make_missed_state(binop)];
 
@@ -405,7 +441,10 @@ mod tests {
             let (_dir, base) = make_js_base("if (x) { y() + z() }");
             let mutations = all_mutations(&base);
             let condition = first_mutation_of_kind(&mutations, &MutantKind::Condition);
-            let binop = first_mutation_of_kind(&mutations, &MutantKind::BinaryOp(BinaryOpMutationKind::Add));
+            let binop = first_mutation_of_kind(
+                &mutations,
+                &MutantKind::BinaryOp(BinaryOpMutationKind::Add),
+            );
 
             let states = vec![make_missed_state(condition)];
 
@@ -419,7 +458,10 @@ mod tests {
             let (_dir, base) = make_js_base("if (x) { y() + z() }");
             let mutations = all_mutations(&base);
             let condition = first_mutation_of_kind(&mutations, &MutantKind::Condition);
-            let binop = first_mutation_of_kind(&mutations, &MutantKind::BinaryOp(BinaryOpMutationKind::Add));
+            let binop = first_mutation_of_kind(
+                &mutations,
+                &MutantKind::BinaryOp(BinaryOpMutationKind::Add),
+            );
 
             let states = vec![make_caught_state(condition)];
 
@@ -448,12 +490,12 @@ mod tests {
             let mutations = all_mutations(&base);
             let condition = first_mutation_of_kind(&mutations, &MutantKind::Condition);
             let block = first_mutation_of_kind(&mutations, &MutantKind::StatementBlock);
-            let binop = first_mutation_of_kind(&mutations, &MutantKind::BinaryOp(BinaryOpMutationKind::Add));
+            let binop = first_mutation_of_kind(
+                &mutations,
+                &MutantKind::BinaryOp(BinaryOpMutationKind::Add),
+            );
 
-            let states = vec![
-                make_missed_state(condition),
-                make_missed_state(block),
-            ];
+            let states = vec![make_missed_state(condition), make_missed_state(block)];
 
             let mut scorer = make_scorer(&base);
             let score = scorer.score(binop, &states);
@@ -463,12 +505,17 @@ mod tests {
         // Two disjoint functions: mutations in one should not encompass mutations in the other
         #[test]
         fn disjoint_missed_mutations_score_zero() {
-            let (_dir, base) = make_js_base(
-                "function foo() { return a + b; }\nfunction bar() { return c - d; }"
-            );
+            let (_dir, base) =
+                make_js_base("function foo() { return a + b; }\nfunction bar() { return c - d; }");
             let mutations = all_mutations(&base);
-            let add = first_mutation_of_kind(&mutations, &MutantKind::BinaryOp(BinaryOpMutationKind::Add));
-            let sub = first_mutation_of_kind(&mutations, &MutantKind::BinaryOp(BinaryOpMutationKind::Sub));
+            let add = first_mutation_of_kind(
+                &mutations,
+                &MutantKind::BinaryOp(BinaryOpMutationKind::Add),
+            );
+            let sub = first_mutation_of_kind(
+                &mutations,
+                &MutantKind::BinaryOp(BinaryOpMutationKind::Sub),
+            );
 
             let states = vec![make_missed_state(sub)];
 
@@ -482,7 +529,10 @@ mod tests {
             let (_dir, base) = make_js_base("if (x) { y() + z() }");
             let mutations = all_mutations(&base);
             let condition = first_mutation_of_kind(&mutations, &MutantKind::Condition);
-            let binop = first_mutation_of_kind(&mutations, &MutantKind::BinaryOp(BinaryOpMutationKind::Add));
+            let binop = first_mutation_of_kind(
+                &mutations,
+                &MutantKind::BinaryOp(BinaryOpMutationKind::Add),
+            );
 
             let states = vec![
                 make_missed_state(condition.clone()),

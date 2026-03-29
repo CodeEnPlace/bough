@@ -57,7 +57,9 @@ fn spawn_own_pgroup(args: &[String]) {
     use std::os::unix::process::CommandExt;
     use std::sync::atomic::Ordering;
 
-    let pid_dir = args.first().expect("spawn-own-pgroup requires a pid-dir path");
+    let pid_dir = args
+        .first()
+        .expect("spawn-own-pgroup requires a pid-dir path");
     let pid_dir = std::path::Path::new(pid_dir);
 
     std::fs::write(pid_dir.join("parent.pid"), std::process::id().to_string()).unwrap();
@@ -76,7 +78,10 @@ fn spawn_own_pgroup(args: &[String]) {
     CHILD_PID_FOR_HANDLER.store(child_pid, Ordering::SeqCst);
 
     unsafe {
-        libc::signal(libc::SIGTERM, handle_sigterm as *const () as libc::sighandler_t);
+        libc::signal(
+            libc::SIGTERM,
+            handle_sigterm as *const () as libc::sighandler_t,
+        );
     }
 
     let _ = child.wait();
@@ -88,9 +93,13 @@ static CHILD_PID_FOR_HANDLER: std::sync::atomic::AtomicI32 = std::sync::atomic::
 extern "C" fn handle_sigterm(_sig: libc::c_int) {
     let child_pid = CHILD_PID_FOR_HANDLER.load(std::sync::atomic::Ordering::SeqCst);
     if child_pid > 0 {
-        unsafe { libc::kill(-child_pid, libc::SIGKILL); }
+        unsafe {
+            libc::kill(-child_pid, libc::SIGKILL);
+        }
     }
-    unsafe { libc::_exit(0); }
+    unsafe {
+        libc::_exit(0);
+    }
 }
 
 fn spawn_and_wait(args: &[String]) {

@@ -49,7 +49,10 @@ fn seed_language(lang: &bough_core::LanguageId) {
             }
 
             let source_len = source.len();
-            if best.get(&key).is_none_or(|(_, prev_len)| source_len < *prev_len) {
+            if best
+                .get(&key)
+                .is_none_or(|(_, prev_len)| source_len < *prev_len)
+            {
                 best.insert(key, (source.clone(), source_len));
             }
         }
@@ -88,9 +91,5 @@ fn seed_language(lang: &bough_core::LanguageId) {
     fs::write(&out_path, &out).unwrap_or_else(|e| {
         panic!("failed to write {}: {e}", out_path.display());
     });
-    eprintln!(
-        "  wrote {} ({} examples)",
-        out_path.display(),
-        best.len()
-    );
+    eprintln!("  wrote {} ({} examples)", out_path.display(), best.len());
 }

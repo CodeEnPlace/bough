@@ -11,7 +11,12 @@ pub fn make_facet_reference<'a, T: Facet<'a>>() -> String {
     out
 }
 
-fn render_shape(shape: &'static Shape, out: &mut String, heading_level: usize, visited: &mut HashSet<&'static str>) {
+fn render_shape(
+    shape: &'static Shape,
+    out: &mut String,
+    heading_level: usize,
+    visited: &mut HashSet<&'static str>,
+) {
     if !visited.insert(shape.type_identifier) {
         return;
     }
@@ -84,8 +89,16 @@ fn render_field_row(field: &'static Field, out: &mut String, nested: &mut Vec<&'
     let field_shape = field.shape();
     let type_name = display_type_name(field_shape);
     let doc = join_doc(field.doc);
-    let default_note = if field.has_default() { " *(optional)*" } else { "" };
-    let _ = writeln!(out, "| `{}` | `{type_name}` | {doc}{default_note} |", field.effective_name());
+    let default_note = if field.has_default() {
+        " *(optional)*"
+    } else {
+        ""
+    };
+    let _ = writeln!(
+        out,
+        "| `{}` | `{type_name}` | {doc}{default_note} |",
+        field.effective_name()
+    );
 
     collect_nested(field_shape, nested);
 }
@@ -108,7 +121,11 @@ fn display_type_name(shape: &'static Shape) -> String {
     match shape.def {
         Def::Option(opt) => format!("{}?", display_type_name(opt.t)),
         Def::List(list) => format!("{}[]", display_type_name(list.t)),
-        Def::Map(map) => format!("Map<{}, {}>", display_type_name(map.k), display_type_name(map.v)),
+        Def::Map(map) => format!(
+            "Map<{}, {}>",
+            display_type_name(map.k),
+            display_type_name(map.v)
+        ),
         _ => shape.type_identifier.to_string(),
     }
 }

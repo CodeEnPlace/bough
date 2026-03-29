@@ -118,11 +118,19 @@ impl<C: Config> Session<C> {
         &self.base
     }
 
-    pub fn resolve_mutation(&self, unvalidated: bough_typed_hash::UnvalidatedHash) -> Result<Mutation, Error> {
+    pub fn resolve_mutation(
+        &self,
+        unvalidated: bough_typed_hash::UnvalidatedHash,
+    ) -> Result<Mutation, Error> {
         let mutations: Vec<Mutation> = self.base.mutations().collect::<Result<_, _>>()?;
         let hashes: Vec<MutationHash> = mutations.iter().map(|m| m.hash().expect("hash")).collect();
-        let matched = unvalidated.validate(&hashes).expect("hash resolution failed");
-        Ok(mutations.into_iter().find(|m| m.hash().unwrap() == matched).unwrap())
+        let matched = unvalidated
+            .validate(&hashes)
+            .expect("hash resolution failed");
+        Ok(mutations
+            .into_iter()
+            .find(|m| m.hash().unwrap() == matched)
+            .unwrap())
     }
 
     fn derive_mutations_needing_testing(
@@ -892,7 +900,10 @@ mod tests {
         config.test_cmd = "echo hello".to_string();
         let session = Session::new(config.clone()).unwrap();
         let outcome = session.base().run_test(&config, None).unwrap();
-        assert!(matches!(outcome, crate::phase::PhaseOutcome::Completed { exit_code: 0, .. }));
+        assert!(matches!(
+            outcome,
+            crate::phase::PhaseOutcome::Completed { exit_code: 0, .. }
+        ));
         assert_eq!(String::from_utf8_lossy(outcome.stdout()).trim(), "hello");
     }
 
@@ -930,7 +941,10 @@ mod tests {
         config.test_cmd = "false".to_string();
         let session = Session::new(config.clone()).unwrap();
         let outcome = session.base().run_test(&config, None).unwrap();
-        assert!(matches!(outcome, crate::phase::PhaseOutcome::Completed { exit_code: 1, .. }));
+        assert!(matches!(
+            outcome,
+            crate::phase::PhaseOutcome::Completed { exit_code: 1, .. }
+        ));
     }
 
     #[test]
@@ -940,7 +954,10 @@ mod tests {
         config.init_cmd = Some("echo init".to_string());
         let session = Session::new(config.clone()).unwrap();
         let outcome = session.base().run_init(&config, None).unwrap();
-        assert!(matches!(outcome, crate::phase::PhaseOutcome::Completed { exit_code: 0, .. }));
+        assert!(matches!(
+            outcome,
+            crate::phase::PhaseOutcome::Completed { exit_code: 0, .. }
+        ));
         assert_eq!(String::from_utf8_lossy(outcome.stdout()).trim(), "init");
     }
 
@@ -960,7 +977,10 @@ mod tests {
         config.reset_cmd = Some("echo reset".to_string());
         let session = Session::new(config.clone()).unwrap();
         let outcome = session.base().run_reset(&config, None).unwrap();
-        assert!(matches!(outcome, crate::phase::PhaseOutcome::Completed { exit_code: 0, .. }));
+        assert!(matches!(
+            outcome,
+            crate::phase::PhaseOutcome::Completed { exit_code: 0, .. }
+        ));
         assert_eq!(String::from_utf8_lossy(outcome.stdout()).trim(), "reset");
     }
 
@@ -1022,7 +1042,10 @@ mod tests {
         let ids = session.tend_workspaces(1).unwrap();
         let workspace = session.bind_workspace(&ids[0]).unwrap();
         let outcome = workspace.run_init(&config, None).unwrap();
-        assert!(matches!(outcome, crate::phase::PhaseOutcome::Completed { exit_code: 0, .. }));
+        assert!(matches!(
+            outcome,
+            crate::phase::PhaseOutcome::Completed { exit_code: 0, .. }
+        ));
         assert_eq!(
             String::from_utf8_lossy(outcome.stdout()).trim(),
             "workspace_init"
@@ -1051,7 +1074,10 @@ mod tests {
         let ids = session.tend_workspaces(1).unwrap();
         let workspace = session.bind_workspace(&ids[0]).unwrap();
         let outcome = workspace.run_reset(&config, None).unwrap();
-        assert!(matches!(outcome, crate::phase::PhaseOutcome::Completed { exit_code: 0, .. }));
+        assert!(matches!(
+            outcome,
+            crate::phase::PhaseOutcome::Completed { exit_code: 0, .. }
+        ));
         assert_eq!(
             String::from_utf8_lossy(outcome.stdout()).trim(),
             "workspace_reset"
@@ -1284,13 +1310,20 @@ mod tests {
     fn find_best_mutations_respects_number_limit() {
         let dir = tempfile::tempdir().unwrap();
         let mut config = make_js_config(dir.path());
-        std::fs::write(dir.path().join("src/a.js"), "function foo() { return a + b; }").unwrap();
+        std::fs::write(
+            dir.path().join("src/a.js"),
+            "function foo() { return a + b; }",
+        )
+        .unwrap();
         config.find_number = 2;
         config.find_number_per_file = 10;
         let mut session = Session::new(config).unwrap();
         session.tend_add_missing_states().unwrap();
         let total = session.get_count_mutation_needing_test();
-        assert!(total > 2, "need more than 2 mutations to test limit, got {total}");
+        assert!(
+            total > 2,
+            "need more than 2 mutations to test limit, got {total}"
+        );
 
         let results = session.find_best_mutations().unwrap();
         assert_eq!(results.len(), 2);
@@ -1300,20 +1333,30 @@ mod tests {
     fn find_best_mutations_respects_number_per_file_limit() {
         let dir = tempfile::tempdir().unwrap();
         let mut config = make_js_config(dir.path());
-        std::fs::write(dir.path().join("src/a.js"), "function foo() { return a + b; }").unwrap();
-        std::fs::write(dir.path().join("src/b.js"), "function bar() { return c - d; }").unwrap();
+        std::fs::write(
+            dir.path().join("src/a.js"),
+            "function foo() { return a + b; }",
+        )
+        .unwrap();
+        std::fs::write(
+            dir.path().join("src/b.js"),
+            "function bar() { return c - d; }",
+        )
+        .unwrap();
         config.find_number = 100;
         config.find_number_per_file = 1;
         let mut session = Session::new(config).unwrap();
         session.tend_add_missing_states().unwrap();
 
         let results = session.find_best_mutations().unwrap();
-        let a_count = results.iter().filter(|(_, s, _)| {
-            s.mutation().mutant().twig().path().ends_with("a.js")
-        }).count();
-        let b_count = results.iter().filter(|(_, s, _)| {
-            s.mutation().mutant().twig().path().ends_with("b.js")
-        }).count();
+        let a_count = results
+            .iter()
+            .filter(|(_, s, _)| s.mutation().mutant().twig().path().ends_with("a.js"))
+            .count();
+        let b_count = results
+            .iter()
+            .filter(|(_, s, _)| s.mutation().mutant().twig().path().ends_with("b.js"))
+            .count();
         assert_eq!(a_count, 1);
         assert_eq!(b_count, 1);
     }
@@ -1330,8 +1373,11 @@ mod tests {
         let total_before = session.get_count_mutation_needing_test();
 
         let mutation: Mutation = session.base().mutations().next().unwrap().unwrap();
-        session.set_state(&mutation, crate::state::Status::Caught).unwrap();
-        session.mutations_needing_test = Session::<MinimalConfig>::derive_mutations_needing_testing(&session.mutations_state);
+        session
+            .set_state(&mutation, crate::state::Status::Caught)
+            .unwrap();
+        session.mutations_needing_test =
+            Session::<MinimalConfig>::derive_mutations_needing_testing(&session.mutations_state);
 
         let results = session.find_best_mutations().unwrap();
         assert_eq!(results.len(), total_before - 1);
@@ -1350,7 +1396,12 @@ mod tests {
         let results = session.find_best_mutations().unwrap();
         assert!(results.len() > 1);
         for w in results.windows(2) {
-            assert!(w[0].2 >= w[1].2, "results should be sorted descending by score: {} >= {}", w[0].2, w[1].2);
+            assert!(
+                w[0].2 >= w[1].2,
+                "results should be sorted descending by score: {} >= {}",
+                w[0].2,
+                w[1].2
+            );
         }
     }
 

@@ -96,11 +96,7 @@ impl LanguageDriver for CSharpDriver {
             }
             "integer_literal" | "real_literal" => {
                 let span = span_from_node(node);
-                Some((
-                    MutantKind::Literal(LiteralKind::Number),
-                    span.clone(),
-                    span,
-                ))
+                Some((MutantKind::Literal(LiteralKind::Number), span.clone(), span))
             }
             "string_literal" => {
                 let text = node.utf8_text(file_content).ok()?;
@@ -230,7 +226,11 @@ mod tests {
             let text = node.utf8_text(src).unwrap_or("");
             let field = node.parent().and_then(|p| {
                 (0..p.child_count())
-                    .find(|&i| p.child(i as u32).map(|c| c.id() == node.id()).unwrap_or(false))
+                    .find(|&i| {
+                        p.child(i as u32)
+                            .map(|c| c.id() == node.id())
+                            .unwrap_or(false)
+                    })
                     .and_then(|i| p.field_name_for_child(i as u32))
             });
             let field_str = field.map(|f| format!("{f}: ")).unwrap_or_default();

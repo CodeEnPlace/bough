@@ -28,7 +28,12 @@ impl Base {
         })
     }
 
-    pub fn add_mutator(&mut self, language_id: LanguageId, files: TwigsIterBuilder, skip_queries: Vec<String>) {
+    pub fn add_mutator(
+        &mut self,
+        language_id: LanguageId,
+        files: TwigsIterBuilder,
+        skip_queries: Vec<String>,
+    ) {
         debug!(lang = ?language_id, skip_queries = ?skip_queries, "added mutator");
         self.mutant_files.insert(language_id, (files, skip_queries));
     }

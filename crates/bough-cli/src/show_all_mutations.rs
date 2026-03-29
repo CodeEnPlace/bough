@@ -5,7 +5,7 @@ use bough_typed_hash::TypedHashable;
 use facet::Facet;
 
 use crate::config::Config;
-use crate::render::{TITLE, RESET, Render, render_table};
+use crate::render::{RESET, Render, TITLE, render_table};
 
 #[derive(Facet)]
 pub struct ShowAllMutations(pub Vec<State>);
@@ -43,11 +43,20 @@ impl Render for ShowAllMutations {
     }
 
     fn terse(&self) -> String {
-        self.0.iter().map(|s| s.terse()).collect::<Vec<_>>().join("\n")
+        self.0
+            .iter()
+            .map(|s| s.terse())
+            .collect::<Vec<_>>()
+            .join("\n")
     }
 
     fn verbose(&self) -> String {
-        let list = self.0.iter().map(|s| s.verbose()).collect::<Vec<_>>().join("\n");
+        let list = self
+            .0
+            .iter()
+            .map(|s| s.verbose())
+            .collect::<Vec<_>>()
+            .join("\n");
         format!(
             "{TITLE}All Mutations{RESET} ({} total)\n\n{list}",
             self.0.len(),
@@ -105,5 +114,3 @@ mod tests {
         assert!(out.ends_with(']'));
     }
 }
-
-

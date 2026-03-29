@@ -1995,9 +1995,7 @@ impl PhaseOverrides {
         let absolute = self.resolve_timeout_absolute(global);
         let relative_multiplier = self.resolve_timeout_relative(global);
         let relative = match (relative_multiplier, reference) {
-            (Some(multiplier), Some(ref_dur)) => {
-                Some(ref_dur * multiplier as i32)
-            }
+            (Some(multiplier), Some(ref_dur)) => Some(ref_dur * multiplier as i32),
             _ => None,
         };
         match (absolute, relative) {
@@ -2212,7 +2210,7 @@ impl crate::render::Render for Config {
 #[cfg(test)]
 mod config_render_tests {
     use super::*;
-    use crate::render::{TITLE, RESET, Render};
+    use crate::render::{RESET, Render, TITLE};
 
     fn fixture() -> Config {
         let json = r#"{"base_root_dir":".","include":[],"exclude":[],"lang":{},"find":{"number":1,"number_per_file":1,"factors":[]}}"#;

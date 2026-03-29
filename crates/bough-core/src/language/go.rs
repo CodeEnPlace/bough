@@ -98,11 +98,7 @@ impl LanguageDriver for GoDriver {
             }
             "int_literal" | "float_literal" => {
                 let span = span_from_node(node);
-                Some((
-                    MutantKind::Literal(LiteralKind::Number),
-                    span.clone(),
-                    span,
-                ))
+                Some((MutantKind::Literal(LiteralKind::Number), span.clone(), span))
             }
             "interpreted_string_literal" | "raw_string_literal" => {
                 let text = node.utf8_text(file_content).ok()?;
@@ -222,10 +218,7 @@ impl LanguageDriver for GoDriver {
     }
 
     fn is_context_boundary(&self, node: &arborium_tree_sitter::Node<'_>) -> bool {
-        matches!(
-            node.kind(),
-            "function_declaration" | "method_declaration"
-        )
+        matches!(node.kind(), "function_declaration" | "method_declaration")
     }
 }
 
@@ -240,11 +233,22 @@ mod tests {
             let text = node.utf8_text(src).unwrap_or("");
             let field = node.parent().and_then(|p| {
                 (0..p.child_count())
-                    .find(|&i| p.child(i as u32).map(|c| c.id() == node.id()).unwrap_or(false))
+                    .find(|&i| {
+                        p.child(i as u32)
+                            .map(|c| c.id() == node.id())
+                            .unwrap_or(false)
+                    })
                     .and_then(|i| p.field_name_for_child(i as u32))
             });
             let field_str = field.map(|f| format!("{f}: ")).unwrap_or_default();
-            eprintln!("{:indent$}{field_str}{} [{}-{}] {text:?}", "", node.kind(), node.start_byte(), node.end_byte(), indent=indent);
+            eprintln!(
+                "{:indent$}{field_str}{} [{}-{}] {text:?}",
+                "",
+                node.kind(),
+                node.start_byte(),
+                node.end_byte(),
+                indent = indent
+            );
             for i in 0..node.child_count() {
                 if let Some(child) = node.child(i as u32) {
                     print_node(&child, src, indent + 2);
@@ -257,7 +261,8 @@ mod tests {
     #[test]
     #[ignore]
     fn debug_tree() {
-        dump_tree(r#"package main
+        dump_tree(
+            r#"package main
 
 func example() {
 	x := a + b
@@ -280,6 +285,7 @@ func example() {
 		return
 	}
 }
-"#);
+"#,
+        );
     }
 }

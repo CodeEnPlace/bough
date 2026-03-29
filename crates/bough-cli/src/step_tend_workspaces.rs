@@ -3,7 +3,7 @@ use std::ops::DerefMut;
 use bough_core::Session;
 
 use crate::config::Config;
-use crate::render::{TITLE, WORKSPACE, RESET, Render};
+use crate::render::{RESET, Render, TITLE, WORKSPACE};
 
 pub struct StepTendWorkspaces {
     pub workspace_ids: Vec<bough_core::WorkspaceId>,
@@ -53,7 +53,11 @@ impl Render for StepTendWorkspaces {
     }
 
     fn json(&self) -> String {
-        let items: Vec<String> = self.workspace_ids.iter().map(|id| format!("\"{id}\"")).collect();
+        let items: Vec<String> = self
+            .workspace_ids
+            .iter()
+            .map(|id| format!("\"{id}\""))
+            .collect();
         format!("[{}]", items.join(","))
     }
 }
@@ -86,7 +90,11 @@ mod tests {
 
     #[test]
     fn verbose() {
-        let plain = fixture().verbose().replace(TITLE, "").replace(WORKSPACE, "").replace(RESET, "");
+        let plain = fixture()
+            .verbose()
+            .replace(TITLE, "")
+            .replace(WORKSPACE, "")
+            .replace(RESET, "");
         assert!(plain.starts_with("Tend Workspaces (2 total)"));
     }
 
@@ -97,5 +105,3 @@ mod tests {
         assert!(out.contains("aaaa1111"));
     }
 }
-
-
