@@ -1,0 +1,36 @@
+{
+  "mutant": {
+    "lang": "rb",
+    "twig": [
+      "src/a.rb"
+    ],
+    "kind": {
+      "ArrayDecl": "Inline"
+    },
+    "subst_span": {
+      "start": {
+        "line": 0,
+        "col": 0,
+        "byte": 0
+      },
+      "end": {
+        "line": 0,
+        "col": 9,
+        "byte": 9
+      }
+    },
+    "effect_span": {
+      "start": {
+        "line": 0,
+        "col": 0,
+        "byte": 0
+      },
+      "end": {
+        "line": 0,
+        "col": 9,
+        "byte": 9
+      }
+    }
+  },
+  "subst": "[]"
+}
