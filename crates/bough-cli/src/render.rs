@@ -392,6 +392,7 @@ impl Render for LanguageId {
                 LanguageId::CSharp => "cs",
                 LanguageId::Rust => "rs",
                 LanguageId::Swift => "swift",
+                LanguageId::Ruby => "rb",
             }
         )
     }
@@ -409,6 +410,7 @@ impl Render for LanguageId {
                 LanguageId::CSharp => "C#",
                 LanguageId::Rust => "Rust",
                 LanguageId::Swift => "Swift",
+                LanguageId::Ruby => "Ruby",
             }
         )
     }
@@ -424,6 +426,7 @@ impl Render for LanguageId {
             LanguageId::CSharp => r#""cs""#.to_string(),
             LanguageId::Rust => r#""rs""#.to_string(),
             LanguageId::Swift => r#""swift""#.to_string(),
+            LanguageId::Ruby => r#""rb""#.to_string(),
         }
     }
 }
