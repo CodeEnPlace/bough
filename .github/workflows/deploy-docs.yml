@@ -8,6 +8,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       deployments: write
+      pull-requests: write
+      issues: write
     steps:
       - uses: actions/checkout@v5
 
@@ -87,7 +89,29 @@ jobs:
               repo: context.repo.repo,
               deployment_id: deployment.data.id,
               state: 'success',
-              environment_url: `https://${aliases[0]}`,
+              environment_url: `https://${aliases[1]}`,
               log_url: `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
               description: aliases.join(', '),
             });
+
+      - name: Comment on PR
+        if: github.event_name == 'push' && github.ref != 'refs/heads/main'
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const aliases = '${{ steps.aliases.outputs.aliases }}'.split(',');
+            const links = aliases.map(a => `- https://${a}`).join('\n');
+            const body = `🚀 **Docs deployed**\n\n${links}`;
+            const { data: prs } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              commit_sha: context.sha,
+            });
+            for (const pr of prs) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number,
+                body,
+              });
+            }
