@@ -61,6 +61,7 @@ impl ShowSingleMutation {
             LanguageId::Java => "java",
             LanguageId::CSharp => "csharp",
             LanguageId::Rust => "rust",
+            LanguageId::Swift => "swift",
         }
     }
 }

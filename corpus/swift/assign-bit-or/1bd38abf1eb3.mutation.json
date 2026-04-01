@@ -1,0 +1,36 @@
+{
+  "mutant": {
+    "lang": "swift",
+    "twig": [
+      "src/a.swift"
+    ],
+    "kind": {
+      "Assign": "BitOrAssign"
+    },
+    "subst_span": {
+      "start": {
+        "line": 0,
+        "col": 2,
+        "byte": 2
+      },
+      "end": {
+        "line": 0,
+        "col": 4,
+        "byte": 4
+      }
+    },
+    "effect_span": {
+      "start": {
+        "line": 0,
+        "col": 0,
+        "byte": 0
+      },
+      "end": {
+        "line": 0,
+        "col": 6,
+        "byte": 6
+      }
+    }
+  },
+  "subst": "&="
+}

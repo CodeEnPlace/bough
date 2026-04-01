@@ -1,0 +1,36 @@
+{
+  "mutant": {
+    "lang": "swift",
+    "twig": [
+      "src/a.swift"
+    ],
+    "kind": {
+      "Literal": "Number"
+    },
+    "subst_span": {
+      "start": {
+        "line": 0,
+        "col": 7,
+        "byte": 7
+      },
+      "end": {
+        "line": 0,
+        "col": 8,
+        "byte": 8
+      }
+    },
+    "effect_span": {
+      "start": {
+        "line": 0,
+        "col": 7,
+        "byte": 7
+      },
+      "end": {
+        "line": 0,
+        "col": 8,
+        "byte": 8
+      }
+    }
+  },
+  "subst": "1"
+}
