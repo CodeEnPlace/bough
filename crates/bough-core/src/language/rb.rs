@@ -64,6 +64,59 @@ mod tests {
     #[test]
     #[ignore]
     fn debug_tree() {
-        dump_tree("x + y");
+        dump_tree(r#"x + y
+x - y
+x * y
+x / y
+x % y
+x == y
+x != y
+x > y
+x >= y
+x < y
+x <= y
+x && y
+x || y
+x & y
+x | y
+x ^ y
+x << y
+x >> y
+x = 1
+x += 1
+x -= 1
+x *= 1
+x /= 1
+x %= 1
+x &= 1
+x |= 1
+x ^= 1
+x <<= 1
+x >>= 1
+if x > 0
+  puts "yes"
+end
+while x > 0
+  x -= 1
+end
+def foo
+  puts "hello"
+end
+42
+0.5
+"hello"
+""
+true
+false
+[1, 2, 3]
+{a: 1, b: 2}
+!x
+case x
+when 1
+  "one"
+when 2
+  "two"
+end
+"#);
     }
 }
