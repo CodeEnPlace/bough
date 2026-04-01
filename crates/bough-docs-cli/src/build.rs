@@ -349,7 +349,11 @@ fn make_mutation_reference(lang: &bough_core::LanguageId) -> String {
         }
     }
 
-    let mut out = format!("+++\ntitle = \"{}\"\n+++\n\n", lang.display_name());
+    let mut out = format!(
+        "+++\ntitle = \"{}\"\n+++\n\n## {} Mutations\n\n",
+        lang.display_name(),
+        lang.display_name()
+    );
 
     for kind in bough_core::MutantKind::all_variants() {
         let subs = lang.substitutions(&kind);

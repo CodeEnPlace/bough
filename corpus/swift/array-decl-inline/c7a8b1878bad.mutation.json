@@ -1,0 +1,36 @@
+{
+  "mutant": {
+    "lang": "swift",
+    "twig": [
+      "src/a.swift"
+    ],
+    "kind": {
+      "ArrayDecl": "Inline"
+    },
+    "subst_span": {
+      "start": {
+        "line": 0,
+        "col": 8,
+        "byte": 8
+      },
+      "end": {
+        "line": 0,
+        "col": 17,
+        "byte": 17
+      }
+    },
+    "effect_span": {
+      "start": {
+        "line": 0,
+        "col": 8,
+        "byte": 8
+      },
+      "end": {
+        "line": 0,
+        "col": 17,
+        "byte": 17
+      }
+    }
+  },
+  "subst": "[]"
+}

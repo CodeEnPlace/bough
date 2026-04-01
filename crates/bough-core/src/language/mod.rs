@@ -5,6 +5,7 @@ mod java;
 mod javascript;
 mod python;
 mod rs;
+mod swift;
 mod typescript;
 
 pub(crate) use c::CDriver;
@@ -14,6 +15,7 @@ pub(crate) use java::JavaDriver;
 pub(crate) use javascript::JavascriptDriver;
 pub(crate) use python::PythonDriver;
 pub(crate) use rs::RustDriver;
+pub(crate) use swift::SwiftDriver;
 pub(crate) use typescript::TypescriptDriver;
 
 use crate::mutant::{MutantKind, Span};
@@ -43,5 +45,6 @@ pub(crate) fn driver_for_lang(lang: crate::LanguageId) -> Box<dyn LanguageDriver
         crate::LanguageId::Java => Box::new(JavaDriver),
         crate::LanguageId::CSharp => Box::new(CSharpDriver),
         crate::LanguageId::Rust => Box::new(RustDriver),
+        crate::LanguageId::Swift => Box::new(SwiftDriver),
     }
 }
