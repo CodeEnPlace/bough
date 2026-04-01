@@ -1,0 +1,34 @@
+{
+  "mutant": {
+    "lang": "rb",
+    "twig": [
+      "src/a.rb"
+    ],
+    "kind": "SwitchCase",
+    "subst_span": {
+      "start": {
+        "line": 1,
+        "col": 0,
+        "byte": 7
+      },
+      "end": {
+        "line": 2,
+        "col": 7,
+        "byte": 21
+      }
+    },
+    "effect_span": {
+      "start": {
+        "line": 1,
+        "col": 0,
+        "byte": 7
+      },
+      "end": {
+        "line": 2,
+        "col": 7,
+        "byte": 21
+      }
+    }
+  },
+  "subst": ""
+}
