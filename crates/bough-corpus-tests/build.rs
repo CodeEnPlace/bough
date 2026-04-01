@@ -39,6 +39,7 @@ fn main() {
             "c-sharp" => "bough_core::LanguageId::CSharp",
             "rust" => "bough_core::LanguageId::Rust",
             "swift" => "bough_core::LanguageId::Swift",
+            "ruby" => "bough_core::LanguageId::Ruby",
             _ => continue,
         };
 
@@ -52,6 +53,7 @@ fn main() {
             "c-sharp" => "cs",
             "rust" => "rs",
             "swift" => "swift",
+            "ruby" => "rb",
             _ => continue,
         };
 

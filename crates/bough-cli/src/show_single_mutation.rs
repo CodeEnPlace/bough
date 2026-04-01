@@ -62,6 +62,7 @@ impl ShowSingleMutation {
             LanguageId::CSharp => "csharp",
             LanguageId::Rust => "rust",
             LanguageId::Swift => "swift",
+            LanguageId::Ruby => "ruby",
         }
     }
 }

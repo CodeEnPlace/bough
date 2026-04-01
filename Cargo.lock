@@ -64,6 +64,7 @@ dependencies = [
  "arborium-javascript",
  "arborium-json",
  "arborium-python",
+ "arborium-ruby",
  "arborium-rust",
  "arborium-swift",
  "arborium-theme",
@@ -190,6 +191,17 @@ name = "arborium-python"
 version = "2.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0a082f841095a9a5c2fbe2b3e37179868c9e1084ed3506dfb56fbe380311ab15"
+dependencies = [
+ "arborium-sysroot",
+ "cc",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "arborium-ruby"
+version = "2.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8a35a7d46728a271f2bf19e9ed149d8174d184ff2f9a73fb73eb6eefc164c67b"
 dependencies = [
  "arborium-sysroot",
  "cc",
@@ -385,6 +397,7 @@ dependencies = [
  "arborium-java",
  "arborium-javascript",
  "arborium-python",
+ "arborium-ruby",
  "arborium-rust",
  "arborium-swift",
  "arborium-tree-sitter",
