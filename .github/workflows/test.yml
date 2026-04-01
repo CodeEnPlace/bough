@@ -23,7 +23,9 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - name: Compile
-        run: cargo test --workspace --no-run --locked
+        run: |
+          cargo test --workspace --no-run --locked
+          cargo build --workspace --locked
 
       - name: Test
         run: cargo nextest run --workspace --locked --profile ci
