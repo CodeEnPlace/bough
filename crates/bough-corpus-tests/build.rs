@@ -41,6 +41,7 @@ fn main() {
             "swift" => "bough_core::LanguageId::Swift",
             "ruby" => "bough_core::LanguageId::Ruby",
             "zig" => "bough_core::LanguageId::Zig",
+            "cpp" => "bough_core::LanguageId::Cpp",
             _ => continue,
         };
 
@@ -56,6 +57,7 @@ fn main() {
             "swift" => "swift",
             "ruby" => "rb",
             "zig" => "zig",
+            "cpp" => "cpp",
             _ => continue,
         };
 

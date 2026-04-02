@@ -52,6 +52,8 @@ pub enum LanguageId {
     Ruby,
     #[facet(rename = "zig")]
     Zig,
+    #[facet(rename = "cpp")]
+    Cpp,
 }
 
 impl LanguageId {
@@ -67,6 +69,7 @@ impl LanguageId {
         LanguageId::Swift,
         LanguageId::Ruby,
         LanguageId::Zig,
+        LanguageId::Cpp,
     ];
 
     pub fn substitutions(&self, kind: &MutantKind) -> Vec<String> {
@@ -86,6 +89,7 @@ impl LanguageId {
             LanguageId::Swift => "swift",
             LanguageId::Ruby => "rb",
             LanguageId::Zig => "zig",
+            LanguageId::Cpp => "cpp",
         }
     }
 
@@ -102,6 +106,7 @@ impl LanguageId {
             LanguageId::Swift => "Swift",
             LanguageId::Ruby => "Ruby",
             LanguageId::Zig => "Zig",
+            LanguageId::Cpp => "C++",
         }
     }
 
@@ -118,6 +123,7 @@ impl LanguageId {
             LanguageId::Swift => "swift",
             LanguageId::Ruby => "ruby",
             LanguageId::Zig => "zig",
+            LanguageId::Cpp => "cpp",
         }
     }
 
