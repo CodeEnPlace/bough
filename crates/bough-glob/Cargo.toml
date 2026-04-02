@@ -15,5 +15,11 @@ globset = "0.4"
 arbitrary = { version = "1", features = ["derive"] }
 arbtest = "0.3"
 bough-fs = { workspace = true, features = ["test-support"] }
+criterion = { version = "0.5", features = ["html_reports"] }
 globset = "0.4"
+ignore = "0.4"
 tempfile = "3.26"
+
+[[bench]]
+name = "walk"
+harness = false
