@@ -9,6 +9,7 @@ description = "Core mutation testing engine for bough"
 
 [dependencies]
 bough-typed-hash = { workspace = true }
+bough-fs = { workspace = true }
 facet = { version = "0.44", features = ["uuid", "chrono"] }
 facet-json = "0.44.1"
 chrono = "0.4.44"
@@ -35,6 +36,7 @@ libc = "0.2"
 tracing = "0.1"
 
 [dev-dependencies]
+bough-fs = { workspace = true, features = ["test-support"] }
 tempfile = "3.26"
 
 [[bin]]

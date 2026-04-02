@@ -1,5 +1,6 @@
 use crate::language::{LanguageDriver, driver_for_lang};
-use crate::{LanguageId, base::Base, file::Twig};
+use bough_fs::Twig;
+use crate::{LanguageId, base::Base};
 use arborium_tree_sitter::StreamingIterator;
 use bough_typed_hash::{HashInto, TypedHashable};
 use tracing::{debug, trace};
@@ -107,7 +108,7 @@ impl Mutant {
         base: &Base,
         context_lines: usize,
     ) -> Result<(String, Span), std::io::Error> {
-        let file_path = crate::file::File::new(base, &self.twig).resolve();
+        let file_path = bough_fs::File::new(base, &self.twig).resolve();
         let file_content = std::fs::read(&file_path)?;
 
         let driver = driver_for_lang(self.lang);
@@ -255,7 +256,7 @@ pub struct BasedMutantHash([u8; 32]);
 impl HashInto for BasedMutant<'_> {
     fn hash_into(&self, state: &mut bough_typed_hash::ShaState) -> Result<(), std::io::Error> {
         self.mutant.hash_into(state)?;
-        crate::file::File::new(self.base, &self.mutant.twig).hash_into(state)?;
+        bough_fs::File::new(self.base, &self.mutant.twig).hash_into(state)?;
         Ok(())
     }
 }
@@ -668,7 +669,7 @@ impl MutantKind {
 impl<'a, 't> TwigMutantsIter<'a, 't> {
     pub fn new(lang: LanguageId, base: &'a Base, twig: &'t Twig) -> std::io::Result<Self> {
         // bough[impl mutant.twig-iter.file]
-        let file_path = crate::file::File::new(base, twig).resolve();
+        let file_path = bough_fs::File::new(base, twig).resolve();
         debug!(lang = ?lang, path = %file_path.display(), "parsing twig for mutants");
         let file_content = std::fs::read(&file_path)?;
 
@@ -872,8 +873,8 @@ pub fn find_mutants_in_source(lang: LanguageId, source: &[u8]) -> Vec<SourceMuta
 mod tests {
     use super::*;
     use crate::base::Base;
-    use crate::file::Root;
-    use crate::twig::TwigsIterBuilder;
+    use bough_fs::Root;
+    use bough_fs::TwigsIterBuilder;
     use std::path::PathBuf;
 
     fn make_base() -> (tempfile::TempDir, Base) {

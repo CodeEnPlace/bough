@@ -458,6 +458,7 @@ dependencies = [
  "arborium-tree-sitter",
  "arborium-typescript",
  "arborium-zig",
+ "bough-fs",
  "bough-typed-hash",
  "chrono",
  "facet",
@@ -501,6 +502,17 @@ dependencies = [
  "serde",
  "tiny_http",
  "toml 0.8.23",
+]
+
+[[package]]
+name = "bough-fs"
+version = "0.0.2"
+dependencies = [
+ "bough-typed-hash",
+ "facet",
+ "ignore",
+ "tempfile",
+ "tracing",
 ]
 
 [[package]]

@@ -2,14 +2,14 @@
 use std::path::{Path, PathBuf};
 use std::{collections::HashMap, time::Duration};
 
-use crate::file::{File, Root, Twig};
+use bough_fs::{File, Root, Twig};
 use tracing::{info, warn};
 
 #[derive(Debug)]
 pub enum Error {
     Io(std::io::Error),
     EmptyCommand,
-    File(crate::file::Error),
+    File(bough_fs::Error),
     AbsolutePwd(std::path::PathBuf),
     InvalidTimeout,
     NoCmdConfigured,
@@ -36,8 +36,8 @@ impl From<std::io::Error> for Error {
     }
 }
 
-impl From<crate::file::Error> for Error {
-    fn from(e: crate::file::Error) -> Self {
+impl From<bough_fs::Error> for Error {
+    fn from(e: bough_fs::Error) -> Self {
         Error::File(e)
     }
 }
@@ -294,7 +294,7 @@ fn parse_cmd_and_pwd(cmd: &str, pwd: std::path::PathBuf) -> Result<(Twig, Vec<St
     if pwd.is_absolute() {
         return Err(Error::AbsolutePwd(pwd));
     }
-    let twig = Twig::new(pwd).map_err(crate::file::Error::from)?;
+    let twig = Twig::new(pwd).map_err(bough_fs::Error::from)?;
     let cmd_parts: Vec<String> = cmd.split_whitespace().map(String::from).collect();
     Ok((twig, cmd_parts))
 }
@@ -342,7 +342,7 @@ mod tests {
     fn make_phase<'a>(root: &'a TestRoot) -> Phase<'a, TestRoot> {
         Phase {
             root,
-            pwd: crate::file::Twig::new(PathBuf::from("src")).unwrap(),
+            pwd: bough_fs::Twig::new(PathBuf::from("src")).unwrap(),
             env: HashMap::new(),
             cmd: vec!["echo".into(), "hello".into()],
             timeout: None,
@@ -361,7 +361,7 @@ mod tests {
     #[test]
     fn phase_holds_pwd_twig() {
         let root = TestRoot(PathBuf::from("/tmp/project"));
-        let pwd = crate::file::Twig::new(PathBuf::from("src/test")).unwrap();
+        let pwd = bough_fs::Twig::new(PathBuf::from("src/test")).unwrap();
         let phase = Phase {
             pwd,
             ..make_phase(&root)
@@ -461,7 +461,7 @@ mod tests {
         let root = TestRoot(dir.path().to_path_buf());
         let phase = Phase {
             cmd: vec!["echo".into(), "hello".into()],
-            pwd: crate::file::Twig::new(PathBuf::from(".")).unwrap(),
+            pwd: bough_fs::Twig::new(PathBuf::from(".")).unwrap(),
             ..make_phase(&root)
         };
         let outcome = phase.run().unwrap();
@@ -480,7 +480,7 @@ mod tests {
         let root = TestRoot(dir.path().to_path_buf());
         let phase = Phase {
             cmd: vec!["sh".into(), "-c".into(), "exit 42".into()],
-            pwd: crate::file::Twig::new(PathBuf::from(".")).unwrap(),
+            pwd: bough_fs::Twig::new(PathBuf::from(".")).unwrap(),
             ..make_phase(&root)
         };
         let outcome = phase.run().unwrap();
@@ -499,7 +499,7 @@ mod tests {
         let root = TestRoot(dir.path().to_path_buf());
         let phase = Phase {
             cmd: vec!["pwd".into()],
-            pwd: crate::file::Twig::new(PathBuf::from("subdir")).unwrap(),
+            pwd: bough_fs::Twig::new(PathBuf::from("subdir")).unwrap(),
             ..make_phase(&root)
         };
         let outcome = phase.run().unwrap();
@@ -517,7 +517,7 @@ mod tests {
         let root = TestRoot(dir.path().to_path_buf());
         let phase = Phase {
             cmd: vec!["sh".into(), "-c".into(), "echo $MY_VAR".into()],
-            pwd: crate::file::Twig::new(PathBuf::from(".")).unwrap(),
+            pwd: bough_fs::Twig::new(PathBuf::from(".")).unwrap(),
             env: HashMap::from([("MY_VAR".into(), "hello_env".into())]),
             ..make_phase(&root)
         };
@@ -535,7 +535,7 @@ mod tests {
         let root = TestRoot(dir.path().to_path_buf());
         let phase = Phase {
             cmd: vec!["sh".into(), "-c".into(), "echo err >&2".into()],
-            pwd: crate::file::Twig::new(PathBuf::from(".")).unwrap(),
+            pwd: bough_fs::Twig::new(PathBuf::from(".")).unwrap(),
             ..make_phase(&root)
         };
         let outcome = phase.run().unwrap();
@@ -549,7 +549,7 @@ mod tests {
         let root = TestRoot(dir.path().to_path_buf());
         let phase = Phase {
             cmd: vec!["sleep".into(), "0.05".into()],
-            pwd: crate::file::Twig::new(PathBuf::from(".")).unwrap(),
+            pwd: bough_fs::Twig::new(PathBuf::from(".")).unwrap(),
             ..make_phase(&root)
         };
         let outcome = phase.run().unwrap();
@@ -563,7 +563,7 @@ mod tests {
         let root = TestRoot(dir.path().to_path_buf());
         let phase = Phase {
             cmd: vec!["sleep".into(), "10".into()],
-            pwd: crate::file::Twig::new(PathBuf::from(".")).unwrap(),
+            pwd: bough_fs::Twig::new(PathBuf::from(".")).unwrap(),
             timeout: Some(Duration::from_millis(100)),
             ..make_phase(&root)
         };
@@ -579,7 +579,7 @@ mod tests {
         let root = TestRoot(dir.path().to_path_buf());
         let phase = Phase {
             cmd: vec!["echo".into(), "fast".into()],
-            pwd: crate::file::Twig::new(PathBuf::from(".")).unwrap(),
+            pwd: bough_fs::Twig::new(PathBuf::from(".")).unwrap(),
             timeout: Some(Duration::from_millis(100)),
             ..make_phase(&root)
         };
@@ -606,7 +606,7 @@ mod tests {
                 "flood-stdout".into(),
                 "262144".into(),
             ],
-            pwd: crate::file::Twig::new(PathBuf::from(".")).unwrap(),
+            pwd: bough_fs::Twig::new(PathBuf::from(".")).unwrap(),
             timeout: Some(Duration::from_secs(10)),
             ..make_phase(&root)
         };
@@ -632,7 +632,7 @@ mod tests {
                 "flood-stderr".into(),
                 "262144".into(),
             ],
-            pwd: crate::file::Twig::new(PathBuf::from(".")).unwrap(),
+            pwd: bough_fs::Twig::new(PathBuf::from(".")).unwrap(),
             timeout: Some(Duration::from_secs(10)),
             ..make_phase(&root)
         };
@@ -659,7 +659,7 @@ mod tests {
                 pid_dir.to_str().unwrap().into(),
                 "3".into(),
             ],
-            pwd: crate::file::Twig::new(PathBuf::from(".")).unwrap(),
+            pwd: bough_fs::Twig::new(PathBuf::from(".")).unwrap(),
             timeout: Some(Duration::from_millis(500)),
             ..make_phase(&root)
         };
@@ -694,7 +694,7 @@ mod tests {
                 "spawn-own-pgroup".into(),
                 pid_dir.to_str().unwrap().into(),
             ],
-            pwd: crate::file::Twig::new(PathBuf::from(".")).unwrap(),
+            pwd: bough_fs::Twig::new(PathBuf::from(".")).unwrap(),
             timeout: Some(Duration::from_millis(500)),
             ..make_phase(&root)
         };
@@ -739,7 +739,7 @@ mod tests {
                 "spawn-and-wait".into(),
                 pid_file.to_str().unwrap().into(),
             ],
-            pwd: crate::file::Twig::new(PathBuf::from(".")).unwrap(),
+            pwd: bough_fs::Twig::new(PathBuf::from(".")).unwrap(),
             timeout: Some(Duration::from_millis(500)),
             ..make_phase(&root)
         };

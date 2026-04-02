@@ -1,5 +1,5 @@
 use crate::base::Base;
-use crate::file::{File, Root, Twig};
+use bough_fs::{File, Root, Twig};
 use crate::mutant::Mutant;
 use crate::mutation::Mutation;
 use bough_typed_hash::TypedHashable;
@@ -26,7 +26,7 @@ impl ActiveMutation {
 
 #[derive(Debug)]
 pub enum Error {
-    File(crate::file::Error),
+    File(bough_fs::Error),
     IdParse(String),
     DirAlreadyExists(PathBuf),
     Io(std::io::Error),
@@ -53,8 +53,8 @@ impl std::fmt::Display for Error {
 
 impl std::error::Error for Error {}
 
-impl From<crate::file::Error> for Error {
-    fn from(e: crate::file::Error) -> Self {
+impl From<bough_fs::Error> for Error {
+    fn from(e: bough_fs::Error) -> Self {
         Error::File(e)
     }
 }
@@ -319,7 +319,7 @@ impl Root for Workspace {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::twig::TwigsIterBuilder;
+    use bough_fs::TwigsIterBuilder;
 
     fn make_base() -> (tempfile::TempDir, Arc<Base>) {
         let dir = tempfile::tempdir().unwrap();
@@ -498,7 +498,7 @@ mod tests {
     }
 
     use crate::LanguageId;
-    use crate::file::Twig;
+    use bough_fs::Twig;
     use crate::mutant::{BinaryOpMutationKind, Mutant, MutantKind, Point, Span};
     use crate::mutation::Mutation;
 

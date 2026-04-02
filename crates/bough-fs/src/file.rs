@@ -78,25 +78,25 @@ impl<R: Root> TypedHashable for File<'_, R> {
 }
 
 // bough[impl file.root]
-pub(crate) fn validate_root(path: &PathBuf) -> Result<(), Error> {
+pub fn validate_root(path: &PathBuf) -> Result<(), Error> {
     if !path.is_absolute() {
         return Err(Error::RootMustBeAbsolute(path.clone()));
     }
     Ok(())
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "test-support"))]
 #[derive(Debug, Clone, PartialEq)]
 pub struct TestRoot(PathBuf);
 
-#[cfg(test)]
+#[cfg(any(test, feature = "test-support"))]
 impl TestRoot {
     pub fn new(path: impl Into<PathBuf>) -> Self {
         Self(path.into())
     }
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "test-support"))]
 impl Root for TestRoot {
     fn path(&self) -> &Path {
         &self.0

@@ -2,7 +2,6 @@
 
 mod base;
 mod facet_disk_store;
-mod file;
 mod language;
 pub mod mutant;
 mod mutation;
@@ -11,7 +10,6 @@ mod phase;
 mod session;
 mod state;
 mod test_id;
-mod twig;
 mod uncovered;
 mod workspace;
 
@@ -133,8 +131,10 @@ impl LanguageId {
 }
 
 pub use base::Base;
-pub use file::File;
-pub use file::Twig;
+pub use bough_fs::File;
+pub use bough_fs::Root;
+pub use bough_fs::Twig;
+pub use bough_fs::TwigsIterBuilder;
 pub use mutant::{Mutant, MutantKind, Point, SourceMutant, Span, find_mutants_in_source};
 pub use mutation::Mutation;
 pub use mutation::MutationHash;
@@ -145,5 +145,4 @@ pub use phase::PhaseOutcome;
 pub use session::Config;
 pub use session::Session;
 pub use state::{State, Status};
-pub use twig::TwigsIterBuilder;
 pub use workspace::{Error as WorkspaceError, Workspace, WorkspaceId};

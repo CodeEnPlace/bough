@@ -8,13 +8,13 @@ use bough_typed_hash::TypedHashable;
 use chrono::Duration;
 use tracing::info;
 
+use bough_fs::TwigsIterBuilder;
 use crate::{
     Factor, LanguageId, Status,
     base::Base,
     facet_disk_store::FacetDiskStore,
     mutation::{Mutation, MutationHash},
     state::State,
-    twig::TwigsIterBuilder,
     workspace::{Workspace, WorkspaceId},
 };
 
@@ -53,7 +53,7 @@ pub trait Config {
 
 #[derive(Debug)]
 pub enum Error {
-    File(crate::file::Error),
+    File(bough_fs::Error),
     Io(std::io::Error),
     Workspace(crate::workspace::Error),
     Phase(crate::phase::Error),
@@ -348,7 +348,7 @@ impl<C: Config> Session<C> {
 
         scored.sort_by(|a, b| b.2.partial_cmp(&a.2).unwrap_or(std::cmp::Ordering::Equal));
 
-        let mut per_file_counts: HashMap<crate::file::Twig, usize> = HashMap::new();
+        let mut per_file_counts: HashMap<bough_fs::Twig, usize> = HashMap::new();
         scored.retain(|(_, state, _)| {
             let twig = state.mutation().mutant().twig().clone();
             let count = per_file_counts.entry(twig).or_insert(0);
@@ -376,8 +376,8 @@ impl<C: Config> Session<C> {
     }
 }
 
-impl From<crate::file::Error> for Error {
-    fn from(e: crate::file::Error) -> Self {
+impl From<bough_fs::Error> for Error {
+    fn from(e: bough_fs::Error) -> Self {
         Error::File(e)
     }
 }
@@ -750,7 +750,7 @@ mod tests {
         std::fs::write(dir.path().join("src/b.js"), "function bar() { return 2; }").unwrap();
         Arc::get_mut(&mut session.base).unwrap().add_mutator(
             LanguageId::Javascript,
-            crate::twig::TwigsIterBuilder::new().with_include_glob("src/**/*.js"),
+            bough_fs::TwigsIterBuilder::new().with_include_glob("src/**/*.js"),
             Vec::new(),
         );
 
@@ -863,13 +863,13 @@ mod tests {
         session.base = Arc::new(
             crate::base::Base::new(
                 dir.path().to_path_buf(),
-                crate::twig::TwigsIterBuilder::new().with_include_glob("src/**/*.js"),
+                bough_fs::TwigsIterBuilder::new().with_include_glob("src/**/*.js"),
             )
             .unwrap(),
         );
         Arc::get_mut(&mut session.base).unwrap().add_mutator(
             LanguageId::Javascript,
-            crate::twig::TwigsIterBuilder::new().with_include_glob("src/**/*.js"),
+            bough_fs::TwigsIterBuilder::new().with_include_glob("src/**/*.js"),
             Vec::new(),
         );
 

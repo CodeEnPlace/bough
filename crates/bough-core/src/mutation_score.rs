@@ -71,7 +71,7 @@ impl MutationScorer {
 
     fn score_ts_node_depth(&self, mutation: &Mutation) -> u64 {
         let mutant = mutation.mutant();
-        let file_path = crate::file::File::new(self.base.as_ref(), mutant.twig()).resolve();
+        let file_path = bough_fs::File::new(self.base.as_ref(), mutant.twig()).resolve();
         let content = std::fs::read(&file_path).expect("source file should be readable");
 
         let driver = driver_for_lang(mutant.lang());
@@ -142,7 +142,7 @@ mod tests {
 
         fn make_scorer(min: u64, max: u64) -> MutationScorer {
             let base = Arc::new(
-                crate::base::Base::new(std::env::temp_dir(), crate::twig::TwigsIterBuilder::new())
+                crate::base::Base::new(std::env::temp_dir(), bough_fs::TwigsIterBuilder::new())
                     .unwrap(),
             );
             MutationScorer {
@@ -233,10 +233,10 @@ mod tests {
     mod ts_node_depth {
         use super::*;
         use crate::LanguageId;
-        use crate::file::Twig;
+        use bough_fs::Twig;
         use crate::mutant::{BinaryOpMutationKind, MutantKind, TwigMutantsIter};
         use crate::mutation::MutationIter;
-        use crate::twig::TwigsIterBuilder;
+        use bough_fs::TwigsIterBuilder;
         use std::path::PathBuf;
 
         fn make_js_base(content: &str) -> (tempfile::TempDir, crate::base::Base) {
@@ -331,11 +331,11 @@ mod tests {
     mod encompasing_missed_mutations_count {
         use super::*;
         use crate::LanguageId;
-        use crate::file::Twig;
+        use bough_fs::Twig;
         use crate::mutant::{BinaryOpMutationKind, MutantKind, TwigMutantsIter};
         use crate::mutation::{Mutation, MutationIter};
         use crate::state::{State, Status};
-        use crate::twig::TwigsIterBuilder;
+        use bough_fs::TwigsIterBuilder;
         use std::path::PathBuf;
 
         fn make_js_base(content: &str) -> (tempfile::TempDir, crate::base::Base) {

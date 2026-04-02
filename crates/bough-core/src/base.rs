@@ -1,8 +1,8 @@
 use crate::LanguageId;
-use crate::file::{Error, Root, Twig};
+use bough_fs::{Error, Root, Twig};
 use crate::mutant::{Mutant, TwigMutantsIter};
 use crate::mutation::{Mutation, MutationIter};
-use crate::twig::TwigsIterBuilder;
+use bough_fs::TwigsIterBuilder;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use tracing::{debug, trace, warn};
@@ -19,7 +19,7 @@ pub struct Base {
 /// It's not for storing state or making decitions, that's [Session]'s job
 impl Base {
     pub fn new(root: PathBuf, files: TwigsIterBuilder) -> Result<Self, Error> {
-        crate::file::validate_root(&root)?;
+        bough_fs::validate_root(&root)?;
         debug!(root = %root.display(), "created base");
         Ok(Self {
             root,
@@ -145,7 +145,7 @@ impl Root for Base {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::twig::TwigsIterBuilder;
+    use bough_fs::TwigsIterBuilder;
 
     fn files_for(include: &[&str]) -> TwigsIterBuilder {
         let mut builder = TwigsIterBuilder::new();
