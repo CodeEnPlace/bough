@@ -47,7 +47,6 @@ pub enum PatternPart {
 
 #[derive(Debug, Clone)]
 pub struct Glob {
-    pattern: String,
     segments: Vec<SegmentPattern>,
 }
 
@@ -283,10 +282,7 @@ impl TryFrom<&str> for Glob {
             pattern: pattern.to_string(),
             reason,
         })?;
-        Ok(Self {
-            pattern: pattern.to_string(),
-            segments,
-        })
+        Ok(Self { segments })
     }
 }
 
