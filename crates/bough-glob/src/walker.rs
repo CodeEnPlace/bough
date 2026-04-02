@@ -1,6 +1,6 @@
-use bough_fs::{Root, Twig};
-use crate::glob::MatchResult;
 use crate::Glob;
+use crate::glob::MatchResult;
+use bough_fs::{Root, Twig};
 use crossbeam_channel::Receiver;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -44,6 +44,7 @@ impl<'a, R: Root> TwigWalker<'a, R> {
         let num_workers = std::thread::available_parallelism()
             .map(|n| n.get())
             .unwrap_or(4);
+        let num_workers = num_workers * 2;
 
         let (work_txs, work_rxs): (Vec<_>, Vec<_>) = (0..num_workers)
             .map(|_| crossbeam_channel::unbounded::<Option<PathBuf>>())
@@ -74,21 +75,19 @@ impl<'a, R: Root> TwigWalker<'a, R> {
                             let Some(rel) = path.strip_prefix(&root_path).ok() else {
                                 continue;
                             };
-                            let dominated_by_exclude = excludes.iter().any(|g| {
-                                match g.match_info(rel) {
+                            let dominated_by_exclude =
+                                excludes.iter().any(|g| match g.match_info(rel) {
                                     MatchResult::MatchesAll => true,
                                     _ => false,
-                                }
-                            });
+                                });
                             if dominated_by_exclude {
                                 continue;
                             }
-                            let reachable_by_include = includes.iter().any(|g| {
-                                match g.match_info(rel) {
+                            let reachable_by_include =
+                                includes.iter().any(|g| match g.match_info(rel) {
                                     MatchResult::DoesNotMatch => false,
                                     _ => true,
-                                }
-                            });
+                                });
                             if reachable_by_include {
                                 let _ = msg_tx.send(WorkerMsg::Dir(path));
                             }
