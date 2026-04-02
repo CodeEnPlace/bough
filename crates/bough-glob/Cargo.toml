@@ -1,0 +1,19 @@
+[package]
+name = "bough-glob"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+readme.workspace = true
+description = "Globbing system for bough with globset-compatible semantics"
+
+[dependencies]
+bough-fs = { workspace = true }
+globset = "0.4"
+
+[dev-dependencies]
+arbitrary = { version = "1", features = ["derive"] }
+arbtest = "0.3"
+bough-fs = { workspace = true, features = ["test-support"] }
+globset = { version = "0.4", features = ["arbitrary"] }
+tempfile = "3.26"

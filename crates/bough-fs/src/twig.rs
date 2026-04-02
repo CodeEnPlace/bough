@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use tracing::{debug, trace};
 
 // bough[impl file.twig]
-#[derive(Debug, Clone, PartialEq, Eq, Hash, facet::Facet)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, facet::Facet)]
 pub struct Twig(String);
 
 impl Twig {

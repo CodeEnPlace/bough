@@ -13,4 +13,5 @@ readme = "README.md"
 bough-typed-hash-derive = { path = "crates/bough-typed-hash-derive", version = "0.0.2" }
 bough-typed-hash = { path = "crates/bough-typed-hash", version = "0.0.2" }
 bough-fs = { path = "crates/bough-fs", version = "0.0.2" }
+bough-glob = { path = "crates/bough-glob", version = "0.0.2" }
 bough-core = { path = "crates/bough-core", version = "0.0.2" }

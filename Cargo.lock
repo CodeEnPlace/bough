@@ -70,6 +70,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f202df86484c868dbad7eaa557ef785d5c66295e41b460ef922eca0723b842c"
 
 [[package]]
+name = "arbitrary"
+version = "1.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c3d036a3c4ab069c7b410a2ce876bd74808d2d0888a82667669f8e783a898bf1"
+dependencies = [
+ "derive_arbitrary",
+]
+
+[[package]]
 name = "arborium"
 version = "2.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -331,6 +340,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "arbtest"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2a3be567977128c0f71ad1462d9624ccda712193d124e944252f0c5789a06d46"
+dependencies = [
+ "arbitrary",
+]
+
+[[package]]
 name = "ariadne"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -513,6 +531,17 @@ dependencies = [
  "ignore",
  "tempfile",
  "tracing",
+]
+
+[[package]]
+name = "bough-glob"
+version = "0.0.2"
+dependencies = [
+ "arbitrary",
+ "arbtest",
+ "bough-fs",
+ "globset",
+ "tempfile",
 ]
 
 [[package]]
@@ -743,6 +772,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bef552e6f588e446098f6ba40d89ac146c8c7b64aade83c051ee00bb5d2bc18d"
 dependencies = [
  "uuid",
+]
+
+[[package]]
+name = "derive_arbitrary"
+version = "1.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1e567bd82dcff979e4b03460c307b3cdc9e96fde3d73bed1496d2bc75d9dd62a"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
@@ -1193,6 +1233,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "52dfc19153a48bde0cbd630453615c8151bce3a5adfac7a0aebfbf0a1e1f57e3"
 dependencies = [
  "aho-corasick",
+ "arbitrary",
  "bstr",
  "log",
  "regex-automata",
