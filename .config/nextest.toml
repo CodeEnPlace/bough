@@ -1,3 +1,16 @@
+# Run slow tests first so they overlap with faster tests, reducing wall-clock time.
+[[profile.default.overrides]]
+filter = 'test(pbt_twig_walker_matches_reference)'
+priority = 100
+
+[[profile.default.overrides]]
+filter = 'test(/set_state_(overwrites_previous_outcome|skips_write_when_status_unchanged)/) & package(bough-core)'
+priority = 50
+
+[[profile.default.overrides]]
+filter = 'test(phase_run_timeout_kills_grandchild_processes) & package(bough-core)'
+priority = 25
+
 [profile.ci]
 fail-fast = true
 
