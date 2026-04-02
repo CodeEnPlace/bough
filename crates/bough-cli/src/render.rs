@@ -394,6 +394,7 @@ impl Render for LanguageId {
                 LanguageId::Swift => "swift",
                 LanguageId::Ruby => "rb",
                 LanguageId::Zig => "zig",
+                LanguageId::Cpp => "cpp",
             }
         )
     }
@@ -413,6 +414,7 @@ impl Render for LanguageId {
                 LanguageId::Swift => "Swift",
                 LanguageId::Ruby => "Ruby",
                 LanguageId::Zig => "Zig",
+                LanguageId::Cpp => "C++",
             }
         )
     }
@@ -430,6 +432,7 @@ impl Render for LanguageId {
             LanguageId::Swift => r#""swift""#.to_string(),
             LanguageId::Ruby => r#""rb""#.to_string(),
             LanguageId::Zig => r#""zig""#.to_string(),
+            LanguageId::Cpp => r#""cpp""#.to_string(),
         }
     }
 }

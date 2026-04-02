@@ -1,4 +1,5 @@
 mod c;
+mod cpp;
 mod cs;
 mod go;
 mod java;
@@ -11,6 +12,7 @@ mod typescript;
 mod zig;
 
 pub(crate) use c::CDriver;
+pub(crate) use cpp::CppDriver;
 pub(crate) use cs::CSharpDriver;
 pub(crate) use go::GoDriver;
 pub(crate) use java::JavaDriver;
@@ -52,5 +54,6 @@ pub(crate) fn driver_for_lang(lang: crate::LanguageId) -> Box<dyn LanguageDriver
         crate::LanguageId::Swift => Box::new(SwiftDriver),
         crate::LanguageId::Ruby => Box::new(RubyDriver),
         crate::LanguageId::Zig => Box::new(ZigDriver),
+        crate::LanguageId::Cpp => Box::new(CppDriver),
     }
 }
