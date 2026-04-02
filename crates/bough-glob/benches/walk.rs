@@ -42,7 +42,11 @@ fn make_mixed_tree(root: &Path) {
     }
 }
 
-fn naive_walk(root: &Path, includes: &[globset::GlobMatcher], excludes: &[globset::GlobMatcher]) -> BTreeSet<Twig> {
+fn naive_walk(
+    root: &Path,
+    includes: &[globset::GlobMatcher],
+    excludes: &[globset::GlobMatcher],
+) -> BTreeSet<Twig> {
     let mut result = BTreeSet::new();
     naive_walk_inner(root, root, includes, excludes, &mut result);
     result
@@ -55,7 +59,9 @@ fn naive_walk_inner(
     excludes: &[globset::GlobMatcher],
     result: &mut BTreeSet<Twig>,
 ) {
-    let Ok(entries) = std::fs::read_dir(dir) else { return };
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
     let mut entries: Vec<_> = entries.filter_map(|e| e.ok()).collect();
     entries.sort_by_key(|e| e.file_name());
     for entry in entries {
@@ -98,9 +104,7 @@ fn ignore_walk(root: &Path, overrides: &ignore::overrides::Override) -> BTreeSet
 
 fn ignore_parallel_walk(root: &Path, overrides: &ignore::overrides::Override) -> BTreeSet<Twig> {
     let mut builder = ignore::WalkBuilder::new(root);
-    builder
-        .standard_filters(false)
-        .overrides(overrides.clone());
+    builder.standard_filters(false).overrides(overrides.clone());
     let walker = builder.build_parallel();
 
     let (tx, rx) = std::sync::mpsc::channel();
@@ -118,13 +122,19 @@ struct ParVisitorBuilder {
 
 impl ParVisitorBuilder {
     fn new(root: &Path, tx: std::sync::mpsc::Sender<Twig>) -> Self {
-        Self { root: root.to_path_buf(), tx }
+        Self {
+            root: root.to_path_buf(),
+            tx,
+        }
     }
 }
 
 impl<'s> ignore::ParallelVisitorBuilder<'s> for ParVisitorBuilder {
     fn build(&mut self) -> Box<dyn ignore::ParallelVisitor + 's> {
-        Box::new(ParVisitor { root: self.root.clone(), tx: self.tx.clone() })
+        Box::new(ParVisitor {
+            root: self.root.clone(),
+            tx: self.tx.clone(),
+        })
     }
 }
 
@@ -162,7 +172,11 @@ fn bough_glob_walk(root: &TestRoot, includes: &[Glob], excludes: &[Glob]) -> BTr
     walker.iter().collect()
 }
 
-fn build_overrides(root: &Path, includes: &[&str], excludes: &[&str]) -> ignore::overrides::Override {
+fn build_overrides(
+    root: &Path,
+    includes: &[&str],
+    excludes: &[&str],
+) -> ignore::overrides::Override {
     let mut builder = ignore::overrides::OverrideBuilder::new(root);
     for pat in includes {
         builder.add(pat).unwrap();
@@ -201,7 +215,11 @@ impl TreeFixture {
         builder(dir.path());
         let root = TestRoot::new(dir.path());
         let path = dir.path().to_path_buf();
-        Self { _dir: dir, root, path }
+        Self {
+            _dir: dir,
+            root,
+            path,
+        }
     }
 }
 
@@ -236,12 +254,32 @@ macro_rules! bench_group {
     };
 }
 
-bench_group!(bench_deep, "deep_tree", make_deep_tree, &["**/*.js"], &["d0/**"]);
-bench_group!(bench_wide, "wide_tree", make_wide_tree, &["**/*.js"], &["pkg0/**"]);
-bench_group!(bench_mixed, "mixed_tree", make_mixed_tree, &["**/*.js"], &["area0/**", "area1/**"]);
+bench_group!(
+    bench_deep,
+    "deep_tree",
+    make_deep_tree,
+    &["**/*.js"],
+    &["d0/**"]
+);
+bench_group!(
+    bench_wide,
+    "wide_tree",
+    make_wide_tree,
+    &["**/*.js"],
+    &["pkg0/**"]
+);
+bench_group!(
+    bench_mixed,
+    "mixed_tree",
+    make_mixed_tree,
+    &["**/*.js"],
+    &["area0/**", "area1/**"]
+);
 
 fn make_prunable_tree(root: &Path) {
-    for dir_name in &["src", "lib", "test", "build", "dist", "vendor", "docs", "scripts", "config", "assets"] {
+    for dir_name in &[
+        "src", "lib", "test", "build", "dist", "vendor", "docs", "scripts", "config", "assets",
+    ] {
         for sub in &["a", "b", "c", "d", "e"] {
             let dir = root.join(dir_name).join(sub).join("deep");
             std::fs::create_dir_all(&dir).unwrap();
@@ -253,7 +291,13 @@ fn make_prunable_tree(root: &Path) {
     }
 }
 
-bench_group!(bench_prunable, "prunable_tree", make_prunable_tree, &["src/**/*.js"], &[]);
+bench_group!(
+    bench_prunable,
+    "prunable_tree",
+    make_prunable_tree,
+    &["src/**/*.js"],
+    &[]
+);
 
 criterion_group!(benches, bench_deep, bench_wide, bench_mixed, bench_prunable);
 criterion_main!(benches);

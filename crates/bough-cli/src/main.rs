@@ -200,9 +200,7 @@ fn main() {
         let report = _pprof_guard.report().build().expect("pprof report");
         let profile = report.pprof().expect("pprof profile");
         let mut buf = Vec::new();
-        profile
-            .write_to_vec(&mut buf)
-            .expect("pprof encode");
+        profile.write_to_vec(&mut buf).expect("pprof encode");
         std::fs::write("profile.pb", &buf).expect("write profile.pb");
         eprintln!("wrote profile.pb ({} bytes)", buf.len());
     }

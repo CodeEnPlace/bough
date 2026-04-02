@@ -93,11 +93,7 @@ impl LanguageDriver for RubyDriver {
             }
             "integer" | "float" => {
                 let span = span_from_node(node);
-                Some((
-                    MutantKind::Literal(LiteralKind::Number),
-                    span.clone(),
-                    span,
-                ))
+                Some((MutantKind::Literal(LiteralKind::Number), span.clone(), span))
             }
             "string" => {
                 let text = node.utf8_text(file_content).ok()?;

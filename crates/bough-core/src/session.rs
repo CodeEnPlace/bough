@@ -8,7 +8,6 @@ use bough_typed_hash::TypedHashable;
 use chrono::Duration;
 use tracing::info;
 
-use bough_fs::TwigsIterBuilder;
 use crate::{
     Factor, LanguageId, Status,
     base::Base,
@@ -17,6 +16,7 @@ use crate::{
     state::State,
     workspace::{Workspace, WorkspaceId},
 };
+use bough_fs::TwigsIterBuilder;
 
 pub trait Config {
     fn get_workers_count(&self) -> u64;

@@ -79,9 +79,7 @@ impl LanguageDriver for CppDriver {
                 let condition = node.child_by_field_name("condition")?;
                 // C++ wraps if/while conditions in condition_clause; extract the value field
                 let inner = if condition.kind() == "condition_clause" {
-                    condition
-                        .child_by_field_name("value")
-                        .unwrap_or(condition)
+                    condition.child_by_field_name("value").unwrap_or(condition)
                 } else if condition.kind() == "parenthesized_expression" {
                     condition.child(1).unwrap_or(condition)
                 } else {

@@ -233,9 +233,9 @@ mod tests {
     mod ts_node_depth {
         use super::*;
         use crate::LanguageId;
-        use bough_fs::Twig;
         use crate::mutant::{BinaryOpMutationKind, MutantKind, TwigMutantsIter};
         use crate::mutation::MutationIter;
+        use bough_fs::Twig;
         use bough_fs::TwigsIterBuilder;
         use std::path::PathBuf;
 
@@ -331,10 +331,10 @@ mod tests {
     mod encompasing_missed_mutations_count {
         use super::*;
         use crate::LanguageId;
-        use bough_fs::Twig;
         use crate::mutant::{BinaryOpMutationKind, MutantKind, TwigMutantsIter};
         use crate::mutation::{Mutation, MutationIter};
         use crate::state::{State, Status};
+        use bough_fs::Twig;
         use bough_fs::TwigsIterBuilder;
         use std::path::PathBuf;
 

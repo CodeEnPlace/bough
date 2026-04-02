@@ -69,8 +69,8 @@ impl Mutation {
 mod tests {
     use super::*;
     use crate::base::Base;
-    use bough_fs::Twig;
     use crate::mutant::{BinaryOpMutationKind, MutantKind, Point, Span};
+    use bough_fs::Twig;
     use bough_fs::TwigsIterBuilder;
     use bough_typed_hash::HashInto;
     use std::path::PathBuf;

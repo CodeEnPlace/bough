@@ -375,6 +375,8 @@ mod tests {
     #[test]
     #[ignore]
     fn debug_tree() {
-        dump_tree("let a = x == y\nlet b = x != y\nlet c = x > y\nlet d = x >= y\nlet e = x < y\nlet f = x <= y");
+        dump_tree(
+            "let a = x == y\nlet b = x != y\nlet c = x > y\nlet d = x >= y\nlet e = x < y\nlet f = x <= y",
+        );
     }
 }

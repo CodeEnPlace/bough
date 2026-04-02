@@ -4,7 +4,17 @@ use bough_glob::{Glob, TwigWalker};
 use std::collections::BTreeSet;
 
 const SEGMENTS: &[&str] = &[
-    "src", "lib", "test", "build", "dist", "vendor", "node_modules", "docs", ".hidden", "a", "b",
+    "src",
+    "lib",
+    "test",
+    "build",
+    "dist",
+    "vendor",
+    "node_modules",
+    "docs",
+    ".hidden",
+    "a",
+    "b",
     "c",
 ];
 const EXTENSIONS: &[&str] = &["js", "ts", "py", "rs", "css", "md", "json", "txt"];

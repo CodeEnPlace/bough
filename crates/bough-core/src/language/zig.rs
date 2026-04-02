@@ -124,11 +124,7 @@ impl LanguageDriver for ZigDriver {
             }
             "INTEGER" => {
                 let span = span_from_node(node);
-                Some((
-                    MutantKind::Literal(LiteralKind::Number),
-                    span.clone(),
-                    span,
-                ))
+                Some((MutantKind::Literal(LiteralKind::Number), span.clone(), span))
             }
             "STRINGLITERALSINGLE" => {
                 let text = node.utf8_text(file_content).ok()?;
@@ -220,11 +216,7 @@ impl LanguageDriver for ZigDriver {
             MutantKind::Literal(LiteralKind::BoolTrue) => vec!["false".into()],
             MutantKind::Literal(LiteralKind::BoolFalse) => vec!["true".into()],
             MutantKind::Literal(LiteralKind::Number) => {
-                vec![
-                    "0".into(),
-                    "1".into(),
-                    "std.math.maxInt(u64)".into(),
-                ]
+                vec!["0".into(), "1".into(), "std.math.maxInt(u64)".into()]
             }
             MutantKind::Literal(LiteralKind::String) => vec!["\"\"".into()],
             MutantKind::Literal(LiteralKind::EmptyString) => vec!["\"bough\"".into()],

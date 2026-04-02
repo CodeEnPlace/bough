@@ -1,7 +1,7 @@
 use crate::base::Base;
-use bough_fs::{File, Root, Twig};
 use crate::mutant::Mutant;
 use crate::mutation::Mutation;
+use bough_fs::{File, Root, Twig};
 use bough_typed_hash::TypedHashable;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -498,9 +498,9 @@ mod tests {
     }
 
     use crate::LanguageId;
-    use bough_fs::Twig;
     use crate::mutant::{BinaryOpMutationKind, Mutant, MutantKind, Point, Span};
     use crate::mutation::Mutation;
+    use bough_fs::Twig;
 
     fn make_js_base(content: &str) -> (tempfile::TempDir, Arc<Base>) {
         let dir = tempfile::tempdir().unwrap();
