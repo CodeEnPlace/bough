@@ -5,7 +5,7 @@ use crate::mutant::{
 };
 use tracing::trace;
 
-pub(crate) struct JavascriptDriver;
+pub struct JavascriptDriver;
 
 impl LanguageDriver for JavascriptDriver {
     fn ts_language(&self) -> arborium_tree_sitter::Language {

@@ -4,7 +4,7 @@ use crate::mutant::{
 };
 use tracing::trace;
 
-pub(crate) struct JavaDriver;
+pub struct JavaDriver;
 
 impl LanguageDriver for JavaDriver {
     fn ts_language(&self) -> arborium_tree_sitter::Language {

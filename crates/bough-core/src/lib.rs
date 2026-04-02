@@ -2,7 +2,7 @@
 
 mod base;
 mod facet_disk_store;
-mod language;
+pub mod language;
 pub mod mutant;
 mod mutation;
 mod mutation_score;
@@ -69,10 +69,6 @@ impl LanguageId {
         LanguageId::Zig,
         LanguageId::Cpp,
     ];
-
-    pub fn substitutions(&self, kind: &MutantKind) -> Vec<String> {
-        language::driver_for_lang(*self).substitutions(kind)
-    }
 
     pub fn slug(&self) -> &'static str {
         match self {

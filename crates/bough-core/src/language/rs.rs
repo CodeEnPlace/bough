@@ -5,7 +5,7 @@ use crate::mutant::{
 };
 use tracing::trace;
 
-pub(crate) struct RustDriver;
+pub struct RustDriver;
 
 impl LanguageDriver for RustDriver {
     fn ts_language(&self) -> arborium_tree_sitter::Language {

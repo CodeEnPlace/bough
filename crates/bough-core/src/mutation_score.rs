@@ -254,11 +254,11 @@ mod tests {
         fn score_all(base: &crate::base::Base) -> Vec<(MutantKind, u64)> {
             let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
             let mut scorer = MutationScorer::new(Arc::new(base.clone()), Factor::TSNodeDepth);
-            TwigMutantsIter::new(LanguageId::Javascript, base, &twig)
+            TwigMutantsIter::new(LanguageId::Javascript, base, &twig, Box::new(crate::language::javascript::JavascriptDriver))
                 .unwrap()
                 .flat_map(|bm| {
                     let mutant = bm.into_mutant();
-                    MutationIter::new(&mutant).collect::<Vec<_>>()
+                    MutationIter::new(&mutant, driver_for_lang(mutant.lang()).as_ref()).collect::<Vec<_>>()
                 })
                 .map(|mutation| {
                     let kind = mutation.mutant().kind().clone();
@@ -313,9 +313,9 @@ mod tests {
             let (_dir, base) = make_js_base(js);
             let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
             let mut scorer = MutationScorer::new(Arc::new(base.clone()), Factor::TSNodeDepth);
-            let mutations: Vec<_> = TwigMutantsIter::new(LanguageId::Javascript, &base, &twig)
+            let mutations: Vec<_> = TwigMutantsIter::new(LanguageId::Javascript, &base, &twig, Box::new(crate::language::javascript::JavascriptDriver))
                 .unwrap()
-                .flat_map(|bm| MutationIter::new(&bm.into_mutant()).collect::<Vec<_>>())
+                .flat_map(|bm| { let m = bm.into_mutant(); MutationIter::new(&m, driver_for_lang(m.lang()).as_ref()).collect::<Vec<_>>() })
                 .collect();
             let scores: Vec<_> = mutations
                 .into_iter()
@@ -352,9 +352,9 @@ mod tests {
 
         fn all_mutations(base: &crate::base::Base) -> Vec<Mutation> {
             let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
-            TwigMutantsIter::new(LanguageId::Javascript, base, &twig)
+            TwigMutantsIter::new(LanguageId::Javascript, base, &twig, Box::new(crate::language::javascript::JavascriptDriver))
                 .unwrap()
-                .flat_map(|bm| MutationIter::new(&bm.into_mutant()).collect::<Vec<_>>())
+                .flat_map(|bm| { let m = bm.into_mutant(); MutationIter::new(&m, driver_for_lang(m.lang()).as_ref()).collect::<Vec<_>>() })
                 .collect()
         }
 

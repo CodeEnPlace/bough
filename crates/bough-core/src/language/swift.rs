@@ -5,7 +5,7 @@ use crate::mutant::{
 };
 use tracing::trace;
 
-pub(crate) struct SwiftDriver;
+pub struct SwiftDriver;
 
 impl LanguageDriver for SwiftDriver {
     fn ts_language(&self) -> arborium_tree_sitter::Language {

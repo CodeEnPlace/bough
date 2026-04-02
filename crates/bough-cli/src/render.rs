@@ -719,7 +719,7 @@ mod tests {
     }
 
     fn make_mutation() -> Mutation {
-        bough_core::MutationIter::new(&make_mutant())
+        bough_core::MutationIter::new(&make_mutant(), &bough_core::language::typescript::TypescriptDriver)
             .next()
             .unwrap()
     }

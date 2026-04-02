@@ -1,32 +1,32 @@
-mod c;
-mod cpp;
-mod cs;
-mod go;
-mod java;
-mod javascript;
-mod python;
-mod rb;
-mod rs;
-mod swift;
-mod typescript;
-mod zig;
+pub mod c;
+pub mod cpp;
+pub mod cs;
+pub mod go;
+pub mod java;
+pub mod javascript;
+pub mod python;
+pub mod rb;
+pub mod rs;
+pub mod swift;
+pub mod typescript;
+pub mod zig;
 
-pub(crate) use c::CDriver;
-pub(crate) use cpp::CppDriver;
-pub(crate) use cs::CSharpDriver;
-pub(crate) use go::GoDriver;
-pub(crate) use java::JavaDriver;
-pub(crate) use javascript::JavascriptDriver;
-pub(crate) use python::PythonDriver;
-pub(crate) use rb::RubyDriver;
-pub(crate) use rs::RustDriver;
-pub(crate) use swift::SwiftDriver;
-pub(crate) use typescript::TypescriptDriver;
-pub(crate) use zig::ZigDriver;
+pub use c::CDriver;
+pub use cpp::CppDriver;
+pub use cs::CSharpDriver;
+pub use go::GoDriver;
+pub use java::JavaDriver;
+pub use javascript::JavascriptDriver;
+pub use python::PythonDriver;
+pub use rb::RubyDriver;
+pub use rs::RustDriver;
+pub use swift::SwiftDriver;
+pub use typescript::TypescriptDriver;
+pub use zig::ZigDriver;
 
 use crate::mutant::{MutantKind, Span};
 
-pub(crate) trait LanguageDriver {
+pub trait LanguageDriver {
     fn ts_language(&self) -> arborium_tree_sitter::Language;
 
     fn check_node(
@@ -40,7 +40,7 @@ pub(crate) trait LanguageDriver {
     fn is_context_boundary(&self, node: &arborium_tree_sitter::Node<'_>) -> bool;
 }
 
-pub(crate) fn driver_for_lang(lang: crate::LanguageId) -> Box<dyn LanguageDriver> {
+pub fn driver_for_lang(lang: crate::LanguageId) -> Box<dyn LanguageDriver> {
     match lang {
         crate::LanguageId::Javascript => Box::new(JavascriptDriver),
         crate::LanguageId::Typescript => Box::new(TypescriptDriver),

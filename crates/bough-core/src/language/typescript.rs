@@ -5,7 +5,7 @@ use crate::mutant::{
 };
 use tracing::trace;
 
-pub(crate) struct TypescriptDriver;
+pub struct TypescriptDriver;
 
 impl LanguageDriver for TypescriptDriver {
     fn ts_language(&self) -> arborium_tree_sitter::Language {

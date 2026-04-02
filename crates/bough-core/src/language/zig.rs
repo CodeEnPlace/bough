@@ -5,7 +5,7 @@ use crate::mutant::{
 };
 use tracing::trace;
 
-pub(crate) struct ZigDriver;
+pub struct ZigDriver;
 
 impl LanguageDriver for ZigDriver {
     fn ts_language(&self) -> arborium_tree_sitter::Language {

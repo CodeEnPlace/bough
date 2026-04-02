@@ -2,7 +2,7 @@ use super::LanguageDriver;
 use crate::mutant::{AssignMutationKind, BinaryOpMutationKind, MutantKind, Span, span_from_node};
 use tracing::trace;
 
-pub(crate) struct PythonDriver;
+pub struct PythonDriver;
 
 impl LanguageDriver for PythonDriver {
     fn ts_language(&self) -> arborium_tree_sitter::Language {

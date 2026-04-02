@@ -36,11 +36,12 @@ fn corpus_test_runner(case_dir: &str, lang: LanguageId, ext: &str) {
 
     let twig = Twig::new(PathBuf::from(format!("src/a.{ext}"))).unwrap();
 
-    let mutations: Vec<(String, Mutation)> = TwigMutantsIter::new(lang, &base, &twig)
+    let driver = bough_core::language::driver_for_lang(lang);
+    let mutations: Vec<(String, Mutation)> = TwigMutantsIter::new(lang, &base, &twig, bough_core::language::driver_for_lang(lang))
         .unwrap()
         .flat_map(|bm| {
             let mutant = bm.into_mutant();
-            MutationIter::new(&mutant)
+            MutationIter::new(&mutant, driver.as_ref())
                 .map(|mutation| {
                     let mutated_src = mutation.apply_to_complete_src_string(&src);
                     (mutated_src, mutation)

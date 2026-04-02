@@ -81,7 +81,7 @@ mod tests {
             Span::new(Point::new(0, 0, 0), Point::new(2, 3, 20)),
             Span::new(Point::new(0, 0, 0), Point::new(2, 3, 20)),
         );
-        let mutation = MutationIter::new(&mutant).next().unwrap();
+        let mutation = MutationIter::new(&mutant, &bough_core::language::javascript::JavascriptDriver).next().unwrap();
         State::new(mutation)
     }
 

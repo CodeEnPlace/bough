@@ -1,4 +1,4 @@
-use super::language::driver_for_lang;
+use crate::language::LanguageDriver;
 use crate::mutant::Mutant;
 use bough_typed_hash::TypedHashable;
 use tracing::trace;
@@ -9,8 +9,7 @@ pub struct MutationIter<'a> {
 }
 
 impl<'a> MutationIter<'a> {
-    pub fn new(mutant: &'a Mutant) -> Self {
-        let driver = driver_for_lang(mutant.lang());
+    pub fn new(mutant: &'a Mutant, driver: &dyn LanguageDriver) -> Self {
         let subs = driver.substitutions(mutant.kind());
         trace!(lang = ?mutant.lang(), kind = ?mutant.kind(), substitutions = subs.len(), "creating mutation iter");
         Self {
@@ -95,7 +94,7 @@ mod tests {
             Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
             Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
         );
-        let iter = MutationIter::new(&mutant);
+        let iter = MutationIter::new(&mutant, &crate::language::javascript::JavascriptDriver);
         assert_eq!(iter.mutant().lang(), crate::LanguageId::Javascript);
     }
 
@@ -111,7 +110,7 @@ mod tests {
             Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
             Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
         );
-        let mutations: Vec<Mutation> = MutationIter::new(&mutant).collect();
+        let mutations: Vec<Mutation> = MutationIter::new(&mutant, &crate::language::javascript::JavascriptDriver).collect();
         let subs: Vec<&str> = mutations.iter().map(|m| m.subst()).collect();
         assert!(subs.is_empty() || !subs.is_empty());
     }
@@ -127,7 +126,7 @@ mod tests {
             Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
             Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
         );
-        let _mutations: Vec<Mutation> = MutationIter::new(&mutant).collect();
+        let _mutations: Vec<Mutation> = MutationIter::new(&mutant, &crate::language::javascript::JavascriptDriver).collect();
     }
 
     #[test]
@@ -141,7 +140,7 @@ mod tests {
             Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
             Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
         );
-        for mutation in MutationIter::new(&mutant) {
+        for mutation in MutationIter::new(&mutant, &crate::language::javascript::JavascriptDriver) {
             assert!(!mutation.subst().is_empty());
         }
     }
@@ -157,7 +156,7 @@ mod tests {
             Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
             Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
         );
-        for mutation in MutationIter::new(&mutant) {
+        for mutation in MutationIter::new(&mutant, &crate::language::javascript::JavascriptDriver) {
             assert_eq!(mutation.mutant().lang(), crate::LanguageId::Javascript);
         }
     }
@@ -174,7 +173,7 @@ mod tests {
             Span::new(Point::new(0, 3, 3), Point::new(0, 10, 10)),
             Span::new(Point::new(0, 3, 3), Point::new(0, 10, 10)),
         );
-        let subs: Vec<String> = MutationIter::new(&mutant)
+        let subs: Vec<String> = MutationIter::new(&mutant, &crate::language::javascript::JavascriptDriver)
             .map(|m| m.subst().to_string())
             .collect();
         assert!(subs.contains(&"false".to_string()));
@@ -192,7 +191,7 @@ mod tests {
             Span::new(Point::new(0, 3, 3), Point::new(0, 10, 10)),
             Span::new(Point::new(0, 3, 3), Point::new(0, 10, 10)),
         );
-        let subs: Vec<String> = MutationIter::new(&mutant)
+        let subs: Vec<String> = MutationIter::new(&mutant, &crate::language::javascript::JavascriptDriver)
             .map(|m| m.subst().to_string())
             .collect();
         assert!(subs.contains(&"true".to_string()));
@@ -210,7 +209,7 @@ mod tests {
             Span::new(Point::new(0, 15, 15), Point::new(0, 28, 28)),
             Span::new(Point::new(0, 15, 15), Point::new(0, 28, 28)),
         );
-        let subs: Vec<String> = MutationIter::new(&mutant)
+        let subs: Vec<String> = MutationIter::new(&mutant, &crate::language::javascript::JavascriptDriver)
             .map(|m| m.subst().to_string())
             .collect();
         assert!(subs.contains(&"{}".to_string()));
@@ -228,7 +227,7 @@ mod tests {
             Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
             Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
         );
-        let subs: Vec<String> = MutationIter::new(&mutant)
+        let subs: Vec<String> = MutationIter::new(&mutant, &crate::language::javascript::JavascriptDriver)
             .map(|m| m.subst().to_string())
             .collect();
         assert!(subs.contains(&"*".to_string()));
@@ -246,7 +245,7 @@ mod tests {
             Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
             Span::new(Point::new(0, 10, 10), Point::new(0, 15, 15)),
         );
-        let subs: Vec<String> = MutationIter::new(&mutant)
+        let subs: Vec<String> = MutationIter::new(&mutant, &crate::language::javascript::JavascriptDriver)
             .map(|m| m.subst().to_string())
             .collect();
         assert!(subs.contains(&"-".to_string()));

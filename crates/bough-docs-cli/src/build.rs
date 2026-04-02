@@ -338,7 +338,7 @@ fn make_mutation_reference(lang: &bough_core::LanguageId) -> String {
     // Check for extraneous keys (kinds the language doesn't support)
     for key in snippets.keys() {
         let kind = bough_core::MutantKind::from_key(key).unwrap();
-        let subs = lang.substitutions(&kind);
+        let subs = bough_core::language::driver_for_lang(*lang).substitutions(&kind);
         if subs.is_empty() {
             panic!(
                 "{}: example for kind '{}' but language {} doesn't support it (empty substitutions)",
@@ -356,7 +356,7 @@ fn make_mutation_reference(lang: &bough_core::LanguageId) -> String {
     );
 
     for kind in bough_core::MutantKind::all_variants() {
-        let subs = lang.substitutions(&kind);
+        let subs = bough_core::language::driver_for_lang(*lang).substitutions(&kind);
         if subs.is_empty() {
             continue;
         }
@@ -371,7 +371,7 @@ fn make_mutation_reference(lang: &bough_core::LanguageId) -> String {
         });
 
         // Parse the snippet in-memory to find mutants of this kind
-        let source_mutants = bough_core::find_mutants_in_source(*lang, snippet.as_bytes());
+        let source_mutants = bough_core::find_mutants_in_source(bough_core::language::driver_for_lang(*lang).as_ref(), snippet.as_bytes());
         let matching: Vec<_> = source_mutants.iter().filter(|m| m.kind == kind).collect();
 
         if matching.is_empty() {

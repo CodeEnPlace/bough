@@ -26,7 +26,7 @@ impl ShowSingleMutation {
         let file_src = std::fs::read_to_string(&file_path).expect("read source file");
         let (before, ctx_span) = mutation
             .mutant()
-            .get_contextual_fragment(base, 3)
+            .get_contextual_fragment(base, 3, bough_core::language::driver_for_lang(lang).as_ref())
             .expect("context fragment");
         let mutated_src = mutation.apply_to_complete_src_string(&file_src);
         let original_len =
@@ -114,7 +114,7 @@ mod tests {
             Span::new(Point::new(0, 0, 0), Point::new(2, 3, 20)),
             Span::new(Point::new(0, 0, 0), Point::new(2, 3, 20)),
         );
-        let mutation = MutationIter::new(&mutant).next().unwrap();
+        let mutation = MutationIter::new(&mutant, &bough_core::language::javascript::JavascriptDriver).next().unwrap();
         ShowSingleMutation {
             state: State::new(mutation),
             before: "const x = 1;".to_string(),

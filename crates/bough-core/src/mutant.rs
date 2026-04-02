@@ -1,4 +1,4 @@
-use crate::language::{LanguageDriver, driver_for_lang};
+use crate::language::LanguageDriver;
 use crate::{LanguageId, base::Base};
 use arborium_tree_sitter::StreamingIterator;
 use bough_fs::Twig;
@@ -100,11 +100,10 @@ impl Mutant {
         &self,
         base: &Base,
         context_lines: usize,
+        driver: &dyn LanguageDriver,
     ) -> Result<(String, Span), std::io::Error> {
         let file_path = bough_fs::File::new(base, &self.twig).resolve();
         let file_content = std::fs::read(&file_path)?;
-
-        let driver = driver_for_lang(self.lang);
         let mut parser = arborium_tree_sitter::Parser::new();
         parser
             .set_language(&driver.ts_language())
@@ -645,12 +644,10 @@ impl MutantKind {
 }
 
 impl<'a, 't> TwigMutantsIter<'a, 't> {
-    pub fn new(lang: LanguageId, base: &'a Base, twig: &'t Twig) -> std::io::Result<Self> {
+    pub fn new(lang: LanguageId, base: &'a Base, twig: &'t Twig, driver: Box<dyn LanguageDriver>) -> std::io::Result<Self> {
         let file_path = bough_fs::File::new(base, twig).resolve();
         debug!(lang = ?lang, path = %file_path.display(), "parsing twig for mutants");
         let file_content = std::fs::read(&file_path)?;
-
-        let driver = driver_for_lang(lang);
 
         let mut parser = arborium_tree_sitter::Parser::new();
         parser
@@ -772,7 +769,7 @@ impl<'a, 't> Iterator for TwigMutantsIter<'a, 't> {
     }
 }
 
-pub(crate) fn span_from_node(node: &arborium_tree_sitter::Node<'_>) -> Span {
+pub fn span_from_node(node: &arborium_tree_sitter::Node<'_>) -> Span {
     let start = node.start_position();
     let end = node.end_position();
     Span::new(
@@ -794,8 +791,7 @@ pub struct SourceMutant {
 /// This uses the same tree-sitter walk and `LanguageDriver::check_node` logic
 /// as `TwigMutantsIter`, but operates on a byte slice directly without
 /// requiring a `Base` or `Twig`.
-pub fn find_mutants_in_source(lang: LanguageId, source: &[u8]) -> Vec<SourceMutant> {
-    let driver = driver_for_lang(lang);
+pub fn find_mutants_in_source(driver: &dyn LanguageDriver, source: &[u8]) -> Vec<SourceMutant> {
 
     let mut parser = arborium_tree_sitter::Parser::new();
     parser
@@ -1047,7 +1043,7 @@ mod tests {
     fn mutants_iter_holds_twig() {
         let (_dir, base) = make_base();
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
-        let iter = TwigMutantsIter::new(LanguageId::Javascript, &base, &twig).unwrap();
+        let iter = TwigMutantsIter::new(LanguageId::Javascript, &base, &twig, Box::new(crate::language::javascript::JavascriptDriver)).unwrap();
         assert_eq!(iter.twig().path(), std::path::Path::new("src/a.js"));
     }
 
@@ -1055,7 +1051,7 @@ mod tests {
     fn mutants_iter_holds_base() {
         let (_dir, base) = make_base();
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
-        let iter = TwigMutantsIter::new(LanguageId::Javascript, &base, &twig).unwrap();
+        let iter = TwigMutantsIter::new(LanguageId::Javascript, &base, &twig, Box::new(crate::language::javascript::JavascriptDriver)).unwrap();
         assert_eq!(iter.base().path(), base.path());
     }
 
@@ -1063,7 +1059,7 @@ mod tests {
     fn mutants_iter_owns_lang() {
         let (_dir, base) = make_base();
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
-        let iter = TwigMutantsIter::new(LanguageId::Javascript, &base, &twig).unwrap();
+        let iter = TwigMutantsIter::new(LanguageId::Javascript, &base, &twig, Box::new(crate::language::javascript::JavascriptDriver)).unwrap();
         assert_eq!(iter.lang(), LanguageId::Javascript);
     }
 
@@ -1071,21 +1067,21 @@ mod tests {
     fn mutants_iter_resolves_file_from_base_and_twig() {
         let (_dir, base) = make_base();
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
-        assert!(TwigMutantsIter::new(LanguageId::Javascript, &base, &twig).is_ok());
+        assert!(TwigMutantsIter::new(LanguageId::Javascript, &base, &twig, Box::new(crate::language::javascript::JavascriptDriver)).is_ok());
     }
 
     #[test]
     fn mutants_iter_errors_on_missing_file() {
         let (_dir, base) = make_base();
         let twig = Twig::new(PathBuf::from("src/nonexistent.js")).unwrap();
-        assert!(TwigMutantsIter::new(LanguageId::Javascript, &base, &twig).is_err());
+        assert!(TwigMutantsIter::new(LanguageId::Javascript, &base, &twig, Box::new(crate::language::javascript::JavascriptDriver)).is_err());
     }
 
     #[test]
     fn mutants_iter_walks_tree_and_returns_mutants() {
         let (_dir, base) = make_js_base("const a = x;");
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
-        let iter = TwigMutantsIter::new(LanguageId::Javascript, &base, &twig).unwrap();
+        let iter = TwigMutantsIter::new(LanguageId::Javascript, &base, &twig, Box::new(crate::language::javascript::JavascriptDriver)).unwrap();
         let mutants: Vec<_> = iter.collect();
         assert!(mutants.is_empty());
     }
@@ -1095,7 +1091,7 @@ mod tests {
         let js = "function foo() { return 1; }\nfunction bar() { return 2; }";
         let (_dir, base) = make_js_base(js);
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
-        let mutants: Vec<_> = TwigMutantsIter::new(LanguageId::Javascript, &base, &twig)
+        let mutants: Vec<_> = TwigMutantsIter::new(LanguageId::Javascript, &base, &twig, Box::new(crate::language::javascript::JavascriptDriver))
             .unwrap()
             .collect();
         let blocks: Vec<_> = mutants
@@ -1112,7 +1108,7 @@ mod tests {
         let js = "if (x > 0) { console.log(x); }";
         let (_dir, base) = make_js_base(js);
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
-        let mutants: Vec<_> = TwigMutantsIter::new(LanguageId::Javascript, &base, &twig)
+        let mutants: Vec<_> = TwigMutantsIter::new(LanguageId::Javascript, &base, &twig, Box::new(crate::language::javascript::JavascriptDriver))
             .unwrap()
             .collect();
         let conditions: Vec<_> = mutants
@@ -1127,7 +1123,7 @@ mod tests {
         let js = "while (i < 10) { i++; }";
         let (_dir, base) = make_js_base(js);
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
-        let mutants: Vec<_> = TwigMutantsIter::new(LanguageId::Javascript, &base, &twig)
+        let mutants: Vec<_> = TwigMutantsIter::new(LanguageId::Javascript, &base, &twig, Box::new(crate::language::javascript::JavascriptDriver))
             .unwrap()
             .collect();
         let conditions: Vec<_> = mutants
@@ -1142,7 +1138,7 @@ mod tests {
         let js = "for (let i = 0; i < 10; i++) { console.log(i); }";
         let (_dir, base) = make_js_base(js);
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
-        let mutants: Vec<_> = TwigMutantsIter::new(LanguageId::Javascript, &base, &twig)
+        let mutants: Vec<_> = TwigMutantsIter::new(LanguageId::Javascript, &base, &twig, Box::new(crate::language::javascript::JavascriptDriver))
             .unwrap()
             .collect();
         let conditions: Vec<_> = mutants
@@ -1161,7 +1157,7 @@ mod tests {
         //                    ^  byte 12..13
         let (_dir, base) = make_js_base(js);
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
-        let mutants: Vec<_> = TwigMutantsIter::new(LanguageId::Javascript, &base, &twig)
+        let mutants: Vec<_> = TwigMutantsIter::new(LanguageId::Javascript, &base, &twig, Box::new(crate::language::javascript::JavascriptDriver))
             .unwrap()
             .collect();
         let adds: Vec<_> = mutants
@@ -1181,7 +1177,7 @@ mod tests {
         //                    ^  byte 12..13
         let (_dir, base) = make_js_base(js);
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
-        let mutants: Vec<_> = TwigMutantsIter::new(LanguageId::Javascript, &base, &twig)
+        let mutants: Vec<_> = TwigMutantsIter::new(LanguageId::Javascript, &base, &twig, Box::new(crate::language::javascript::JavascriptDriver))
             .unwrap()
             .collect();
         let subs: Vec<_> = mutants
@@ -1450,7 +1446,7 @@ mod tests {
         let js = "function foo() { return a + b; }";
         let (_dir, base) = make_js_base(js);
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
-        let mutants: Vec<_> = TwigMutantsIter::new(LanguageId::Javascript, &base, &twig)
+        let mutants: Vec<_> = TwigMutantsIter::new(LanguageId::Javascript, &base, &twig, Box::new(crate::language::javascript::JavascriptDriver))
             .unwrap()
             .with_skip_kind(MutantKind::StatementBlock)
             .collect();
@@ -1468,7 +1464,7 @@ mod tests {
         let js = "function foo() { if (x) { return a + b; } }";
         let (_dir, base) = make_js_base(js);
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
-        let mutants: Vec<_> = TwigMutantsIter::new(LanguageId::Javascript, &base, &twig)
+        let mutants: Vec<_> = TwigMutantsIter::new(LanguageId::Javascript, &base, &twig, Box::new(crate::language::javascript::JavascriptDriver))
             .unwrap()
             .with_skip_kind(MutantKind::StatementBlock)
             .with_skip_kind(MutantKind::Condition)
@@ -1487,7 +1483,7 @@ mod tests {
         let js = "const x = a + b; const y = a - b;";
         let (_dir, base) = make_js_base(js);
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
-        let filtered: Vec<_> = TwigMutantsIter::new(LanguageId::Javascript, &base, &twig)
+        let filtered: Vec<_> = TwigMutantsIter::new(LanguageId::Javascript, &base, &twig, Box::new(crate::language::javascript::JavascriptDriver))
             .unwrap()
             .with_skip_query("(binary_expression operator: \"+\") @skip")
             .collect();
@@ -1505,7 +1501,7 @@ mod tests {
         let js = "const x = a + b; const y = a - b;";
         let (_dir, base) = make_js_base(js);
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
-        let filtered_one: Vec<_> = TwigMutantsIter::new(LanguageId::Javascript, &base, &twig)
+        let filtered_one: Vec<_> = TwigMutantsIter::new(LanguageId::Javascript, &base, &twig, Box::new(crate::language::javascript::JavascriptDriver))
             .unwrap()
             .with_skip_query("(binary_expression operator: \"+\") @skip")
             .collect();
@@ -1515,7 +1511,7 @@ mod tests {
             MutantKind::BinaryOp(BinaryOpMutationKind::Sub),
         );
 
-        let filtered_both: Vec<_> = TwigMutantsIter::new(LanguageId::Javascript, &base, &twig)
+        let filtered_both: Vec<_> = TwigMutantsIter::new(LanguageId::Javascript, &base, &twig, Box::new(crate::language::javascript::JavascriptDriver))
             .unwrap()
             .with_skip_query("(binary_expression operator: \"+\") @skip")
             .with_skip_query("(binary_expression operator: \"-\") @skip")
@@ -1558,7 +1554,7 @@ function sub(a, b) {
 
     fn find_add_mutant(base: &Base) -> Mutant {
         let twig = base.twigs().next().unwrap();
-        TwigMutantsIter::new(LanguageId::Javascript, base, &twig)
+        TwigMutantsIter::new(LanguageId::Javascript, base, &twig, Box::new(crate::language::javascript::JavascriptDriver))
             .unwrap()
             .map(|bm| bm.into_mutant())
             .find(|m| matches!(m.kind(), MutantKind::BinaryOp(BinaryOpMutationKind::Add)))
@@ -1569,7 +1565,7 @@ function sub(a, b) {
     fn contextual_fragment_zero_returns_complete_statement() {
         let (_dir, base) = make_context_base();
         let mutant = find_add_mutant(&base);
-        let (text, span) = mutant.get_contextual_fragment(&base, 0).unwrap();
+        let (text, span) = mutant.get_contextual_fragment(&base, 0, &crate::language::javascript::JavascriptDriver).unwrap();
         assert_eq!(text, "return a + b;");
         assert_eq!(span, Span::new(Point::new(3, 8, 56), Point::new(3, 21, 69)));
     }
@@ -1578,7 +1574,7 @@ function sub(a, b) {
     fn contextual_fragment_one_returns_if_statement() {
         let (_dir, base) = make_context_base();
         let mutant = find_add_mutant(&base);
-        let (text, span) = mutant.get_contextual_fragment(&base, 1).unwrap();
+        let (text, span) = mutant.get_contextual_fragment(&base, 1, &crate::language::javascript::JavascriptDriver).unwrap();
         assert_eq!(text, "if (a > 0) {\n        return a + b;\n    }");
         assert_eq!(span, Span::new(Point::new(2, 4, 35), Point::new(4, 5, 75)));
     }
@@ -1587,7 +1583,7 @@ function sub(a, b) {
     fn contextual_fragment_large_caps_at_function_boundary() {
         let (_dir, base) = make_context_base();
         let mutant = find_add_mutant(&base);
-        let (text, span) = mutant.get_contextual_fragment(&base, 100).unwrap();
+        let (text, span) = mutant.get_contextual_fragment(&base, 100, &crate::language::javascript::JavascriptDriver).unwrap();
         assert_eq!(
             text,
             "function add(a, b) {\n    if (a > 0) {\n        return a + b;\n    }\n    return b;\n}"
@@ -1599,7 +1595,7 @@ function sub(a, b) {
     fn contextual_fragment_boundary_prevents_sibling_inclusion() {
         let (_dir, base) = make_context_base();
         let mutant = find_add_mutant(&base);
-        let (text, span) = mutant.get_contextual_fragment(&base, 3).unwrap();
+        let (text, span) = mutant.get_contextual_fragment(&base, 3, &crate::language::javascript::JavascriptDriver).unwrap();
         assert_eq!(
             text,
             "function add(a, b) {\n    if (a > 0) {\n        return a + b;\n    }\n    return b;\n}"
@@ -1611,7 +1607,7 @@ function sub(a, b) {
     fn contextual_fragment_mutant_at_start_of_function() {
         let (_dir, base) = make_js_base("function foo() {\n    return 1 + 2;\n}");
         let mutant = find_add_mutant(&base);
-        let (text, span) = mutant.get_contextual_fragment(&base, 100).unwrap();
+        let (text, span) = mutant.get_contextual_fragment(&base, 100, &crate::language::javascript::JavascriptDriver).unwrap();
         assert_eq!(text, "function foo() {\n    return 1 + 2;\n}");
         assert_eq!(span, Span::new(Point::new(0, 0, 0), Point::new(2, 1, 36)));
     }
@@ -1622,7 +1618,7 @@ function sub(a, b) {
             "function bar() {\n    const x = 1;\n    const y = 2;\n    return x + y;\n}",
         );
         let mutant = find_add_mutant(&base);
-        let (text, span) = mutant.get_contextual_fragment(&base, 100).unwrap();
+        let (text, span) = mutant.get_contextual_fragment(&base, 100, &crate::language::javascript::JavascriptDriver).unwrap();
         assert_eq!(
             text,
             "function bar() {\n    const x = 1;\n    const y = 2;\n    return x + y;\n}"
@@ -1683,7 +1679,7 @@ function sub(a, b) {
     #[test]
     fn find_mutants_in_source_finds_binary_op() {
         let source = b"const total = price + tax;";
-        let mutants = find_mutants_in_source(LanguageId::Javascript, source);
+        let mutants = find_mutants_in_source(&crate::language::javascript::JavascriptDriver, source);
         let add_mutants: Vec<_> = mutants
             .iter()
             .filter(|m| m.kind == MutantKind::BinaryOp(BinaryOpMutationKind::Add))
@@ -1697,7 +1693,7 @@ function sub(a, b) {
     #[test]
     fn find_mutants_in_source_finds_multiple_of_same_kind() {
         let source = b"const z = a + b + c;";
-        let mutants = find_mutants_in_source(LanguageId::Javascript, source);
+        let mutants = find_mutants_in_source(&crate::language::javascript::JavascriptDriver, source);
         let add_mutants: Vec<_> = mutants
             .iter()
             .filter(|m| m.kind == MutantKind::BinaryOp(BinaryOpMutationKind::Add))
@@ -1708,14 +1704,14 @@ function sub(a, b) {
     #[test]
     fn find_mutants_in_source_returns_empty_for_no_mutants() {
         let source = b"// just a comment";
-        let mutants = find_mutants_in_source(LanguageId::Javascript, source);
+        let mutants = find_mutants_in_source(&crate::language::javascript::JavascriptDriver, source);
         assert!(mutants.is_empty());
     }
 
     #[test]
     fn find_mutants_in_source_works_for_python() {
         let source = b"x = a + b";
-        let mutants = find_mutants_in_source(LanguageId::Python, source);
+        let mutants = find_mutants_in_source(&crate::language::python::PythonDriver, source);
         let add_mutants: Vec<_> = mutants
             .iter()
             .filter(|m| m.kind == MutantKind::BinaryOp(BinaryOpMutationKind::Add))

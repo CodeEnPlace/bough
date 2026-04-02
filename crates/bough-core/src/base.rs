@@ -62,7 +62,7 @@ impl Base {
     pub fn mutants(&self) -> impl Iterator<Item = std::io::Result<Mutant>> + '_ {
         self.mutant_twigs().flat_map(|(language_id, twig)| {
             trace!(lang = ?language_id, twig = %twig.path().display(), "scanning twig for mutants");
-            match TwigMutantsIter::new(language_id, self, &twig) {
+            match TwigMutantsIter::new(language_id, self, &twig, crate::language::driver_for_lang(language_id)) {
                 Ok(iter) => {
                     let iter = self.skip_queries_for(language_id).iter().fold(iter, |iter, q| {
                         iter.with_skip_query(q)
@@ -79,7 +79,10 @@ impl Base {
 
     pub fn mutations(&self) -> impl Iterator<Item = std::io::Result<Mutation>> + '_ {
         self.mutants().flat_map(|r| match r {
-            Ok(m) => MutationIter::new(&m).map(Ok).collect::<Vec<_>>(),
+            Ok(m) => {
+                let driver = crate::language::driver_for_lang(m.lang());
+                MutationIter::new(&m, driver.as_ref()).map(Ok).collect::<Vec<_>>()
+            }
             Err(e) => vec![Err(e)],
         })
     }
