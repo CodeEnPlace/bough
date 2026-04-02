@@ -1,6 +1,5 @@
-use bough_core::{
-    LanguageId, Mutant, MutantKind, Mutation, PhaseOutcome, Point, Span, State, Status, Twig,
-};
+use bough_core::{LanguageId, Mutant, MutantKind, Mutation, Point, Span, Twig};
+use bough_lib::{PhaseOutcome, State, Status};
 use bough_typed_hash::TypedHashable;
 use facet::Facet;
 
@@ -719,7 +718,7 @@ mod tests {
     }
 
     fn make_mutation() -> Mutation {
-        bough_core::MutationIter::new(&make_mutant(), &bough_core::language::typescript::TypescriptDriver)
+        bough_core::MutationIter::new(&make_mutant(), &bough_lang_typescript::TypescriptDriver)
             .next()
             .unwrap()
     }

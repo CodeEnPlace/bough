@@ -1,6 +1,6 @@
 use std::ops::DerefMut;
 
-use bough_core::{Session, State};
+use bough_lib::{Session, State};
 use bough_typed_hash::TypedHashable;
 use facet::Facet;
 
@@ -81,7 +81,7 @@ mod tests {
             Span::new(Point::new(0, 0, 0), Point::new(2, 3, 20)),
             Span::new(Point::new(0, 0, 0), Point::new(2, 3, 20)),
         );
-        let mutation = MutationIter::new(&mutant, &bough_core::language::javascript::JavascriptDriver).next().unwrap();
+        let mutation = MutationIter::new(&mutant, &bough_lang_javascript::JavascriptDriver).next().unwrap();
         State::new(mutation)
     }
 

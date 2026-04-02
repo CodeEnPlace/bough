@@ -2,7 +2,7 @@ use std::io::IsTerminal;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
-use bough_core::Session;
+use bough_lib::Session;
 
 use crate::config::{Cli, Config};
 use crate::render::{Noop, Render};
@@ -30,7 +30,7 @@ impl Run {
             let base = guard.base();
 
             let init_duration = match base.run_init(&cli.config, None) {
-                Ok(bough_core::PhaseOutcome::Completed {
+                Ok(bough_lib::PhaseOutcome::Completed {
                     exit_code,
                     duration,
                     ..
@@ -41,11 +41,11 @@ impl Run {
                     }
                     Some(chrono::Duration::from_std(duration).expect("duration overflow"))
                 }
-                Ok(bough_core::PhaseOutcome::TimedOut { .. }) => {
+                Ok(bough_lib::PhaseOutcome::TimedOut { .. }) => {
                     eprintln!("base init timed out");
                     std::process::exit(1);
                 }
-                Err(bough_core::PhaseError::NoCmdConfigured) => None,
+                Err(bough_lib::PhaseError::NoCmdConfigured) => None,
                 Err(e) => {
                     eprintln!("base init error: {e}");
                     std::process::exit(1);
@@ -53,7 +53,7 @@ impl Run {
             };
 
             let reset_duration = match base.run_reset(&cli.config, None) {
-                Ok(bough_core::PhaseOutcome::Completed {
+                Ok(bough_lib::PhaseOutcome::Completed {
                     exit_code,
                     duration,
                     ..
@@ -64,11 +64,11 @@ impl Run {
                     }
                     Some(chrono::Duration::from_std(duration).expect("duration overflow"))
                 }
-                Ok(bough_core::PhaseOutcome::TimedOut { .. }) => {
+                Ok(bough_lib::PhaseOutcome::TimedOut { .. }) => {
                     eprintln!("base reset timed out");
                     std::process::exit(1);
                 }
-                Err(bough_core::PhaseError::NoCmdConfigured) => None,
+                Err(bough_lib::PhaseError::NoCmdConfigured) => None,
                 Err(e) => {
                     eprintln!("base reset error: {e}");
                     std::process::exit(1);
@@ -79,11 +79,11 @@ impl Run {
                 .run_test(&cli.config, None)
                 .expect("base test execution");
             match &test_outcome {
-                bough_core::PhaseOutcome::Completed { exit_code, .. } if *exit_code != 0 => {
+                bough_lib::PhaseOutcome::Completed { exit_code, .. } if *exit_code != 0 => {
                     eprintln!("base test failed (exit {exit_code})");
                     std::process::exit(1);
                 }
-                bough_core::PhaseOutcome::TimedOut { .. } => {
+                bough_lib::PhaseOutcome::TimedOut { .. } => {
                     eprintln!("base test timed out");
                     std::process::exit(1);
                 }

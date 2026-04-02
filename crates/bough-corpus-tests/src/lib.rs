@@ -1,7 +1,9 @@
 #[cfg(test)]
 use bough_core::mutant::TwigMutantsIter;
 #[cfg(test)]
-use bough_core::{Base, LanguageId, Mutation, MutationIter, Twig, TwigsIterBuilder};
+use bough_core::{LanguageId, Mutation, MutationIter, Twig, TwigsIterBuilder};
+#[cfg(test)]
+use bough_lib::Base;
 #[cfg(test)]
 use sha2::{Digest, Sha256};
 #[cfg(test)]
@@ -36,8 +38,8 @@ fn corpus_test_runner(case_dir: &str, lang: LanguageId, ext: &str) {
 
     let twig = Twig::new(PathBuf::from(format!("src/a.{ext}"))).unwrap();
 
-    let driver = bough_core::language::driver_for_lang(lang);
-    let mutations: Vec<(String, Mutation)> = TwigMutantsIter::new(lang, &base, &twig, bough_core::language::driver_for_lang(lang))
+    let driver = bough_lib::language::driver_for_lang(lang);
+    let mutations: Vec<(String, Mutation)> = TwigMutantsIter::new(lang, &base, &twig, bough_lib::language::driver_for_lang(lang))
         .unwrap()
         .flat_map(|bm| {
             let mutant = bm.into_mutant();

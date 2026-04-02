@@ -5,40 +5,15 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 readme.workspace = true
-description = "Core mutation testing engine for bough"
+description = "Core mutation testing types and traits for bough"
 
 [dependencies]
 bough-typed-hash = { workspace = true }
 bough-fs = { workspace = true }
 facet = { version = "0.44", features = ["uuid", "chrono"] }
-facet-json = "0.44.1"
-chrono = "0.4.44"
-facet-toml = "0.44"
-facet-value = "0.44"
-figue = "2.0.0"
-ignore = "0.4"
-rand = "0.10.0"
 arborium-tree-sitter = "2.16"
-arborium-javascript = "2.16"
-arborium-typescript = "2.16"
-arborium-python = "2.16"
-arborium-c = "2.16"
-arborium-cpp = "2.16"
-arborium-go = "2.16"
-arborium-java = "2.16"
-arborium-c-sharp = "2.16"
-arborium-rust = "2.16"
-arborium-swift = "2.16"
-arborium-ruby = "2.16"
-arborium-zig = "2.16"
-wait-timeout = "0.2"
-libc = "0.2"
 tracing = "0.1"
 
 [dev-dependencies]
 bough-fs = { workspace = true, features = ["test-support"] }
 tempfile = "3.26"
-
-[[bin]]
-name = "bough-test-helper"
-path = "src/bin/bough-test-helper.rs"

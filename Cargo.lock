@@ -453,6 +453,9 @@ name = "bough-cli"
 version = "0.0.2"
 dependencies = [
  "bough-core",
+ "bough-lang-javascript",
+ "bough-lang-typescript",
+ "bough-lib",
  "bough-typed-hash",
  "chrono",
  "ctrlc",
@@ -475,33 +478,12 @@ dependencies = [
 name = "bough-core"
 version = "0.0.2"
 dependencies = [
- "arborium-c",
- "arborium-c-sharp",
- "arborium-cpp",
- "arborium-go",
- "arborium-java",
- "arborium-javascript",
- "arborium-python",
- "arborium-ruby",
- "arborium-rust",
- "arborium-swift",
  "arborium-tree-sitter",
- "arborium-typescript",
- "arborium-zig",
  "bough-fs",
  "bough-typed-hash",
- "chrono",
  "facet",
- "facet-json",
- "facet-toml",
- "facet-value",
- "figue",
- "ignore",
- "libc",
- "rand",
  "tempfile",
  "tracing",
- "wait-timeout",
 ]
 
 [[package]]
@@ -509,6 +491,7 @@ name = "bough-corpus-tests"
 version = "0.0.2"
 dependencies = [
  "bough-core",
+ "bough-lib",
  "facet-json",
  "hex",
  "sha2",
@@ -522,6 +505,7 @@ dependencies = [
  "arborium",
  "bough-cli",
  "bough-core",
+ "bough-lib",
  "comrak",
  "facet",
  "facet-core",
@@ -557,6 +541,160 @@ dependencies = [
  "globset",
  "ignore",
  "tempfile",
+]
+
+[[package]]
+name = "bough-lang-c"
+version = "0.0.2"
+dependencies = [
+ "arborium-c",
+ "arborium-tree-sitter",
+ "bough-core",
+ "tracing",
+]
+
+[[package]]
+name = "bough-lang-cpp"
+version = "0.0.2"
+dependencies = [
+ "arborium-cpp",
+ "arborium-tree-sitter",
+ "bough-core",
+ "tracing",
+]
+
+[[package]]
+name = "bough-lang-cs"
+version = "0.0.2"
+dependencies = [
+ "arborium-c-sharp",
+ "arborium-tree-sitter",
+ "bough-core",
+ "tracing",
+]
+
+[[package]]
+name = "bough-lang-go"
+version = "0.0.2"
+dependencies = [
+ "arborium-go",
+ "arborium-tree-sitter",
+ "bough-core",
+ "tracing",
+]
+
+[[package]]
+name = "bough-lang-java"
+version = "0.0.2"
+dependencies = [
+ "arborium-java",
+ "arborium-tree-sitter",
+ "bough-core",
+ "tracing",
+]
+
+[[package]]
+name = "bough-lang-javascript"
+version = "0.0.2"
+dependencies = [
+ "arborium-javascript",
+ "arborium-tree-sitter",
+ "bough-core",
+ "tracing",
+]
+
+[[package]]
+name = "bough-lang-python"
+version = "0.0.2"
+dependencies = [
+ "arborium-python",
+ "arborium-tree-sitter",
+ "bough-core",
+ "tracing",
+]
+
+[[package]]
+name = "bough-lang-ruby"
+version = "0.0.2"
+dependencies = [
+ "arborium-ruby",
+ "arborium-tree-sitter",
+ "bough-core",
+ "tracing",
+]
+
+[[package]]
+name = "bough-lang-rust"
+version = "0.0.2"
+dependencies = [
+ "arborium-rust",
+ "arborium-tree-sitter",
+ "bough-core",
+ "tracing",
+]
+
+[[package]]
+name = "bough-lang-swift"
+version = "0.0.2"
+dependencies = [
+ "arborium-swift",
+ "arborium-tree-sitter",
+ "bough-core",
+ "tracing",
+]
+
+[[package]]
+name = "bough-lang-typescript"
+version = "0.0.2"
+dependencies = [
+ "arborium-tree-sitter",
+ "arborium-typescript",
+ "bough-core",
+ "tracing",
+]
+
+[[package]]
+name = "bough-lang-zig"
+version = "0.0.2"
+dependencies = [
+ "arborium-tree-sitter",
+ "arborium-zig",
+ "bough-core",
+ "tracing",
+]
+
+[[package]]
+name = "bough-lib"
+version = "0.0.2"
+dependencies = [
+ "arborium-tree-sitter",
+ "bough-core",
+ "bough-fs",
+ "bough-lang-c",
+ "bough-lang-cpp",
+ "bough-lang-cs",
+ "bough-lang-go",
+ "bough-lang-java",
+ "bough-lang-javascript",
+ "bough-lang-python",
+ "bough-lang-ruby",
+ "bough-lang-rust",
+ "bough-lang-swift",
+ "bough-lang-typescript",
+ "bough-lang-zig",
+ "bough-typed-hash",
+ "chrono",
+ "facet",
+ "facet-json",
+ "facet-toml",
+ "facet-value",
+ "figue",
+ "ignore",
+ "libc",
+ "rand",
+ "tempfile",
+ "tracing",
+ "wait-timeout",
 ]
 
 [[package]]

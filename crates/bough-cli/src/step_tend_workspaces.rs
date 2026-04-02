@@ -1,12 +1,12 @@
 use std::ops::DerefMut;
 
-use bough_core::Session;
+use bough_lib::Session;
 
 use crate::config::Config;
 use crate::render::{RESET, Render, TITLE, WORKSPACE};
 
 pub struct StepTendWorkspaces {
-    pub workspace_ids: Vec<bough_core::WorkspaceId>,
+    pub workspace_ids: Vec<bough_lib::WorkspaceId>,
 }
 
 impl StepTendWorkspaces {
@@ -65,7 +65,7 @@ impl Render for StepTendWorkspaces {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bough_core::WorkspaceId;
+    use bough_lib::WorkspaceId;
 
     fn fixture() -> StepTendWorkspaces {
         StepTendWorkspaces {

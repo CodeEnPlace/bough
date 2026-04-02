@@ -2,16 +2,16 @@ use crate::config::Config;
 use crate::render::{RESET, Render, TITLE, WORKSPACE};
 
 pub struct StepInitWorkspace {
-    pub workspace_id: bough_core::WorkspaceId,
-    pub outcome: bough_core::PhaseOutcome,
+    pub workspace_id: bough_lib::WorkspaceId,
+    pub outcome: bough_lib::PhaseOutcome,
 }
 
 impl StepInitWorkspace {
     pub fn run(
-        workspace: &bough_core::Workspace,
+        workspace: &bough_lib::Workspace,
         config: &Config,
         timeout: Option<chrono::Duration>,
-    ) -> Result<Box<Self>, bough_core::PhaseError> {
+    ) -> Result<Box<Self>, bough_lib::PhaseError> {
         let outcome = workspace.run_init(config, timeout)?;
         Ok(Box::new(Self {
             workspace_id: workspace.id().clone(),
@@ -57,7 +57,7 @@ impl Render for StepInitWorkspace {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bough_core::{PhaseOutcome, WorkspaceId};
+    use bough_lib::{PhaseOutcome, WorkspaceId};
 
     fn fixture() -> StepInitWorkspace {
         StepInitWorkspace {

@@ -1,7 +1,8 @@
 use std::ops::Deref;
 use std::path::PathBuf;
 
-use bough_core::{LanguageId, MutationHash, Session, State};
+use bough_core::{LanguageId, MutationHash};
+use bough_lib::{Session, State};
 
 use crate::config::Config;
 use crate::render::{BOLD, RESET, Render, TITLE};
@@ -113,7 +114,7 @@ mod tests {
             Span::new(Point::new(0, 0, 0), Point::new(2, 3, 20)),
             Span::new(Point::new(0, 0, 0), Point::new(2, 3, 20)),
         );
-        let mutation = MutationIter::new(&mutant, &bough_core::language::javascript::JavascriptDriver).next().unwrap();
+        let mutation = MutationIter::new(&mutant, &bough_lang_javascript::JavascriptDriver).next().unwrap();
         let hash = mutation.hash().expect("hash");
         let state = State::new(mutation);
         FindBestMutations(vec![(hash, state, 0.75)])

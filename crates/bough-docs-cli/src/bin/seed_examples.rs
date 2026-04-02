@@ -40,10 +40,10 @@ fn seed_language(lang: &bough_core::LanguageId) {
             continue;
         }
 
-        let mutants = bough_core::find_mutants_in_source(bough_core::language::driver_for_lang(*lang).as_ref(), source.as_bytes());
+        let mutants = bough_core::find_mutants_in_source(bough_lib::language::driver_for_lang(*lang).as_ref(), source.as_bytes());
         for mutant in &mutants {
             let key = mutant.kind.to_key();
-            let subs = bough_core::language::driver_for_lang(*lang).substitutions(&mutant.kind);
+            let subs = bough_lib::language::driver_for_lang(*lang).substitutions(&mutant.kind);
             if subs.is_empty() {
                 continue;
             }
@@ -63,7 +63,7 @@ fn seed_language(lang: &bough_core::LanguageId) {
 
     let mut out = String::new();
     for kind in bough_core::MutantKind::all_variants() {
-        let subs = bough_core::language::driver_for_lang(*lang).substitutions(&kind);
+        let subs = bough_lib::language::driver_for_lang(*lang).substitutions(&kind);
         if subs.is_empty() {
             continue;
         }

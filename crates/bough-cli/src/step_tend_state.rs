@@ -1,6 +1,6 @@
 use std::ops::DerefMut;
 
-use bough_core::Session;
+use bough_lib::Session;
 
 use crate::config::Config;
 use crate::render::{MUTATION, RESET, Render, TITLE};
@@ -75,7 +75,7 @@ mod tests {
             Span::new(Point::new(0, 0, 0), Point::new(2, 3, 20)),
             Span::new(Point::new(0, 0, 0), Point::new(2, 3, 20)),
         );
-        let hash = MutationIter::new(&mutant, &bough_core::language::javascript::JavascriptDriver)
+        let hash = MutationIter::new(&mutant, &bough_lang_javascript::JavascriptDriver)
             .next()
             .unwrap()
             .hash()

@@ -16,6 +16,7 @@ pprof = ["dep:pprof"]
 
 [dependencies]
 bough-core = { workspace = true }
+bough-lib = { path = "../bough-lib" }
 bough-typed-hash = { workspace = true }
 facet = { version = "0.44", features = ["doc"] }
 facet-json = "0.44"
@@ -32,5 +33,7 @@ ctrlc = "3"
 pprof = { version = "0.14", features = ["flamegraph", "protobuf-codec"], optional = true }
 
 [dev-dependencies]
+bough-lang-javascript = { path = "../bough-lang-javascript" }
+bough-lang-typescript = { path = "../bough-lang-typescript" }
 serial_test = "3"
 tempfile = "3.26"

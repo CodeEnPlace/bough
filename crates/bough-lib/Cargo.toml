@@ -1,0 +1,45 @@
+[package]
+name = "bough-lib"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+readme.workspace = true
+description = "Orchestration library for bough mutation testing"
+
+[dependencies]
+bough-core = { workspace = true }
+bough-typed-hash = { workspace = true }
+bough-fs = { workspace = true }
+bough-lang-javascript = { path = "../bough-lang-javascript" }
+bough-lang-typescript = { path = "../bough-lang-typescript" }
+bough-lang-python = { path = "../bough-lang-python" }
+bough-lang-c = { path = "../bough-lang-c" }
+bough-lang-cpp = { path = "../bough-lang-cpp" }
+bough-lang-go = { path = "../bough-lang-go" }
+bough-lang-java = { path = "../bough-lang-java" }
+bough-lang-cs = { path = "../bough-lang-cs" }
+bough-lang-rust = { path = "../bough-lang-rust" }
+bough-lang-swift = { path = "../bough-lang-swift" }
+bough-lang-ruby = { path = "../bough-lang-ruby" }
+bough-lang-zig = { path = "../bough-lang-zig" }
+facet = { version = "0.44", features = ["uuid", "chrono"] }
+facet-json = "0.44.1"
+chrono = "0.4.44"
+facet-toml = "0.44"
+facet-value = "0.44"
+figue = "2.0.0"
+ignore = "0.4"
+rand = "0.10.0"
+arborium-tree-sitter = "2.16"
+wait-timeout = "0.2"
+libc = "0.2"
+tracing = "0.1"
+
+[dev-dependencies]
+bough-fs = { workspace = true, features = ["test-support"] }
+tempfile = "3.26"
+
+[[bin]]
+name = "bough-test-helper"
+path = "src/bin/bough-test-helper.rs"

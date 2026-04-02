@@ -1,7 +1,8 @@
 use std::ops::Deref;
 use std::path::PathBuf;
 
-use bough_core::{File, Session};
+use bough_core::{File};
+use bough_lib::{Session};
 use facet::Facet;
 
 use crate::config::Config;

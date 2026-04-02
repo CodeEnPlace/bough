@@ -1,0 +1,14 @@
+[package]
+name = "bough-lang-go"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+readme.workspace = true
+description = "Go language driver for bough mutation testing"
+
+[dependencies]
+bough-core = { workspace = true }
+arborium-tree-sitter = "2.16"
+arborium-go = "2.16"
+tracing = "0.1"

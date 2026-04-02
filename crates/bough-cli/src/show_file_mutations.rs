@@ -1,7 +1,8 @@
 use std::ops::DerefMut;
 use std::path::PathBuf;
 
-use bough_core::{LanguageId, Session, State};
+use bough_core::{LanguageId};
+use bough_lib::{Session, State};
 use bough_typed_hash::TypedHashable;
 use facet::Facet;
 
@@ -97,7 +98,7 @@ mod tests {
             Span::new(Point::new(0, 0, 0), Point::new(2, 3, 20)),
             Span::new(Point::new(0, 0, 0), Point::new(2, 3, 20)),
         );
-        State::new(MutationIter::new(&mutant, &bough_core::language::javascript::JavascriptDriver).next().unwrap())
+        State::new(MutationIter::new(&mutant, &bough_lang_javascript::JavascriptDriver).next().unwrap())
     }
 
     fn fixture() -> ShowFileMutations {

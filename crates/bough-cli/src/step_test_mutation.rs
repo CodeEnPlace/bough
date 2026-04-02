@@ -4,28 +4,28 @@ use crate::config::Config;
 use crate::render::{MUTATION, RESET, Render, TITLE, WORKSPACE};
 
 pub struct StepTestMutation {
-    pub workspace_id: bough_core::WorkspaceId,
+    pub workspace_id: bough_lib::WorkspaceId,
     pub mutation_hash: String,
     pub status: &'static str,
-    pub status_value: bough_core::Status,
+    pub status_value: bough_lib::Status,
     pub duration: std::time::Duration,
 }
 
 impl StepTestMutation {
     pub fn run(
-        workspace: &bough_core::Workspace,
+        workspace: &bough_lib::Workspace,
         config: &Config,
         mutation: &bough_core::Mutation,
         timeout: Option<chrono::Duration>,
-    ) -> Result<Box<Self>, bough_core::PhaseError> {
+    ) -> Result<Box<Self>, bough_lib::PhaseError> {
         let outcome = workspace.run_test(config, timeout)?;
         let duration = outcome.duration();
         let (status_value, status_str) = match outcome {
-            bough_core::PhaseOutcome::TimedOut { .. } => (bough_core::Status::Timeout, "timeout"),
-            bough_core::PhaseOutcome::Completed { exit_code, .. } if exit_code != 0 => {
-                (bough_core::Status::Caught, "caught")
+            bough_lib::PhaseOutcome::TimedOut { .. } => (bough_lib::Status::Timeout, "timeout"),
+            bough_lib::PhaseOutcome::Completed { exit_code, .. } if exit_code != 0 => {
+                (bough_lib::Status::Caught, "caught")
             }
-            bough_core::PhaseOutcome::Completed { .. } => (bough_core::Status::Missed, "missed"),
+            bough_lib::PhaseOutcome::Completed { .. } => (bough_lib::Status::Missed, "missed"),
         };
         Ok(Box::new(Self {
             workspace_id: workspace.id().clone(),
@@ -85,10 +85,10 @@ mod tests {
 
     fn fixture() -> StepTestMutation {
         StepTestMutation {
-            workspace_id: bough_core::WorkspaceId::parse("aaaa1111").unwrap(),
+            workspace_id: bough_lib::WorkspaceId::parse("aaaa1111").unwrap(),
             mutation_hash: "abcdef12".to_string(),
             status: "caught",
-            status_value: bough_core::Status::Caught,
+            status_value: bough_lib::Status::Caught,
             duration: std::time::Duration::from_millis(500),
         }
     }

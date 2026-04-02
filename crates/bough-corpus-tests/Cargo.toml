@@ -9,6 +9,7 @@ description = "Corpus-based mutation snapshot tests for bough"
 
 [dependencies]
 bough-core = { workspace = true }
+bough-lib = { path = "../bough-lib" }
 sha2 = "0.10"
 hex = "0.4"
 facet-json = "0.44.1"
