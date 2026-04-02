@@ -21,7 +21,7 @@ facet-core = "0.44"
 figue = "2"
 arborium = { version = "2.16", features = ["lang-rust",
 
-"lang-c", "lang-c-sharp", "lang-go", "lang-java", "lang-javascript", "lang-typescript", "lang-python", "lang-swift", "lang-ruby", "lang-toml", "lang-bash", "lang-json", "lang-html", "lang-css"] }
+"lang-c", "lang-c-sharp", "lang-go", "lang-java", "lang-javascript", "lang-typescript", "lang-python", "lang-swift", "lang-ruby", "lang-zig", "lang-toml", "lang-bash", "lang-json", "lang-html", "lang-css"] }
 comrak = { version = "0.36", default-features = false }
 tiny_http = "0.12"
 markdown-frontmatter = { version = "0.5", default-features = false, features = ["toml"] }
