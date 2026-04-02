@@ -146,6 +146,76 @@ fn parse_segment(s: &str) -> Result<SegmentPattern, String> {
     Ok(SegmentPattern::Pattern(parts))
 }
 
+fn match_pattern_parts(parts: &[PatternPart], s: &str) -> bool {
+    match_pattern_inner(parts, s.as_bytes(), 0)
+}
+
+fn match_pattern_inner(parts: &[PatternPart], s: &[u8], pos: usize) -> bool {
+    if parts.is_empty() {
+        return pos == s.len();
+    }
+
+    let part = &parts[0];
+    let rest = &parts[1..];
+
+    match part {
+        PatternPart::Literal(lit) => {
+            let bytes = lit.as_bytes();
+            if s[pos..].starts_with(bytes) {
+                match_pattern_inner(rest, s, pos + bytes.len())
+            } else {
+                false
+            }
+        }
+        PatternPart::Star => {
+            for i in pos..=s.len() {
+                if match_pattern_inner(rest, s, i) {
+                    return true;
+                }
+            }
+            false
+        }
+        PatternPart::Any => {
+            if pos < s.len() {
+                match_pattern_inner(rest, s, pos + 1)
+            } else {
+                false
+            }
+        }
+        PatternPart::Class { negated, ranges } => {
+            if pos >= s.len() {
+                return false;
+            }
+            let c = s[pos] as char;
+            let in_range = ranges.iter().any(|&(lo, hi)| c >= lo && c <= hi);
+            if in_range != *negated {
+                match_pattern_inner(rest, s, pos + 1)
+            } else {
+                false
+            }
+        }
+        PatternPart::Alternates(branches) => {
+            branches.iter().any(|branch| {
+                let mut combined = branch.clone();
+                combined.extend_from_slice(rest);
+                match_pattern_inner(&combined, s, pos)
+            })
+        }
+    }
+}
+
+fn best_match(a: MatchResult, b: MatchResult) -> MatchResult {
+    fn rank(m: &MatchResult) -> u8 {
+        match m {
+            MatchResult::DoesNotMatch => 0,
+            MatchResult::PartialMatch => 1,
+            MatchResult::Matches => 2,
+            MatchResult::MatchesAll => 3,
+        }
+    }
+    if rank(&a) >= rank(&b) { a } else { b }
+}
+
 fn match_segments(patterns: &[SegmentPattern], path: &[&str]) -> MatchResult {
     if patterns.is_empty() && path.is_empty() {
         return MatchResult::Matches;
@@ -154,6 +224,12 @@ fn match_segments(patterns: &[SegmentPattern], path: &[&str]) -> MatchResult {
         return MatchResult::DoesNotMatch;
     }
     if path.is_empty() {
+        if patterns.iter().all(|p| match p {
+            SegmentPattern::DoubleStar => true,
+            _ => false,
+        }) {
+            return MatchResult::MatchesAll;
+        }
         return MatchResult::PartialMatch;
     }
 
@@ -169,7 +245,25 @@ fn match_segments(patterns: &[SegmentPattern], path: &[&str]) -> MatchResult {
             }
         }
         SegmentPattern::Star => match_segments(&patterns[1..], &path[1..]),
-        _ => todo!(),
+        SegmentPattern::DoubleStar => {
+            let rest_patterns = &patterns[1..];
+            if rest_patterns.is_empty() {
+                return MatchResult::MatchesAll;
+            }
+            let mut best = match_segments(rest_patterns, path);
+            for i in 1..=path.len() {
+                let result = match_segments(rest_patterns, &path[i..]);
+                best = best_match(best, result);
+            }
+            best
+        }
+        SegmentPattern::Pattern(parts) => {
+            if match_pattern_parts(parts, seg) {
+                match_segments(&patterns[1..], &path[1..])
+            } else {
+                MatchResult::DoesNotMatch
+            }
+        }
     }
 }
 
@@ -255,5 +349,47 @@ mod tests {
     fn star_partial_matches_prefix() {
         let glob = Glob::try_from("src/*/main.rs").unwrap();
         assert_eq!(glob.match_info(Path::new("src/foo")), MatchResult::PartialMatch);
+    }
+
+    #[test]
+    fn double_star_matches_deep_path() {
+        let glob = Glob::try_from("src/**/*.js").unwrap();
+        assert_eq!(glob.match_info(Path::new("src/a/b/c/main.js")), MatchResult::Matches);
+    }
+
+    #[test]
+    fn double_star_matches_immediate_child() {
+        let glob = Glob::try_from("src/**/*.js").unwrap();
+        assert_eq!(glob.match_info(Path::new("src/main.js")), MatchResult::Matches);
+    }
+
+    #[test]
+    fn double_star_wrong_extension_is_partial() {
+        let glob = Glob::try_from("src/**/*.js").unwrap();
+        assert_eq!(glob.match_info(Path::new("src/main.rs")), MatchResult::PartialMatch);
+    }
+
+    #[test]
+    fn double_star_partial_matches_dir() {
+        let glob = Glob::try_from("src/**/*.js").unwrap();
+        assert_eq!(glob.match_info(Path::new("src/a/b")), MatchResult::PartialMatch);
+    }
+
+    #[test]
+    fn double_star_does_not_match_wrong_prefix() {
+        let glob = Glob::try_from("src/**/*.js").unwrap();
+        assert_eq!(glob.match_info(Path::new("lib/main.js")), MatchResult::DoesNotMatch);
+    }
+
+    #[test]
+    fn double_star_alone_matches_everything() {
+        let glob = Glob::try_from("**").unwrap();
+        assert_eq!(glob.match_info(Path::new("anything/at/all")), MatchResult::MatchesAll);
+    }
+
+    #[test]
+    fn double_star_alone_partial_matches_empty() {
+        let glob = Glob::try_from("**").unwrap();
+        assert_eq!(glob.match_info(Path::new("")), MatchResult::MatchesAll);
     }
 }
