@@ -96,6 +96,61 @@ fn ignore_walk(root: &Path, overrides: &ignore::overrides::Override) -> BTreeSet
     result
 }
 
+fn ignore_parallel_walk(root: &Path, overrides: &ignore::overrides::Override) -> BTreeSet<Twig> {
+    let mut builder = ignore::WalkBuilder::new(root);
+    builder
+        .standard_filters(false)
+        .overrides(overrides.clone());
+    let walker = builder.build_parallel();
+
+    let (tx, rx) = std::sync::mpsc::channel();
+    let mut vis_builder = ParVisitorBuilder::new(root, tx);
+    walker.visit(&mut vis_builder);
+    drop(vis_builder);
+
+    rx.into_iter().collect()
+}
+
+struct ParVisitorBuilder {
+    root: PathBuf,
+    tx: std::sync::mpsc::Sender<Twig>,
+}
+
+impl ParVisitorBuilder {
+    fn new(root: &Path, tx: std::sync::mpsc::Sender<Twig>) -> Self {
+        Self { root: root.to_path_buf(), tx }
+    }
+}
+
+impl<'s> ignore::ParallelVisitorBuilder<'s> for ParVisitorBuilder {
+    fn build(&mut self) -> Box<dyn ignore::ParallelVisitor + 's> {
+        Box::new(ParVisitor { root: self.root.clone(), tx: self.tx.clone() })
+    }
+}
+
+struct ParVisitor {
+    root: PathBuf,
+    tx: std::sync::mpsc::Sender<Twig>,
+}
+
+impl ignore::ParallelVisitor for ParVisitor {
+    fn visit(&mut self, entry: Result<ignore::DirEntry, ignore::Error>) -> ignore::WalkState {
+        let Ok(entry) = entry else {
+            return ignore::WalkState::Continue;
+        };
+        if !entry.file_type().map_or(false, |ft| ft.is_file()) {
+            return ignore::WalkState::Continue;
+        }
+        let Some(rel) = entry.path().strip_prefix(&self.root).ok() else {
+            return ignore::WalkState::Continue;
+        };
+        if let Ok(twig) = Twig::new(rel.to_path_buf()) {
+            let _ = self.tx.send(twig);
+        }
+        ignore::WalkState::Continue
+    }
+}
+
 fn bough_glob_walk(root: &TestRoot, includes: &[Glob], excludes: &[Glob]) -> BTreeSet<Twig> {
     let mut walker = TwigWalker::new(root);
     for g in includes {
@@ -150,77 +205,40 @@ impl TreeFixture {
     }
 }
 
-fn bench_deep(c: &mut Criterion) {
-    let fixture = TreeFixture::new(make_deep_tree);
-    let includes: &[&str] = &["**/*.js"];
-    let excludes: &[&str] = &["d0/**"];
+macro_rules! bench_group {
+    ($name:ident, $group:expr, $tree:expr, $includes:expr, $excludes:expr) => {
+        fn $name(c: &mut Criterion) {
+            let fixture = TreeFixture::new($tree);
+            let includes: &[&str] = $includes;
+            let excludes: &[&str] = $excludes;
 
-    let naive_inc = build_globset_matchers(includes);
-    let naive_exc = build_globset_matchers(excludes);
-    let overrides = build_overrides(&fixture.path, includes, excludes);
-    let bg_inc = build_globs(includes);
-    let bg_exc = build_globs(excludes);
+            let naive_inc = build_globset_matchers(includes);
+            let naive_exc = build_globset_matchers(excludes);
+            let overrides = build_overrides(&fixture.path, includes, excludes);
+            let bg_inc = build_globs(includes);
+            let bg_exc = build_globs(excludes);
 
-    let mut group = c.benchmark_group("deep_tree");
-    group.bench_function("naive", |b| {
-        b.iter(|| naive_walk(&fixture.path, &naive_inc, &naive_exc))
-    });
-    group.bench_function("ignore", |b| {
-        b.iter(|| ignore_walk(&fixture.path, &overrides))
-    });
-    group.bench_function("bough_glob", |b| {
-        b.iter(|| bough_glob_walk(&fixture.root, &bg_inc, &bg_exc))
-    });
-    group.finish();
+            let mut group = c.benchmark_group($group);
+            group.bench_function("naive", |b| {
+                b.iter(|| naive_walk(&fixture.path, &naive_inc, &naive_exc))
+            });
+            group.bench_function("ignore", |b| {
+                b.iter(|| ignore_walk(&fixture.path, &overrides))
+            });
+            group.bench_function("ignore_parallel", |b| {
+                b.iter(|| ignore_parallel_walk(&fixture.path, &overrides))
+            });
+            group.bench_function("bough_glob", |b| {
+                b.iter(|| bough_glob_walk(&fixture.root, &bg_inc, &bg_exc))
+            });
+            group.finish();
+        }
+    };
 }
 
-fn bench_wide(c: &mut Criterion) {
-    let fixture = TreeFixture::new(make_wide_tree);
-    let includes: &[&str] = &["**/*.js"];
-    let excludes: &[&str] = &["pkg0/**"];
-
-    let naive_inc = build_globset_matchers(includes);
-    let naive_exc = build_globset_matchers(excludes);
-    let overrides = build_overrides(&fixture.path, includes, excludes);
-    let bg_inc = build_globs(includes);
-    let bg_exc = build_globs(excludes);
-
-    let mut group = c.benchmark_group("wide_tree");
-    group.bench_function("naive", |b| {
-        b.iter(|| naive_walk(&fixture.path, &naive_inc, &naive_exc))
-    });
-    group.bench_function("ignore", |b| {
-        b.iter(|| ignore_walk(&fixture.path, &overrides))
-    });
-    group.bench_function("bough_glob", |b| {
-        b.iter(|| bough_glob_walk(&fixture.root, &bg_inc, &bg_exc))
-    });
-    group.finish();
-}
-
-fn bench_mixed(c: &mut Criterion) {
-    let fixture = TreeFixture::new(make_mixed_tree);
-    let includes: &[&str] = &["**/*.js"];
-    let excludes: &[&str] = &["area0/**", "area1/**"];
-
-    let naive_inc = build_globset_matchers(includes);
-    let naive_exc = build_globset_matchers(excludes);
-    let overrides = build_overrides(&fixture.path, includes, excludes);
-    let bg_inc = build_globs(includes);
-    let bg_exc = build_globs(excludes);
-
-    let mut group = c.benchmark_group("mixed_tree");
-    group.bench_function("naive", |b| {
-        b.iter(|| naive_walk(&fixture.path, &naive_inc, &naive_exc))
-    });
-    group.bench_function("ignore", |b| {
-        b.iter(|| ignore_walk(&fixture.path, &overrides))
-    });
-    group.bench_function("bough_glob", |b| {
-        b.iter(|| bough_glob_walk(&fixture.root, &bg_inc, &bg_exc))
-    });
-    group.finish();
-}
+bench_group!(bench_deep, "deep_tree", make_deep_tree, &["**/*.js"], &["d0/**"]);
+bench_group!(bench_wide, "wide_tree", make_wide_tree, &["**/*.js"], &["pkg0/**"]);
+bench_group!(bench_mixed, "mixed_tree", make_mixed_tree, &["**/*.js"], &["area0/**", "area1/**"]);
 
 fn make_prunable_tree(root: &Path) {
     for dir_name in &["src", "lib", "test", "build", "dist", "vendor", "docs", "scripts", "config", "assets"] {
@@ -235,29 +253,7 @@ fn make_prunable_tree(root: &Path) {
     }
 }
 
-fn bench_prunable(c: &mut Criterion) {
-    let fixture = TreeFixture::new(make_prunable_tree);
-    let includes: &[&str] = &["src/**/*.js"];
-    let excludes: &[&str] = &[];
-
-    let naive_inc = build_globset_matchers(includes);
-    let naive_exc = build_globset_matchers(excludes);
-    let overrides = build_overrides(&fixture.path, includes, excludes);
-    let bg_inc = build_globs(includes);
-    let bg_exc = build_globs(excludes);
-
-    let mut group = c.benchmark_group("prunable_tree");
-    group.bench_function("naive", |b| {
-        b.iter(|| naive_walk(&fixture.path, &naive_inc, &naive_exc))
-    });
-    group.bench_function("ignore", |b| {
-        b.iter(|| ignore_walk(&fixture.path, &overrides))
-    });
-    group.bench_function("bough_glob", |b| {
-        b.iter(|| bough_glob_walk(&fixture.root, &bg_inc, &bg_exc))
-    });
-    group.finish();
-}
+bench_group!(bench_prunable, "prunable_tree", make_prunable_tree, &["src/**/*.js"], &[]);
 
 criterion_group!(benches, bench_deep, bench_wide, bench_mixed, bench_prunable);
 criterion_main!(benches);
