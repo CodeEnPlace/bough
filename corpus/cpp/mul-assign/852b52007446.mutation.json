@@ -1,0 +1,36 @@
+{
+  "mutant": {
+    "lang": "cpp",
+    "twig": [
+      "src/a.cpp"
+    ],
+    "kind": {
+      "Assign": "MulAssign"
+    },
+    "subst_span": {
+      "start": {
+        "line": 0,
+        "col": 13,
+        "byte": 13
+      },
+      "end": {
+        "line": 0,
+        "col": 15,
+        "byte": 15
+      }
+    },
+    "effect_span": {
+      "start": {
+        "line": 0,
+        "col": 11,
+        "byte": 11
+      },
+      "end": {
+        "line": 0,
+        "col": 17,
+        "byte": 17
+      }
+    }
+  },
+  "subst": "="
+}
