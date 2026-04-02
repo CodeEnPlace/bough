@@ -3,7 +3,6 @@ use ignore::overrides::OverrideBuilder;
 use std::path::{Path, PathBuf};
 use tracing::{debug, trace};
 
-// bough[impl file.twig]
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, facet::Facet)]
 pub struct Twig(String);
 
@@ -23,13 +22,10 @@ impl Twig {
     }
 }
 
-// bough[impl twig.iter.root]
-// bough[impl twig.iter]
 #[derive(Clone, PartialEq, Debug)]
 pub struct TwigsIterBuilder {
-    // bough[impl twig.iter.include]
     include: Vec<String>,
-    // bough[impl twig.iter.exclude]
+
     exclude: Vec<String>,
 }
 
@@ -51,7 +47,6 @@ impl TwigsIterBuilder {
         self
     }
 
-    // bough[impl twig.iter.new]
     pub fn build<'a, R: Root>(self, root: &'a R) -> TwigsIter<'a, R> {
         let root_path = root.path();
         debug!(
@@ -61,17 +56,16 @@ impl TwigsIterBuilder {
             "building twigs iterator"
         );
 
-        // bough[impl twig.iter.include.empty]
         if self.include.is_empty() {
             return TwigsIter { root, walker: None };
         }
 
         let mut overrides = OverrideBuilder::new(root_path);
-        // bough[impl twig.iter.include.match]
+
         for pat in &self.include {
             overrides.add(pat).expect("invalid include glob");
         }
-        // bough[impl twig.iter.exclude.match]
+
         for pat in &self.exclude {
             overrides
                 .add(&format!("!{pat}"))
@@ -122,14 +116,12 @@ mod tests {
     use super::*;
     use crate::file::TestRoot;
 
-    // bough[verify file.twig]
     #[test]
     fn twig_accepts_relative_path() {
         let twig = Twig::new(PathBuf::from("src/main.rs")).unwrap();
         assert_eq!(twig.path(), Path::new("src/main.rs"));
     }
 
-    // bough[verify file.twig]
     #[test]
     fn twig_rejects_absolute_path() {
         assert!(matches!(
@@ -138,9 +130,6 @@ mod tests {
         ));
     }
 
-    // bough[verify twig.iter.root]
-    // bough[verify twig.iter.new]
-    // bough[verify twig.iter]
     #[test]
     fn iter_takes_root_and_yields_twigs() {
         let dir = tempfile::tempdir().unwrap();
@@ -174,8 +163,6 @@ mod tests {
         twigs
     }
 
-    // bough[verify twig.iter]
-    // bough[verify twig.iter.include.match]
     #[test]
     fn iter_includes_matching_files() {
         let dir = tempfile::tempdir().unwrap();
@@ -192,7 +179,6 @@ mod tests {
         );
     }
 
-    // bough[verify twig.iter.include.match]
     #[test]
     fn iter_includes_multiple_globs() {
         let dir = tempfile::tempdir().unwrap();
@@ -214,7 +200,6 @@ mod tests {
         );
     }
 
-    // bough[verify twig.iter.include.empty]
     #[test]
     fn iter_empty_include_yields_nothing() {
         let dir = tempfile::tempdir().unwrap();
@@ -224,7 +209,6 @@ mod tests {
         assert!(twigs.is_empty());
     }
 
-    // bough[verify twig.iter.exclude.match]
     #[test]
     fn iter_excludes_matching_files() {
         let dir = tempfile::tempdir().unwrap();

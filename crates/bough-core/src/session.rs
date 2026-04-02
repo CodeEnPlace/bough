@@ -73,7 +73,6 @@ pub struct Session<C: Config> {
 }
 
 impl<C: Config> Session<C> {
-    // bough[impl session.init+2]
     pub fn new(config: C) -> Result<Self, Error> {
         info!("initializing session");
         let mut base_twigs_iter_builder = TwigsIterBuilder::new();
@@ -98,7 +97,6 @@ impl<C: Config> Session<C> {
             base.add_mutator(lang, lang_twigs_iter_builder, skip_queries);
         }
 
-        // bough[impl session.init.state.attach]
         let mutations_state = FacetDiskStore::<<Mutation as TypedHashable>::Hash, State>::new(
             config.get_bough_state_dir().join("state"),
         );
@@ -159,7 +157,6 @@ impl<C: Config> Session<C> {
         self.mutations_needing_test.len()
     }
 
-    // bough[impl session.tend.state.add-missing]
     pub fn tend_add_missing_states(&mut self) -> Result<Vec<MutationHash>, Error> {
         let mutations_in_base: HashSet<Mutation> =
             self.base.mutations().collect::<Result<_, _>>()?;
@@ -181,7 +178,6 @@ impl<C: Config> Session<C> {
         Ok(added)
     }
 
-    // bough[impl session.tend.state.remove-stale]
     pub fn tend_remove_stale_states(&mut self) -> Result<Vec<MutationHash>, Error> {
         let mutations_in_base: HashSet<Mutation> =
             self.base.mutations().collect::<Result<_, _>>()?;
@@ -205,12 +201,6 @@ impl<C: Config> Session<C> {
         Ok(stale_keys)
     }
 
-    // bough[impl session.tend.workspaces]
-    // bough[impl session.tend.workspaces.bind]
-    // bough[impl session.tend.workspaces.bind.validate-unchanged.rm]
-    // bough[impl session.tend.workspaces.bind.validate-unchanged.forget]
-    // bough[impl session.tend.workspaces.new]
-    // bough[impl session.tend.workspaces.surplus]
     pub fn tend_workspaces(&mut self, desired_count: usize) -> Result<Vec<WorkspaceId>, Error> {
         let workspaces_dir = self.config.get_bough_state_dir().join("workspaces");
 
@@ -257,12 +247,10 @@ impl<C: Config> Session<C> {
         Ok(valid)
     }
 
-    // bough[impl session.init.state.get]
     pub fn get_state(&self) -> &FacetDiskStore<MutationHash, State> {
         &self.mutations_state
     }
 
-    // bough[impl session.init.workspaces.get-ids]
     pub fn workspace_ids(&self) -> &[WorkspaceId] {
         &self.workspaces
     }
@@ -534,7 +522,6 @@ mod tests {
         }
     }
 
-    // bough[verify session.init+2]
     #[test]
     fn session_new_creates_session_from_config() {
         let dir = tempfile::tempdir().unwrap();
@@ -555,7 +542,6 @@ mod tests {
         assert!(session.is_ok());
     }
 
-    // bough[verify session.init+2]
     #[test]
     fn session_new_fails_with_invalid_root() {
         let dir = tempfile::tempdir().unwrap();
@@ -576,7 +562,6 @@ mod tests {
         assert!(session.is_err());
     }
 
-    // bough[verify session.init.state.attach]
     #[test]
     fn session_new_creates_state_dir() {
         let dir = tempfile::tempdir().unwrap();
@@ -619,7 +604,6 @@ mod tests {
         files
     }
 
-    // bough[verify session.init.state.get]
     #[test]
     fn session_get_state_reads_back_disk_files() {
         let dir = tempfile::tempdir().unwrap();
@@ -651,7 +635,6 @@ mod tests {
         dirs
     }
 
-    // bough[verify session.init.workspaces]
     #[test]
     fn session_creates_workspaces_in_state_dir() {
         let dir = tempfile::tempdir().unwrap();
@@ -670,7 +653,6 @@ mod tests {
         }
     }
 
-    // bough[verify session.init.workspaces.bind]
     #[test]
     fn session_binds_existing_workspaces() {
         let dir = tempfile::tempdir().unwrap();
@@ -693,7 +675,6 @@ mod tests {
         assert_eq!(dirs_before, dirs_after, "workspace dirs should be the same");
     }
 
-    // bough[verify session.init.workspaces.get-ids]
     #[test]
     fn session_workspace_ids_returns_created_ids() {
         let dir = tempfile::tempdir().unwrap();
@@ -709,7 +690,6 @@ mod tests {
         }
     }
 
-    // bough[verify session.tend.state.add-missing]
     #[test]
     fn tend_add_missing_states_adds_new_mutations() {
         let dir = tempfile::tempdir().unwrap();
@@ -737,7 +717,6 @@ mod tests {
         );
     }
 
-    // bough[verify session.tend.state.add-missing]
     #[test]
     fn tend_add_missing_states_returns_newly_added_hashes() {
         let dir = tempfile::tempdir().unwrap();
@@ -760,7 +739,6 @@ mod tests {
         assert_eq!(final_count, initial_count + added.len());
     }
 
-    // bough[verify session.tend.workspaces]
     #[test]
     fn tend_workspaces_returns_workspace_ids() {
         let dir = tempfile::tempdir().unwrap();
@@ -773,7 +751,6 @@ mod tests {
         assert_eq!(ids.len(), 3);
     }
 
-    // bough[verify session.tend.workspaces.bind]
     #[test]
     fn tend_workspaces_binds_existing() {
         let dir = tempfile::tempdir().unwrap();
@@ -791,8 +768,6 @@ mod tests {
         assert_eq!(dirs_before, dirs_after);
     }
 
-    // bough[verify session.tend.workspaces.bind.validate-unchanged.rm]
-    // bough[verify session.tend.workspaces.bind.validate-unchanged.forget]
     #[test]
     fn tend_workspaces_removes_modified_workspace_from_disk() {
         let dir = tempfile::tempdir().unwrap();
@@ -814,7 +789,6 @@ mod tests {
         );
     }
 
-    // bough[verify session.tend.workspaces.new]
     #[test]
     fn tend_workspaces_creates_new_to_reach_desired_count() {
         let dir = tempfile::tempdir().unwrap();
@@ -830,7 +804,6 @@ mod tests {
         assert_eq!(workspace_dirs(dir.path()).len(), 3);
     }
 
-    // bough[verify session.tend.workspaces.surplus]
     #[test]
     fn tend_workspaces_removes_surplus() {
         let dir = tempfile::tempdir().unwrap();
@@ -846,7 +819,6 @@ mod tests {
         assert_eq!(workspace_dirs(dir.path()).len(), 2);
     }
 
-    // bough[verify session.tend.state.remove-stale]
     #[test]
     fn tend_remove_stale_states_removes_orphaned_entries() {
         let dir = tempfile::tempdir().unwrap();
@@ -880,7 +852,6 @@ mod tests {
         assert_eq!(final_count + removed.len(), initial_count);
     }
 
-    // bough[verify session.tend.state.remove-stale]
     #[test]
     fn tend_remove_stale_states_returns_empty_when_nothing_stale() {
         let dir = tempfile::tempdir().unwrap();

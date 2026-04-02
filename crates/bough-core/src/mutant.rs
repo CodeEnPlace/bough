@@ -17,9 +17,6 @@ pub enum EncompassError {
     },
 }
 
-// bough[impl mutant.twig-iter.twig]
-// bough[impl mutant.twig-iter.base]
-// bough[impl mutant.twig-iter.lang]
 pub struct TwigMutantsIter<'a, 't> {
     lang: LanguageId,
     base: &'a Base,
@@ -37,10 +34,6 @@ pub struct TwigMutantsIter<'a, 't> {
 #[derive(bough_typed_hash::TypedHash)]
 pub struct MutantHash([u8; 32]);
 
-// bough[impl mutant.lang]
-// bough[impl mutant.twig]
-// bough[impl mutant.kind]
-// bough[impl mutant.span]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, facet::Facet)]
 pub struct Mutant {
     lang: LanguageId,
@@ -177,9 +170,6 @@ impl Mutant {
     }
 }
 
-// bough[impl mutant.based]
-// bough[impl mutant.based.base]
-// bough[impl mutant.based.mutant]
 #[derive(Debug, Clone, PartialEq)]
 pub struct BasedMutant<'a> {
     mutant: Mutant,
@@ -224,11 +214,6 @@ impl<'a> BasedMutant<'a> {
     }
 }
 
-// bough[impl mutant.hash.typed-hashable]
-// bough[impl mutant.hash.lang]
-// bough[impl mutant.hash.twig]
-// bough[impl mutant.hash.span]
-// bough[impl mutant.hash.kind]
 impl HashInto for Mutant {
     fn hash_into(&self, state: &mut bough_typed_hash::ShaState) -> Result<(), std::io::Error> {
         self.lang.hash_into(state)?;
@@ -250,9 +235,6 @@ impl TypedHashable for Mutant {
 #[derive(bough_typed_hash::TypedHash)]
 pub struct BasedMutantHash([u8; 32]);
 
-// bough[impl mutant.based.hash.typed-hashable]
-// bough[impl mutant.based.hash.base]
-// bough[impl mutant.based.hash.file]
 impl HashInto for BasedMutant<'_> {
     fn hash_into(&self, state: &mut bough_typed_hash::ShaState) -> Result<(), std::io::Error> {
         self.mutant.hash_into(state)?;
@@ -265,7 +247,6 @@ impl TypedHashable for BasedMutant<'_> {
     type Hash = BasedMutantHash;
 }
 
-// bough[impl span.point]
 #[derive(Debug, Clone, PartialEq, Eq, bough_typed_hash::HashInto, Hash, facet::Facet)]
 pub struct Span {
     start: Point,
@@ -294,9 +275,6 @@ impl Span {
     }
 }
 
-// bough[impl point.line]
-// bough[impl point.col]
-// bough[impl point.byte]
 #[derive(Debug, Clone, PartialEq, Eq, bough_typed_hash::HashInto, Hash, facet::Facet)]
 pub struct Point {
     line: usize,
@@ -668,7 +646,6 @@ impl MutantKind {
 
 impl<'a, 't> TwigMutantsIter<'a, 't> {
     pub fn new(lang: LanguageId, base: &'a Base, twig: &'t Twig) -> std::io::Result<Self> {
-        // bough[impl mutant.twig-iter.file]
         let file_path = bough_fs::File::new(base, twig).resolve();
         debug!(lang = ?lang, path = %file_path.display(), "parsing twig for mutants");
         let file_content = std::fs::read(&file_path)?;
@@ -719,16 +696,12 @@ impl<'a, 't> TwigMutantsIter<'a, 't> {
         self.twig
     }
 
-    // bough[impl mutant.twig-iter.skip.kind]
-    // bough[impl mutant.twig-iter.skip.kind.multiple]
     pub fn with_skip_kind(mut self, kind: MutantKind) -> Self {
         debug!(?kind, "adding skip kind filter");
         self.skip_kinds.push(kind);
         self
     }
 
-    // bough[impl mutant.twig-iter.skip.query]
-    // bough[impl mutant.twig-iter.skip.query.multiple]
     pub fn with_skip_query(mut self, query: &str) -> Self {
         debug!(query, "adding skip query filter");
         let q = arborium_tree_sitter::Query::new(&self.driver.ts_language(), query)
@@ -738,9 +711,6 @@ impl<'a, 't> TwigMutantsIter<'a, 't> {
     }
 }
 
-// bough[impl mutant.twig-iter]
-// bough[impl mutant.twig-iter.item]
-// bough[impl mutant.twig-iter.find]
 impl<'a, 't> Iterator for TwigMutantsIter<'a, 't> {
     type Item = BasedMutant<'a>;
 
@@ -893,28 +863,24 @@ mod tests {
         (dir, base)
     }
 
-    // bough[verify point.line]
     #[test]
     fn point_line() {
         let p = Point::new(10, 5, 42);
         assert_eq!(p.line(), 10);
     }
 
-    // bough[verify point.col]
     #[test]
     fn point_col() {
         let p = Point::new(10, 5, 42);
         assert_eq!(p.col(), 5);
     }
 
-    // bough[verify point.byte]
     #[test]
     fn point_byte() {
         let p = Point::new(10, 5, 42);
         assert_eq!(p.byte(), 42);
     }
 
-    // bough[verify mutant.lang]
     #[test]
     fn mutant_owns_language_id() {
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
@@ -928,7 +894,6 @@ mod tests {
         assert_eq!(m.lang(), LanguageId::Javascript);
     }
 
-    // bough[verify mutant.twig]
     #[test]
     fn mutant_holds_twig() {
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
@@ -942,7 +907,6 @@ mod tests {
         assert_eq!(m.twig().path(), std::path::Path::new("src/a.js"));
     }
 
-    // bough[verify mutant.kind]
     #[test]
     fn mutant_owns_kind() {
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
@@ -956,7 +920,6 @@ mod tests {
         assert!(matches!(m.kind(), MutantKind::Condition));
     }
 
-    // bough[verify mutant.span]
     #[test]
     fn mutant_owns_span() {
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
@@ -1050,8 +1013,6 @@ mod tests {
         assert!(a.encompasses(&b).is_err());
     }
 
-    // bough[verify mutant.based]
-    // bough[verify mutant.based.mutant]
     #[test]
     fn based_mutant_holds_mutant() {
         let (_dir, base) = make_base();
@@ -1067,7 +1028,6 @@ mod tests {
         assert_eq!(based.mutant(), &mutant);
     }
 
-    // bough[verify mutant.based.base]
     #[test]
     fn based_mutant_holds_base() {
         let (_dir, base) = make_base();
@@ -1083,7 +1043,6 @@ mod tests {
         assert_eq!(based.base().path(), base.path());
     }
 
-    // bough[verify mutant.twig-iter.twig]
     #[test]
     fn mutants_iter_holds_twig() {
         let (_dir, base) = make_base();
@@ -1092,7 +1051,6 @@ mod tests {
         assert_eq!(iter.twig().path(), std::path::Path::new("src/a.js"));
     }
 
-    // bough[verify mutant.twig-iter.base]
     #[test]
     fn mutants_iter_holds_base() {
         let (_dir, base) = make_base();
@@ -1101,7 +1059,6 @@ mod tests {
         assert_eq!(iter.base().path(), base.path());
     }
 
-    // bough[verify mutant.twig-iter.lang]
     #[test]
     fn mutants_iter_owns_lang() {
         let (_dir, base) = make_base();
@@ -1110,7 +1067,6 @@ mod tests {
         assert_eq!(iter.lang(), LanguageId::Javascript);
     }
 
-    // bough[verify mutant.twig-iter.file]
     #[test]
     fn mutants_iter_resolves_file_from_base_and_twig() {
         let (_dir, base) = make_base();
@@ -1118,7 +1074,6 @@ mod tests {
         assert!(TwigMutantsIter::new(LanguageId::Javascript, &base, &twig).is_ok());
     }
 
-    // bough[verify mutant.twig-iter.file]
     #[test]
     fn mutants_iter_errors_on_missing_file() {
         let (_dir, base) = make_base();
@@ -1126,9 +1081,6 @@ mod tests {
         assert!(TwigMutantsIter::new(LanguageId::Javascript, &base, &twig).is_err());
     }
 
-    // bough[verify mutant.twig-iter]
-    // bough[verify mutant.twig-iter.item]
-    // bough[verify mutant.twig-iter.find]
     #[test]
     fn mutants_iter_walks_tree_and_returns_mutants() {
         let (_dir, base) = make_js_base("const a = x;");
@@ -1138,7 +1090,6 @@ mod tests {
         assert!(mutants.is_empty());
     }
 
-    // bough[verify mutant.twig-iter.find.js.statement]
     #[test]
     fn js_finds_statement_blocks() {
         let js = "function foo() { return 1; }\nfunction bar() { return 2; }";
@@ -1156,7 +1107,6 @@ mod tests {
         assert_eq!(blocks[1].span().start().line(), 1);
     }
 
-    // bough[verify mutant.twig-iter.find.js.condition.if]
     #[test]
     fn js_finds_if_condition() {
         let js = "if (x > 0) { console.log(x); }";
@@ -1172,7 +1122,6 @@ mod tests {
         assert_eq!(conditions.len(), 1);
     }
 
-    // bough[verify mutant.twig-iter.find.js.condition.while]
     #[test]
     fn js_finds_while_condition() {
         let js = "while (i < 10) { i++; }";
@@ -1188,7 +1137,6 @@ mod tests {
         assert_eq!(conditions.len(), 1);
     }
 
-    // bough[verify mutant.twig-iter.find.js.condition.for]
     #[test]
     fn js_finds_for_condition() {
         let js = "for (let i = 0; i < 10; i++) { console.log(i); }";
@@ -1207,7 +1155,6 @@ mod tests {
         assert_eq!(condition_text, "i < 10");
     }
 
-    // bough[verify mutant.twig-iter.find.js.binary.add]
     #[test]
     fn js_finds_add_binary_op() {
         let js = "const x = a + b;";
@@ -1228,7 +1175,6 @@ mod tests {
         );
     }
 
-    // bough[verify mutant.twig-iter.find.js.binary.sub]
     #[test]
     fn js_finds_sub_binary_op() {
         let js = "const x = a - b;";
@@ -1263,7 +1209,6 @@ mod tests {
         state.finalize().into()
     }
 
-    // bough[verify mutant.hash.lang]
     #[test]
     fn mutant_hash_includes_lang() {
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
@@ -1284,7 +1229,6 @@ mod tests {
         assert_ne!(hash_mutant(&m1), hash_mutant(&m2));
     }
 
-    // bough[verify mutant.hash.twig]
     #[test]
     fn mutant_hash_includes_twig() {
         let twig_a = Twig::new(PathBuf::from("src/a.js")).unwrap();
@@ -1306,7 +1250,6 @@ mod tests {
         assert_ne!(hash_mutant(&m1), hash_mutant(&m2));
     }
 
-    // bough[verify mutant.hash.span]
     #[test]
     fn mutant_hash_includes_span() {
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
@@ -1327,7 +1270,6 @@ mod tests {
         assert_ne!(hash_mutant(&m1), hash_mutant(&m2));
     }
 
-    // bough[verify mutant.hash.kind]
     #[test]
     fn mutant_hash_includes_kind() {
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
@@ -1348,7 +1290,6 @@ mod tests {
         assert_ne!(hash_mutant(&m1), hash_mutant(&m2));
     }
 
-    // bough[verify mutant.hash.typed-hashable]
     #[test]
     fn mutant_produces_typed_hash() {
         let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
@@ -1363,7 +1304,6 @@ mod tests {
         assert_eq!(hash.to_string().len(), 64);
     }
 
-    // bough[verify mutant.based.hash.base]
     #[test]
     fn based_mutant_hash_excludes_base() {
         let dir1 = tempfile::tempdir().unwrap();
@@ -1397,7 +1337,6 @@ mod tests {
         assert_eq!(hash_based_mutant(&bm1), hash_based_mutant(&bm2));
     }
 
-    // bough[verify mutant.based.hash.file]
     #[test]
     fn based_mutant_hash_includes_file_contents() {
         let dir1 = tempfile::tempdir().unwrap();
@@ -1431,7 +1370,6 @@ mod tests {
         assert_ne!(hash_based_mutant(&bm1), hash_based_mutant(&bm2));
     }
 
-    // bough[verify mutant.based.hash.typed-hashable]
     #[test]
     fn based_mutant_produces_typed_hash() {
         let (_dir, base) = make_base();
@@ -1448,7 +1386,6 @@ mod tests {
         assert_eq!(hash.to_string().len(), 64);
     }
 
-    // bough[verify span.point]
     #[test]
     fn span_composed_of_two_points() {
         let start = Point::new(1, 0, 0);
@@ -1507,7 +1444,6 @@ mod tests {
         assert!(b.intersects(&a));
     }
 
-    // bough[verify mutant.twig-iter.skip.kind]
     #[test]
     fn skip_kind_filters_matching_mutants() {
         // "function foo() { return a + b; }" produces: StatementBlock, BinaryOp(Add)
@@ -1525,7 +1461,6 @@ mod tests {
         );
     }
 
-    // bough[verify mutant.twig-iter.skip.kind.multiple]
     #[test]
     fn skip_kind_multiple_filters_all_specified_kinds() {
         // "function foo() { if (x) { return a + b; } }" produces:
@@ -1545,7 +1480,6 @@ mod tests {
         );
     }
 
-    // bough[verify mutant.twig-iter.skip.query]
     #[test]
     fn skip_query_filters_matching_nodes() {
         // "const x = a + b; const y = a - b;" produces: BinaryOp(Add), BinaryOp(Sub)
@@ -1564,7 +1498,6 @@ mod tests {
         );
     }
 
-    // bough[verify mutant.twig-iter.skip.query.multiple]
     #[test]
     fn skip_query_multiple_filters_union() {
         // "const x = a + b; const y = a - b;" produces: BinaryOp(Add), BinaryOp(Sub)

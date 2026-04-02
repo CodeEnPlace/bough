@@ -7,10 +7,6 @@ use tracing::trace;
 
 pub(crate) struct JavascriptDriver;
 
-// bough[impl mutant.twig-iter.find.js.statement]
-// bough[impl mutant.twig-iter.find.js.condition.if]
-// bough[impl mutant.twig-iter.find.js.condition.while]
-// bough[impl mutant.twig-iter.find.js.condition.for]
 impl LanguageDriver for JavascriptDriver {
     fn ts_language(&self) -> arborium_tree_sitter::Language {
         arborium_javascript::language().into()
@@ -39,8 +35,7 @@ impl LanguageDriver for JavascriptDriver {
                     span_from_node(node),
                 ))
             }
-            // bough[impl mutant.twig-iter.find.js.binary.add]
-            // bough[impl mutant.twig-iter.find.js.binary.sub]
+
             "binary_expression" => {
                 let op_node = node.child_by_field_name("operator")?;
                 let op_text = op_node.utf8_text(file_content).ok()?;
@@ -212,8 +207,6 @@ impl LanguageDriver for JavascriptDriver {
         )
     }
 
-    // bough[impl mutation.subst.js.add.sub]
-    // bough[impl mutation.subst.js.add.mul]
     fn substitutions(&self, kind: &MutantKind) -> Vec<String> {
         match kind {
             MutantKind::BinaryOp(BinaryOpMutationKind::Add) => vec!["-".into(), "*".into()],

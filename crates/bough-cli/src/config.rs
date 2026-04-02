@@ -201,7 +201,6 @@ pub struct Config {
 
     /// Root directory of the project source tree. Relative paths are resolved
     /// from the config file's directory. Required.
-    // bough[impl config.base-root-path.default]
     pub base_root_dir: String,
 
     /// Glob patterns for files to clone into workspaces and scan for mutations.
@@ -378,7 +377,7 @@ pub enum Error {
 impl Cli {
     pub fn validate(&self) -> Vec<Error> {
         let mut errors = Vec::new();
-        // bough[impl config.include.at-least-one]
+
         if self.config.include.is_empty() {
             errors.push(Error::EmptyInclude);
         }
@@ -428,8 +427,6 @@ impl ConfigFormat for YamlFormat {
     }
 }
 
-// bough[impl config.exclude.from-vcs-ignore]
-// bough[impl config.lang.exclude.from-vcs-ignore]
 pub fn collect_vcs_ignore_globs(root: &std::path::Path) -> Vec<String> {
     let mut globs = Vec::new();
     let mut dir = Some(root.to_path_buf());
@@ -461,8 +458,6 @@ pub fn collect_vcs_ignore_globs(root: &std::path::Path) -> Vec<String> {
 
 const VCS_DIRS: &[&str] = &[".git", ".jj", ".hg", ".svn"];
 
-// bough[impl config.exclude.from-vcs-dir]
-// bough[impl config.lang.exclude.from-vcs-dir]
 pub fn collect_vcs_dir_globs(root: &std::path::Path) -> Vec<String> {
     VCS_DIRS
         .iter()
@@ -506,7 +501,6 @@ fn find_config_candidates() -> Vec<(std::path::PathBuf, String)> {
         .unwrap_or_default()
 }
 
-// bough[impl config.base-root-path.absolutized-relative-to-file]
 pub fn resolve_root_path(config_dir: &std::path::Path, root: &str) -> std::path::PathBuf {
     let path = std::path::Path::new(root);
     if path.is_absolute() {
@@ -544,7 +538,6 @@ fn resolve_config_from(start: &std::path::Path) -> Option<(std::path::PathBuf, S
         .find(|(_, p)| std::path::Path::new(p).is_file())
 }
 
-// bough[impl config.base-root-path.relative-via-figue]
 fn config_dir_from_report(report: &figue::DriverReport) -> Option<std::path::PathBuf> {
     let fr = report.file_resolution.as_ref()?;
     let picked = fr
@@ -592,8 +585,6 @@ pub fn parse() -> Cli {
     output.print_warnings();
     let (mut cli, report) = output.into_parts();
 
-    // bough[impl config.base-root-path+2]
-    // bough[impl config.base-root-path.absolutized-relative-to-file]
     if let Some(config_dir) = config_dir_from_report(&report) {
         cli.config.base_root_dir = resolve_root_path(&config_dir, &cli.config.base_root_dir)
             .to_string_lossy()
@@ -797,7 +788,6 @@ factors = ["VcsFileChurn", "MutationSeverity"]
         }
     }
 
-    // bough[verify config.include.at-least-one]
     #[test]
     fn empty_include_fails_validation() {
         let toml = r#"
@@ -851,7 +841,6 @@ exclude = []
         assert!(errors.iter().any(|e| matches!(e, Error::Parse(_))));
     }
 
-    // bough[verify config.base-root-path.default]
     #[test]
     fn missing_base_root_dir_fails_parse() {
         let toml = r#"
@@ -886,7 +875,6 @@ exclude = []
         assert_eq!(cli.config.include, vec!["src/**"]);
     }
 
-    // bough[verify config.lang.include.derived]
     #[test]
     fn lang_include_globs_does_not_include_base() {
         let cli = parse_ok(&["run"], FULL_TOML);
@@ -900,7 +888,6 @@ exclude = []
         assert!(!globs.contains(&"lib/**".to_string()));
     }
 
-    // bough[verify config.lang.exclude.derived]
     #[test]
     fn lang_exclude_globs_prepend_base() {
         let cli = parse_ok(&["run"], FULL_TOML);
@@ -958,7 +945,6 @@ exclude = []
         assert_eq!(cli.config.include, vec!["src/**"]);
     }
 
-    // bough[verify config.exclude.bough-dir]
     #[test]
     fn base_exclude_globs_includes_bough_dir() {
         let cli = parse_ok(&["run"], MINIMAL_TOML);
@@ -966,8 +952,6 @@ exclude = []
         assert!(globs.iter().any(|g| g.contains(".bough")));
     }
 
-    // bough[verify config.lang.exclude.bough-dir]
-    // bough[verify config.lang.exclude.from-vcs-ignore]
     #[test]
     fn lang_exclude_globs_includes_bough_dir() {
         let cli = parse_ok(&["run"], MINIMAL_TOML);
@@ -979,8 +963,6 @@ exclude = []
         assert!(globs.iter().any(|g| g.contains(".bough")));
     }
 
-    // bough[verify config.exclude.from-vcs-dir]
-    // bough[verify config.lang.exclude.from-vcs-dir]
     #[test]
     fn collect_vcs_dir_globs_finds_git_dir() {
         let dir = tempfile::tempdir().unwrap();
@@ -989,7 +971,6 @@ exclude = []
         assert!(globs.contains(&".git/**".to_string()));
     }
 
-    // bough[verify config.exclude.from-vcs-dir]
     #[test]
     fn collect_vcs_dir_globs_finds_multiple() {
         let dir = tempfile::tempdir().unwrap();
@@ -1000,7 +981,6 @@ exclude = []
         assert!(globs.contains(&".jj/**".to_string()));
     }
 
-    // bough[verify config.exclude.from-vcs-dir]
     #[test]
     fn collect_vcs_dir_globs_empty_when_none() {
         let dir = tempfile::tempdir().unwrap();
@@ -1008,7 +988,6 @@ exclude = []
         assert!(globs.is_empty());
     }
 
-    // bough[verify config.exclude.from-vcs-ignore]
     #[test]
     fn collect_vcs_ignore_reads_gitignore() {
         let dir = tempfile::tempdir().unwrap();
@@ -1018,7 +997,6 @@ exclude = []
         assert!(globs.contains(&"**/*.log".to_string()));
     }
 
-    // bough[verify config.exclude.from-vcs-ignore]
     #[test]
     fn collect_vcs_ignore_skips_comments_and_empty_lines() {
         let dir = tempfile::tempdir().unwrap();
@@ -1032,7 +1010,6 @@ exclude = []
         assert!(globs.contains(&"**/node_modules".to_string()));
     }
 
-    // bough[verify config.exclude.from-vcs-ignore]
     #[test]
     fn collect_vcs_ignore_skips_negation_patterns() {
         let dir = tempfile::tempdir().unwrap();
@@ -1041,7 +1018,6 @@ exclude = []
         assert_eq!(globs, vec!["**/dist"]);
     }
 
-    // bough[verify config.exclude.from-vcs-ignore]
     #[test]
     fn collect_vcs_ignore_handles_slash_prefixed_patterns() {
         let dir = tempfile::tempdir().unwrap();
@@ -1050,7 +1026,6 @@ exclude = []
         assert_eq!(globs, vec!["build".to_string()]);
     }
 
-    // bough[verify config.exclude.from-vcs-ignore]
     #[test]
     fn collect_vcs_ignore_preserves_glob_patterns() {
         let dir = tempfile::tempdir().unwrap();
@@ -1060,7 +1035,6 @@ exclude = []
         assert!(globs.contains(&"src/**/*.tmp".to_string()));
     }
 
-    // bough[verify config.exclude.from-vcs-ignore]
     #[test]
     fn collect_vcs_ignore_returns_empty_when_no_gitignore() {
         let dir = tempfile::tempdir().unwrap();
@@ -1068,7 +1042,6 @@ exclude = []
         assert!(globs.is_empty());
     }
 
-    // bough[verify config.exclude.from-vcs-ignore]
     #[test]
     fn collect_vcs_ignore_reads_parent_gitignore() {
         let dir = tempfile::tempdir().unwrap();
@@ -1081,7 +1054,6 @@ exclude = []
         assert!(globs.contains(&"**/*.log".to_string()));
     }
 
-    // bough[verify config.base-root-path.relative-via-figue]
     #[test]
     fn config_dir_extracted_from_figue_report() {
         let dir = tempfile::tempdir().unwrap();
@@ -1163,7 +1135,6 @@ cmd = "echo test"
         )
     }
 
-    // bough[verify config.base-root-path+2]
     #[test]
     fn base_root_path_from_top_level_config_dot() {
         let dir = tempfile::tempdir().unwrap();
@@ -1172,8 +1143,6 @@ cmd = "echo test"
         assert_eq!(root, dir.path().to_path_buf());
     }
 
-    // bough[verify config.base-root-path+2]
-    // bough[verify config.base-root-path.absolutized-relative-to-file]
     #[test]
     fn base_root_path_from_top_level_config_subdir() {
         let dir = tempfile::tempdir().unwrap();
@@ -1187,7 +1156,6 @@ cmd = "echo test"
         assert_eq!(root, dir.path().join("src"));
     }
 
-    // bough[verify config.base-root-path.absolutized-relative-to-file]
     #[test]
     fn base_root_path_from_dotconfig_subdir_with_parent_ref() {
         let dir = tempfile::tempdir().unwrap();
@@ -1200,7 +1168,6 @@ cmd = "echo test"
         assert_eq!(root, dir.path().to_path_buf());
     }
 
-    // bough[verify config.base-root-path.absolutized-relative-to-file]
     #[test]
     fn base_root_path_from_dotconfig_subdir_relative() {
         let dir = tempfile::tempdir().unwrap();
@@ -2016,7 +1983,6 @@ impl bough_core::Config for Config {
         self.get_base_root_path().join(".bough")
     }
 
-    // bough[impl config.base-root-path+2]
     fn get_base_root_path(&self) -> std::path::PathBuf {
         std::path::PathBuf::from(&self.base_root_dir)
     }
@@ -2025,9 +1991,6 @@ impl bough_core::Config for Config {
         self.include.clone().into_iter()
     }
 
-    // bough[impl config.exclude.from-vcs-ignore]
-    // bough[impl config.exclude.from-vcs-dir]
-    // bough[impl config.exclude.bough-dir]
     fn get_base_exclude_globs(&self) -> impl Iterator<Item = String> {
         let root = self.get_base_root_path();
         let vcs_ignore = collect_vcs_ignore_globs(&root);
@@ -2122,7 +2085,6 @@ impl bough_core::Config for Config {
         self.lang.keys().copied().collect::<Vec<_>>().into_iter()
     }
 
-    // bough[impl config.lang.include.derived]
     fn get_lang_include_globs(
         &self,
         language_id: bough_core::LanguageId,
@@ -2134,10 +2096,6 @@ impl bough_core::Config for Config {
             .into_iter()
     }
 
-    // bough[impl config.lang.exclude.from-vcs-ignore]
-    // bough[impl config.lang.exclude.from-vcs-dir]
-    // bough[impl config.lang.exclude.bough-dir]
-    // bough[impl config.lang.exclude.derived]
     fn get_lang_exclude_globs(
         &self,
         language_id: bough_core::LanguageId,

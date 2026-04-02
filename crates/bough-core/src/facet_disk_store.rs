@@ -1,7 +1,6 @@
 use std::path::PathBuf;
 use tracing::{debug, trace, warn};
 
-// bough[impl fds.type]
 pub struct FacetDiskStore<Key, Val>
 where
     Key: std::fmt::Display + std::str::FromStr,
@@ -11,15 +10,11 @@ where
     _phantom: std::marker::PhantomData<(Key, Val)>,
 }
 
-// bough[impl fds.live]
 impl<Key, Val> FacetDiskStore<Key, Val>
 where
     Key: std::fmt::Display + std::str::FromStr,
     Val: for<'a> facet::Facet<'a>,
 {
-    // bough[impl fds.new]
-    // bough[impl fds.new.mkdir]
-    // bough[impl fds.live.startup]
     pub fn new(dir: PathBuf) -> Self {
         debug!(dir = %dir.display(), "creating facet disk store");
         std::fs::create_dir_all(&dir).ok();
@@ -29,9 +24,6 @@ where
         }
     }
 
-    // bough[impl fds.get]
-    // bough[impl fds.get.invalid]
-    // bough[impl fds.live.intercepted]
     pub fn get(&self, key: &Key) -> Option<Val> {
         let path = self.dir.join(format!("{key}.json"));
         trace!(key = %key, path = %path.display(), "getting from disk store");
@@ -51,8 +43,6 @@ where
         }
     }
 
-    // bough[impl fds.set]
-    // bough[impl fds.files]
     pub fn set(&mut self, key: Key, val: Val) -> Result<(), std::io::Error> {
         std::fs::create_dir_all(&self.dir)?;
         let path = self.dir.join(format!("{key}.json"));
@@ -63,7 +53,6 @@ where
         Ok(())
     }
 
-    // bough[impl fds.remove]
     pub fn remove(&mut self, key: &Key) -> Option<Val> {
         let path = self.dir.join(format!("{key}.json"));
         trace!(key = %key, path = %path.display(), "removing from disk store");
@@ -73,8 +62,6 @@ where
         Some(val)
     }
 
-    // bough[impl fds.keys]
-    // bough[impl fds.keys.invalid]
     pub fn keys(&self) -> impl Iterator<Item = Key> {
         let read_dir = match std::fs::read_dir(&self.dir) {
             Ok(rd) => rd,
@@ -118,8 +105,6 @@ mod tests {
         count: u32,
     }
 
-    // bough[verify fds.type]
-    // bough[verify fds.new]
     #[test]
     fn new_creates_store_pointing_at_dir() {
         let dir = tempfile::tempdir().unwrap();
@@ -127,8 +112,6 @@ mod tests {
         assert_eq!(store.keys().count(), 0);
     }
 
-    // bough[verify fds.set]
-    // bough[verify fds.get]
     #[test]
     fn set_then_get_returns_value() {
         let dir = tempfile::tempdir().unwrap();
@@ -144,7 +127,6 @@ mod tests {
         assert_eq!(got, val);
     }
 
-    // bough[verify fds.get]
     #[test]
     fn get_missing_key_returns_none() {
         let dir = tempfile::tempdir().unwrap();
@@ -152,7 +134,6 @@ mod tests {
         assert!(store.get(&TestKey("nope".into())).is_none());
     }
 
-    // bough[verify fds.keys]
     #[test]
     fn keys_iterates_inserted_keys() {
         let dir = tempfile::tempdir().unwrap();
@@ -170,7 +151,6 @@ mod tests {
         assert_eq!(keys, vec!["a", "b", "c"]);
     }
 
-    // bough[verify fds.files]
     #[test]
     fn stores_as_json_files_on_disk() {
         let dir = tempfile::tempdir().unwrap();
@@ -190,7 +170,6 @@ mod tests {
         assert_eq!(roundtrip.count, 7);
     }
 
-    // bough[verify fds.set]
     #[test]
     fn set_overwrites_existing_key() {
         let dir = tempfile::tempdir().unwrap();
@@ -220,8 +199,6 @@ mod tests {
         assert_eq!(got.count, 2);
     }
 
-    // bough[verify fds.live]
-    // bough[verify fds.live.intercepted]
     #[test]
     fn get_reads_from_disk_not_cache() {
         let dir = tempfile::tempdir().unwrap();
@@ -242,7 +219,6 @@ mod tests {
         assert_eq!(got.count, 99);
     }
 
-    // bough[verify fds.remove]
     #[test]
     fn remove_returns_val_and_deletes_from_disk() {
         let dir = tempfile::tempdir().unwrap();
@@ -262,7 +238,6 @@ mod tests {
         assert!(store.get(&key).is_none());
     }
 
-    // bough[verify fds.remove]
     #[test]
     fn remove_missing_key_returns_none() {
         let dir = tempfile::tempdir().unwrap();
@@ -271,7 +246,6 @@ mod tests {
         assert!(store.remove(&TestKey("nope".into())).is_none());
     }
 
-    // bough[verify fds.keys.invalid]
     #[test]
     fn keys_skips_invalidly_named_files() {
         let dir = tempfile::tempdir().unwrap();
@@ -289,7 +263,6 @@ mod tests {
         assert_eq!(keys, vec!["also_good", "good"]);
     }
 
-    // bough[verify fds.get.invalid]
     #[test]
     fn get_returns_none_for_invalid_file() {
         let dir = tempfile::tempdir().unwrap();
@@ -298,7 +271,6 @@ mod tests {
         assert!(store.get(&TestKey("bad".into())).is_none());
     }
 
-    // bough[verify fds.new.mkdir]
     #[test]
     fn new_creates_dir_if_missing() {
         let dir = tempfile::tempdir().unwrap();
@@ -308,7 +280,6 @@ mod tests {
         assert!(store_dir.exists());
     }
 
-    // bough[verify fds.live.startup]
     #[test]
     fn discovers_preexisting_files() {
         let dir = tempfile::tempdir().unwrap();

@@ -69,11 +69,6 @@ fn kill_process_tree(child: &mut std::process::Child) {
     }
 }
 
-// bough[impl phase.root]
-// bough[impl phase.pwd]
-// bough[impl phase.env]
-// bough[impl phase.cmd]
-// bough[impl phase.timeout]
 pub struct Phase<'a, R: Root> {
     root: &'a R,
     pwd: Twig,
@@ -139,10 +134,6 @@ impl<'a, R: Root> Phase<'a, R> {
         self.timeout
     }
 
-    // bough[impl phase.run]
-    // bough[impl phase.run.pwd]
-    // bough[impl phase.run.env]
-    // bough[impl phase.run.timeout]
     pub fn run(&self) -> Result<PhaseOutcome, Error> {
         use wait_timeout::ChildExt;
 
@@ -245,10 +236,6 @@ impl<'a, R: Root> Phase<'a, R> {
     }
 }
 
-// bough[impl phase.out]
-// bough[impl phase.out.stdio]
-// bough[impl phase.out.exit]
-// bough[impl phase.out.duration]
 #[derive(Debug)]
 pub enum PhaseOutcome {
     Completed {
@@ -349,7 +336,6 @@ mod tests {
         }
     }
 
-    // bough[verify phase.root]
     #[test]
     fn phase_holds_root() {
         let root = TestRoot(PathBuf::from("/tmp/project"));
@@ -357,7 +343,6 @@ mod tests {
         assert_eq!(phase.root().path(), Path::new("/tmp/project"));
     }
 
-    // bough[verify phase.pwd]
     #[test]
     fn phase_holds_pwd_twig() {
         let root = TestRoot(PathBuf::from("/tmp/project"));
@@ -369,7 +354,6 @@ mod tests {
         assert_eq!(phase.pwd().path(), Path::new("src/test"));
     }
 
-    // bough[verify phase.env]
     #[test]
     fn phase_holds_env_vars() {
         let root = TestRoot(PathBuf::from("/tmp/project"));
@@ -381,7 +365,6 @@ mod tests {
         assert_eq!(phase.env()["NODE_ENV"], "test");
     }
 
-    // bough[verify phase.cmd]
     #[test]
     fn phase_holds_cmd() {
         let root = TestRoot(PathBuf::from("/tmp/project"));
@@ -393,7 +376,6 @@ mod tests {
         assert_eq!(phase.cmd(), &["npx", "vitest", "run"]);
     }
 
-    // bough[verify phase.timeout]
     #[test]
     fn phase_holds_timeout() {
         let root = TestRoot(PathBuf::from("/tmp/project"));
@@ -404,10 +386,6 @@ mod tests {
         assert_eq!(phase.timeout(), Some(Duration::from_secs(30)));
     }
 
-    // bough[verify phase.out]
-    // bough[verify phase.out.stdio]
-    // bough[verify phase.out.exit]
-    // bough[verify phase.out.duration]
     #[test]
     fn phase_outcome_completed_holds_all_fields() {
         let outcome = PhaseOutcome::Completed {
@@ -425,7 +403,6 @@ mod tests {
         assert_eq!(outcome.duration(), std::time::Duration::from_millis(150));
     }
 
-    // bough[verify phase.out.exit]
     #[test]
     fn phase_outcome_nonzero_exit_is_not_error() {
         let outcome = PhaseOutcome::Completed {
@@ -440,7 +417,6 @@ mod tests {
         ));
     }
 
-    // bough[verify phase.out]
     #[test]
     fn phase_outcome_timed_out_holds_fields() {
         let outcome = PhaseOutcome::TimedOut {
@@ -454,7 +430,6 @@ mod tests {
         assert!(matches!(outcome, PhaseOutcome::TimedOut { .. }));
     }
 
-    // bough[verify phase.run]
     #[test]
     fn phase_run_executes_command() {
         let dir = tempfile::tempdir().unwrap();
@@ -472,8 +447,6 @@ mod tests {
         assert_eq!(String::from_utf8_lossy(outcome.stdout()).trim(), "hello");
     }
 
-    // bough[verify phase.run]
-    // bough[verify phase.out.exit]
     #[test]
     fn phase_run_nonzero_exit_is_ok() {
         let dir = tempfile::tempdir().unwrap();
@@ -490,7 +463,6 @@ mod tests {
         ));
     }
 
-    // bough[verify phase.run.pwd]
     #[test]
     fn phase_run_uses_pwd() {
         let dir = tempfile::tempdir().unwrap();
@@ -510,7 +482,6 @@ mod tests {
         );
     }
 
-    // bough[verify phase.run.env]
     #[test]
     fn phase_run_applies_env() {
         let dir = tempfile::tempdir().unwrap();
@@ -528,7 +499,6 @@ mod tests {
         );
     }
 
-    // bough[verify phase.out.stdio]
     #[test]
     fn phase_run_captures_stderr() {
         let dir = tempfile::tempdir().unwrap();
@@ -542,7 +512,6 @@ mod tests {
         assert_eq!(String::from_utf8_lossy(outcome.stderr()).trim(), "err");
     }
 
-    // bough[verify phase.out.duration]
     #[test]
     fn phase_run_records_duration() {
         let dir = tempfile::tempdir().unwrap();
@@ -556,7 +525,6 @@ mod tests {
         assert!(outcome.duration() >= std::time::Duration::from_millis(40));
     }
 
-    // bough[verify phase.run.timeout]
     #[test]
     fn phase_run_kills_on_timeout() {
         let dir = tempfile::tempdir().unwrap();
@@ -572,7 +540,6 @@ mod tests {
         assert!(outcome.duration() < std::time::Duration::from_secs(5));
     }
 
-    // bough[verify phase.run.timeout]
     #[test]
     fn phase_run_no_timeout_when_command_finishes_in_time() {
         let dir = tempfile::tempdir().unwrap();

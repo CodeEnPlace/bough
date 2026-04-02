@@ -26,7 +26,6 @@ pub(crate) use zig::ZigDriver;
 
 use crate::mutant::{MutantKind, Span};
 
-// bough[impl mutation.iter.language_driver]
 pub(crate) trait LanguageDriver {
     fn ts_language(&self) -> arborium_tree_sitter::Language;
 

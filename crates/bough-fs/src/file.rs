@@ -17,7 +17,6 @@ pub trait Root: std::fmt::Debug + Clone + PartialEq {
     fn path(&self) -> &Path;
 }
 
-// bough[impl file.file]
 #[derive(Debug, Clone, PartialEq)]
 pub struct File<'a, R: Root> {
     root: &'a R,
@@ -47,14 +46,12 @@ impl<'a, R: Root> File<'a, R> {
         Self { root, twig }
     }
 
-    // bough[impl file.file.resolve]
     pub fn resolve(&self) -> PathBuf {
         let resolved = self.root.path().join(self.twig.path());
         trace!(path = %resolved.display(), "resolved file path");
         resolved
     }
 
-    // bough[impl file.transplant]
     pub fn transplant<'b, S: Root>(&self, root: &'b S) -> File<'b, S>
     where
         'a: 'b,
@@ -66,7 +63,6 @@ impl<'a, R: Root> File<'a, R> {
     }
 }
 
-// bough[impl file.file.hash]
 impl<R: Root> HashInto for File<'_, R> {
     fn hash_into(&self, state: &mut bough_typed_hash::ShaState) -> Result<(), std::io::Error> {
         self.resolve().hash_into(state)
@@ -77,7 +73,6 @@ impl<R: Root> TypedHashable for File<'_, R> {
     type Hash = FileHash;
 }
 
-// bough[impl file.root]
 pub fn validate_root(path: &PathBuf) -> Result<(), Error> {
     if !path.is_absolute() {
         return Err(Error::RootMustBeAbsolute(path.clone()));
@@ -110,13 +105,11 @@ mod tests {
 
     use super::TestRoot;
 
-    // bough[verify file.root]
     #[test]
     fn validate_root_accepts_absolute_path() {
         assert!(validate_root(&PathBuf::from("/tmp/project")).is_ok());
     }
 
-    // bough[verify file.root]
     #[test]
     fn validate_root_rejects_relative_path() {
         assert!(matches!(
@@ -125,7 +118,6 @@ mod tests {
         ));
     }
 
-    // bough[verify file.file]
     #[test]
     fn file_holds_root_and_twig() {
         let root = TestRoot::new("/tmp/project");
@@ -135,7 +127,6 @@ mod tests {
         assert_eq!(file.twig.path(), twig.path());
     }
 
-    // bough[verify file.file.resolve]
     #[test]
     fn file_resolve_joins_root_and_twig() {
         let root = TestRoot::new("/tmp/project");
@@ -144,7 +135,6 @@ mod tests {
         assert_eq!(file.resolve(), PathBuf::from("/tmp/project/src/main.rs"));
     }
 
-    // bough[verify file.file.hash]
     #[test]
     fn file_hash_reads_resolved_contents() {
         let dir = tempfile::tempdir().unwrap();
@@ -159,7 +149,6 @@ mod tests {
         file.hash_into(&mut state).unwrap();
     }
 
-    // bough[verify file.file.hash]
     #[test]
     fn file_hash_fails_for_missing_file() {
         let root = TestRoot::new("/tmp/nonexistent_dir_abc123");
@@ -170,7 +159,6 @@ mod tests {
         assert!(file.hash_into(&mut state).is_err());
     }
 
-    // bough[verify file.transplant]
     #[test]
     fn transplant_replaces_root() {
         let root_a = TestRoot::new("/project/a");

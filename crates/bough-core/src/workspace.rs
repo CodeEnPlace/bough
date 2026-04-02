@@ -7,7 +7,6 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tracing::{debug, info, warn};
 
-// bough[impl workspace.active]
 #[derive(Debug, Clone, PartialEq)]
 pub struct ActiveMutation {
     mutant: Mutant,
@@ -65,8 +64,6 @@ impl From<std::io::Error> for Error {
     }
 }
 
-// bough[impl workspace.id]
-// bough[impl workspace.id.is-dir-name]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct WorkspaceId(String);
 
@@ -99,10 +96,6 @@ impl std::fmt::Display for WorkspaceId {
     }
 }
 
-// bough[impl workspace.is-handle]
-// bough[impl workspace.relationship]
-// bough[impl workspace.root]
-// bough[impl workspace.base]
 #[derive(Debug, Clone, PartialEq)]
 pub struct Workspace {
     id: WorkspaceId,
@@ -114,10 +107,6 @@ pub struct Workspace {
 /// Workspace is meant for actiing in a workspace directory, and to act as a handle for it
 /// It's not for storing state or making decitions, that's [Session]'s job
 impl Workspace {
-    // bough[impl workspace.new]
-    // bough[impl workspace.new.dir]
-    // bough[impl workspace.new.dir.previous]
-    // bough[impl workspace.new.from-base-files]
     pub fn new(dir: PathBuf, base: Arc<Base>) -> Result<Self, Error> {
         let id = WorkspaceId::generate();
         let root = dir.join("work").join(id.as_str());
@@ -148,8 +137,6 @@ impl Workspace {
         })
     }
 
-    // bough[impl workspace.bind]
-    // bough[impl workspace.bind.validate-unchanged]
     pub fn bind(dir: PathBuf, id: &WorkspaceId, base: Arc<Base>) -> Result<Self, Error> {
         debug!(id = %id, "binding to existing workspace");
         let root = dir.join("work").join(id.as_str());
@@ -174,7 +161,6 @@ impl Workspace {
         }
     }
 
-    // bough[impl workspace.id.get]
     pub fn id(&self) -> &WorkspaceId {
         &self.id
     }
@@ -183,9 +169,6 @@ impl Workspace {
         &self.base
     }
 
-    // bough[impl workspace.write_mutant]
-    // bough[impl workspace.write_mutant.set-active]
-    // bough[impl workspace.write_mutant.set-active.only-one]
     pub fn write_mutant(&mut self, mutation: &Mutation) -> Result<(), Error> {
         if self.active.is_some() {
             warn!(id = %self.id, "attempted to write mutant while one is already active");
@@ -215,8 +198,6 @@ impl Workspace {
         Ok(())
     }
 
-    // bough[impl workspace.revert_mutant]
-    // bough[impl workspace.revert_mutant.active]
     pub fn revert_mutant(&mut self) -> Result<(), Error> {
         let active = self.active.take().ok_or(Error::NotActive)?;
         debug!(id = %self.id, twig = %active.mutant().twig().path().display(), "reverting mutant");
@@ -231,13 +212,10 @@ impl Workspace {
         self.active.as_ref()
     }
 
-    // bough[impl workspace.files]
     pub fn files(&self) -> impl Iterator<Item = Twig> + use<'_> {
         self.base.twigs()
     }
 
-    // bough[impl workspace.validate-unchanged]
-    // bough[impl workspace.validate-unchanged.untracked]
     pub fn validate_unchanged(&self) -> Result<(), Error> {
         for twig in self.files() {
             let base_file = File::new(self.base.as_ref(), &twig).resolve();
@@ -334,7 +312,6 @@ mod tests {
         (dir, Arc::new(base))
     }
 
-    // bough[verify workspace.id]
     #[test]
     fn workspace_id_is_8_hex_chars() {
         let id = WorkspaceId::generate();
@@ -342,15 +319,12 @@ mod tests {
         assert!(id.as_str().chars().all(|c| c.is_ascii_hexdigit()));
     }
 
-    // bough[verify workspace.id]
     #[test]
     fn workspace_id_parse_valid() {
         let id = WorkspaceId::parse("abcd1234").unwrap();
         assert_eq!(id.as_str(), "abcd1234");
     }
 
-    // bough[verify workspace.id]
-    // bough[verify workspace.id.is-dir-name]
     #[test]
     fn workspace_id_parse_rejects_invalid() {
         assert!(WorkspaceId::parse("short").is_err());
@@ -358,7 +332,6 @@ mod tests {
         assert!(WorkspaceId::parse("ghijklmn").is_err());
     }
 
-    // bough[verify workspace.id.get]
     #[test]
     fn workspace_id_get() {
         let (_base_dir, base) = make_base();
@@ -367,8 +340,6 @@ mod tests {
         assert_eq!(ws.id().as_str().len(), 8);
     }
 
-    // bough[verify workspace.is-handle]
-    // bough[verify workspace.relationship]
     #[test]
     fn workspace_is_directory_handle() {
         let (_base_dir, base) = make_base();
@@ -378,8 +349,6 @@ mod tests {
         assert!(ws.path().is_dir());
     }
 
-    // bough[verify workspace.new]
-    // bough[verify workspace.new.dir]
     #[test]
     fn workspace_new_creates_work_subdir() {
         let (_base_dir, base) = make_base();
@@ -389,7 +358,6 @@ mod tests {
         assert!(ws.path().starts_with(&expected_prefix));
     }
 
-    // bough[verify workspace.new.dir.previous]
     #[test]
     fn workspace_new_errors_if_dir_exists() {
         let (_base_dir, base) = make_base();
@@ -401,7 +369,6 @@ mod tests {
         assert!(result.is_ok());
     }
 
-    // bough[verify workspace.new.from-base-files]
     #[test]
     fn workspace_new_copies_source_files() {
         let (_base_dir, base) = make_base();
@@ -413,7 +380,6 @@ mod tests {
         assert_eq!(b, "const b = 2;");
     }
 
-    // bough[verify workspace.bind]
     #[test]
     fn workspace_bind_attaches_to_existing() {
         let (_base_dir, base) = make_base();
@@ -425,7 +391,6 @@ mod tests {
         assert_eq!(bound.id(), ws.id());
     }
 
-    // bough[verify workspace.validate-unchanged]
     #[test]
     fn validate_unchanged_passes_when_identical() {
         let (_base_dir, base) = make_base();
@@ -434,7 +399,6 @@ mod tests {
         ws.validate_unchanged().unwrap();
     }
 
-    // bough[verify workspace.validate-unchanged]
     #[test]
     fn validate_unchanged_fails_when_modified() {
         let (_base_dir, base) = make_base();
@@ -444,7 +408,6 @@ mod tests {
         assert!(ws.validate_unchanged().is_err());
     }
 
-    // bough[verify workspace.validate-unchanged.untracked]
     #[test]
     fn validate_unchanged_ignores_extra_files() {
         let (_base_dir, base) = make_base();
@@ -456,7 +419,6 @@ mod tests {
         ws.validate_unchanged().unwrap();
     }
 
-    // bough[verify workspace.bind.validate-unchanged]
     #[test]
     fn bind_validates_unchanged_on_creation() {
         let (_base_dir, base) = make_base();
@@ -467,7 +429,6 @@ mod tests {
         assert!(bound.is_ok());
     }
 
-    // bough[verify workspace.bind.validate-unchanged]
     #[test]
     fn bind_fails_when_workspace_modified() {
         let (_base_dir, base) = make_base();
@@ -479,7 +440,6 @@ mod tests {
         assert!(result.is_err());
     }
 
-    // bough[verify workspace.root]
     #[test]
     fn workspace_impls_root() {
         let (_base_dir, base) = make_base();
@@ -488,7 +448,6 @@ mod tests {
         assert!(ws.path().is_absolute());
     }
 
-    // bough[verify workspace.base]
     #[test]
     fn workspace_holds_base() {
         let (_base_dir, base) = make_base();
@@ -514,7 +473,6 @@ mod tests {
         (dir, Arc::new(base))
     }
 
-    // bough[verify workspace.write_mutant]
     #[test]
     fn write_mutant_applies_substitution_to_workspace_file() {
         let js = "const x = a + b;";
@@ -539,7 +497,6 @@ mod tests {
         assert_eq!(result, "const x = a - b;");
     }
 
-    // bough[verify workspace.revert_mutant.active]
     #[test]
     fn revert_mutant_clears_active() {
         let js = "const x = a + b;";
@@ -564,7 +521,6 @@ mod tests {
         assert!(ws.active().is_none());
     }
 
-    // bough[verify workspace.revert_mutant]
     #[test]
     fn revert_mutant_restores_original_file() {
         let js = "const x = a + b;";
@@ -591,7 +547,6 @@ mod tests {
         assert_eq!(reverted, js);
     }
 
-    // bough[verify workspace.write_mutant.set-active.only-one]
     #[test]
     fn write_mutant_errors_if_already_active() {
         let js = "const x = a + b;";
@@ -615,7 +570,6 @@ mod tests {
         assert!(result.is_err());
     }
 
-    // bough[verify workspace.active]
     #[test]
     fn workspace_active_is_none_initially() {
         let (_base_dir, base) = make_base();
@@ -624,7 +578,6 @@ mod tests {
         assert!(ws.active().is_none());
     }
 
-    // bough[verify workspace.write_mutant.set-active]
     #[test]
     fn write_mutant_sets_active() {
         let js = "const x = a + b;";
@@ -648,7 +601,6 @@ mod tests {
         assert!(ws.active().is_some());
     }
 
-    // bough[verify workspace.files]
     #[test]
     fn workspace_files_returns_iter() {
         let (_base_dir, base) = make_base();
