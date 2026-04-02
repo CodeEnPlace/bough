@@ -392,4 +392,50 @@ mod tests {
         let glob = Glob::try_from("**").unwrap();
         assert_eq!(glob.match_info(Path::new("")), MatchResult::MatchesAll);
     }
+
+    #[test]
+    fn question_mark_matches_single_char() {
+        let glob = Glob::try_from("src/?.js").unwrap();
+        assert_eq!(glob.match_info(Path::new("src/a.js")), MatchResult::Matches);
+    }
+
+    #[test]
+    fn question_mark_does_not_match_multiple_chars() {
+        let glob = Glob::try_from("src/?.js").unwrap();
+        assert_eq!(glob.match_info(Path::new("src/ab.js")), MatchResult::DoesNotMatch);
+    }
+
+    #[test]
+    fn char_class_matches() {
+        let glob = Glob::try_from("src/[abc].js").unwrap();
+        assert_eq!(glob.match_info(Path::new("src/a.js")), MatchResult::Matches);
+    }
+
+    #[test]
+    fn char_class_does_not_match() {
+        let glob = Glob::try_from("src/[abc].js").unwrap();
+        assert_eq!(glob.match_info(Path::new("src/d.js")), MatchResult::DoesNotMatch);
+    }
+
+    #[test]
+    fn negated_char_class() {
+        let glob = Glob::try_from("src/[!abc].js").unwrap();
+        assert_eq!(glob.match_info(Path::new("src/d.js")), MatchResult::Matches);
+        assert_eq!(glob.match_info(Path::new("src/a.js")), MatchResult::DoesNotMatch);
+    }
+
+    #[test]
+    fn alternates_match() {
+        let glob = Glob::try_from("src/*.{js,ts}").unwrap();
+        assert_eq!(glob.match_info(Path::new("src/main.js")), MatchResult::Matches);
+        assert_eq!(glob.match_info(Path::new("src/main.ts")), MatchResult::Matches);
+        assert_eq!(glob.match_info(Path::new("src/main.rs")), MatchResult::DoesNotMatch);
+    }
+
+    #[test]
+    fn char_range_matches() {
+        let glob = Glob::try_from("src/[a-z].js").unwrap();
+        assert_eq!(glob.match_info(Path::new("src/m.js")), MatchResult::Matches);
+        assert_eq!(glob.match_info(Path::new("src/A.js")), MatchResult::DoesNotMatch);
+    }
 }
