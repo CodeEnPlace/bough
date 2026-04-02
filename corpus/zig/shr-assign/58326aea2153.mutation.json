@@ -1,0 +1,34 @@
+{
+  "mutant": {
+    "lang": "zig",
+    "twig": [
+      "src/a.zig"
+    ],
+    "kind": "StatementBlock",
+    "subst_span": {
+      "start": {
+        "line": 0,
+        "col": 18,
+        "byte": 18
+      },
+      "end": {
+        "line": 0,
+        "col": 30,
+        "byte": 30
+      }
+    },
+    "effect_span": {
+      "start": {
+        "line": 0,
+        "col": 18,
+        "byte": 18
+      },
+      "end": {
+        "line": 0,
+        "col": 30,
+        "byte": 30
+      }
+    }
+  },
+  "subst": "{}"
+}

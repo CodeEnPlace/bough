@@ -1,0 +1,34 @@
+{
+  "mutant": {
+    "lang": "zig",
+    "twig": [
+      "src/a.zig"
+    ],
+    "kind": "SwitchCase",
+    "subst_span": {
+      "start": {
+        "line": 2,
+        "col": 8,
+        "byte": 55
+      },
+      "end": {
+        "line": 2,
+        "col": 18,
+        "byte": 65
+      }
+    },
+    "effect_span": {
+      "start": {
+        "line": 2,
+        "col": 8,
+        "byte": 55
+      },
+      "end": {
+        "line": 2,
+        "col": 18,
+        "byte": 65
+      }
+    }
+  },
+  "subst": ""
+}

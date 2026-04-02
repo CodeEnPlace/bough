@@ -1,0 +1,36 @@
+{
+  "mutant": {
+    "lang": "zig",
+    "twig": [
+      "src/a.zig"
+    ],
+    "kind": {
+      "Assign": "ShlAssign"
+    },
+    "subst_span": {
+      "start": {
+        "line": 0,
+        "col": 22,
+        "byte": 22
+      },
+      "end": {
+        "line": 0,
+        "col": 25,
+        "byte": 25
+      }
+    },
+    "effect_span": {
+      "start": {
+        "line": 0,
+        "col": 20,
+        "byte": 20
+      },
+      "end": {
+        "line": 0,
+        "col": 27,
+        "byte": 27
+      }
+    }
+  },
+  "subst": "="
+}
