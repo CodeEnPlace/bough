@@ -40,6 +40,7 @@ fn main() {
             "rust" => "bough_core::LanguageId::Rust",
             "swift" => "bough_core::LanguageId::Swift",
             "ruby" => "bough_core::LanguageId::Ruby",
+            "zig" => "bough_core::LanguageId::Zig",
             _ => continue,
         };
 
@@ -54,6 +55,7 @@ fn main() {
             "rust" => "rs",
             "swift" => "swift",
             "ruby" => "rb",
+            "zig" => "zig",
             _ => continue,
         };
 

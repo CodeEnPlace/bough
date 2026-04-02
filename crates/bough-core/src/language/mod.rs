@@ -8,6 +8,7 @@ mod rs;
 mod rb;
 mod swift;
 mod typescript;
+mod zig;
 
 pub(crate) use c::CDriver;
 pub(crate) use cs::CSharpDriver;
@@ -19,6 +20,7 @@ pub(crate) use rb::RubyDriver;
 pub(crate) use rs::RustDriver;
 pub(crate) use swift::SwiftDriver;
 pub(crate) use typescript::TypescriptDriver;
+pub(crate) use zig::ZigDriver;
 
 use crate::mutant::{MutantKind, Span};
 
@@ -49,5 +51,6 @@ pub(crate) fn driver_for_lang(lang: crate::LanguageId) -> Box<dyn LanguageDriver
         crate::LanguageId::Rust => Box::new(RustDriver),
         crate::LanguageId::Swift => Box::new(SwiftDriver),
         crate::LanguageId::Ruby => Box::new(RubyDriver),
+        crate::LanguageId::Zig => Box::new(ZigDriver),
     }
 }

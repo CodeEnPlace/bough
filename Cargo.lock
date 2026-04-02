@@ -71,6 +71,7 @@ dependencies = [
  "arborium-toml",
  "arborium-tree-sitter",
  "arborium-typescript",
+ "arborium-zig",
  "dlmalloc",
 ]
 
@@ -284,6 +285,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "arborium-zig"
+version = "2.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "95db2d473321e29c403dc07bd3da7fcc579a02c10bc4811876046803130e0bb8"
+dependencies = [
+ "arborium-sysroot",
+ "cc",
+ "tree-sitter-language",
+]
+
+[[package]]
 name = "ariadne"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -402,6 +414,7 @@ dependencies = [
  "arborium-swift",
  "arborium-tree-sitter",
  "arborium-typescript",
+ "arborium-zig",
  "bough-typed-hash",
  "chrono",
  "facet",
