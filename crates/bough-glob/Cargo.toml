@@ -15,5 +15,5 @@ globset = "0.4"
 arbitrary = { version = "1", features = ["derive"] }
 arbtest = "0.3"
 bough-fs = { workspace = true, features = ["test-support"] }
-globset = { version = "0.4", features = ["arbitrary"] }
+globset = "0.4"
 tempfile = "3.26"

@@ -38,7 +38,10 @@ pub enum PatternPart {
     Literal(String),
     Star,
     Any,
-    Class { negated: bool, ranges: Vec<(char, char)> },
+    Class {
+        negated: bool,
+        ranges: Vec<(char, char)>,
+    },
     Alternates(Vec<Vec<PatternPart>>),
 }
 
@@ -133,16 +136,18 @@ fn parse_pattern_parts(s: &str) -> Result<Vec<PatternPart>, String> {
 }
 
 fn parse_segment(s: &str) -> Result<SegmentPattern, String> {
-    if s.is_empty() {
-        return Ok(SegmentPattern::Literal(String::new()));
-    }
     if s == "**" {
         return Ok(SegmentPattern::DoubleStar);
     }
     if s == "*" {
         return Ok(SegmentPattern::Star);
     }
-    if !s.contains('*') && !s.contains('?') && !s.contains('[') && !s.contains('{') && !s.contains('\\') {
+    if !s.contains('*')
+        && !s.contains('?')
+        && !s.contains('[')
+        && !s.contains('{')
+        && !s.contains('\\')
+    {
         return Ok(SegmentPattern::Literal(s.to_string()));
     }
     let parts = parse_pattern_parts(s)?;
@@ -197,13 +202,11 @@ fn match_pattern_inner(parts: &[PatternPart], s: &[u8], pos: usize) -> bool {
                 false
             }
         }
-        PatternPart::Alternates(branches) => {
-            branches.iter().any(|branch| {
-                let mut combined = branch.clone();
-                combined.extend_from_slice(rest);
-                match_pattern_inner(&combined, s, pos)
-            })
-        }
+        PatternPart::Alternates(branches) => branches.iter().any(|branch| {
+            let mut combined = branch.clone();
+            combined.extend_from_slice(rest);
+            match_pattern_inner(&combined, s, pos)
+        }),
     }
 }
 
@@ -315,13 +318,19 @@ mod tests {
     #[test]
     fn literal_matches_exact_path() {
         let glob = Glob::try_from("src/main.rs").unwrap();
-        assert_eq!(glob.match_info(Path::new("src/main.rs")), MatchResult::Matches);
+        assert_eq!(
+            glob.match_info(Path::new("src/main.rs")),
+            MatchResult::Matches
+        );
     }
 
     #[test]
     fn literal_does_not_match_different_path() {
         let glob = Glob::try_from("src/main.rs").unwrap();
-        assert_eq!(glob.match_info(Path::new("src/lib.rs")), MatchResult::DoesNotMatch);
+        assert_eq!(
+            glob.match_info(Path::new("src/lib.rs")),
+            MatchResult::DoesNotMatch
+        );
     }
 
     #[test]
@@ -339,55 +348,82 @@ mod tests {
     #[test]
     fn star_matches_any_single_segment() {
         let glob = Glob::try_from("src/*/main.rs").unwrap();
-        assert_eq!(glob.match_info(Path::new("src/foo/main.rs")), MatchResult::Matches);
+        assert_eq!(
+            glob.match_info(Path::new("src/foo/main.rs")),
+            MatchResult::Matches
+        );
     }
 
     #[test]
     fn star_does_not_match_multiple_segments() {
         let glob = Glob::try_from("src/*/main.rs").unwrap();
-        assert_eq!(glob.match_info(Path::new("src/foo/bar/main.rs")), MatchResult::DoesNotMatch);
+        assert_eq!(
+            glob.match_info(Path::new("src/foo/bar/main.rs")),
+            MatchResult::DoesNotMatch
+        );
     }
 
     #[test]
     fn star_partial_matches_prefix() {
         let glob = Glob::try_from("src/*/main.rs").unwrap();
-        assert_eq!(glob.match_info(Path::new("src/foo")), MatchResult::PartialMatch);
+        assert_eq!(
+            glob.match_info(Path::new("src/foo")),
+            MatchResult::PartialMatch
+        );
     }
 
     #[test]
     fn double_star_matches_deep_path() {
         let glob = Glob::try_from("src/**/*.js").unwrap();
-        assert_eq!(glob.match_info(Path::new("src/a/b/c/main.js")), MatchResult::Matches);
+        assert_eq!(
+            glob.match_info(Path::new("src/a/b/c/main.js")),
+            MatchResult::Matches
+        );
     }
 
     #[test]
     fn double_star_matches_immediate_child() {
         let glob = Glob::try_from("src/**/*.js").unwrap();
-        assert_eq!(glob.match_info(Path::new("src/main.js")), MatchResult::Matches);
+        assert_eq!(
+            glob.match_info(Path::new("src/main.js")),
+            MatchResult::Matches
+        );
     }
 
     #[test]
     fn double_star_wrong_extension_is_partial() {
         let glob = Glob::try_from("src/**/*.js").unwrap();
-        assert_eq!(glob.match_info(Path::new("src/main.rs")), MatchResult::PartialMatch);
+        assert_eq!(
+            glob.match_info(Path::new("src/main.rs")),
+            MatchResult::PartialMatch
+        );
     }
 
     #[test]
     fn double_star_partial_matches_dir() {
         let glob = Glob::try_from("src/**/*.js").unwrap();
-        assert_eq!(glob.match_info(Path::new("src/a/b")), MatchResult::PartialMatch);
+        assert_eq!(
+            glob.match_info(Path::new("src/a/b")),
+            MatchResult::PartialMatch
+        );
     }
 
     #[test]
     fn double_star_does_not_match_wrong_prefix() {
         let glob = Glob::try_from("src/**/*.js").unwrap();
-        assert_eq!(glob.match_info(Path::new("lib/main.js")), MatchResult::DoesNotMatch);
+        assert_eq!(
+            glob.match_info(Path::new("lib/main.js")),
+            MatchResult::DoesNotMatch
+        );
     }
 
     #[test]
     fn double_star_alone_matches_everything() {
         let glob = Glob::try_from("**").unwrap();
-        assert_eq!(glob.match_info(Path::new("anything/at/all")), MatchResult::MatchesAll);
+        assert_eq!(
+            glob.match_info(Path::new("anything/at/all")),
+            MatchResult::MatchesAll
+        );
     }
 
     #[test]
@@ -405,7 +441,10 @@ mod tests {
     #[test]
     fn question_mark_does_not_match_multiple_chars() {
         let glob = Glob::try_from("src/?.js").unwrap();
-        assert_eq!(glob.match_info(Path::new("src/ab.js")), MatchResult::DoesNotMatch);
+        assert_eq!(
+            glob.match_info(Path::new("src/ab.js")),
+            MatchResult::DoesNotMatch
+        );
     }
 
     #[test]
@@ -417,28 +456,46 @@ mod tests {
     #[test]
     fn char_class_does_not_match() {
         let glob = Glob::try_from("src/[abc].js").unwrap();
-        assert_eq!(glob.match_info(Path::new("src/d.js")), MatchResult::DoesNotMatch);
+        assert_eq!(
+            glob.match_info(Path::new("src/d.js")),
+            MatchResult::DoesNotMatch
+        );
     }
 
     #[test]
     fn negated_char_class() {
         let glob = Glob::try_from("src/[!abc].js").unwrap();
         assert_eq!(glob.match_info(Path::new("src/d.js")), MatchResult::Matches);
-        assert_eq!(glob.match_info(Path::new("src/a.js")), MatchResult::DoesNotMatch);
+        assert_eq!(
+            glob.match_info(Path::new("src/a.js")),
+            MatchResult::DoesNotMatch
+        );
     }
 
     #[test]
     fn alternates_match() {
         let glob = Glob::try_from("src/*.{js,ts}").unwrap();
-        assert_eq!(glob.match_info(Path::new("src/main.js")), MatchResult::Matches);
-        assert_eq!(glob.match_info(Path::new("src/main.ts")), MatchResult::Matches);
-        assert_eq!(glob.match_info(Path::new("src/main.rs")), MatchResult::DoesNotMatch);
+        assert_eq!(
+            glob.match_info(Path::new("src/main.js")),
+            MatchResult::Matches
+        );
+        assert_eq!(
+            glob.match_info(Path::new("src/main.ts")),
+            MatchResult::Matches
+        );
+        assert_eq!(
+            glob.match_info(Path::new("src/main.rs")),
+            MatchResult::DoesNotMatch
+        );
     }
 
     #[test]
     fn char_range_matches() {
         let glob = Glob::try_from("src/[a-z].js").unwrap();
         assert_eq!(glob.match_info(Path::new("src/m.js")), MatchResult::Matches);
-        assert_eq!(glob.match_info(Path::new("src/A.js")), MatchResult::DoesNotMatch);
+        assert_eq!(
+            glob.match_info(Path::new("src/A.js")),
+            MatchResult::DoesNotMatch
+        );
     }
 }

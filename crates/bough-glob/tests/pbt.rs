@@ -3,18 +3,12 @@ use bough_fs::{TestRoot, Twig};
 use bough_glob::{Glob, TwigWalker};
 use std::collections::BTreeSet;
 
-#[derive(Debug)]
-struct TestCase {
-    files: Vec<String>,
-    includes: Vec<globset::Glob>,
-    excludes: Vec<globset::Glob>,
-}
-
 const SEGMENTS: &[&str] = &[
     "src", "lib", "test", "build", "dist", "vendor", "node_modules", "docs", ".hidden", "a", "b",
     "c",
 ];
 const EXTENSIONS: &[&str] = &["js", "ts", "py", "rs", "css", "md", "json", "txt"];
+const GLOB_WILDCARDS: &[&str] = &["*", "**", "**/*"];
 
 fn arb_segment(u: &mut arbitrary::Unstructured<'_>) -> arbitrary::Result<&'static str> {
     Ok(*u.choose(SEGMENTS)?)
@@ -36,6 +30,54 @@ fn arb_file_path(u: &mut arbitrary::Unstructured<'_>) -> arbitrary::Result<Strin
     Ok(format!("{dir}/{file}"))
 }
 
+fn arb_glob_pattern(u: &mut arbitrary::Unstructured<'_>) -> arbitrary::Result<String> {
+    let style: u8 = u.int_in_range(0..=6)?;
+    match style {
+        0 => {
+            let ext = *u.choose(EXTENSIONS)?;
+            Ok(format!("**/*.{ext}"))
+        }
+        1 => {
+            let seg = arb_segment(u)?;
+            let ext = *u.choose(EXTENSIONS)?;
+            Ok(format!("{seg}/**/*.{ext}"))
+        }
+        2 => {
+            let seg = arb_segment(u)?;
+            let wc = *u.choose(GLOB_WILDCARDS)?;
+            Ok(format!("{seg}/{wc}"))
+        }
+        3 => {
+            let depth = u.int_in_range(1..=2)?;
+            let parts: Vec<&str> = (0..depth)
+                .map(|_| arb_segment(u))
+                .collect::<arbitrary::Result<_>>()?;
+            let path = parts.join("/");
+            let wc = *u.choose(GLOB_WILDCARDS)?;
+            Ok(format!("{path}/{wc}"))
+        }
+        4 => arb_file_path(u),
+        5 => {
+            let ext1 = *u.choose(EXTENSIONS)?;
+            let ext2 = *u.choose(EXTENSIONS)?;
+            Ok(format!("**/*.{{{ext1},{ext2}}}"))
+        }
+        6 => {
+            let seg = arb_segment(u)?;
+            let ext = *u.choose(EXTENSIONS)?;
+            Ok(format!("{seg}/**/[a-z]*.{ext}"))
+        }
+        _ => unreachable!(),
+    }
+}
+
+#[derive(Debug)]
+struct TestCase {
+    files: Vec<String>,
+    includes: Vec<String>,
+    excludes: Vec<String>,
+}
+
 impl<'a> Arbitrary<'a> for TestCase {
     fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
         let n_files = u.int_in_range(1..=20)?;
@@ -44,13 +86,13 @@ impl<'a> Arbitrary<'a> for TestCase {
             .collect::<arbitrary::Result<_>>()?;
 
         let n_includes = u.int_in_range(1..=3)?;
-        let includes: Vec<globset::Glob> = (0..n_includes)
-            .map(|_| globset::Glob::arbitrary(u))
+        let includes: Vec<String> = (0..n_includes)
+            .map(|_| arb_glob_pattern(u))
             .collect::<arbitrary::Result<_>>()?;
 
         let n_excludes = u.int_in_range(0..=2)?;
-        let excludes: Vec<globset::Glob> = (0..n_excludes)
-            .map(|_| globset::Glob::arbitrary(u))
+        let excludes: Vec<String> = (0..n_excludes)
+            .map(|_| arb_glob_pattern(u))
             .collect::<arbitrary::Result<_>>()?;
 
         Ok(TestCase {
@@ -121,18 +163,36 @@ fn pbt_twig_walker_matches_reference() {
         let our_includes: Vec<Glob> = tc
             .includes
             .iter()
-            .map(|g| Glob::try_from(g.glob()).unwrap())
+            .map(|s| Glob::try_from(s.as_str()).unwrap())
             .collect();
         let our_excludes: Vec<Glob> = tc
             .excludes
             .iter()
-            .map(|g| Glob::try_from(g.glob()).unwrap())
+            .map(|s| Glob::try_from(s.as_str()).unwrap())
             .collect();
 
-        let ref_includes: Vec<globset::GlobMatcher> =
-            tc.includes.iter().map(|g| g.compile_matcher()).collect();
-        let ref_excludes: Vec<globset::GlobMatcher> =
-            tc.excludes.iter().map(|g| g.compile_matcher()).collect();
+        let ref_includes: Vec<globset::GlobMatcher> = tc
+            .includes
+            .iter()
+            .map(|s| {
+                globset::GlobBuilder::new(s)
+                    .literal_separator(true)
+                    .build()
+                    .unwrap()
+                    .compile_matcher()
+            })
+            .collect();
+        let ref_excludes: Vec<globset::GlobMatcher> = tc
+            .excludes
+            .iter()
+            .map(|s| {
+                globset::GlobBuilder::new(s)
+                    .literal_separator(true)
+                    .build()
+                    .unwrap()
+                    .compile_matcher()
+            })
+            .collect();
 
         let root = TestRoot::new(root_path);
         let mut walker = TwigWalker::new(&root);
@@ -148,11 +208,10 @@ fn pbt_twig_walker_matches_reference() {
         assert_eq!(
             our_result, ref_result,
             "mismatch for includes={:?} excludes={:?} files={:?}",
-            tc.includes.iter().map(|g| g.glob()).collect::<Vec<_>>(),
-            tc.excludes.iter().map(|g| g.glob()).collect::<Vec<_>>(),
-            tc.files
+            tc.includes, tc.excludes, tc.files
         );
 
         Ok(())
-    });
+    })
+    .budget(std::time::Duration::from_secs(5));
 }
