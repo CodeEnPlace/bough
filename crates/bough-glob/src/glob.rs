@@ -133,6 +133,9 @@ fn parse_pattern_parts(s: &str) -> Result<Vec<PatternPart>, String> {
 }
 
 fn parse_segment(s: &str) -> Result<SegmentPattern, String> {
+    if s.is_empty() {
+        return Ok(SegmentPattern::Literal(String::new()));
+    }
     if s == "**" {
         return Ok(SegmentPattern::DoubleStar);
     }
