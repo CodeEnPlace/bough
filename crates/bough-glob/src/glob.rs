@@ -146,6 +146,32 @@ fn parse_segment(s: &str) -> Result<SegmentPattern, String> {
     Ok(SegmentPattern::Pattern(parts))
 }
 
+fn match_segments(patterns: &[SegmentPattern], path: &[&str]) -> MatchResult {
+    if patterns.is_empty() && path.is_empty() {
+        return MatchResult::Matches;
+    }
+    if patterns.is_empty() {
+        return MatchResult::DoesNotMatch;
+    }
+    if path.is_empty() {
+        return MatchResult::PartialMatch;
+    }
+
+    let pat = &patterns[0];
+    let seg = path[0];
+
+    match pat {
+        SegmentPattern::Literal(lit) => {
+            if lit == seg {
+                match_segments(&patterns[1..], &path[1..])
+            } else {
+                MatchResult::DoesNotMatch
+            }
+        }
+        _ => todo!(),
+    }
+}
+
 impl TryFrom<&str> for Glob {
     type Error = GlobError;
 
@@ -164,11 +190,51 @@ impl TryFrom<&str> for Glob {
 }
 
 impl Glob {
-    pub fn is_match(&self, _path: &Path) -> bool {
-        todo!()
+    pub fn is_match(&self, path: &Path) -> bool {
+        match self.match_info(path) {
+            MatchResult::Matches | MatchResult::MatchesAll => true,
+            MatchResult::DoesNotMatch | MatchResult::PartialMatch => false,
+        }
     }
 
-    pub fn match_info(&self, _path: &Path) -> MatchResult {
-        todo!()
+    pub fn match_info(&self, path: &Path) -> MatchResult {
+        let path_segments: Vec<&str> = path
+            .components()
+            .filter_map(|c| match c {
+                std::path::Component::Normal(s) => s.to_str(),
+                _ => None,
+            })
+            .collect();
+        match_segments(&self.segments, &path_segments)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::Path;
+
+    #[test]
+    fn literal_matches_exact_path() {
+        let glob = Glob::try_from("src/main.rs").unwrap();
+        assert_eq!(glob.match_info(Path::new("src/main.rs")), MatchResult::Matches);
+    }
+
+    #[test]
+    fn literal_does_not_match_different_path() {
+        let glob = Glob::try_from("src/main.rs").unwrap();
+        assert_eq!(glob.match_info(Path::new("src/lib.rs")), MatchResult::DoesNotMatch);
+    }
+
+    #[test]
+    fn literal_partial_matches_prefix() {
+        let glob = Glob::try_from("src/main.rs").unwrap();
+        assert_eq!(glob.match_info(Path::new("src")), MatchResult::PartialMatch);
+    }
+
+    #[test]
+    fn literal_does_not_match_wrong_prefix() {
+        let glob = Glob::try_from("src/main.rs").unwrap();
+        assert_eq!(glob.match_info(Path::new("lib")), MatchResult::DoesNotMatch);
     }
 }
