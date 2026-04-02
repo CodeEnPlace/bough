@@ -3,3 +3,4 @@ node_modules
 .bough/workspaces
 .vercel
 .bough
+profile.pb

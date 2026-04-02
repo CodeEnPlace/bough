@@ -26,6 +26,13 @@ use render::{Noop, Render};
 use tracing::{Level, debug, info};
 
 fn main() {
+    #[cfg(feature = "pprof")]
+    let _pprof_guard = pprof::ProfilerGuardBuilder::default()
+        .frequency(1000)
+        .blocklist(&["libc", "libgcc", "pthread", "vdso"])
+        .build()
+        .unwrap();
+
     let cli = parse();
 
     let log_level = match cli.verbose {
@@ -186,4 +193,17 @@ fn main() {
     };
 
     println!("{}", result.render(&cli));
+
+    #[cfg(feature = "pprof")]
+    {
+        use pprof::protos::Message;
+        let report = _pprof_guard.report().build().expect("pprof report");
+        let profile = report.pprof().expect("pprof profile");
+        let mut buf = Vec::new();
+        profile
+            .write_to_vec(&mut buf)
+            .expect("pprof encode");
+        std::fs::write("profile.pb", &buf).expect("write profile.pb");
+        eprintln!("wrote profile.pb ({} bytes)", buf.len());
+    }
 }

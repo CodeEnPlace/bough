@@ -11,6 +11,9 @@ repository.workspace = true
 readme.workspace = true
 description = "CLI for bough mutation testing"
 
+[features]
+pprof = ["dep:pprof"]
+
 [dependencies]
 bough-core = { workspace = true }
 bough-typed-hash = { workspace = true }
@@ -26,6 +29,7 @@ tracing-subscriber = "0.3"
 indicatif = "0.17"
 chrono = "0.4.44"
 ctrlc = "3"
+pprof = { version = "0.14", features = ["flamegraph", "protobuf-codec"], optional = true }
 
 [dev-dependencies]
 serial_test = "3"
