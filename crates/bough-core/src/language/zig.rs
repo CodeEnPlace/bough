@@ -64,6 +64,6 @@ mod tests {
     #[test]
     #[ignore]
     fn debug_tree() {
-        dump_tree("pub fn add(a: u32, b: u32) u32 { return a + b; }");
+        dump_tree("pub fn foo() void { x %= 2; }");
     }
 }
