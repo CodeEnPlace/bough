@@ -9,6 +9,7 @@ description = "Globbing system for bough with globset-compatible semantics"
 
 [dependencies]
 bough-fs = { workspace = true }
+crossbeam-channel = "0.5"
 globset = "0.4"
 
 [dev-dependencies]
