@@ -75,19 +75,11 @@ fn naive_walk_inner(
     }
 }
 
-fn ignore_walk(root: &Path, include_pats: &[&str], exclude_pats: &[&str]) -> BTreeSet<Twig> {
-    let mut overrides = ignore::overrides::OverrideBuilder::new(root);
-    for pat in include_pats {
-        overrides.add(pat).unwrap();
-    }
-    for pat in exclude_pats {
-        overrides.add(&format!("!{pat}")).unwrap();
-    }
-    let overrides = overrides.build().unwrap();
+fn ignore_walk(root: &Path, overrides: &ignore::overrides::Override) -> BTreeSet<Twig> {
     let mut builder = ignore::WalkBuilder::new(root);
     builder
         .standard_filters(false)
-        .overrides(overrides)
+        .overrides(overrides.clone())
         .sort_by_file_path(|a, b| a.cmp(b));
     let walker = builder.build();
     let mut result = BTreeSet::new();
@@ -104,15 +96,42 @@ fn ignore_walk(root: &Path, include_pats: &[&str], exclude_pats: &[&str]) -> BTr
     result
 }
 
-fn bough_glob_walk(root: &TestRoot, include_pats: &[&str], exclude_pats: &[&str]) -> BTreeSet<Twig> {
+fn bough_glob_walk(root: &TestRoot, includes: &[Glob], excludes: &[Glob]) -> BTreeSet<Twig> {
     let mut walker = TwigWalker::new(root);
-    for pat in include_pats {
-        walker = walker.include(Glob::try_from(*pat).unwrap());
+    for g in includes {
+        walker = walker.include(g.clone());
     }
-    for pat in exclude_pats {
-        walker = walker.exclude(Glob::try_from(*pat).unwrap());
+    for g in excludes {
+        walker = walker.exclude(g.clone());
     }
     walker.iter().collect()
+}
+
+fn build_overrides(root: &Path, includes: &[&str], excludes: &[&str]) -> ignore::overrides::Override {
+    let mut builder = ignore::overrides::OverrideBuilder::new(root);
+    for pat in includes {
+        builder.add(pat).unwrap();
+    }
+    for pat in excludes {
+        builder.add(&format!("!{pat}")).unwrap();
+    }
+    builder.build().unwrap()
+}
+
+fn build_globset_matchers(pats: &[&str]) -> Vec<globset::GlobMatcher> {
+    pats.iter()
+        .map(|s| {
+            globset::GlobBuilder::new(s)
+                .literal_separator(true)
+                .build()
+                .unwrap()
+                .compile_matcher()
+        })
+        .collect()
+}
+
+fn build_globs(pats: &[&str]) -> Vec<Glob> {
+    pats.iter().map(|s| Glob::try_from(*s).unwrap()).collect()
 }
 
 struct TreeFixture {
@@ -133,81 +152,72 @@ impl TreeFixture {
 
 fn bench_deep(c: &mut Criterion) {
     let fixture = TreeFixture::new(make_deep_tree);
-    let includes = &["**/*.js"];
-    let excludes = &["d0/**"];
+    let includes: &[&str] = &["**/*.js"];
+    let excludes: &[&str] = &["d0/**"];
 
-    let inc_matchers: Vec<globset::GlobMatcher> = includes
-        .iter()
-        .map(|s| globset::GlobBuilder::new(s).literal_separator(true).build().unwrap().compile_matcher())
-        .collect();
-    let exc_matchers: Vec<globset::GlobMatcher> = excludes
-        .iter()
-        .map(|s| globset::GlobBuilder::new(s).literal_separator(true).build().unwrap().compile_matcher())
-        .collect();
+    let naive_inc = build_globset_matchers(includes);
+    let naive_exc = build_globset_matchers(excludes);
+    let overrides = build_overrides(&fixture.path, includes, excludes);
+    let bg_inc = build_globs(includes);
+    let bg_exc = build_globs(excludes);
 
     let mut group = c.benchmark_group("deep_tree");
     group.bench_function("naive", |b| {
-        b.iter(|| naive_walk(&fixture.path, &inc_matchers, &exc_matchers))
+        b.iter(|| naive_walk(&fixture.path, &naive_inc, &naive_exc))
     });
     group.bench_function("ignore", |b| {
-        b.iter(|| ignore_walk(&fixture.path, includes, excludes))
+        b.iter(|| ignore_walk(&fixture.path, &overrides))
     });
     group.bench_function("bough_glob", |b| {
-        b.iter(|| bough_glob_walk(&fixture.root, includes, excludes))
+        b.iter(|| bough_glob_walk(&fixture.root, &bg_inc, &bg_exc))
     });
     group.finish();
 }
 
 fn bench_wide(c: &mut Criterion) {
     let fixture = TreeFixture::new(make_wide_tree);
-    let includes = &["**/*.js"];
-    let excludes = &["pkg0/**"];
+    let includes: &[&str] = &["**/*.js"];
+    let excludes: &[&str] = &["pkg0/**"];
 
-    let inc_matchers: Vec<globset::GlobMatcher> = includes
-        .iter()
-        .map(|s| globset::GlobBuilder::new(s).literal_separator(true).build().unwrap().compile_matcher())
-        .collect();
-    let exc_matchers: Vec<globset::GlobMatcher> = excludes
-        .iter()
-        .map(|s| globset::GlobBuilder::new(s).literal_separator(true).build().unwrap().compile_matcher())
-        .collect();
+    let naive_inc = build_globset_matchers(includes);
+    let naive_exc = build_globset_matchers(excludes);
+    let overrides = build_overrides(&fixture.path, includes, excludes);
+    let bg_inc = build_globs(includes);
+    let bg_exc = build_globs(excludes);
 
     let mut group = c.benchmark_group("wide_tree");
     group.bench_function("naive", |b| {
-        b.iter(|| naive_walk(&fixture.path, &inc_matchers, &exc_matchers))
+        b.iter(|| naive_walk(&fixture.path, &naive_inc, &naive_exc))
     });
     group.bench_function("ignore", |b| {
-        b.iter(|| ignore_walk(&fixture.path, includes, excludes))
+        b.iter(|| ignore_walk(&fixture.path, &overrides))
     });
     group.bench_function("bough_glob", |b| {
-        b.iter(|| bough_glob_walk(&fixture.root, includes, excludes))
+        b.iter(|| bough_glob_walk(&fixture.root, &bg_inc, &bg_exc))
     });
     group.finish();
 }
 
 fn bench_mixed(c: &mut Criterion) {
     let fixture = TreeFixture::new(make_mixed_tree);
-    let includes = &["**/*.js"];
-    let excludes = &["area0/**", "area1/**"];
+    let includes: &[&str] = &["**/*.js"];
+    let excludes: &[&str] = &["area0/**", "area1/**"];
 
-    let inc_matchers: Vec<globset::GlobMatcher> = includes
-        .iter()
-        .map(|s| globset::GlobBuilder::new(s).literal_separator(true).build().unwrap().compile_matcher())
-        .collect();
-    let exc_matchers: Vec<globset::GlobMatcher> = excludes
-        .iter()
-        .map(|s| globset::GlobBuilder::new(s).literal_separator(true).build().unwrap().compile_matcher())
-        .collect();
+    let naive_inc = build_globset_matchers(includes);
+    let naive_exc = build_globset_matchers(excludes);
+    let overrides = build_overrides(&fixture.path, includes, excludes);
+    let bg_inc = build_globs(includes);
+    let bg_exc = build_globs(excludes);
 
     let mut group = c.benchmark_group("mixed_tree");
     group.bench_function("naive", |b| {
-        b.iter(|| naive_walk(&fixture.path, &inc_matchers, &exc_matchers))
+        b.iter(|| naive_walk(&fixture.path, &naive_inc, &naive_exc))
     });
     group.bench_function("ignore", |b| {
-        b.iter(|| ignore_walk(&fixture.path, includes, excludes))
+        b.iter(|| ignore_walk(&fixture.path, &overrides))
     });
     group.bench_function("bough_glob", |b| {
-        b.iter(|| bough_glob_walk(&fixture.root, includes, excludes))
+        b.iter(|| bough_glob_walk(&fixture.root, &bg_inc, &bg_exc))
     });
     group.finish();
 }
