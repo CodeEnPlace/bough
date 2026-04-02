@@ -168,6 +168,7 @@ fn match_segments(patterns: &[SegmentPattern], path: &[&str]) -> MatchResult {
                 MatchResult::DoesNotMatch
             }
         }
+        SegmentPattern::Star => match_segments(&patterns[1..], &path[1..]),
         _ => todo!(),
     }
 }
@@ -236,5 +237,23 @@ mod tests {
     fn literal_does_not_match_wrong_prefix() {
         let glob = Glob::try_from("src/main.rs").unwrap();
         assert_eq!(glob.match_info(Path::new("lib")), MatchResult::DoesNotMatch);
+    }
+
+    #[test]
+    fn star_matches_any_single_segment() {
+        let glob = Glob::try_from("src/*/main.rs").unwrap();
+        assert_eq!(glob.match_info(Path::new("src/foo/main.rs")), MatchResult::Matches);
+    }
+
+    #[test]
+    fn star_does_not_match_multiple_segments() {
+        let glob = Glob::try_from("src/*/main.rs").unwrap();
+        assert_eq!(glob.match_info(Path::new("src/foo/bar/main.rs")), MatchResult::DoesNotMatch);
+    }
+
+    #[test]
+    fn star_partial_matches_prefix() {
+        let glob = Glob::try_from("src/*/main.rs").unwrap();
+        assert_eq!(glob.match_info(Path::new("src/foo")), MatchResult::PartialMatch);
     }
 }
