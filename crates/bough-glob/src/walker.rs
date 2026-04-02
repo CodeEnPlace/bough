@@ -1,4 +1,5 @@
 use bough_fs::{Root, Twig};
+use crate::glob::MatchResult;
 use crate::Glob;
 use crossbeam_channel::Receiver;
 use std::path::PathBuf;
@@ -70,7 +71,27 @@ impl<'a, R: Root> TwigWalker<'a, R> {
                         let path = entry.path();
 
                         if ft.is_dir() || ft.is_symlink() {
-                            let _ = msg_tx.send(WorkerMsg::Dir(path));
+                            let Some(rel) = path.strip_prefix(&root_path).ok() else {
+                                continue;
+                            };
+                            let dominated_by_exclude = excludes.iter().any(|g| {
+                                match g.match_info(rel) {
+                                    MatchResult::MatchesAll => true,
+                                    _ => false,
+                                }
+                            });
+                            if dominated_by_exclude {
+                                continue;
+                            }
+                            let reachable_by_include = includes.iter().any(|g| {
+                                match g.match_info(rel) {
+                                    MatchResult::DoesNotMatch => false,
+                                    _ => true,
+                                }
+                            });
+                            if reachable_by_include {
+                                let _ = msg_tx.send(WorkerMsg::Dir(path));
+                            }
                         } else if ft.is_file() {
                             let Some(rel) = path.strip_prefix(&root_path).ok() else {
                                 continue;

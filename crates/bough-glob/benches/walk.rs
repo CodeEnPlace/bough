@@ -222,5 +222,42 @@ fn bench_mixed(c: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(benches, bench_deep, bench_wide, bench_mixed);
+fn make_prunable_tree(root: &Path) {
+    for dir_name in &["src", "lib", "test", "build", "dist", "vendor", "docs", "scripts", "config", "assets"] {
+        for sub in &["a", "b", "c", "d", "e"] {
+            let dir = root.join(dir_name).join(sub).join("deep");
+            std::fs::create_dir_all(&dir).unwrap();
+            for k in 0..20 {
+                std::fs::write(dir.join(format!("f{k}.js")), "x").unwrap();
+                std::fs::write(dir.join(format!("f{k}.py")), "x").unwrap();
+            }
+        }
+    }
+}
+
+fn bench_prunable(c: &mut Criterion) {
+    let fixture = TreeFixture::new(make_prunable_tree);
+    let includes: &[&str] = &["src/**/*.js"];
+    let excludes: &[&str] = &[];
+
+    let naive_inc = build_globset_matchers(includes);
+    let naive_exc = build_globset_matchers(excludes);
+    let overrides = build_overrides(&fixture.path, includes, excludes);
+    let bg_inc = build_globs(includes);
+    let bg_exc = build_globs(excludes);
+
+    let mut group = c.benchmark_group("prunable_tree");
+    group.bench_function("naive", |b| {
+        b.iter(|| naive_walk(&fixture.path, &naive_inc, &naive_exc))
+    });
+    group.bench_function("ignore", |b| {
+        b.iter(|| ignore_walk(&fixture.path, &overrides))
+    });
+    group.bench_function("bough_glob", |b| {
+        b.iter(|| bough_glob_walk(&fixture.root, &bg_inc, &bg_exc))
+    });
+    group.finish();
+}
+
+criterion_group!(benches, bench_deep, bench_wide, bench_mixed, bench_prunable);
 criterion_main!(benches);
