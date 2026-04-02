@@ -1,0 +1,36 @@
+{
+  "mutant": {
+    "lang": "zig",
+    "twig": [
+      "src/a.zig"
+    ],
+    "kind": {
+      "Literal": "Number"
+    },
+    "subst_span": {
+      "start": {
+        "line": 4,
+        "col": 16,
+        "byte": 103
+      },
+      "end": {
+        "line": 4,
+        "col": 19,
+        "byte": 106
+      }
+    },
+    "effect_span": {
+      "start": {
+        "line": 4,
+        "col": 16,
+        "byte": 103
+      },
+      "end": {
+        "line": 4,
+        "col": 19,
+        "byte": 106
+      }
+    }
+  },
+  "subst": "0"
+}

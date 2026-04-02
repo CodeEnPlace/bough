@@ -1,0 +1,278 @@
+[[mutation]]
+kind = "StatementBlock"
+snippet = """
+pub fn foo() void {
+    bar();
+}"""
+
+[[mutation]]
+kind = "Condition"
+snippet = """
+pub fn foo() void {
+    if (x > 0) {
+        bar();
+    }
+}"""
+
+[[mutation]]
+kind = "BinaryOp(Add)"
+snippet = """
+pub fn foo() u32 {
+    return a + b;
+}"""
+
+[[mutation]]
+kind = "BinaryOp(Sub)"
+snippet = """
+pub fn foo() u32 {
+    return a - b;
+}"""
+
+[[mutation]]
+kind = "BinaryOp(Mul)"
+snippet = """
+pub fn foo() u32 {
+    return a * b;
+}"""
+
+[[mutation]]
+kind = "BinaryOp(Div)"
+snippet = """
+pub fn foo() u32 {
+    return a / b;
+}"""
+
+[[mutation]]
+kind = "BinaryOp(Rem)"
+snippet = """
+pub fn foo() u32 {
+    return a % b;
+}"""
+
+[[mutation]]
+kind = "BinaryOp(Eq)"
+snippet = """
+pub fn foo() bool {
+    return a == b;
+}"""
+
+[[mutation]]
+kind = "BinaryOp(Ne)"
+snippet = """
+pub fn foo() bool {
+    return a != b;
+}"""
+
+[[mutation]]
+kind = "BinaryOp(Gt)"
+snippet = """
+pub fn foo() bool {
+    return a > b;
+}"""
+
+[[mutation]]
+kind = "BinaryOp(Gte)"
+snippet = """
+pub fn foo() bool {
+    return a >= b;
+}"""
+
+[[mutation]]
+kind = "BinaryOp(Lt)"
+snippet = """
+pub fn foo() bool {
+    return a < b;
+}"""
+
+[[mutation]]
+kind = "BinaryOp(Lte)"
+snippet = """
+pub fn foo() bool {
+    return a <= b;
+}"""
+
+[[mutation]]
+kind = "BinaryOp(And)"
+snippet = """
+pub fn foo() bool {
+    return a and b;
+}"""
+
+[[mutation]]
+kind = "BinaryOp(Or)"
+snippet = """
+pub fn foo() bool {
+    return a or b;
+}"""
+
+[[mutation]]
+kind = "BinaryOp(BitAnd)"
+snippet = """
+pub fn foo() u32 {
+    return a & b;
+}"""
+
+[[mutation]]
+kind = "BinaryOp(BitOr)"
+snippet = """
+pub fn foo() u32 {
+    return a | b;
+}"""
+
+[[mutation]]
+kind = "BinaryOp(BitXor)"
+snippet = """
+pub fn foo() u32 {
+    return a ^ b;
+}"""
+
+[[mutation]]
+kind = "BinaryOp(Shl)"
+snippet = """
+pub fn foo() u32 {
+    return a << b;
+}"""
+
+[[mutation]]
+kind = "BinaryOp(Shr)"
+snippet = """
+pub fn foo() u32 {
+    return a >> b;
+}"""
+
+[[mutation]]
+kind = "Assign(NormalAssign)"
+snippet = """
+pub fn foo() void {
+    x = y;
+}"""
+
+[[mutation]]
+kind = "Assign(AddAssign)"
+snippet = """
+pub fn foo() void {
+    x += y;
+}"""
+
+[[mutation]]
+kind = "Assign(SubAssign)"
+snippet = """
+pub fn foo() void {
+    x -= y;
+}"""
+
+[[mutation]]
+kind = "Assign(MulAssign)"
+snippet = """
+pub fn foo() void {
+    x *= y;
+}"""
+
+[[mutation]]
+kind = "Assign(DivAssign)"
+snippet = """
+pub fn foo() void {
+    x /= y;
+}"""
+
+[[mutation]]
+kind = "Assign(RemAssign)"
+snippet = """
+pub fn foo() void {
+    x %= y;
+}"""
+
+[[mutation]]
+kind = "Assign(BitAndAssign)"
+snippet = """
+pub fn foo() void {
+    x &= y;
+}"""
+
+[[mutation]]
+kind = "Assign(BitOrAssign)"
+snippet = """
+pub fn foo() void {
+    x |= y;
+}"""
+
+[[mutation]]
+kind = "Assign(BitXorAssign)"
+snippet = """
+pub fn foo() void {
+    x ^= y;
+}"""
+
+[[mutation]]
+kind = "Assign(ShlAssign)"
+snippet = """
+pub fn foo() void {
+    x <<= y;
+}"""
+
+[[mutation]]
+kind = "Assign(ShrAssign)"
+snippet = """
+pub fn foo() void {
+    x >>= y;
+}"""
+
+[[mutation]]
+kind = "ArrayDecl(Inline)"
+snippet = """
+pub fn foo() void {
+    const arr = [_]u32{ 10, 20, 30 };
+}"""
+
+[[mutation]]
+kind = "Literal(BoolTrue)"
+snippet = """
+pub fn foo() bool {
+    return true;
+}"""
+
+[[mutation]]
+kind = "Literal(BoolFalse)"
+snippet = """
+pub fn foo() bool {
+    return false;
+}"""
+
+[[mutation]]
+kind = "Literal(String)"
+snippet = """
+pub fn foo() void {
+    const s = "hello";
+}"""
+
+[[mutation]]
+kind = "Literal(EmptyString)"
+snippet = """
+pub fn foo() void {
+    const s = "";
+}"""
+
+[[mutation]]
+kind = "Literal(Number)"
+snippet = """
+pub fn foo() u32 {
+    return 42;
+}"""
+
+[[mutation]]
+kind = "UnaryNot"
+snippet = """
+pub fn foo() bool {
+    return !x;
+}"""
+
+[[mutation]]
+kind = "SwitchCase"
+snippet = """
+pub fn foo(x: u8) u8 {
+    return switch (x) {
+        100 => 200,
+        300 => 400,
+        else => 255,
+    };
+}"""

@@ -1,0 +1,36 @@
+{
+  "mutant": {
+    "lang": "zig",
+    "twig": [
+      "src/a.zig"
+    ],
+    "kind": {
+      "Assign": "BitOrAssign"
+    },
+    "subst_span": {
+      "start": {
+        "line": 0,
+        "col": 22,
+        "byte": 22
+      },
+      "end": {
+        "line": 0,
+        "col": 24,
+        "byte": 24
+      }
+    },
+    "effect_span": {
+      "start": {
+        "line": 0,
+        "col": 20,
+        "byte": 20
+      },
+      "end": {
+        "line": 0,
+        "col": 26,
+        "byte": 26
+      }
+    }
+  },
+  "subst": "="
+}

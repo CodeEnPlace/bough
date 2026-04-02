@@ -1,0 +1,36 @@
+{
+  "mutant": {
+    "lang": "zig",
+    "twig": [
+      "src/a.zig"
+    ],
+    "kind": {
+      "BinaryOp": "Lt"
+    },
+    "subst_span": {
+      "start": {
+        "line": 0,
+        "col": 12,
+        "byte": 12
+      },
+      "end": {
+        "line": 0,
+        "col": 13,
+        "byte": 13
+      }
+    },
+    "effect_span": {
+      "start": {
+        "line": 0,
+        "col": 10,
+        "byte": 10
+      },
+      "end": {
+        "line": 0,
+        "col": 15,
+        "byte": 15
+      }
+    }
+  },
+  "subst": ">="
+}

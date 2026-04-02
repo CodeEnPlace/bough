@@ -1,0 +1,36 @@
+{
+  "mutant": {
+    "lang": "zig",
+    "twig": [
+      "src/a.zig"
+    ],
+    "kind": {
+      "ArrayDecl": "Inline"
+    },
+    "subst_span": {
+      "start": {
+        "line": 0,
+        "col": 18,
+        "byte": 18
+      },
+      "end": {
+        "line": 0,
+        "col": 29,
+        "byte": 29
+      }
+    },
+    "effect_span": {
+      "start": {
+        "line": 0,
+        "col": 18,
+        "byte": 18
+      },
+      "end": {
+        "line": 0,
+        "col": 29,
+        "byte": 29
+      }
+    }
+  },
+  "subst": ".{}"
+}

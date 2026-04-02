@@ -1,0 +1,36 @@
+{
+  "mutant": {
+    "lang": "zig",
+    "twig": [
+      "src/a.zig"
+    ],
+    "kind": {
+      "Literal": "Number"
+    },
+    "subst_span": {
+      "start": {
+        "line": 2,
+        "col": 15,
+        "byte": 62
+      },
+      "end": {
+        "line": 2,
+        "col": 18,
+        "byte": 65
+      }
+    },
+    "effect_span": {
+      "start": {
+        "line": 2,
+        "col": 15,
+        "byte": 62
+      },
+      "end": {
+        "line": 2,
+        "col": 18,
+        "byte": 65
+      }
+    }
+  },
+  "subst": "std.math.maxInt(u64)"
+}
