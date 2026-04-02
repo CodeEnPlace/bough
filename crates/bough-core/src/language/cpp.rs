@@ -1,5 +1,9 @@
 use super::LanguageDriver;
-use crate::mutant::{MutantKind, Span};
+use crate::mutant::{
+    ArrayDeclKind, AssignMutationKind, BinaryOpMutationKind, LiteralKind, MutantKind, Span,
+    span_from_node,
+};
+use tracing::trace;
 
 pub(crate) struct CppDriver;
 
@@ -10,18 +14,208 @@ impl LanguageDriver for CppDriver {
 
     fn check_node(
         &self,
-        _node: &arborium_tree_sitter::Node<'_>,
-        _file_content: &[u8],
+        node: &arborium_tree_sitter::Node<'_>,
+        file_content: &[u8],
     ) -> Option<(MutantKind, Span, Span)> {
-        None
+        let result = match node.kind() {
+            "binary_expression" => {
+                let op_node = node.child_by_field_name("operator")?;
+                let op_text = op_node.utf8_text(file_content).ok()?;
+                let kind = match op_text {
+                    "+" => BinaryOpMutationKind::Add,
+                    "-" => BinaryOpMutationKind::Sub,
+                    "*" => BinaryOpMutationKind::Mul,
+                    "/" => BinaryOpMutationKind::Div,
+                    "%" => BinaryOpMutationKind::Rem,
+                    "&" => BinaryOpMutationKind::BitAnd,
+                    "|" => BinaryOpMutationKind::BitOr,
+                    "^" => BinaryOpMutationKind::BitXor,
+                    "<<" => BinaryOpMutationKind::Shl,
+                    ">>" => BinaryOpMutationKind::Shr,
+                    "&&" => BinaryOpMutationKind::And,
+                    "||" => BinaryOpMutationKind::Or,
+                    "==" => BinaryOpMutationKind::Eq,
+                    "!=" => BinaryOpMutationKind::Ne,
+                    ">" => BinaryOpMutationKind::Gt,
+                    ">=" => BinaryOpMutationKind::Gte,
+                    "<" => BinaryOpMutationKind::Lt,
+                    "<=" => BinaryOpMutationKind::Lte,
+                    _ => return None,
+                };
+                Some((
+                    MutantKind::BinaryOp(kind),
+                    span_from_node(&op_node),
+                    span_from_node(node),
+                ))
+            }
+            "assignment_expression" => {
+                let op_node = node.child_by_field_name("operator")?;
+                let op_text = op_node.utf8_text(file_content).ok()?;
+                let kind = match op_text {
+                    "=" => AssignMutationKind::NormalAssign,
+                    "+=" => AssignMutationKind::AddAssign,
+                    "-=" => AssignMutationKind::SubAssign,
+                    "*=" => AssignMutationKind::MulAssign,
+                    "/=" => AssignMutationKind::DivAssign,
+                    "%=" => AssignMutationKind::RemAssign,
+                    "&=" => AssignMutationKind::BitAndAssign,
+                    "|=" => AssignMutationKind::BitOrAssign,
+                    "^=" => AssignMutationKind::BitXorAssign,
+                    "<<=" => AssignMutationKind::ShlAssign,
+                    ">>=" => AssignMutationKind::ShrAssign,
+                    _ => return None,
+                };
+                Some((
+                    MutantKind::Assign(kind),
+                    span_from_node(&op_node),
+                    span_from_node(node),
+                ))
+            }
+            "compound_statement" => {
+                let span = span_from_node(node);
+                Some((MutantKind::StatementBlock, span.clone(), span))
+            }
+            "if_statement" | "while_statement" => {
+                let condition = node.child_by_field_name("condition")?;
+                // C++ wraps if/while conditions in condition_clause; extract the value field
+                let inner = if condition.kind() == "condition_clause" {
+                    condition
+                        .child_by_field_name("value")
+                        .unwrap_or(condition)
+                } else if condition.kind() == "parenthesized_expression" {
+                    condition.child(1).unwrap_or(condition)
+                } else {
+                    condition
+                };
+                Some((
+                    MutantKind::Condition,
+                    span_from_node(&inner),
+                    span_from_node(node),
+                ))
+            }
+            "for_statement" => {
+                let condition = node.child_by_field_name("condition")?;
+                Some((
+                    MutantKind::Condition,
+                    span_from_node(&condition),
+                    span_from_node(node),
+                ))
+            }
+            "case_statement" => {
+                let span = span_from_node(node);
+                Some((MutantKind::SwitchCase, span.clone(), span))
+            }
+            "number_literal" => {
+                let span = span_from_node(node);
+                Some((MutantKind::Literal(LiteralKind::Number), span.clone(), span))
+            }
+            "true" => {
+                let span = span_from_node(node);
+                Some((
+                    MutantKind::Literal(LiteralKind::BoolTrue),
+                    span.clone(),
+                    span,
+                ))
+            }
+            "false" => {
+                let span = span_from_node(node);
+                Some((
+                    MutantKind::Literal(LiteralKind::BoolFalse),
+                    span.clone(),
+                    span,
+                ))
+            }
+            "string_literal" => {
+                let text = node.utf8_text(file_content).ok()?;
+                let kind = if text == "\"\"" {
+                    LiteralKind::EmptyString
+                } else {
+                    LiteralKind::String
+                };
+                let span = span_from_node(node);
+                Some((MutantKind::Literal(kind), span.clone(), span))
+            }
+            "initializer_list" if node.named_child_count() > 0 => {
+                let span = span_from_node(node);
+                Some((
+                    MutantKind::ArrayDecl(ArrayDeclKind::Inline),
+                    span.clone(),
+                    span,
+                ))
+            }
+            "unary_expression" => {
+                let op_node = node.child_by_field_name("operator")?;
+                let op_text = op_node.utf8_text(file_content).ok()?;
+                if op_text == "!" {
+                    Some((
+                        MutantKind::UnaryNot,
+                        span_from_node(&op_node),
+                        span_from_node(node),
+                    ))
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        };
+        if let Some((ref kind, ref span, _)) = result {
+            trace!(node_kind = node.kind(), mutant_kind = ?kind, start_byte = span.start().byte(), "cpp: matched node");
+        }
+        result
     }
 
-    fn substitutions(&self, _kind: &MutantKind) -> Vec<String> {
-        vec![]
+    fn substitutions(&self, kind: &MutantKind) -> Vec<String> {
+        match kind {
+            MutantKind::BinaryOp(BinaryOpMutationKind::Add) => vec!["-".into(), "*".into()],
+            MutantKind::BinaryOp(BinaryOpMutationKind::Sub) => vec!["+".into(), "/".into()],
+            MutantKind::BinaryOp(BinaryOpMutationKind::Mul) => vec!["/".into(), "+".into()],
+            MutantKind::BinaryOp(BinaryOpMutationKind::Div) => vec!["*".into(), "-".into()],
+            MutantKind::BinaryOp(BinaryOpMutationKind::Rem) => vec!["*".into(), "/".into()],
+            MutantKind::BinaryOp(BinaryOpMutationKind::BitAnd) => vec!["|".into(), "^".into()],
+            MutantKind::BinaryOp(BinaryOpMutationKind::BitOr) => vec!["&".into(), "^".into()],
+            MutantKind::BinaryOp(BinaryOpMutationKind::BitXor) => vec!["&".into(), "|".into()],
+            MutantKind::BinaryOp(BinaryOpMutationKind::Shl) => vec![">>".into()],
+            MutantKind::BinaryOp(BinaryOpMutationKind::Shr) => vec!["<<".into()],
+            MutantKind::BinaryOp(BinaryOpMutationKind::And) => vec!["||".into()],
+            MutantKind::BinaryOp(BinaryOpMutationKind::Or) => vec!["&&".into()],
+            MutantKind::BinaryOp(BinaryOpMutationKind::Eq) => vec!["!=".into()],
+            MutantKind::BinaryOp(BinaryOpMutationKind::Ne) => vec!["==".into()],
+            MutantKind::BinaryOp(BinaryOpMutationKind::Gt) => vec!["<=".into(), ">=".into()],
+            MutantKind::BinaryOp(BinaryOpMutationKind::Gte) => vec!["<".into(), ">".into()],
+            MutantKind::BinaryOp(BinaryOpMutationKind::Lt) => vec![">=".into(), "<=".into()],
+            MutantKind::BinaryOp(BinaryOpMutationKind::Lte) => vec![">".into(), "<".into()],
+            MutantKind::Assign(AssignMutationKind::NormalAssign) => {
+                vec!["+=".into(), "-=".into()]
+            }
+            MutantKind::Assign(AssignMutationKind::AddAssign) => vec!["-=".into(), "=".into()],
+            MutantKind::Assign(AssignMutationKind::SubAssign) => vec!["+=".into(), "=".into()],
+            MutantKind::Assign(AssignMutationKind::MulAssign) => vec!["/=".into(), "=".into()],
+            MutantKind::Assign(AssignMutationKind::DivAssign) => vec!["*=".into(), "=".into()],
+            MutantKind::Assign(AssignMutationKind::RemAssign) => vec!["*=".into(), "=".into()],
+            MutantKind::Assign(AssignMutationKind::BitAndAssign) => vec!["|=".into(), "=".into()],
+            MutantKind::Assign(AssignMutationKind::BitOrAssign) => vec!["&=".into(), "=".into()],
+            MutantKind::Assign(AssignMutationKind::BitXorAssign) => vec!["&=".into(), "=".into()],
+            MutantKind::Assign(AssignMutationKind::ShlAssign) => vec![">>=".into(), "=".into()],
+            MutantKind::Assign(AssignMutationKind::ShrAssign) => vec!["<<=".into(), "=".into()],
+            MutantKind::StatementBlock => vec!["{}".into()],
+            MutantKind::Condition => vec!["true".into(), "false".into()],
+            MutantKind::SwitchCase => vec!["".into()],
+            MutantKind::Literal(LiteralKind::Number) => vec!["0".into(), "1".into(), "-1".into()],
+            MutantKind::Literal(LiteralKind::BoolTrue) => vec!["false".into()],
+            MutantKind::Literal(LiteralKind::BoolFalse) => vec!["true".into()],
+            MutantKind::Literal(LiteralKind::String) => vec!["\"\"".into()],
+            MutantKind::Literal(LiteralKind::EmptyString) => vec!["\"bough\"".into()],
+            MutantKind::ArrayDecl(ArrayDeclKind::Inline) => vec!["{}".into()],
+            MutantKind::UnaryNot => vec!["".into()],
+            _ => vec![],
+        }
     }
 
-    fn is_context_boundary(&self, _node: &arborium_tree_sitter::Node<'_>) -> bool {
-        false
+    fn is_context_boundary(&self, node: &arborium_tree_sitter::Node<'_>) -> bool {
+        matches!(
+            node.kind(),
+            "function_definition" | "class_specifier" | "struct_specifier"
+        )
     }
 }
 
@@ -64,6 +258,6 @@ mod tests {
     #[test]
     #[ignore]
     fn debug_tree() {
-        dump_tree("int x = a + b;");
+        dump_tree("void f() { for (int i = 0; i < 10; i++) { } }");
     }
 }

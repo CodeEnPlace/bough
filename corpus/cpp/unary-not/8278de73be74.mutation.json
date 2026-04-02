@@ -1,0 +1,34 @@
+{
+  "mutant": {
+    "lang": "cpp",
+    "twig": [
+      "src/a.cpp"
+    ],
+    "kind": "UnaryNot",
+    "subst_span": {
+      "start": {
+        "line": 0,
+        "col": 19,
+        "byte": 19
+      },
+      "end": {
+        "line": 0,
+        "col": 20,
+        "byte": 20
+      }
+    },
+    "effect_span": {
+      "start": {
+        "line": 0,
+        "col": 19,
+        "byte": 19
+      },
+      "end": {
+        "line": 0,
+        "col": 21,
+        "byte": 21
+      }
+    }
+  },
+  "subst": ""
+}

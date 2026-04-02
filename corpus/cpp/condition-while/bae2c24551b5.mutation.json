@@ -1,0 +1,34 @@
+{
+  "mutant": {
+    "lang": "cpp",
+    "twig": [
+      "src/a.cpp"
+    ],
+    "kind": "StatementBlock",
+    "subst_span": {
+      "start": {
+        "line": 0,
+        "col": 21,
+        "byte": 21
+      },
+      "end": {
+        "line": 0,
+        "col": 31,
+        "byte": 31
+      }
+    },
+    "effect_span": {
+      "start": {
+        "line": 0,
+        "col": 21,
+        "byte": 21
+      },
+      "end": {
+        "line": 0,
+        "col": 31,
+        "byte": 31
+      }
+    }
+  },
+  "subst": "{}"
+}

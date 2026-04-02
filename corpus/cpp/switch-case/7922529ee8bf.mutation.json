@@ -1,0 +1,36 @@
+{
+  "mutant": {
+    "lang": "cpp",
+    "twig": [
+      "src/a.cpp"
+    ],
+    "kind": {
+      "Literal": "Number"
+    },
+    "subst_span": {
+      "start": {
+        "line": 0,
+        "col": 28,
+        "byte": 28
+      },
+      "end": {
+        "line": 0,
+        "col": 29,
+        "byte": 29
+      }
+    },
+    "effect_span": {
+      "start": {
+        "line": 0,
+        "col": 28,
+        "byte": 28
+      },
+      "end": {
+        "line": 0,
+        "col": 29,
+        "byte": 29
+      }
+    }
+  },
+  "subst": "1"
+}
