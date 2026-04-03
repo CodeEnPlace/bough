@@ -120,7 +120,7 @@ impl LanguageId {
 pub use bough_fs::File;
 pub use bough_fs::Root;
 pub use bough_fs::Twig;
-pub use bough_fs::TwigsIterBuilder;
+pub use bough_glob::TwigsIterBuilder;
 pub use mutant::{Mutant, MutantKind, Point, SourceMutant, Span, find_mutants_in_source};
 pub use mutation::Mutation;
 pub use mutation::MutationHash;

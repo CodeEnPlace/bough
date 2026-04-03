@@ -143,7 +143,7 @@ mod tests {
 
         fn make_scorer(min: u64, max: u64) -> MutationScorer {
             let base = Arc::new(
-                crate::base::Base::new(std::env::temp_dir(), bough_fs::TwigsIterBuilder::new())
+                crate::base::Base::new(std::env::temp_dir(), bough_core::TwigsIterBuilder::new())
                     .unwrap(),
             );
             MutationScorer {
@@ -237,7 +237,7 @@ mod tests {
         use bough_core::mutant::{BinaryOpMutationKind, MutantKind, TwigMutantsIter};
         use bough_core::MutationIter;
         use bough_fs::Twig;
-        use bough_fs::TwigsIterBuilder;
+        use bough_core::TwigsIterBuilder;
         use std::path::PathBuf;
 
         fn make_js_base(content: &str) -> (tempfile::TempDir, crate::base::Base) {
@@ -336,7 +336,7 @@ mod tests {
         use bough_core::{Mutation, MutationIter};
         use crate::state::{State, Status};
         use bough_fs::Twig;
-        use bough_fs::TwigsIterBuilder;
+        use bough_core::TwigsIterBuilder;
         use std::path::PathBuf;
 
         fn make_js_base(content: &str) -> (tempfile::TempDir, crate::base::Base) {

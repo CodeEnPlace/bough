@@ -9,7 +9,7 @@ use chrono::Duration;
 use tracing::info;
 
 use bough_core::{LanguageId, Mutation, MutationHash};
-use bough_fs::TwigsIterBuilder;
+use bough_core::TwigsIterBuilder;
 
 use crate::{
     Factor, Status,
@@ -730,7 +730,7 @@ mod tests {
         std::fs::write(dir.path().join("src/b.js"), "function bar() { return 2; }").unwrap();
         Arc::get_mut(&mut session.base).unwrap().add_mutator(
             LanguageId::Javascript,
-            bough_fs::TwigsIterBuilder::new().with_include_glob("src/**/*.js"),
+            bough_core::TwigsIterBuilder::new().with_include_glob("src/**/*.js"),
             Vec::new(),
         );
 
@@ -836,13 +836,13 @@ mod tests {
         session.base = Arc::new(
             crate::base::Base::new(
                 dir.path().to_path_buf(),
-                bough_fs::TwigsIterBuilder::new().with_include_glob("src/**/*.js"),
+                bough_core::TwigsIterBuilder::new().with_include_glob("src/**/*.js"),
             )
             .unwrap(),
         );
         Arc::get_mut(&mut session.base).unwrap().add_mutator(
             LanguageId::Javascript,
-            bough_fs::TwigsIterBuilder::new().with_include_glob("src/**/*.js"),
+            bough_core::TwigsIterBuilder::new().with_include_glob("src/**/*.js"),
             Vec::new(),
         );
 

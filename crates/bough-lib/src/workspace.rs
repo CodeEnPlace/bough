@@ -296,7 +296,7 @@ impl Root for Workspace {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bough_fs::TwigsIterBuilder;
+    use bough_core::TwigsIterBuilder;
 
     fn make_base() -> (tempfile::TempDir, Arc<Base>) {
         let dir = tempfile::tempdir().unwrap();

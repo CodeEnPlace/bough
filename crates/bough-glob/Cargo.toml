@@ -11,6 +11,7 @@ description = "Globbing system for bough with globset-compatible semantics"
 bough-fs = { workspace = true }
 crossbeam-channel = "0.5"
 globset = "0.4"
+tracing = "0.1"
 
 [dev-dependencies]
 arbitrary = { version = "1", features = ["derive"] }

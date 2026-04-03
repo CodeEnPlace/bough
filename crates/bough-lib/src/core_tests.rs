@@ -8,7 +8,8 @@ mod mutant_tests {
         find_mutants_in_source,
     };
     use bough_typed_hash::{HashInto, TypedHashable};
-    use bough_fs::{Root, Twig, TwigsIterBuilder};
+    use bough_fs::{Root, Twig};
+    use bough_core::TwigsIterBuilder;
     use crate::Base;
     use std::path::PathBuf;
 
@@ -728,7 +729,8 @@ mod mutation_tests {
     use bough_core::mutant::{BinaryOpMutationKind, Mutant, MutantKind, Point, Span};
     use bough_core::{Mutation, MutationIter};
     use bough_typed_hash::{HashInto, TypedHashable};
-    use bough_fs::{Twig, TwigsIterBuilder};
+    use bough_fs::Twig;
+    use bough_core::TwigsIterBuilder;
     use crate::Base;
     use std::path::PathBuf;
 

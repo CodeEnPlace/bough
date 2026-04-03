@@ -10,6 +10,7 @@ description = "Core mutation testing types and traits for bough"
 [dependencies]
 bough-typed-hash = { workspace = true }
 bough-fs = { workspace = true }
+bough-glob = { workspace = true }
 facet = { version = "0.44", features = ["uuid", "chrono"] }
 arborium-tree-sitter = "2.16"
 tracing = "0.1"

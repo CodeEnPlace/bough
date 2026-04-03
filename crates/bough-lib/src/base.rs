@@ -1,6 +1,5 @@
-use bough_core::{LanguageId, Mutant, Mutation, MutationIter};
+use bough_core::{LanguageId, Mutant, Mutation, MutationIter, TwigsIterBuilder};
 use bough_core::mutant::TwigMutantsIter;
-use bough_fs::TwigsIterBuilder;
 use bough_fs::{Error, Root, Twig};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -146,7 +145,7 @@ impl Root for Base {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bough_fs::TwigsIterBuilder;
+    use bough_core::TwigsIterBuilder;
 
     fn files_for(include: &[&str]) -> TwigsIterBuilder {
         let mut builder = TwigsIterBuilder::new();

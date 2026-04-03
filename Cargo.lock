@@ -494,6 +494,7 @@ version = "0.0.2"
 dependencies = [
  "arborium-tree-sitter",
  "bough-fs",
+ "bough-glob",
  "bough-typed-hash",
  "facet",
  "tempfile",
@@ -538,7 +539,6 @@ version = "0.0.2"
 dependencies = [
  "bough-typed-hash",
  "facet",
- "ignore",
  "tempfile",
  "tracing",
 ]
@@ -555,6 +555,7 @@ dependencies = [
  "globset",
  "ignore",
  "tempfile",
+ "tracing",
 ]
 
 [[package]]

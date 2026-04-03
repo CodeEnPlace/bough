@@ -10,7 +10,6 @@ description = "Filesystem types for bough: Root, Twig, File"
 [dependencies]
 bough-typed-hash = { workspace = true }
 facet = { version = "0.44" }
-ignore = "0.4"
 tracing = "0.1"
 
 [features]
