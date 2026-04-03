@@ -1,0 +1,13 @@
+[package]
+name = "facet-carat"
+version = "0.0.1"
+edition = "2024"
+license = "MIT"
+description = "Structural assertions with wildcard support, built on facet"
+
+[dependencies]
+facet = "0.44"
+facet-json = "0.44"
+facet-value = "0.44"
+
+[dev-dependencies]

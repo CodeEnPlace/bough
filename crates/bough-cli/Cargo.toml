@@ -36,5 +36,6 @@ pprof = { version = "0.14", features = ["flamegraph", "protobuf-codec"], optiona
 [dev-dependencies]
 bough-lang-javascript = { path = "../bough-lang-javascript" }
 bough-lang-typescript = { path = "../bough-lang-typescript" }
+facet-assert = "0.43.2"
 serial_test = "3"
 tempfile = "3.26"
