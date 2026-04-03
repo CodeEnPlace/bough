@@ -1,3 +1,4 @@
+mod error;
 mod find_mutations_config;
 mod language_config;
 mod language_skip_config;
@@ -6,6 +7,7 @@ mod phase_overrides;
 mod test_phase_config;
 mod timeout_config;
 
+pub use error::Error;
 pub use find_mutations_config::FindMutationsConfig;
 pub use language_config::LanguageConfig;
 pub use language_skip_config::LanguageSkipConfig;

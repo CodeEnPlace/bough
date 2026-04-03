@@ -1,10 +1,8 @@
 use facet::Facet;
 use figue::{self as args, ConfigFormat, ConfigFormatError, Driver, builder};
-use miette::Diagnostic;
 use std::env;
 use std::io::IsTerminal;
 use std::{collections::HashMap, path::PathBuf};
-use thiserror::Error;
 use tracing::{debug, warn};
 
 /// Bough — a polyglot mutation testing tool.
@@ -249,41 +247,7 @@ pub use bough_config::PhaseConfig;
 pub use bough_config::LanguageConfig;
 
 
-#[derive(Debug, Clone, Error, Diagnostic)]
-pub enum Error {
-    #[error("config.include must not be empty")]
-    #[diagnostic(
-        code(bough::config::empty_include),
-        help("add at least one include glob pattern")
-    )]
-    EmptyInclude,
-
-    #[error("at least one language must be configured")]
-    #[diagnostic(
-        code(bough::config::no_languages),
-        help("add a [js] or [ts] section to your config")
-    )]
-    NoLanguages,
-
-    #[error("test.cmd is required")]
-    #[diagnostic(
-        code(bough::config::missing_test_cmd),
-        help("add a [test] section with cmd = \"your test command\"")
-    )]
-    MissingTestCmd,
-
-    #[error("timeout section must specify at least one of 'absolute' or 'relative'{0}")]
-    #[diagnostic(
-        code(bough::config::empty_timeout),
-        help("add absolute = <seconds> and/or relative = <multiplier>")
-    )]
-    EmptyTimeout(String),
-
-    #[cfg(test)]
-    #[error("{0}")]
-    #[diagnostic(code(bough::config::parse))]
-    Parse(String),
-}
+pub use bough_config::Error;
 
 impl Cli {
     pub fn validate(&self) -> Vec<Error> {
