@@ -256,26 +256,8 @@ pub struct FindMutationsConfig {
     pub factors: Vec<Factor>,
 }
 
-/// Working directory, environment variables, and timeout limits for phase
-/// commands. Phase-level values override top-level defaults.
-#[derive(Facet, Debug, Clone, Default)]
-pub struct PhaseOverrides {
-    /// Working directory for the phase command. Relative to `base_root_dir`.
-    /// Default: `.`.
-    #[facet(default)]
-    pub pwd: Option<String>,
+pub use bough_config::PhaseOverrides;
 
-    /// Extra environment variables. Phase-level values merge with top-level
-    /// defaults; set a key to `""` to remove an inherited variable.
-    #[facet(default)]
-    pub env: Option<HashMap<String, String>>,
-
-    /// Timeout limits for the phase command.
-    #[facet(default)]
-    pub timeout: Option<TimeoutConfig>,
-}
-
-pub use bough_config::TimeoutConfig;
 
 /// Test phase configuration. Defines the command bough runs to determine
 /// whether a mutation is killed.
@@ -1903,63 +1885,7 @@ impl Config {
     }
 }
 
-impl PhaseOverrides {
-    fn resolve_pwd(&self, global: &PhaseOverrides) -> PathBuf {
-        self.pwd
-            .as_deref()
-            .or(global.pwd.as_deref())
-            .map(PathBuf::from)
-            .unwrap_or_else(|| PathBuf::from("."))
-    }
 
-    fn resolve_env(&self, global: &PhaseOverrides) -> HashMap<String, String> {
-        let mut result = global.env.clone().unwrap_or_default();
-        if let Some(phase_env) = &self.env {
-            for (k, v) in phase_env {
-                if v.is_empty() {
-                    result.remove(k);
-                } else {
-                    result.insert(k.clone(), v.clone());
-                }
-            }
-        }
-        result
-    }
-
-    fn resolve_timeout_absolute(&self, global: &PhaseOverrides) -> Option<chrono::Duration> {
-        self.timeout
-            .as_ref()
-            .and_then(|t| t.absolute)
-            .or_else(|| global.timeout.as_ref().and_then(|t| t.absolute))
-            .map(|secs| chrono::Duration::seconds(secs as i64))
-    }
-
-    fn resolve_timeout_relative(&self, global: &PhaseOverrides) -> Option<f64> {
-        self.timeout
-            .as_ref()
-            .and_then(|t| t.relative)
-            .or_else(|| global.timeout.as_ref().and_then(|t| t.relative))
-    }
-
-    fn resolve_timeout(
-        &self,
-        global: &PhaseOverrides,
-        reference: Option<chrono::Duration>,
-    ) -> chrono::Duration {
-        let absolute = self.resolve_timeout_absolute(global);
-        let relative_multiplier = self.resolve_timeout_relative(global);
-        let relative = match (relative_multiplier, reference) {
-            (Some(multiplier), Some(ref_dur)) => Some(ref_dur * multiplier as i32),
-            _ => None,
-        };
-        match (absolute, relative) {
-            (Some(a), Some(r)) => std::cmp::min(a, r),
-            (Some(a), None) => a,
-            (None, Some(r)) => r,
-            (None, None) => chrono::Duration::minutes(5),
-        }
-    }
-}
 
 impl bough_lib::Config for Config {
     fn get_workers_count(&self) -> u64 {
