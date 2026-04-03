@@ -1,4 +1,3 @@
-use bough_lib::Factor;
 use facet::Facet;
 use figue::{self as args, ConfigFormat, ConfigFormatError, Driver, builder};
 use miette::Diagnostic;
@@ -238,23 +237,7 @@ pub struct Config {
     pub find: FindMutationsConfig,
 }
 
-/// Settings for `bough find` — controls how many mutations are selected and
-/// which ranking factors are used to prioritise them.
-#[derive(Facet, Debug, Clone)]
-pub struct FindMutationsConfig {
-    /// Total number of mutations to return. Default: 1.
-    #[facet(default = 1)]
-    pub number: usize,
-
-    /// Maximum mutations to return per source file. Default: 1.
-    #[facet(default = 1)]
-    pub number_per_file: usize,
-
-    /// Ranking factors used to score and sort candidate mutations.
-    /// Default: `[EncompasingMissedMutationsCount, TSNodeDepth]`.
-    #[facet(default = vec![Factor::EncompasingMissedMutationsCount, Factor::TSNodeDepth])]
-    pub factors: Vec<Factor>,
-}
+pub use bough_config::FindMutationsConfig;
 
 pub use bough_config::PhaseOverrides;
 
