@@ -16,3 +16,4 @@ bough-fs = { path = "crates/bough-fs", version = "0.0.2" }
 bough-glob = { path = "crates/bough-glob", version = "0.0.2" }
 bough-core = { path = "crates/bough-core", version = "0.0.2" }
 bough-lib = { path = "crates/bough-lib", version = "0.0.2" }
+bough-config = { path = "crates/bough-config", version = "0.0.2" }

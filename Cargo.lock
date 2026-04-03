@@ -452,6 +452,7 @@ dependencies = [
 name = "bough-cli"
 version = "0.0.2"
 dependencies = [
+ "bough-config",
  "bough-core",
  "bough-lang-javascript",
  "bough-lang-typescript",
@@ -472,6 +473,19 @@ dependencies = [
  "thiserror 2.0.18",
  "tracing",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "bough-config"
+version = "0.0.2"
+dependencies = [
+ "bough-core",
+ "bough-lib",
+ "chrono",
+ "facet",
+ "miette",
+ "thiserror 2.0.18",
+ "tracing",
 ]
 
 [[package]]

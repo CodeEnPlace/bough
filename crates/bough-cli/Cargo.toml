@@ -15,8 +15,9 @@ description = "CLI for bough mutation testing"
 pprof = ["dep:pprof"]
 
 [dependencies]
+bough-config = { workspace = true }
 bough-core = { workspace = true }
-bough-lib = { path = "../bough-lib" }
+bough-lib = { workspace = true }
 bough-typed-hash = { workspace = true }
 facet = { version = "0.44", features = ["doc"] }
 facet-json = "0.44"
