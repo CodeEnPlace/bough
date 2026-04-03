@@ -263,23 +263,8 @@ pub use bough_config::TestPhaseConfig;
 
 pub use bough_config::PhaseConfig;
 
-/// Per-language file matching and skip rules.
-#[derive(Facet, Debug, Clone)]
-pub struct LanguageConfig {
-    /// Glob patterns matching source files for this language.
-    /// Example: `["**/*.ext"]`.
-    pub include: Vec<String>,
+pub use bough_config::LanguageConfig;
 
-    /// Additional exclude globs for this language, appended after the
-    /// top-level `exclude` patterns.
-    pub exclude: Vec<String>,
-
-    /// Optional rules for skipping certain AST nodes from mutation.
-    #[facet(default)]
-    pub skip: Option<LanguageSkipConfig>,
-}
-
-pub use bough_config::LanguageSkipConfig;
 
 #[derive(Debug, Clone, Error, Diagnostic)]
 pub enum Error {
