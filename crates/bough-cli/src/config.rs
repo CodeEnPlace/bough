@@ -259,16 +259,7 @@ pub struct FindMutationsConfig {
 pub use bough_config::PhaseOverrides;
 
 
-/// Test phase configuration. Defines the command bough runs to determine
-/// whether a mutation is killed.
-#[derive(Facet, Debug, Clone)]
-pub struct TestPhaseConfig {
-    /// Shell command to run the test suite. Required.
-    pub cmd: String,
-
-    #[facet(flatten, default)]
-    pub overrides: PhaseOverrides,
-}
+pub use bough_config::TestPhaseConfig;
 
 /// Configuration for an optional phase (init or reset).
 /// Omit the section entirely to skip the phase.
