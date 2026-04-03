@@ -45,6 +45,12 @@ pub enum LanguageId {
     Cpp,
 }
 
+impl std::fmt::Display for LanguageId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.slug())
+    }
+}
+
 impl LanguageId {
     pub const ALL: &[LanguageId] = &[
         LanguageId::Javascript,

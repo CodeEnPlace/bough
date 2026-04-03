@@ -1722,4 +1722,19 @@ mod config_render_tests {
         assert!(out.starts_with('{'));
         assert!(out.contains("base_root_dir"));
     }
+
+    #[test]
+    fn json_lang_key_uses_slug() {
+        let json = r#"{"base_root_dir":".","include":[],"exclude":[],"lang":{"rs":{"include":["**/*.rs"],"exclude":[]}},"find":{"number":1,"number_per_file":1,"factors":[]}}"#;
+        let config = facet_json::from_str::<Config>(json).unwrap();
+        let out = config.json();
+        assert!(
+            out.contains(r#""rs""#),
+            "expected lang key \"rs\" in JSON output, got: {out}"
+        );
+        assert!(
+            !out.contains("LanguageId"),
+            "should not contain raw type name, got: {out}"
+        );
+    }
 }
