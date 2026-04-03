@@ -13,7 +13,7 @@ pub enum Error {
     #[error("at least one language must be configured")]
     #[diagnostic(
         code(bough::config::no_languages),
-        help("add a [js] or [ts] section to your config")
+        help("add a [lang.*] section to your config")
     )]
     NoLanguages,
 
