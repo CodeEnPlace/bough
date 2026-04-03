@@ -275,20 +275,7 @@ pub struct PhaseOverrides {
     pub timeout: Option<TimeoutConfig>,
 }
 
-/// Timeout limits for a phase command. At least one of `absolute` or `relative`
-/// must be set when the timeout section is present.
-#[derive(Facet, Debug, Clone)]
-pub struct TimeoutConfig {
-    /// Hard cap in seconds. The command is killed after this duration regardless
-    /// of anything else.
-    #[facet(default)]
-    pub absolute: Option<u64>,
-
-    /// Multiplier applied to the baseline test duration. E.g. `3.0` means
-    /// "allow up to 3× the unmutated test time".
-    #[facet(default)]
-    pub relative: Option<f64>,
-}
+pub use bough_config::TimeoutConfig;
 
 /// Test phase configuration. Defines the command bough runs to determine
 /// whether a mutation is killed.
