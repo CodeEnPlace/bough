@@ -261,17 +261,7 @@ pub use bough_config::PhaseOverrides;
 
 pub use bough_config::TestPhaseConfig;
 
-/// Configuration for an optional phase (init or reset).
-/// Omit the section entirely to skip the phase.
-#[derive(Facet, Debug, Clone)]
-pub struct PhaseConfig {
-    /// Shell command to run for this phase.
-    #[facet(default)]
-    pub cmd: Option<String>,
-
-    #[facet(flatten, default)]
-    pub overrides: PhaseOverrides,
-}
+pub use bough_config::PhaseConfig;
 
 /// Per-language file matching and skip rules.
 #[derive(Facet, Debug, Clone)]
