@@ -383,6 +383,40 @@ cmd = "echo test"
 }
 
 #[test]
+fn show_mutation_json() {
+    let fixture = Fixture::new()
+        .with_file(
+            "bough.config.toml",
+            r#"
+base_root_dir = "."
+include = ["src/**"]
+exclude = []
+
+[lang.js]
+include = ["**/*.js"]
+exclude = []
+
+[test]
+cmd = "echo test"
+"#,
+        )
+        .with_file("src/index.js", "true")
+        .build();
+
+    let result = fixture.run(
+        "show mutation c647a18bc3123b913cf096283cb24f46f49b73c5bc91026e82e85c8b6ccf13b8 -f json",
+    );
+
+    assert_eq!(result.code, 0);
+    assert_eq!(result.stderr, "");
+    assert_eq!(
+        result.stdout,
+        r#"{"mutation":{"mutant":{"lang":"js","twig":["src/index.js"],"kind":{"Literal":"BoolTrue"},"subst_span":{"start":{"line":0,"col":0,"byte":0},"end":{"line":0,"col":4,"byte":4}},"effect_span":{"start":{"line":0,"col":0,"byte":0},"end":{"line":0,"col":4,"byte":4}}},"subst":"false"},"outcome":null}
+"#
+    );
+}
+
+#[test]
 fn show_mutations() {
     let fixture = Fixture::new()
         .with_file(
