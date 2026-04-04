@@ -1333,6 +1333,78 @@ cmd = "echo test-passed"
 }
 
 #[test]
+fn show_mutations_verbose() {
+    let fixture = Fixture::new()
+        .with_file(
+            "bough.config.toml",
+            r#"
+base_root_dir = "."
+include = ["src/**"]
+exclude = []
+
+[lang.js]
+include = ["**/*.js"]
+exclude = []
+
+[test]
+cmd = "echo test"
+"#,
+        )
+        .with_file("src/index.js", "true")
+        .build();
+
+    let result = fixture.run("show mutations -f verbose");
+
+    assert_eq!(result.code, 0);
+    assert_eq!(result.stderr, "");
+    assert_eq!(
+        result.stdout,
+        "\
+All Mutations (1 total)
+
+c647a18bc3123b913cf096283cb24f46f49b73c5bc91026e82e85c8b6ccf13b8 JavaScript src/index.js 1:1 - 1:5 not run Literal(BoolTrue) -> false\n"
+    );
+}
+
+#[test]
+fn show_mutations_markdown() {
+    let fixture = Fixture::new()
+        .with_file(
+            "bough.config.toml",
+            r#"
+base_root_dir = "."
+include = ["src/**"]
+exclude = []
+
+[lang.js]
+include = ["**/*.js"]
+exclude = []
+
+[test]
+cmd = "echo test"
+"#,
+        )
+        .with_file("src/index.js", "true")
+        .build();
+
+    let result = fixture.run("show mutations -f markdown");
+
+    assert_eq!(result.code, 0);
+    assert_eq!(result.stderr, "");
+    assert_eq!(
+        result.stdout,
+        "\
+# All Mutations
+
+1 total
+
+ Hash | Lang | File | Span | Kind | Subst | Status 
+ --- | --- | --- | --- | --- | --- | --- 
+ `c647a18bc3123b913cf096283cb24f46f49b73c5bc91026e82e85c8b6ccf13b8` | JavaScript | src/index.js | 1:1 - 1:5 | Literal(BoolTrue) | `false` | not run \n"
+    );
+}
+
+#[test]
 fn show_mutations() {
     let fixture = Fixture::new()
         .with_file(
