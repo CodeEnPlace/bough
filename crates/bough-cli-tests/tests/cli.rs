@@ -324,6 +324,65 @@ b2d036e91ef2daa67892e8979fa0544e295ee168caf6dee9914df28181b37649 py src/main.py 
 }
 
 #[test]
+fn show_mutation_by_hash() {
+    let fixture = Fixture::new()
+        .with_file(
+            "bough.config.toml",
+            r#"
+base_root_dir = "."
+include = ["src/**"]
+exclude = []
+
+[lang.js]
+include = ["**/*.js"]
+exclude = []
+
+[test]
+cmd = "echo test"
+"#,
+        )
+        .with_file("src/index.js", "true")
+        .build();
+
+    let result = fixture.run(
+        "show mutation c647a18bc3123b913cf096283cb24f46f49b73c5bc91026e82e85c8b6ccf13b8",
+    );
+
+    assert_eq!(result.code, 0);
+    assert_eq!(result.stderr, "");
+    assert_eq!(
+        result.stdout,
+        "c647a18bc3123b913cf096283cb24f46f49b73c5bc91026e82e85c8b6ccf13b8 js src/index.js 1:1 - 1:5 not run Literal(BoolTrue) -> false\n"
+    );
+}
+
+#[test]
+fn show_mutation_invalid_hash() {
+    let fixture = Fixture::new()
+        .with_file(
+            "bough.config.toml",
+            r#"
+base_root_dir = "."
+include = ["src/**"]
+exclude = []
+
+[lang.js]
+include = ["**/*.js"]
+exclude = []
+
+[test]
+cmd = "echo test"
+"#,
+        )
+        .with_file("src/index.js", "true")
+        .build();
+
+    let result = fixture.run("show mutation deadbeef");
+
+    assert_ne!(result.code, 0);
+}
+
+#[test]
 fn show_mutations() {
     let fixture = Fixture::new()
         .with_file(
