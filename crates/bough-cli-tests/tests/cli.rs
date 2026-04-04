@@ -76,6 +76,44 @@ cmd = \"echo test\"
 }
 
 #[test]
+fn show_mutations_multiple_files() {
+    let fixture = Fixture::new()
+        .with_file(
+            "bough.config.toml",
+            "\
+base_root_dir = \".\"
+include = [\"src/**\"]
+exclude = []
+
+[lang.js]
+include = [\"**/*.js\"]
+exclude = []
+
+[test]
+cmd = \"echo test\"
+",
+        )
+        .with_file("src/a.js", "if (x > 1) {}")
+        .with_file("src/b.js", "if (y < 2) {}")
+        .build();
+
+    let result = fixture.run("show mutations");
+
+    assert_eq!(result.code, 0);
+    assert_eq!(result.stderr, "");
+    let lines: Vec<&str> = result.stdout.lines().collect();
+    let a_lines: Vec<&&str> = lines.iter().filter(|l| l.contains("src/a.js")).collect();
+    let b_lines: Vec<&&str> = lines.iter().filter(|l| l.contains("src/b.js")).collect();
+    assert_eq!(a_lines.len(), 11, "expected 11 mutations for a.js");
+    assert_eq!(b_lines.len(), 11, "expected 11 mutations for b.js");
+    assert!(
+        lines.iter().position(|l| l.contains("src/a.js"))
+            < lines.iter().position(|l| l.contains("src/b.js")),
+        "a.js mutations should appear before b.js"
+    );
+}
+
+#[test]
 fn show_mutations() {
     let fixture = Fixture::new()
         .with_file(
