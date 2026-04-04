@@ -875,6 +875,83 @@ cmd = "echo test"
 }
 
 #[test]
+fn apply_then_unapply() {
+    let fixture = Fixture::new()
+        .with_file(
+            "bough.config.toml",
+            r#"
+base_root_dir = "."
+include = ["src/**"]
+exclude = []
+
+[lang.js]
+include = ["**/*.js"]
+exclude = []
+
+[test]
+cmd = "echo test"
+"#,
+        )
+        .with_file("src/index.js", "true")
+        .build();
+
+    let hash = "c647a18bc3123b913cf096283cb24f46f49b73c5bc91026e82e85c8b6ccf13b8";
+
+    fixture.run("step tend-state");
+    let ws_result = fixture.run("step tend-workspaces");
+    let ws_id = ws_result.stdout.trim();
+
+    let ws_src = fixture
+        .path()
+        .join(".bough/workspaces/work")
+        .join(ws_id)
+        .join("src/index.js");
+
+    assert_eq!(std::fs::read_to_string(&ws_src).unwrap(), "true");
+
+    let apply = fixture.run(&format!("step apply-mutation {ws_id} {hash}"));
+    assert_eq!(apply.code, 0);
+    assert_eq!(apply.stderr, "");
+    assert_eq!(std::fs::read_to_string(&ws_src).unwrap(), "false");
+}
+
+#[test]
+fn apply_mutation_json() {
+    let fixture = Fixture::new()
+        .with_file(
+            "bough.config.toml",
+            r#"
+base_root_dir = "."
+include = ["src/**"]
+exclude = []
+
+[lang.js]
+include = ["**/*.js"]
+exclude = []
+
+[test]
+cmd = "echo test"
+"#,
+        )
+        .with_file("src/index.js", "true")
+        .build();
+
+    let hash = "c647a18bc3123b913cf096283cb24f46f49b73c5bc91026e82e85c8b6ccf13b8";
+
+    fixture.run("step tend-state");
+    let ws_result = fixture.run("step tend-workspaces");
+    let ws_id = ws_result.stdout.trim();
+
+    let apply = fixture.run(&format!("step apply-mutation {ws_id} {hash} -f json"));
+    assert_eq!(apply.code, 0);
+    assert_eq!(apply.stderr, "");
+    assert_eq!(
+        apply.stdout,
+        format!(r#"{{"workspace_id":"{ws_id}","mutation_hash":"{hash}"}}"#) + "\n"
+    );
+}
+
+#[test]
 fn show_mutations() {
     let fixture = Fixture::new()
         .with_file(
