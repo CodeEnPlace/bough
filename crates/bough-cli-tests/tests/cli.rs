@@ -417,6 +417,134 @@ cmd = "echo test"
 }
 
 #[test]
+fn show_files_all() {
+    let fixture = Fixture::new()
+        .with_file(
+            "bough.config.toml",
+            r#"
+base_root_dir = "."
+include = ["src/**"]
+exclude = []
+
+[lang.js]
+include = ["**/*.js"]
+exclude = []
+
+[test]
+cmd = "echo test"
+"#,
+        )
+        .with_file("src/a.js", "true")
+        .with_file("src/b.js", "false")
+        .build();
+
+    let result = fixture.run("show files");
+
+    assert_eq!(result.code, 0);
+    assert_eq!(result.stderr, "");
+    assert_eq!(
+        result.redacted_stdout(&fixture),
+        "<TMP>/src/a.js <TMP>/src/b.js\n"
+    );
+}
+
+#[test]
+fn show_files_lang_filter() {
+    let fixture = Fixture::new()
+        .with_file(
+            "bough.config.toml",
+            r#"
+base_root_dir = "."
+include = ["src/**"]
+exclude = []
+
+[lang.js]
+include = ["**/*.js"]
+exclude = []
+
+[lang.ts]
+include = ["**/*.ts"]
+exclude = []
+
+[test]
+cmd = "echo test"
+"#,
+        )
+        .with_file("src/a.js", "true")
+        .with_file("src/b.ts", "true")
+        .build();
+
+    let result = fixture.run("show files ts");
+
+    assert_eq!(result.code, 0);
+    assert_eq!(result.stderr, "");
+    assert_eq!(
+        result.redacted_stdout(&fixture),
+        "ts <TMP>/src/b.ts\n"
+    );
+}
+
+#[test]
+fn show_files_no_matches() {
+    let fixture = Fixture::new()
+        .with_file(
+            "bough.config.toml",
+            r#"
+base_root_dir = "."
+include = ["src/**"]
+exclude = []
+
+[lang.js]
+include = ["**/*.js"]
+exclude = []
+
+[test]
+cmd = "echo test"
+"#,
+        )
+        .with_file("src/a.ts", "true")
+        .build();
+
+    let result = fixture.run("show files js");
+
+    assert_eq!(result.code, 0);
+    assert_eq!(result.stderr, "");
+    assert_eq!(result.redacted_stdout(&fixture), "js \n");
+}
+
+#[test]
+fn show_files_respects_exclude() {
+    let fixture = Fixture::new()
+        .with_file(
+            "bough.config.toml",
+            r#"
+base_root_dir = "."
+include = ["src/**"]
+exclude = ["src/vendor/**"]
+
+[lang.js]
+include = ["**/*.js"]
+exclude = []
+
+[test]
+cmd = "echo test"
+"#,
+        )
+        .with_file("src/a.js", "true")
+        .with_file("src/vendor/b.js", "true")
+        .build();
+
+    let result = fixture.run("show files");
+
+    assert_eq!(result.code, 0);
+    assert_eq!(result.stderr, "");
+    assert_eq!(
+        result.redacted_stdout(&fixture),
+        "<TMP>/src/a.js\n"
+    );
+}
+
+#[test]
 fn show_mutations() {
     let fixture = Fixture::new()
         .with_file(

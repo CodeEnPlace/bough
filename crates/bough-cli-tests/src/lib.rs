@@ -43,7 +43,11 @@ impl Output {
 
 fn redact(s: &str, fixture: &Fixture) -> String {
     let stripped = strip_ansi(s);
-    let tmp = fixture.path().to_string_lossy();
+    let canonical = fixture
+        .path()
+        .canonicalize()
+        .unwrap_or_else(|_| fixture.path().to_path_buf());
+    let tmp = canonical.to_string_lossy();
     let mut result = String::with_capacity(stripped.len());
     let mut in_file_block = false;
     for line in stripped.lines() {
