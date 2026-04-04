@@ -223,6 +223,34 @@ c3cc1162a3ff5de12e88d90a1d5a3368b969daed14d81451061e9eddecccb9d4 js src/a.js 1:9
 }
 
 #[test]
+fn show_mutations_empty() {
+    let fixture = Fixture::new()
+        .with_file(
+            "bough.config.toml",
+            r#"
+base_root_dir = "."
+include = ["src/**"]
+exclude = []
+
+[lang.js]
+include = ["**/*.js"]
+exclude = []
+
+[test]
+cmd = "echo test"
+"#,
+        )
+        .with_file("src/index.js", "// just a comment")
+        .build();
+
+    let result = fixture.run("show mutations");
+
+    assert_eq!(result.code, 0);
+    assert_eq!(result.stderr, "");
+    assert_eq!(result.stdout, "\n");
+}
+
+#[test]
 fn show_mutations() {
     let fixture = Fixture::new()
         .with_file(
