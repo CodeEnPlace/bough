@@ -1,6 +1,11 @@
 use bough_cli_tests::Fixture;
 
-const MINIMAL_CONFIG: &str = "\
+#[test]
+fn noop_with_valid_config() {
+    let fixture = Fixture::new()
+        .with_file(
+            "bough.config.toml",
+            "\
 base_root_dir = \".\"
 include = [\"src/**\"]
 exclude = []
@@ -11,19 +16,13 @@ exclude = []
 
 [test]
 cmd = \"echo test\"
-";
-
-fn minimal_js_fixture() -> bough_cli_tests::Fixture {
-    Fixture::new()
-        .with_file("bough.config.toml", MINIMAL_CONFIG)
+",
+        )
         .with_file("src/index.js", "if (x > 1) {}")
-        .build()
-}
+        .build();
 
-#[test]
-fn noop_with_valid_config() {
-    let fixture = minimal_js_fixture();
     let result = fixture.run("noop");
+
     assert_eq!(result.code, 0);
     assert_eq!(result.stdout, "\n");
     assert_eq!(result.stderr, "");
@@ -31,8 +30,27 @@ fn noop_with_valid_config() {
 
 #[test]
 fn show_mutations() {
-    let fixture = minimal_js_fixture();
+    let fixture = Fixture::new()
+        .with_file(
+            "bough.config.toml",
+            "\
+base_root_dir = \".\"
+include = [\"src/**\"]
+exclude = []
+
+[lang.js]
+include = [\"**/*.js\"]
+exclude = []
+
+[test]
+cmd = \"echo test\"
+",
+        )
+        .with_file("src/index.js", "if (x > 1) {}")
+        .build();
+
     let result = fixture.run("show mutations");
+
     assert_eq!(result.code, 0);
     assert_eq!(result.stderr, "");
     assert_eq!(
