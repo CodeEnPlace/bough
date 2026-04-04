@@ -42,8 +42,33 @@ impl Output {
 }
 
 fn redact(s: &str, fixture: &Fixture) -> String {
-    let path_str = fixture.path().to_string_lossy();
-    strip_ansi(&s.replace(path_str.as_ref(), "<TMP>"))
+    let stripped = strip_ansi(s);
+    let tmp = fixture.path().to_string_lossy();
+    let mut result = String::with_capacity(stripped.len());
+    let mut in_file_block = false;
+    for line in stripped.lines() {
+        if line.contains("├─ file:") {
+            in_file_block = true;
+            result.push_str("├─ file: <CONFIG_SEARCH_PATHS>\n");
+            continue;
+        }
+        if in_file_block {
+            // The file block ends when we hit the next sibling source
+            // (lines starting with ├─ or └─ at the top level, not indented │)
+            if !line.starts_with("│") {
+                in_file_block = false;
+            } else {
+                continue;
+            }
+        }
+        let redacted = line.replace(tmp.as_ref(), "<TMP>");
+        result.push_str(&redacted);
+        result.push('\n');
+    }
+    if !s.ends_with('\n') && result.ends_with('\n') {
+        result.pop();
+    }
+    result
 }
 
 /// Pending file to be written when the fixture is built.
