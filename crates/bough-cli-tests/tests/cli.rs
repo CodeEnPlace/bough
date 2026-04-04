@@ -759,6 +759,122 @@ cmd = "echo test"
 }
 
 #[test]
+fn tend_workspaces_creates_dirs() {
+    let fixture = Fixture::new()
+        .with_file(
+            "bough.config.toml",
+            r#"
+base_root_dir = "."
+include = ["src/**"]
+exclude = []
+
+[lang.js]
+include = ["**/*.js"]
+exclude = []
+
+[test]
+cmd = "echo test"
+"#,
+        )
+        .with_file("src/index.js", "true")
+        .build();
+
+    let result = fixture.run("step tend-workspaces");
+
+    assert_eq!(result.code, 0);
+    assert_eq!(result.stderr, "");
+    let ids: Vec<&str> = result.stdout.trim().split_whitespace().collect();
+    assert_eq!(ids.len(), 1);
+
+    let ws_dir = fixture
+        .path()
+        .join(".bough/workspaces/work")
+        .join(ids[0]);
+    assert!(ws_dir.is_dir(), "workspace dir should exist");
+    assert!(
+        ws_dir.join("src/index.js").is_file(),
+        "workspace should contain source files"
+    );
+    assert_eq!(
+        std::fs::read_to_string(ws_dir.join("src/index.js")).unwrap(),
+        "true"
+    );
+}
+
+#[test]
+fn tend_workspaces_workers_count() {
+    let fixture = Fixture::new()
+        .with_file(
+            "bough.config.toml",
+            r#"
+base_root_dir = "."
+workers = 2
+include = ["src/**"]
+exclude = []
+
+[lang.js]
+include = ["**/*.js"]
+exclude = []
+
+[test]
+cmd = "echo test"
+"#,
+        )
+        .with_file("src/index.js", "true")
+        .build();
+
+    let result = fixture.run("step tend-workspaces");
+
+    assert_eq!(result.code, 0);
+    assert_eq!(result.stderr, "");
+    let ids: Vec<&str> = result.stdout.trim().split_whitespace().collect();
+    assert_eq!(ids.len(), 2);
+
+    for id in &ids {
+        let ws_dir = fixture
+            .path()
+            .join(".bough/workspaces/work")
+            .join(id);
+        assert!(ws_dir.is_dir(), "workspace {id} dir should exist");
+        assert_eq!(
+            std::fs::read_to_string(ws_dir.join("src/index.js")).unwrap(),
+            "true"
+        );
+    }
+}
+
+#[test]
+fn tend_workspaces_idempotent() {
+    let fixture = Fixture::new()
+        .with_file(
+            "bough.config.toml",
+            r#"
+base_root_dir = "."
+include = ["src/**"]
+exclude = []
+
+[lang.js]
+include = ["**/*.js"]
+exclude = []
+
+[test]
+cmd = "echo test"
+"#,
+        )
+        .with_file("src/index.js", "true")
+        .build();
+
+    let first = fixture.run("step tend-workspaces");
+    let first_ids: Vec<&str> = first.stdout.trim().split_whitespace().collect();
+
+    let second = fixture.run("step tend-workspaces");
+    assert_eq!(second.code, 0);
+    let second_ids: Vec<&str> = second.stdout.trim().split_whitespace().collect();
+
+    assert_eq!(first_ids, second_ids);
+}
+
+#[test]
 fn show_mutations() {
     let fixture = Fixture::new()
         .with_file(
