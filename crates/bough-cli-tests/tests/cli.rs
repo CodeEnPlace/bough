@@ -20,6 +20,34 @@ fn noop_missing_config() {
 }
 
 #[test]
+fn noop_invalid_config() {
+    let fixture = Fixture::new()
+        .with_file(
+            "bough.config.toml",
+            "\
+base_root_dir = \".\"
+include = [\"src/**\"]
+exclude = []
+
+[lang.js]
+include = [\"**/*.js\"]
+exclude = []
+",
+        )
+        .build();
+
+    let result = fixture.run("noop");
+
+    assert_eq!(result.code, 1);
+    assert_eq!(result.stdout, "");
+    let stderr = result.redacted_stderr(&fixture);
+    assert!(
+        stderr.contains("test.cmd is required"),
+        "stderr should mention missing test cmd, got: {stderr}"
+    );
+}
+
+#[test]
 fn noop_with_valid_config() {
     let fixture = Fixture::new()
         .with_file(
