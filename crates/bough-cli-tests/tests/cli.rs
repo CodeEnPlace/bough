@@ -283,6 +283,47 @@ cmd = "echo test"
 }
 
 #[test]
+fn show_mutations_python() {
+    let fixture = Fixture::new()
+        .with_file(
+            "bough.config.toml",
+            r#"
+base_root_dir = "."
+include = ["src/**"]
+exclude = []
+
+[lang.py]
+include = ["**/*.py"]
+exclude = []
+
+[test]
+cmd = "echo test"
+"#,
+        )
+        .with_file("src/main.py", "assert x > 1")
+        .build();
+
+    let result = fixture.run("show mutations");
+
+    assert_eq!(result.code, 0);
+    assert_eq!(result.stderr, "");
+    assert_eq!(
+        result.stdout,
+        "\
+da4a7ef3ecacf4977c2b744682ed76b22a3ea1db371cd1b477247e06aa26894a py src/main.py 1:1 - 1:13 not run Assert -> pass
+5de891d5e00fa25b9f491c43596318b4fbc294f9da202c4ca3145a117d757faa py src/main.py 1:10 - 1:11 not run BinaryOp(Gt) -> <=
+b7ba3768839be49c165232d6d4262f5649912b060c5686f45ec69f4f0add900a py src/main.py 1:10 - 1:11 not run BinaryOp(Gt) -> >=
+434f82a02aeb74cf832ef8d398c7cdbb7f65e223fd2e2500cc1ce9ef45750a58 py src/main.py 1:12 - 1:13 not run Literal(Number) -> 0
+375fd00053c7c94c92e2b088317e77c1d649961326ea0da97f8c012d3f18aaec py src/main.py 1:12 - 1:13 not run Literal(Number) -> 1
+ab4f23d2b1c743cb754aab1572ec12967c177efe8558dfbcfcb002b5c1393d86 py src/main.py 1:12 - 1:13 not run Literal(Number) -> -1
+8bd51618f60b3432cdfd37f54a882fdbafdfbb317ebd3f0611e3537ef96083ec py src/main.py 1:12 - 1:13 not run Literal(Number) -> float('inf')
+8bc12fcc09b00b769f8ec1fd6aaa73302d8e9371ec16a85914a577f1df73a4a5 py src/main.py 1:12 - 1:13 not run Literal(Number) -> float('-inf')
+b2d036e91ef2daa67892e8979fa0544e295ee168caf6dee9914df28181b37649 py src/main.py 1:12 - 1:13 not run Literal(Number) -> float('nan')
+"
+    );
+}
+
+#[test]
 fn show_mutations() {
     let fixture = Fixture::new()
         .with_file(
