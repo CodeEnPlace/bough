@@ -609,6 +609,156 @@ cmd = "echo test"
 }
 
 #[test]
+fn tend_state_fresh() {
+    let fixture = Fixture::new()
+        .with_file(
+            "bough.config.toml",
+            r#"
+base_root_dir = "."
+include = ["src/**"]
+exclude = []
+
+[lang.js]
+include = ["**/*.js"]
+exclude = []
+
+[test]
+cmd = "echo test"
+"#,
+        )
+        .with_file("src/index.js", "true")
+        .build();
+
+    let result = fixture.run("step tend-state");
+
+    assert_eq!(result.code, 0);
+    assert_eq!(result.stderr, "");
+    assert_eq!(result.stdout, "+1 -0\n");
+
+    let state_dir = fixture.path().join(".bough/state");
+    let entries: Vec<_> = std::fs::read_dir(&state_dir)
+        .expect("state dir should exist")
+        .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+        .collect();
+    assert_eq!(
+        entries,
+        vec!["c647a18bc3123b913cf096283cb24f46f49b73c5bc91026e82e85c8b6ccf13b8.json"]
+    );
+
+    let state_content = std::fs::read_to_string(
+        state_dir.join("c647a18bc3123b913cf096283cb24f46f49b73c5bc91026e82e85c8b6ccf13b8.json"),
+    )
+    .unwrap();
+    assert_eq!(
+        state_content,
+        r#"{"mutation":{"mutant":{"lang":"js","twig":["src/index.js"],"kind":{"Literal":"BoolTrue"},"subst_span":{"start":{"line":0,"col":0,"byte":0},"end":{"line":0,"col":4,"byte":4}},"effect_span":{"start":{"line":0,"col":0,"byte":0},"end":{"line":0,"col":4,"byte":4}}},"subst":"false"},"outcome":null}"#
+    );
+}
+
+#[test]
+fn tend_state_idempotent() {
+    let fixture = Fixture::new()
+        .with_file(
+            "bough.config.toml",
+            r#"
+base_root_dir = "."
+include = ["src/**"]
+exclude = []
+
+[lang.js]
+include = ["**/*.js"]
+exclude = []
+
+[test]
+cmd = "echo test"
+"#,
+        )
+        .with_file("src/index.js", "true")
+        .build();
+
+    fixture.run("step tend-state");
+    let result = fixture.run("step tend-state");
+
+    assert_eq!(result.code, 0);
+    assert_eq!(result.stderr, "");
+    assert_eq!(result.stdout, "+0 -0\n");
+
+    let count = std::fs::read_dir(fixture.path().join(".bough/state"))
+        .unwrap()
+        .count();
+    assert_eq!(count, 1);
+}
+
+#[test]
+fn tend_state_removes_stale() {
+    let fixture = Fixture::new()
+        .with_file(
+            "bough.config.toml",
+            r#"
+base_root_dir = "."
+include = ["src/**"]
+exclude = []
+
+[lang.js]
+include = ["**/*.js"]
+exclude = []
+
+[test]
+cmd = "echo test"
+"#,
+        )
+        .with_file("src/index.js", "true")
+        .build();
+
+    let first = fixture.run("step tend-state");
+    assert_eq!(first.stdout, "+1 -0\n");
+
+    std::fs::remove_file(fixture.path().join("src/index.js")).unwrap();
+
+    let second = fixture.run("step tend-state");
+    assert_eq!(second.code, 0);
+    assert_eq!(second.stderr, "");
+    assert_eq!(second.stdout, "+0 -1\n");
+
+    let count = std::fs::read_dir(fixture.path().join(".bough/state"))
+        .unwrap()
+        .count();
+    assert_eq!(count, 0);
+}
+
+#[test]
+fn tend_state_json() {
+    let fixture = Fixture::new()
+        .with_file(
+            "bough.config.toml",
+            r#"
+base_root_dir = "."
+include = ["src/**"]
+exclude = []
+
+[lang.js]
+include = ["**/*.js"]
+exclude = []
+
+[test]
+cmd = "echo test"
+"#,
+        )
+        .with_file("src/index.js", "true")
+        .build();
+
+    let result = fixture.run("step tend-state -f json");
+
+    assert_eq!(result.code, 0);
+    assert_eq!(result.stderr, "");
+    assert_eq!(
+        result.stdout,
+        r#"{"added":["c647a18bc3123b913cf096283cb24f46f49b73c5bc91026e82e85c8b6ccf13b8"],"removed":[]}
+"#
+    );
+}
+
+#[test]
 fn show_mutations() {
     let fixture = Fixture::new()
         .with_file(
