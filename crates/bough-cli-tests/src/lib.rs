@@ -31,16 +31,19 @@ impl Output {
     /// Return stderr with the fixture's temp dir path replaced by `<TMP>`
     /// and ANSI escape codes stripped.
     pub fn redacted_stderr(&self, fixture: &Fixture) -> String {
-        let path_str = fixture.path().to_string_lossy();
-        strip_ansi(&self.stderr.replace(path_str.as_ref(), "<TMP>"))
+        redact(&self.stderr, fixture)
     }
 
     /// Return stdout with the fixture's temp dir path replaced by `<TMP>`
     /// and ANSI escape codes stripped.
     pub fn redacted_stdout(&self, fixture: &Fixture) -> String {
-        let path_str = fixture.path().to_string_lossy();
-        strip_ansi(&self.stdout.replace(path_str.as_ref(), "<TMP>"))
+        redact(&self.stdout, fixture)
     }
+}
+
+fn redact(s: &str, fixture: &Fixture) -> String {
+    let path_str = fixture.path().to_string_lossy();
+    strip_ansi(&s.replace(path_str.as_ref(), "<TMP>"))
 }
 
 /// Pending file to be written when the fixture is built.
