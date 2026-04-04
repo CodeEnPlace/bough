@@ -179,6 +179,50 @@ d07ac60ebe04ada1035d6e1b5881b75074deadbc9dd994ebd16f5b7cfafd35d9 ts src/b.ts 1:1
 }
 
 #[test]
+fn show_mutations_file_filter() {
+    let fixture = Fixture::new()
+        .with_file(
+            "bough.config.toml",
+            r#"
+base_root_dir = "."
+include = ["src/**"]
+exclude = []
+
+[lang.js]
+include = ["**/*.js"]
+exclude = []
+
+[test]
+cmd = "echo test"
+"#,
+        )
+        .with_file("src/a.js", "if (x > 1) {}")
+        .with_file("src/b.js", "if (y < 2) {}")
+        .build();
+
+    let result = fixture.run("show mutations js src/a.js");
+
+    assert_eq!(result.code, 0);
+    assert_eq!(result.stderr, "");
+    assert_eq!(
+        result.stdout,
+        "\
+ef55a7704df7b1f2eda6d0f4c6094f633c7be7f0701d52441e20f59fe76e797c js src/a.js 1:5 - 1:10 not run Condition -> true
+1eb4cc2c7d61b6edac1d731200e09db106078ec309675e0c26ae529defcf00bb js src/a.js 1:5 - 1:10 not run Condition -> false
+1b903677268c6bfb2b0ce68d73c3afb713be309c959c26503fb4212dc59e79ea js src/a.js 1:7 - 1:8 not run BinaryOp(Gt) -> <=
+53b9b358ff24fbeb7903eb52c3a12dfc162fc922fb34696fc211bc0f84a478d2 js src/a.js 1:7 - 1:8 not run BinaryOp(Gt) -> >=
+719d9d6a24082ae6e114adbe1d942f88f05b570d47b97803712d590707f1b955 js src/a.js 1:9 - 1:10 not run Literal(Number) -> 0
+ea287652cac5f3a566a8fb4c582421a8cd07cc69ff7fba122066c6b166297319 js src/a.js 1:9 - 1:10 not run Literal(Number) -> 1
+368ca084999c641c241259a008c1db431c99c1ee612acf3ef68872729b0b20cb js src/a.js 1:9 - 1:10 not run Literal(Number) -> -1
+c3cc1162a3ff5de12e88d90a1d5a3368b969daed14d81451061e9eddecccb9d4 js src/a.js 1:9 - 1:10 not run Literal(Number) -> Infinity
+46b55de46dde476c7656278c4bff79a2eab355fd7323fb7bbd3a4cc4fd57df6d js src/a.js 1:9 - 1:10 not run Literal(Number) -> -Infinity
+88796a09235eb87b07cb323b0de03f2f0f358b66ed90e52638755c8c1c117f84 js src/a.js 1:9 - 1:10 not run Literal(Number) -> NaN
+901060bfab2e89e53f3a73d024e46566bc1f948712d24487e2564dcf0c2f9b5e js src/a.js 1:12 - 1:14 not run StatementBlock -> {}
+"
+    );
+}
+
+#[test]
 fn show_mutations() {
     let fixture = Fixture::new()
         .with_file(
