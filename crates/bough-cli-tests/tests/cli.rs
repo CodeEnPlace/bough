@@ -1163,6 +1163,71 @@ cmd = "/usr/bin/false"
 }
 
 #[test]
+fn find_default() {
+    let fixture = Fixture::new()
+        .with_file(
+            "bough.config.toml",
+            r#"
+base_root_dir = "."
+include = ["src/**"]
+exclude = []
+
+[lang.js]
+include = ["**/*.js"]
+exclude = []
+
+[test]
+cmd = "echo test"
+"#,
+        )
+        .with_file("src/index.js", "true")
+        .build();
+
+    fixture.run("step tend-state");
+    let result = fixture.run("find");
+
+    assert_eq!(result.code, 0);
+    assert_eq!(result.stderr, "");
+    assert_eq!(
+        result.stdout,
+        "0.00 c647a18bc3123b913cf096283cb24f46f49b73c5bc91026e82e85c8b6ccf13b8 js src/index.js 1:1 - 1:5 not run Literal(BoolTrue) -> false\n"
+    );
+}
+
+#[test]
+fn find_json() {
+    let fixture = Fixture::new()
+        .with_file(
+            "bough.config.toml",
+            r#"
+base_root_dir = "."
+include = ["src/**"]
+exclude = []
+
+[lang.js]
+include = ["**/*.js"]
+exclude = []
+
+[test]
+cmd = "echo test"
+"#,
+        )
+        .with_file("src/index.js", "true")
+        .build();
+
+    fixture.run("step tend-state");
+    let result = fixture.run("find -f json");
+
+    assert_eq!(result.code, 0);
+    assert_eq!(result.stderr, "");
+    assert_eq!(
+        result.stdout,
+        r#"[{"hash":"c647a18bc3123b913cf096283cb24f46f49b73c5bc91026e82e85c8b6ccf13b8","score":0,"state":{"mutation":{"mutant":{"lang":"js","twig":["src/index.js"],"kind":{"Literal":"BoolTrue"},"subst_span":{"start":{"line":0,"col":0,"byte":0},"end":{"line":0,"col":4,"byte":4}},"effect_span":{"start":{"line":0,"col":0,"byte":0},"end":{"line":0,"col":4,"byte":4}}},"subst":"false"},"outcome":null}}]
+"#
+    );
+}
+
+#[test]
 fn show_mutations() {
     let fixture = Fixture::new()
         .with_file(
