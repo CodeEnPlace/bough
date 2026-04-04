@@ -1044,6 +1044,125 @@ cmd = "echo reset-ran"
 }
 
 #[test]
+fn test_mutation_caught() {
+    let fixture = Fixture::new()
+        .with_file(
+            "bough.config.toml",
+            r#"
+base_root_dir = "."
+include = ["src/**"]
+exclude = []
+
+[lang.js]
+include = ["**/*.js"]
+exclude = []
+
+[test]
+cmd = "/usr/bin/false"
+"#,
+        )
+        .with_file("src/index.js", "true")
+        .build();
+
+    let hash = "c647a18bc3123b913cf096283cb24f46f49b73c5bc91026e82e85c8b6ccf13b8";
+
+    fixture.run("step tend-state");
+    let ws_result = fixture.run("step tend-workspaces");
+    let ws_id = ws_result.stdout.trim();
+
+    let result = fixture.run(&format!("step test-mutation {ws_id} {hash} -f json"));
+
+    assert_eq!(result.code, 0);
+    assert_eq!(result.stderr, "");
+    assert!(
+        result.stdout.contains(r#""status":"caught""#),
+        "should be caught, got: {}",
+        result.stdout
+    );
+}
+
+#[test]
+fn test_mutation_missed() {
+    let fixture = Fixture::new()
+        .with_file(
+            "bough.config.toml",
+            r#"
+base_root_dir = "."
+include = ["src/**"]
+exclude = []
+
+[lang.js]
+include = ["**/*.js"]
+exclude = []
+
+[test]
+cmd = "echo pass"
+"#,
+        )
+        .with_file("src/index.js", "true")
+        .build();
+
+    let hash = "c647a18bc3123b913cf096283cb24f46f49b73c5bc91026e82e85c8b6ccf13b8";
+
+    fixture.run("step tend-state");
+    let ws_result = fixture.run("step tend-workspaces");
+    let ws_id = ws_result.stdout.trim();
+
+    let result = fixture.run(&format!("step test-mutation {ws_id} {hash} -f json"));
+
+    assert_eq!(result.code, 0);
+    assert_eq!(result.stderr, "");
+    assert!(
+        result.stdout.contains(r#""status":"missed""#),
+        "should be missed, got: {}",
+        result.stdout
+    );
+}
+
+#[test]
+fn test_mutation_writes_state() {
+    let fixture = Fixture::new()
+        .with_file(
+            "bough.config.toml",
+            r#"
+base_root_dir = "."
+include = ["src/**"]
+exclude = []
+
+[lang.js]
+include = ["**/*.js"]
+exclude = []
+
+[test]
+cmd = "/usr/bin/false"
+"#,
+        )
+        .with_file("src/index.js", "true")
+        .build();
+
+    let hash = "c647a18bc3123b913cf096283cb24f46f49b73c5bc91026e82e85c8b6ccf13b8";
+
+    fixture.run("step tend-state");
+    let ws_result = fixture.run("step tend-workspaces");
+    let ws_id = ws_result.stdout.trim();
+
+    fixture.run(&format!("step test-mutation {ws_id} {hash}"));
+
+    let state_path = fixture
+        .path()
+        .join(format!(".bough/state/{hash}.json"));
+    let state = std::fs::read_to_string(&state_path).unwrap();
+    assert!(
+        state.contains(r#""status":"Caught""#),
+        "state file should contain Caught status, got: {state}"
+    );
+    assert!(
+        state.contains(r#""at":"#),
+        "state file should contain timestamp, got: {state}"
+    );
+}
+
+#[test]
 fn show_mutations() {
     let fixture = Fixture::new()
         .with_file(
