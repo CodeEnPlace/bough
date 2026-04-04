@@ -545,6 +545,70 @@ cmd = "echo test"
 }
 
 #[test]
+fn show_config_json() {
+    let fixture = Fixture::new()
+        .with_file(
+            "bough.config.toml",
+            r#"
+base_root_dir = "."
+include = ["src/**"]
+exclude = []
+
+[lang.js]
+include = ["**/*.js"]
+exclude = []
+
+[test]
+cmd = "echo test"
+"#,
+        )
+        .with_file("src/index.js", "true")
+        .build();
+
+    let result = fixture.run("show config -f json");
+
+    assert_eq!(result.code, 0);
+    assert_eq!(result.stderr, "");
+    assert_eq!(
+        result.redacted_stdout(&fixture),
+        r#"{"workers":1,"threads":1,"base_root_dir":"<TMP>","include":["src/**"],"exclude":[],"lang":{"js":{"include":["**/*.js"],"exclude":[],"skip":null}},"pwd":null,"env":null,"timeout":null,"test":{"cmd":"echo test","pwd":null,"env":null,"timeout":null},"init":null,"reset":null,"find":{"number":1,"number_per_file":1,"factors":["EncompasingMissedMutationsCount","TSNodeDepth"]}}
+"#
+    );
+}
+
+#[test]
+fn show_config_terse() {
+    let fixture = Fixture::new()
+        .with_file(
+            "bough.config.toml",
+            r#"
+base_root_dir = "."
+include = ["src/**"]
+exclude = []
+
+[lang.js]
+include = ["**/*.js"]
+exclude = []
+
+[test]
+cmd = "echo test"
+"#,
+        )
+        .with_file("src/index.js", "true")
+        .build();
+
+    let result = fixture.run("show config");
+
+    assert_eq!(result.code, 0);
+    assert_eq!(result.stderr, "");
+    assert_eq!(
+        result.redacted_stdout(&fixture),
+        r#"{"workers":1,"threads":1,"base_root_dir":"<TMP>","include":["src/**"],"exclude":[],"lang":{"js":{"include":["**/*.js"],"exclude":[],"skip":null}},"pwd":null,"env":null,"timeout":null,"test":{"cmd":"echo test","pwd":null,"env":null,"timeout":null},"init":null,"reset":null,"find":{"number":1,"number_per_file":1,"factors":["EncompasingMissedMutationsCount","TSNodeDepth"]}}
+"#
+    );
+}
+
+#[test]
 fn show_mutations() {
     let fixture = Fixture::new()
         .with_file(
