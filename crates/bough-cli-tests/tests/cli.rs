@@ -1,6 +1,25 @@
 use bough_cli_tests::Fixture;
 
 #[test]
+fn noop_missing_config() {
+    let fixture = Fixture::new().build();
+
+    let result = fixture.run("noop");
+
+    assert_eq!(result.code, 1);
+    assert_eq!(result.stdout, "");
+    let stderr = result.redacted_stderr(&fixture);
+    assert!(
+        stderr.contains("Missing required fields"),
+        "stderr should mention missing fields, got: {stderr}"
+    );
+    assert!(
+        stderr.contains("<CONFIG_SEARCH_PATHS>"),
+        "config search paths should be redacted, got: {stderr}"
+    );
+}
+
+#[test]
 fn noop_with_valid_config() {
     let fixture = Fixture::new()
         .with_file(
