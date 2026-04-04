@@ -1228,6 +1228,111 @@ cmd = "echo test"
 }
 
 #[test]
+fn run_minimal() {
+    let fixture = Fixture::new()
+        .with_file(
+            "bough.config.toml",
+            r#"
+base_root_dir = "."
+workers = 1
+include = ["src/**"]
+exclude = []
+
+[lang.js]
+include = ["**/*.js"]
+exclude = []
+
+[test]
+cmd = "echo test-passed"
+"#,
+        )
+        .with_file("src/index.js", "true")
+        .build();
+
+    let result = fixture.run("run");
+
+    assert_eq!(result.code, 0);
+    assert_eq!(result.stderr, "");
+    assert!(
+        result.stdout.contains("c647a18bc3123b913cf096283cb24f46f49b73c5bc91026e82e85c8b6ccf13b8"),
+        "should contain mutation hash, got: {}",
+        result.stdout
+    );
+    assert!(
+        result.stdout.contains("missed"),
+        "should contain missed status, got: {}",
+        result.stdout
+    );
+}
+
+#[test]
+fn run_with_init_and_reset() {
+    let fixture = Fixture::new()
+        .with_file(
+            "bough.config.toml",
+            r#"
+base_root_dir = "."
+workers = 1
+include = ["src/**"]
+exclude = []
+
+[lang.js]
+include = ["**/*.js"]
+exclude = []
+
+[test]
+cmd = "echo test-passed"
+
+[init]
+cmd = "echo init-ran"
+
+[reset]
+cmd = "echo reset-ran"
+"#,
+        )
+        .with_file("src/index.js", "true")
+        .build();
+
+    let result = fixture.run("run");
+
+    assert_eq!(result.code, 0);
+    assert_eq!(result.stderr, "");
+    assert!(
+        result.stdout.contains("missed"),
+        "should contain missed status, got: {}",
+        result.stdout
+    );
+}
+
+#[test]
+fn run_no_mutations() {
+    let fixture = Fixture::new()
+        .with_file(
+            "bough.config.toml",
+            r#"
+base_root_dir = "."
+workers = 1
+include = ["src/**"]
+exclude = []
+
+[lang.js]
+include = ["**/*.js"]
+exclude = []
+
+[test]
+cmd = "echo test-passed"
+"#,
+        )
+        .with_file("src/index.js", "// no mutable code")
+        .build();
+
+    let result = fixture.run("run");
+
+    assert_eq!(result.code, 0);
+    assert_eq!(result.stderr, "");
+}
+
+#[test]
 fn show_mutations() {
     let fixture = Fixture::new()
         .with_file(
