@@ -24,15 +24,15 @@ fn noop_invalid_config() {
     let fixture = Fixture::new()
         .with_file(
             "bough.config.toml",
-            "\
-base_root_dir = \".\"
-include = [\"src/**\"]
+            r#"
+base_root_dir = "."
+include = ["src/**"]
 exclude = []
 
 [lang.js]
-include = [\"**/*.js\"]
+include = ["**/*.js"]
 exclude = []
-",
+"#,
         )
         .build();
 
@@ -52,18 +52,18 @@ fn noop_with_valid_config() {
     let fixture = Fixture::new()
         .with_file(
             "bough.config.toml",
-            "\
-base_root_dir = \".\"
-include = [\"src/**\"]
+            r#"
+base_root_dir = "."
+include = ["src/**"]
 exclude = []
 
 [lang.js]
-include = [\"**/*.js\"]
+include = ["**/*.js"]
 exclude = []
 
 [test]
-cmd = \"echo test\"
-",
+cmd = "echo test"
+"#,
         )
         .with_file("src/index.js", "if (x > 1) {}")
         .build();
@@ -80,18 +80,18 @@ fn show_mutations_multiple_files() {
     let fixture = Fixture::new()
         .with_file(
             "bough.config.toml",
-            "\
-base_root_dir = \".\"
-include = [\"src/**\"]
+            r#"
+base_root_dir = "."
+include = ["src/**"]
 exclude = []
 
 [lang.js]
-include = [\"**/*.js\"]
+include = ["**/*.js"]
 exclude = []
 
 [test]
-cmd = \"echo test\"
-",
+cmd = "echo test"
+"#,
         )
         .with_file("src/a.js", "if (x > 1) {}")
         .with_file("src/b.js", "if (y < 2) {}")
@@ -101,15 +101,80 @@ cmd = \"echo test\"
 
     assert_eq!(result.code, 0);
     assert_eq!(result.stderr, "");
-    let lines: Vec<&str> = result.stdout.lines().collect();
-    let a_lines: Vec<&&str> = lines.iter().filter(|l| l.contains("src/a.js")).collect();
-    let b_lines: Vec<&&str> = lines.iter().filter(|l| l.contains("src/b.js")).collect();
-    assert_eq!(a_lines.len(), 11, "expected 11 mutations for a.js");
-    assert_eq!(b_lines.len(), 11, "expected 11 mutations for b.js");
-    assert!(
-        lines.iter().position(|l| l.contains("src/a.js"))
-            < lines.iter().position(|l| l.contains("src/b.js")),
-        "a.js mutations should appear before b.js"
+    assert_eq!(
+        result.stdout,
+        "\
+ef55a7704df7b1f2eda6d0f4c6094f633c7be7f0701d52441e20f59fe76e797c js src/a.js 1:5 - 1:10 not run Condition -> true
+1eb4cc2c7d61b6edac1d731200e09db106078ec309675e0c26ae529defcf00bb js src/a.js 1:5 - 1:10 not run Condition -> false
+1b903677268c6bfb2b0ce68d73c3afb713be309c959c26503fb4212dc59e79ea js src/a.js 1:7 - 1:8 not run BinaryOp(Gt) -> <=
+53b9b358ff24fbeb7903eb52c3a12dfc162fc922fb34696fc211bc0f84a478d2 js src/a.js 1:7 - 1:8 not run BinaryOp(Gt) -> >=
+719d9d6a24082ae6e114adbe1d942f88f05b570d47b97803712d590707f1b955 js src/a.js 1:9 - 1:10 not run Literal(Number) -> 0
+ea287652cac5f3a566a8fb4c582421a8cd07cc69ff7fba122066c6b166297319 js src/a.js 1:9 - 1:10 not run Literal(Number) -> 1
+368ca084999c641c241259a008c1db431c99c1ee612acf3ef68872729b0b20cb js src/a.js 1:9 - 1:10 not run Literal(Number) -> -1
+c3cc1162a3ff5de12e88d90a1d5a3368b969daed14d81451061e9eddecccb9d4 js src/a.js 1:9 - 1:10 not run Literal(Number) -> Infinity
+46b55de46dde476c7656278c4bff79a2eab355fd7323fb7bbd3a4cc4fd57df6d js src/a.js 1:9 - 1:10 not run Literal(Number) -> -Infinity
+88796a09235eb87b07cb323b0de03f2f0f358b66ed90e52638755c8c1c117f84 js src/a.js 1:9 - 1:10 not run Literal(Number) -> NaN
+901060bfab2e89e53f3a73d024e46566bc1f948712d24487e2564dcf0c2f9b5e js src/a.js 1:12 - 1:14 not run StatementBlock -> {}
+bf8647631c7ea131a46aed9f7f7c347c119fc613bcb00d01b07c85aefe33dbd9 js src/b.js 1:5 - 1:10 not run Condition -> true
+2b0b55b1659dbea64f0fbeefcb4e22b4a5b4aa021273f4dc14570ccaebb33d98 js src/b.js 1:5 - 1:10 not run Condition -> false
+e98c951ddcc5a850903539fd3fbda4059f4d720cb663b4052bba80a3b965885d js src/b.js 1:7 - 1:8 not run BinaryOp(Lt) -> >=
+a86ff3e95b8e29b83c696dfc687425dea3d21e5c24dae41b4331fe215ba1259d js src/b.js 1:7 - 1:8 not run BinaryOp(Lt) -> <=
+40ddbed8c2c97f25b81e1797d690c219f11c5e2f205b474c69e7d0c2d4a81ac5 js src/b.js 1:9 - 1:10 not run Literal(Number) -> 0
+fdf0513728c012ad166f26ef0ab32f6007305054f3a4b1eaec04ad50354b45dc js src/b.js 1:9 - 1:10 not run Literal(Number) -> 1
+50a5b35e0fcd1bc080131f52aa5bba38036c106e955d7bb05106f27a5d3f333d js src/b.js 1:9 - 1:10 not run Literal(Number) -> -1
+e57ca9300fdc761bc3b06a4ef91ba9d23320a5b8320eef8815f9d71ba510aa27 js src/b.js 1:9 - 1:10 not run Literal(Number) -> Infinity
+b18af729b78d7c8c3c9b0c1e9d196c86e11916fdfec532b8a5c836041e18690b js src/b.js 1:9 - 1:10 not run Literal(Number) -> -Infinity
+fbb1c239d3ecf4b31ad2aacdbb0b0d7c0eb6369b555eec4f41bdce9a97552fd2 js src/b.js 1:9 - 1:10 not run Literal(Number) -> NaN
+36128e2faa4ebab7387520f98385d18d2ba9e4c5027612b5b28fff5b8a96e88f js src/b.js 1:12 - 1:14 not run StatementBlock -> {}
+"
+    );
+}
+
+#[test]
+fn show_mutations_lang_filter() {
+    let fixture = Fixture::new()
+        .with_file(
+            "bough.config.toml",
+            r#"
+base_root_dir = "."
+include = ["src/**"]
+exclude = []
+
+[lang.js]
+include = ["**/*.js"]
+exclude = []
+
+[lang.ts]
+include = ["**/*.ts"]
+exclude = []
+
+[test]
+cmd = "echo test"
+"#,
+        )
+        .with_file("src/a.js", "if (x > 1) {}")
+        .with_file("src/b.ts", "if (y < 2) {}")
+        .build();
+
+    let result = fixture.run("show mutations ts");
+
+    assert_eq!(result.code, 0);
+    assert_eq!(result.stderr, "");
+    assert_eq!(
+        result.stdout,
+        "\
+08fd1d84af296da3050e290dda9511df2b358f731476ead6331a01f43b507717 ts src/b.ts 1:5 - 1:10 not run Condition -> true
+e0e73dc8df81bfe654548f16656125b4c4c42611fd9aa4a131fcc18d5c8c2300 ts src/b.ts 1:5 - 1:10 not run Condition -> false
+d31a447490a0534e872027120b46e8ad9fbfc82813fc41175e8e5876c4483dab ts src/b.ts 1:7 - 1:8 not run BinaryOp(Lt) -> >=
+c71f0e0a7ad8d7b7d9f06baf8d0e944634082ec41a2a5d490146691f84cf05b4 ts src/b.ts 1:7 - 1:8 not run BinaryOp(Lt) -> <=
+26db377649aa16a89661330b5b02ff673049cfb3cff2641d6d6506569ea3d9a9 ts src/b.ts 1:9 - 1:10 not run Literal(Number) -> 0
+e3d53260b5fe2a1f91ca0dc40a5bcb0c394af69733265787f7670b25e34bf2cd ts src/b.ts 1:9 - 1:10 not run Literal(Number) -> 1
+4be3cb9abf884c2a782e847d8f20ae8c1ca690347677e35c4ddd22a5c14d77a7 ts src/b.ts 1:9 - 1:10 not run Literal(Number) -> -1
+080192681e39f403a3dfc3321a032196e0cf2e4ca26c87701ee7e8b42039a8a2 ts src/b.ts 1:9 - 1:10 not run Literal(Number) -> Infinity
+4442c95140f14a8d9e182e0fd6c9a4ab2cb9007a7c1059cfbfcd8c0ebb031cbe ts src/b.ts 1:9 - 1:10 not run Literal(Number) -> -Infinity
+072ed793778608e08ef290bcd293d6c589bc29ace77f7ef7241e7d3c5f060bce ts src/b.ts 1:9 - 1:10 not run Literal(Number) -> NaN
+d07ac60ebe04ada1035d6e1b5881b75074deadbc9dd994ebd16f5b7cfafd35d9 ts src/b.ts 1:12 - 1:14 not run StatementBlock -> {}
+"
     );
 }
 
@@ -118,18 +183,18 @@ fn show_mutations() {
     let fixture = Fixture::new()
         .with_file(
             "bough.config.toml",
-            "\
-base_root_dir = \".\"
-include = [\"src/**\"]
+            r#"
+base_root_dir = "."
+include = ["src/**"]
 exclude = []
 
 [lang.js]
-include = [\"**/*.js\"]
+include = ["**/*.js"]
 exclude = []
 
 [test]
-cmd = \"echo test\"
-",
+cmd = "echo test"
+"#,
         )
         .with_file("src/index.js", "if (x > 1) {}")
         .build();
