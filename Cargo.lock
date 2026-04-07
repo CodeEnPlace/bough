@@ -521,6 +521,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "bough-dirs"
+version = "0.0.2"
+dependencies = [
+ "bough-core",
+ "bough-fs",
+ "bough-typed-hash",
+ "rand",
+ "tempfile",
+ "tracing",
+]
+
+[[package]]
 name = "bough-docs-cli"
 version = "0.0.2"
 dependencies = [

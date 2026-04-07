@@ -1,0 +1,19 @@
+[package]
+name = "bough-dirs"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+readme.workspace = true
+description = "Directory handle types (Base, Workspace) for bough mutation testing"
+
+[dependencies]
+bough-core = { workspace = true }
+bough-fs = { workspace = true }
+bough-typed-hash = { workspace = true }
+rand = "0.10.0"
+tracing = "0.1"
+
+[dev-dependencies]
+bough-fs = { workspace = true, features = ["test-support"] }
+tempfile = "3.26"
