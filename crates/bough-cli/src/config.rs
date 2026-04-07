@@ -242,7 +242,7 @@ impl ConfigFormat for YamlFormat {
 #[cfg(test)]
 use bough_config::{collect_vcs_dir_globs, collect_vcs_ignore_globs};
 #[cfg(test)]
-use bough_lib::Factor;
+use bough_config::Factor;
 #[cfg(test)]
 use std::collections::HashMap;
 
@@ -658,7 +658,7 @@ exclude = []
     #[test]
     fn lang_include_globs_does_not_include_base() {
         let cli = parse_ok(&["run"], FULL_TOML);
-        let globs: Vec<String> = bough_lib::Config::get_lang_include_globs(
+        let globs: Vec<String> = bough_config::SessionConfig::get_lang_include_globs(
             &cli.config,
             bough_core::LanguageId::Javascript,
         )
@@ -671,7 +671,7 @@ exclude = []
     #[test]
     fn lang_exclude_globs_prepend_base() {
         let cli = parse_ok(&["run"], FULL_TOML);
-        let globs: Vec<String> = bough_lib::Config::get_lang_exclude_globs(
+        let globs: Vec<String> = bough_config::SessionConfig::get_lang_exclude_globs(
             &cli.config,
             bough_core::LanguageId::Javascript,
         )
@@ -687,7 +687,7 @@ exclude = []
     #[test]
     fn lang_include_globs_only_lang_specific() {
         let cli = parse_ok(&["run"], FULL_TOML);
-        let globs: Vec<String> = bough_lib::Config::get_lang_include_globs(
+        let globs: Vec<String> = bough_config::SessionConfig::get_lang_include_globs(
             &cli.config,
             bough_core::LanguageId::Typescript,
         )
@@ -698,7 +698,7 @@ exclude = []
     #[test]
     fn lang_exclude_globs_base_only_when_lang_empty() {
         let cli = parse_ok(&["run"], FULL_TOML);
-        let globs: Vec<String> = bough_lib::Config::get_lang_exclude_globs(
+        let globs: Vec<String> = bough_config::SessionConfig::get_lang_exclude_globs(
             &cli.config,
             bough_core::LanguageId::Typescript,
         )
@@ -710,7 +710,7 @@ exclude = []
     #[test]
     fn lang_globs_with_no_base_excludes() {
         let cli = parse_ok(&["run"], MINIMAL_TOML);
-        let globs: Vec<String> = bough_lib::Config::get_lang_exclude_globs(
+        let globs: Vec<String> = bough_config::SessionConfig::get_lang_exclude_globs(
             &cli.config,
             bough_core::LanguageId::Javascript,
         )
@@ -728,14 +728,14 @@ exclude = []
     #[test]
     fn base_exclude_globs_includes_bough_dir() {
         let cli = parse_ok(&["run"], MINIMAL_TOML);
-        let globs: Vec<String> = bough_lib::Config::get_base_exclude_globs(&cli.config).collect();
+        let globs: Vec<String> = bough_config::SessionConfig::get_base_exclude_globs(&cli.config).collect();
         assert!(globs.iter().any(|g| g.contains(".bough")));
     }
 
     #[test]
     fn lang_exclude_globs_includes_bough_dir() {
         let cli = parse_ok(&["run"], MINIMAL_TOML);
-        let globs: Vec<String> = bough_lib::Config::get_lang_exclude_globs(
+        let globs: Vec<String> = bough_config::SessionConfig::get_lang_exclude_globs(
             &cli.config,
             bough_core::LanguageId::Javascript,
         )
@@ -919,7 +919,7 @@ cmd = "echo test"
     fn base_root_path_from_top_level_config_dot() {
         let dir = tempfile::tempdir().unwrap();
         let cli = parse_from_disk(dir.path(), "bough.config.toml", &config_toml_with_root("."));
-        let root = bough_lib::Config::get_base_root_path(&cli.config);
+        let root = bough_config::SessionConfig::get_base_root_path(&cli.config);
         assert_eq!(root, dir.path().to_path_buf());
     }
 
@@ -932,7 +932,7 @@ cmd = "echo test"
             "bough.config.toml",
             &config_toml_with_root("./src"),
         );
-        let root = bough_lib::Config::get_base_root_path(&cli.config);
+        let root = bough_config::SessionConfig::get_base_root_path(&cli.config);
         assert_eq!(root, dir.path().join("src"));
     }
 
@@ -944,7 +944,7 @@ cmd = "echo test"
             ".config/bough.toml",
             &config_toml_with_root(".."),
         );
-        let root = bough_lib::Config::get_base_root_path(&cli.config);
+        let root = bough_config::SessionConfig::get_base_root_path(&cli.config);
         assert_eq!(root, dir.path().to_path_buf());
     }
 
@@ -957,7 +957,7 @@ cmd = "echo test"
             ".config/bough.toml",
             &config_toml_with_root("../src"),
         );
-        let root = bough_lib::Config::get_base_root_path(&cli.config);
+        let root = bough_config::SessionConfig::get_base_root_path(&cli.config);
         assert_eq!(root, dir.path().join("src"));
     }
 
@@ -1036,14 +1036,14 @@ exclude = []
     #[test]
     fn test_cmd_parsed() {
         let cli = parse_ok(&["run"], MINIMAL_TOML);
-        assert_eq!(bough_lib::Config::get_test_cmd(&cli.config), "echo test");
+        assert_eq!(bough_config::SessionConfig::get_test_cmd(&cli.config), "echo test");
     }
 
     #[test]
     fn test_pwd_defaults_to_base_root() {
         let cli = parse_ok(&["run"], MINIMAL_TOML);
         assert_eq!(
-            bough_lib::Config::get_test_pwd(&cli.config),
+            bough_config::SessionConfig::get_test_pwd(&cli.config),
             std::path::PathBuf::from(".")
         );
     }
@@ -1065,7 +1065,7 @@ cmd = "npm test"
 "#;
         let cli = parse_ok(&["run"], toml);
         assert_eq!(
-            bough_lib::Config::get_test_pwd(&cli.config),
+            bough_config::SessionConfig::get_test_pwd(&cli.config),
             std::path::PathBuf::from("build")
         );
     }
@@ -1088,7 +1088,7 @@ pwd = "src/test"
 "#;
         let cli = parse_ok(&["run"], toml);
         assert_eq!(
-            bough_lib::Config::get_test_pwd(&cli.config),
+            bough_config::SessionConfig::get_test_pwd(&cli.config),
             std::path::PathBuf::from("src/test")
         );
     }
@@ -1097,7 +1097,7 @@ pwd = "src/test"
     fn test_env_empty_by_default() {
         let cli = parse_ok(&["run"], MINIMAL_TOML);
         assert_eq!(
-            bough_lib::Config::get_test_env(&cli.config),
+            bough_config::SessionConfig::get_test_env(&cli.config),
             HashMap::new()
         );
     }
@@ -1121,7 +1121,7 @@ cmd = "npm test"
 "#;
         let cli = parse_ok(&["run"], toml);
         assert_eq!(
-            bough_lib::Config::get_test_env(&cli.config),
+            bough_config::SessionConfig::get_test_env(&cli.config),
             HashMap::from([("CI".to_string(), "1".to_string())])
         );
     }
@@ -1149,7 +1149,7 @@ JEST_WORKERS = "4"
 "#;
         let cli = parse_ok(&["run"], toml);
         assert_eq!(
-            bough_lib::Config::get_test_env(&cli.config),
+            bough_config::SessionConfig::get_test_env(&cli.config),
             HashMap::from([
                 ("CI".to_string(), "1".to_string()),
                 ("NODE_ENV".to_string(), "test".to_string()),
@@ -1181,7 +1181,7 @@ NODE_ENV = ""
 "#;
         let cli = parse_ok(&["run"], toml);
         assert_eq!(
-            bough_lib::Config::get_test_env(&cli.config),
+            bough_config::SessionConfig::get_test_env(&cli.config),
             HashMap::from([("CI".to_string(), "1".to_string())])
         );
     }
@@ -1190,7 +1190,7 @@ NODE_ENV = ""
     fn test_timeout_defaults_to_5_minutes() {
         let cli = parse_ok(&["run"], MINIMAL_TOML);
         assert_eq!(
-            bough_lib::Config::get_test_timeout(&cli.config, None),
+            bough_config::SessionConfig::get_test_timeout(&cli.config, None),
             chrono::Duration::minutes(5)
         );
     }
@@ -1214,7 +1214,7 @@ cmd = "npm test"
 "#;
         let cli = parse_ok(&["run"], toml);
         assert_eq!(
-            bough_lib::Config::get_test_timeout(&cli.config, None),
+            bough_config::SessionConfig::get_test_timeout(&cli.config, None),
             chrono::Duration::seconds(30)
         );
     }
@@ -1241,7 +1241,7 @@ absolute = 60
 "#;
         let cli = parse_ok(&["run"], toml);
         assert_eq!(
-            bough_lib::Config::get_test_timeout(&cli.config, None),
+            bough_config::SessionConfig::get_test_timeout(&cli.config, None),
             chrono::Duration::seconds(60)
         );
     }
@@ -1265,7 +1265,7 @@ cmd = "npm test"
 "#;
         let cli = parse_ok(&["run"], toml);
         assert_eq!(
-            bough_lib::Config::get_test_timeout(&cli.config, Some(chrono::Duration::seconds(10))),
+            bough_config::SessionConfig::get_test_timeout(&cli.config, Some(chrono::Duration::seconds(10))),
             chrono::Duration::seconds(30)
         );
     }
@@ -1289,7 +1289,7 @@ cmd = "npm test"
 "#;
         let cli = parse_ok(&["run"], toml);
         assert_eq!(
-            bough_lib::Config::get_test_timeout(&cli.config, None),
+            bough_config::SessionConfig::get_test_timeout(&cli.config, None),
             chrono::Duration::seconds(30)
         );
     }
@@ -1313,7 +1313,7 @@ cmd = "npm test"
 "#;
         let cli = parse_ok(&["run"], toml);
         assert_eq!(
-            bough_lib::Config::get_test_timeout(&cli.config, Some(chrono::Duration::seconds(10))),
+            bough_config::SessionConfig::get_test_timeout(&cli.config, Some(chrono::Duration::seconds(10))),
             chrono::Duration::seconds(30)
         );
     }
@@ -1337,7 +1337,7 @@ cmd = "npm test"
 "#;
         let cli = parse_ok(&["run"], toml);
         assert_eq!(
-            bough_lib::Config::get_test_timeout(&cli.config, None),
+            bough_config::SessionConfig::get_test_timeout(&cli.config, None),
             chrono::Duration::minutes(5)
         );
     }
@@ -1362,11 +1362,11 @@ cmd = "npm test"
 "#;
         let cli = parse_ok(&["run"], toml);
         assert_eq!(
-            bough_lib::Config::get_test_timeout(&cli.config, Some(chrono::Duration::seconds(5))),
+            bough_config::SessionConfig::get_test_timeout(&cli.config, Some(chrono::Duration::seconds(5))),
             chrono::Duration::seconds(15)
         );
         assert_eq!(
-            bough_lib::Config::get_test_timeout(&cli.config, Some(chrono::Duration::seconds(20))),
+            bough_config::SessionConfig::get_test_timeout(&cli.config, Some(chrono::Duration::seconds(20))),
             chrono::Duration::seconds(30)
         );
     }
@@ -1428,7 +1428,7 @@ absolute = 60
 "#;
         let cli = parse_ok(&["run"], toml);
         assert_eq!(
-            bough_lib::Config::get_test_timeout(&cli.config, None),
+            bough_config::SessionConfig::get_test_timeout(&cli.config, None),
             chrono::Duration::seconds(60)
         );
     }
@@ -1436,7 +1436,7 @@ absolute = 60
     #[test]
     fn init_cmd_none_by_default() {
         let cli = parse_ok(&["run"], MINIMAL_TOML);
-        assert_eq!(bough_lib::Config::get_init_cmd(&cli.config), None);
+        assert_eq!(bough_config::SessionConfig::get_init_cmd(&cli.config), None);
     }
 
     #[test]
@@ -1458,7 +1458,7 @@ cmd = "npm install"
 "#;
         let cli = parse_ok(&["run"], toml);
         assert_eq!(
-            bough_lib::Config::get_init_cmd(&cli.config),
+            bough_config::SessionConfig::get_init_cmd(&cli.config),
             Some("npm install".to_string())
         );
     }
@@ -1467,7 +1467,7 @@ cmd = "npm install"
     fn init_pwd_defaults_to_base_root() {
         let cli = parse_ok(&["run"], MINIMAL_TOML);
         assert_eq!(
-            bough_lib::Config::get_init_pwd(&cli.config),
+            bough_config::SessionConfig::get_init_pwd(&cli.config),
             std::path::PathBuf::from(".")
         );
     }
@@ -1498,7 +1498,7 @@ NODE_ENV = ""
 "#;
         let cli = parse_ok(&["run"], toml);
         assert_eq!(
-            bough_lib::Config::get_init_env(&cli.config),
+            bough_config::SessionConfig::get_init_env(&cli.config),
             HashMap::from([("CI".to_string(), "1".to_string())])
         );
     }
@@ -1506,7 +1506,7 @@ NODE_ENV = ""
     #[test]
     fn reset_cmd_none_by_default() {
         let cli = parse_ok(&["run"], MINIMAL_TOML);
-        assert_eq!(bough_lib::Config::get_reset_cmd(&cli.config), None);
+        assert_eq!(bough_config::SessionConfig::get_reset_cmd(&cli.config), None);
     }
 
     #[test]
@@ -1528,7 +1528,7 @@ cmd = "npm run clean"
 "#;
         let cli = parse_ok(&["run"], toml);
         assert_eq!(
-            bough_lib::Config::get_reset_cmd(&cli.config),
+            bough_config::SessionConfig::get_reset_cmd(&cli.config),
             Some("npm run clean".to_string())
         );
     }
@@ -1553,7 +1553,7 @@ cmd = "npm run clean"
 "#;
         let cli = parse_ok(&["run"], toml);
         assert_eq!(
-            bough_lib::Config::get_reset_pwd(&cli.config),
+            bough_config::SessionConfig::get_reset_pwd(&cli.config),
             std::path::PathBuf::from("build")
         );
     }
@@ -1600,13 +1600,13 @@ cmd = "npm run clean"
         let cli = parse_ok(&["run"], toml);
         let c = &cli.config;
 
-        assert_eq!(bough_lib::Config::get_test_cmd(c), "npm test");
+        assert_eq!(bough_config::SessionConfig::get_test_cmd(c), "npm test");
         assert_eq!(
-            bough_lib::Config::get_test_pwd(c),
+            bough_config::SessionConfig::get_test_pwd(c),
             std::path::PathBuf::from("build")
         );
         assert_eq!(
-            bough_lib::Config::get_test_env(c),
+            bough_config::SessionConfig::get_test_env(c),
             HashMap::from([
                 ("CI".to_string(), "1".to_string()),
                 ("NODE_ENV".to_string(), "test".to_string()),
@@ -1614,44 +1614,44 @@ cmd = "npm run clean"
             ])
         );
         assert_eq!(
-            bough_lib::Config::get_test_timeout(c, None),
+            bough_config::SessionConfig::get_test_timeout(c, None),
             chrono::Duration::seconds(60)
         );
 
         assert_eq!(
-            bough_lib::Config::get_init_cmd(c),
+            bough_config::SessionConfig::get_init_cmd(c),
             Some("npm install".to_string())
         );
         assert_eq!(
-            bough_lib::Config::get_init_pwd(c),
+            bough_config::SessionConfig::get_init_pwd(c),
             std::path::PathBuf::from("setup")
         );
         assert_eq!(
-            bough_lib::Config::get_init_env(c),
+            bough_config::SessionConfig::get_init_env(c),
             HashMap::from([("CI".to_string(), "1".to_string())])
         );
         assert_eq!(
-            bough_lib::Config::get_init_timeout(c, None),
+            bough_config::SessionConfig::get_init_timeout(c, None),
             chrono::Duration::seconds(30)
         );
 
         assert_eq!(
-            bough_lib::Config::get_reset_cmd(c),
+            bough_config::SessionConfig::get_reset_cmd(c),
             Some("npm run clean".to_string())
         );
         assert_eq!(
-            bough_lib::Config::get_reset_pwd(c),
+            bough_config::SessionConfig::get_reset_pwd(c),
             std::path::PathBuf::from("build")
         );
         assert_eq!(
-            bough_lib::Config::get_reset_env(c),
+            bough_config::SessionConfig::get_reset_env(c),
             HashMap::from([
                 ("CI".to_string(), "1".to_string()),
                 ("NODE_ENV".to_string(), "test".to_string()),
             ])
         );
         assert_eq!(
-            bough_lib::Config::get_reset_timeout(c, None),
+            bough_config::SessionConfig::get_reset_timeout(c, None),
             chrono::Duration::seconds(30)
         );
     }

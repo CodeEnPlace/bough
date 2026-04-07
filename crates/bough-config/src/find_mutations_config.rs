@@ -1,5 +1,6 @@
-use bough_lib::Factor;
 use facet::Facet;
+
+use crate::Factor;
 
 #[derive(Facet, Debug, Clone)]
 pub struct FindMutationsConfig {

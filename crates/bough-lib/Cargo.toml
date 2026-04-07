@@ -9,6 +9,7 @@ description = "Orchestration library for bough mutation testing"
 
 [dependencies]
 bough-core = { workspace = true }
+bough-config = { workspace = true }
 bough-dirs = { workspace = true }
 bough-typed-hash = { workspace = true }
 bough-fs = { workspace = true }

@@ -5,47 +5,14 @@ use std::{
 };
 
 use bough_typed_hash::TypedHashable;
-use chrono::Duration;
 use tracing::info;
 
+use bough_config::SessionConfig;
 use bough_core::TwigsIterBuilder;
-use bough_core::{LanguageId, Mutation, MutationHash};
+use bough_core::{Mutation, MutationHash};
 
-use crate::{Factor, Status, facet_disk_store::FacetDiskStore, state::State};
+use crate::{Status, facet_disk_store::FacetDiskStore, state::State};
 use bough_dirs::{Base, Work, WorkId};
-
-pub trait Config {
-    fn get_workers_count(&self) -> u64;
-
-    fn get_bough_state_dir(&self) -> PathBuf;
-    fn get_base_root_path(&self) -> PathBuf;
-    fn get_base_include_globs(&self) -> impl Iterator<Item = String>;
-    fn get_base_exclude_globs(&self) -> impl Iterator<Item = String>;
-
-    fn get_langs(&self) -> impl Iterator<Item = LanguageId>;
-    fn get_lang_include_globs(&self, language_id: LanguageId) -> impl Iterator<Item = String>;
-    fn get_lang_exclude_globs(&self, language_id: LanguageId) -> impl Iterator<Item = String>;
-    fn get_lang_skip_queries(&self, language_id: LanguageId) -> impl Iterator<Item = String>;
-
-    fn get_test_cmd(&self) -> String;
-    fn get_test_pwd(&self) -> PathBuf;
-    fn get_test_env(&self) -> HashMap<String, String>;
-    fn get_test_timeout(&self, reference: Option<Duration>) -> Duration;
-
-    fn get_init_cmd(&self) -> Option<String>;
-    fn get_init_pwd(&self) -> PathBuf;
-    fn get_init_env(&self) -> HashMap<String, String>;
-    fn get_init_timeout(&self, reference: Option<Duration>) -> Duration;
-
-    fn get_reset_cmd(&self) -> Option<String>;
-    fn get_reset_pwd(&self) -> PathBuf;
-    fn get_reset_env(&self) -> HashMap<String, String>;
-    fn get_reset_timeout(&self, reference: Option<Duration>) -> Duration;
-
-    fn get_find_number(&self) -> usize;
-    fn get_find_number_per_file(&self) -> usize;
-    fn get_find_factors(&self) -> Vec<Factor>;
-}
 
 #[derive(Debug)]
 pub enum Error {
@@ -60,7 +27,7 @@ pub enum Error {
 
 pub struct TestConfig {}
 
-pub struct Session<C: Config> {
+pub struct Session<C: SessionConfig> {
     config: C,
     base: Arc<Base>,
     workspaces: Vec<WorkId>,
@@ -68,7 +35,7 @@ pub struct Session<C: Config> {
     mutations_needing_test: Vec<MutationHash>,
 }
 
-impl<C: Config> Session<C> {
+impl<C: SessionConfig> Session<C> {
     pub fn new(config: C) -> Result<Self, Error> {
         info!("initializing session");
         let mut base_twigs_iter_builder = TwigsIterBuilder::new();
@@ -383,6 +350,9 @@ impl From<crate::phase::Error> for Error {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bough_config::Factor;
+    use bough_core::LanguageId;
+    use chrono::Duration;
 
     #[derive(Clone)]
     struct MinimalConfig {
@@ -399,7 +369,7 @@ mod tests {
         find_number_per_file: usize,
     }
 
-    impl Config for MinimalConfig {
+    impl SessionConfig for MinimalConfig {
         fn get_base_root_path(&self) -> PathBuf {
             self.root.clone()
         }

@@ -488,7 +488,6 @@ name = "bough-config"
 version = "0.0.2"
 dependencies = [
  "bough-core",
- "bough-lib",
  "chrono",
  "facet",
  "miette",
@@ -704,6 +703,7 @@ name = "bough-lib"
 version = "0.0.2"
 dependencies = [
  "arborium-tree-sitter",
+ "bough-config",
  "bough-core",
  "bough-dirs",
  "bough-fs",

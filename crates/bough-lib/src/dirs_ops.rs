@@ -41,7 +41,7 @@ pub fn mutations(base: &Base) -> impl Iterator<Item = std::io::Result<Mutation>>
 
 pub fn run_test_in_base(
     base: &Base,
-    config: &impl crate::session::Config,
+    config: &impl bough_config::SessionConfig,
     reference_duration: Option<chrono::Duration>,
 ) -> Result<crate::phase::PhaseOutcome, crate::phase::Error> {
     crate::phase::run_phase_in_base(
@@ -55,7 +55,7 @@ pub fn run_test_in_base(
 
 pub fn run_init_in_base(
     base: &Base,
-    config: &impl crate::session::Config,
+    config: &impl bough_config::SessionConfig,
     reference_duration: Option<chrono::Duration>,
 ) -> Result<crate::phase::PhaseOutcome, crate::phase::Error> {
     let cmd = config
@@ -72,7 +72,7 @@ pub fn run_init_in_base(
 
 pub fn run_reset_in_base(
     base: &Base,
-    config: &impl crate::session::Config,
+    config: &impl bough_config::SessionConfig,
     reference_duration: Option<chrono::Duration>,
 ) -> Result<crate::phase::PhaseOutcome, crate::phase::Error> {
     let cmd = config
@@ -89,7 +89,7 @@ pub fn run_reset_in_base(
 
 pub fn run_test_in_workspace(
     workspace: &Work,
-    config: &impl crate::session::Config,
+    config: &impl bough_config::SessionConfig,
     reference_duration: Option<chrono::Duration>,
 ) -> Result<crate::phase::PhaseOutcome, crate::phase::Error> {
     crate::phase::run_phase_in_workspace(
@@ -103,7 +103,7 @@ pub fn run_test_in_workspace(
 
 pub fn run_init_in_workspace(
     workspace: &Work,
-    config: &impl crate::session::Config,
+    config: &impl bough_config::SessionConfig,
     reference_duration: Option<chrono::Duration>,
 ) -> Result<crate::phase::PhaseOutcome, crate::phase::Error> {
     let cmd = config
@@ -120,7 +120,7 @@ pub fn run_init_in_workspace(
 
 pub fn run_reset_in_workspace(
     workspace: &Work,
-    config: &impl crate::session::Config,
+    config: &impl bough_config::SessionConfig,
     reference_duration: Option<chrono::Duration>,
 ) -> Result<crate::phase::PhaseOutcome, crate::phase::Error> {
     let cmd = config

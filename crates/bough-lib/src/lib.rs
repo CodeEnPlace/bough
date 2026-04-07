@@ -14,11 +14,9 @@ pub use dirs_ops::{
     mutants, mutations, run_init_in_base, run_init_in_workspace, run_reset_in_base,
     run_reset_in_workspace, run_test_in_base, run_test_in_workspace,
 };
-pub use mutation_score::Factor;
 pub use mutation_score::MutationScorer;
 pub use phase::Error as PhaseError;
 pub use phase::PhaseOutcome;
-pub use session::Config;
 pub use session::Session;
 pub use state::{State, Status};
 

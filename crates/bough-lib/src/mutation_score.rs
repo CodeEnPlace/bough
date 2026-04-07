@@ -1,31 +1,9 @@
 use std::sync::Arc;
 
-use facet::Facet;
-
 use crate::language::driver_for_lang;
+use bough_config::Factor;
 use bough_core::Mutation;
 use bough_dirs::Base;
-
-#[derive(Facet, Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u8)]
-pub enum Factor {
-    /// How many authors have touched this file
-    FileAuthorCount,
-    /// Severity of the mutation operator (e.g. removing a null check vs flipping a comparator)
-    MutationSeverity,
-    /// How many mutations have a span that includes this mutation
-    EncompasingMissedMutationsCount,
-    /// How many other surviving mutants exist in the same function
-    SiblingMissedMutations,
-    /// How many distinct mutation operator types survive in the same function
-    SiblingOperatorDiversity,
-    /// How deep into the tree-sitter node graph is this mutation
-    TSNodeDepth,
-    /// How many times has this file been modified in version control
-    VcsFileChurn,
-    /// How recently was this line touched
-    VcsLineBlameRecency,
-}
 
 pub struct OpaqueScore(u64);
 

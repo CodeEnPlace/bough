@@ -5,7 +5,8 @@ use facet::Facet;
 use tracing::debug;
 
 use crate::{
-    FindMutationsConfig, LanguageConfig, PhaseConfig, PhaseOverrides, TestPhaseConfig,
+    Factor, FindMutationsConfig, LanguageConfig, PhaseConfig, PhaseOverrides, SessionConfig,
+    TestPhaseConfig,
 };
 
 #[derive(Facet, Debug, Clone)]
@@ -118,7 +119,7 @@ pub fn collect_vcs_dir_globs(root: &std::path::Path) -> Vec<String> {
         .collect()
 }
 
-impl bough_lib::Config for Config {
+impl SessionConfig for Config {
     fn get_workers_count(&self) -> u64 {
         self.workers
     }
@@ -221,7 +222,7 @@ impl bough_lib::Config for Config {
         self.find.number_per_file
     }
 
-    fn get_find_factors(&self) -> Vec<bough_lib::Factor> {
+    fn get_find_factors(&self) -> Vec<Factor> {
         self.find.factors.clone()
     }
 
