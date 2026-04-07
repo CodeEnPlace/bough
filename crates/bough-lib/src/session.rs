@@ -8,15 +8,11 @@ use bough_typed_hash::TypedHashable;
 use chrono::Duration;
 use tracing::info;
 
-use bough_core::{LanguageId, Mutation, MutationHash};
 use bough_core::TwigsIterBuilder;
+use bough_core::{LanguageId, Mutation, MutationHash};
 
-use crate::{
-    Factor, Status,
-    facet_disk_store::FacetDiskStore,
-    state::State,
-};
-use bough_dirs::{Base, Workspace, WorkspaceId};
+use crate::{Factor, Status, facet_disk_store::FacetDiskStore, state::State};
+use bough_dirs::{Base, Work, WorkId};
 
 pub trait Config {
     fn get_workers_count(&self) -> u64;
@@ -67,7 +63,7 @@ pub struct TestConfig {}
 pub struct Session<C: Config> {
     config: C,
     base: Arc<Base>,
-    workspaces: Vec<WorkspaceId>,
+    workspaces: Vec<WorkId>,
     mutations_state: FacetDiskStore<MutationHash, State>,
     mutations_needing_test: Vec<MutationHash>,
 }
@@ -120,8 +116,7 @@ impl<C: Config> Session<C> {
         &self,
         unvalidated: bough_typed_hash::UnvalidatedHash,
     ) -> Result<Mutation, Error> {
-        let mutations: Vec<Mutation> =
-            crate::mutations(&self.base).collect::<Result<_, _>>()?;
+        let mutations: Vec<Mutation> = crate::mutations(&self.base).collect::<Result<_, _>>()?;
         let hashes: Vec<MutationHash> = mutations.iter().map(|m| m.hash().expect("hash")).collect();
         let matched = unvalidated
             .validate(&hashes)
@@ -202,24 +197,24 @@ impl<C: Config> Session<C> {
         Ok(stale_keys)
     }
 
-    pub fn tend_workspaces(&mut self, desired_count: usize) -> Result<Vec<WorkspaceId>, Error> {
+    pub fn tend_workspaces(&mut self, desired_count: usize) -> Result<Vec<WorkId>, Error> {
         let workspaces_dir = self.config.get_bough_state_dir().join("workspaces");
 
-        let existing_ids: Vec<WorkspaceId> = if workspaces_dir.join("work").exists() {
+        let existing_ids: Vec<WorkId> = if workspaces_dir.join("work").exists() {
             std::fs::read_dir(workspaces_dir.join("work"))?
                 .flatten()
                 .filter_map(|entry| {
                     let name = entry.file_name().to_string_lossy().into_owned();
-                    WorkspaceId::parse(&name).ok()
+                    WorkId::parse(&name).ok()
                 })
                 .collect()
         } else {
             vec![]
         };
 
-        let mut valid: Vec<WorkspaceId> = Vec::new();
+        let mut valid: Vec<WorkId> = Vec::new();
         for id in &existing_ids {
-            match Workspace::bind(workspaces_dir.clone(), id, self.base.clone()) {
+            match Work::bind(workspaces_dir.clone(), id, self.base.clone()) {
                 Ok(_ws) => valid.push(id.clone()),
                 Err(_) => {
                     let ws_path = workspaces_dir.join("work").join(id.as_str());
@@ -240,7 +235,7 @@ impl<C: Config> Session<C> {
         }
 
         while valid.len() < desired_count {
-            let ws = Workspace::new(workspaces_dir.clone(), self.base.clone())?;
+            let ws = Work::new(workspaces_dir.clone(), self.base.clone())?;
             valid.push(ws.id().clone());
         }
 
@@ -252,7 +247,7 @@ impl<C: Config> Session<C> {
         &self.mutations_state
     }
 
-    pub fn workspace_ids(&self) -> &[WorkspaceId] {
+    pub fn workspace_ids(&self) -> &[WorkId] {
         &self.workspaces
     }
 
@@ -350,18 +345,14 @@ impl<C: Config> Session<C> {
         Ok(scored)
     }
 
-    pub fn bind_workspace(&self, workspace_id: &WorkspaceId) -> Result<Workspace, Error> {
+    pub fn bind_workspace(&self, workspace_id: &WorkId) -> Result<Work, Error> {
         let workspaces_dir = self.config.get_bough_state_dir().join("workspaces");
-        Ok(Workspace::bind(
-            workspaces_dir,
-            workspace_id,
-            self.base.clone(),
-        )?)
+        Ok(Work::bind(workspaces_dir, workspace_id, self.base.clone())?)
     }
 
-    pub fn bind_dirty_workspace(&self, workspace_id: &WorkspaceId) -> Workspace {
+    pub fn bind_dirty_workspace(&self, workspace_id: &WorkId) -> Work {
         let workspaces_dir = self.config.get_bough_state_dir().join("workspaces");
-        Workspace::bind_dirty(workspaces_dir, workspace_id, self.base.clone())
+        Work::bind_dirty(workspaces_dir, workspace_id, self.base.clone())
     }
 }
 

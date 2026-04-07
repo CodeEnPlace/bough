@@ -1,6 +1,6 @@
 use bough_core::mutant::TwigMutantsIter;
 use bough_core::{Mutant, Mutation, MutationIter};
-use bough_dirs::{Base, Workspace};
+use bough_dirs::{Base, Work};
 use tracing::{trace, warn};
 
 pub fn mutants(base: &Base) -> impl Iterator<Item = std::io::Result<Mutant>> + '_ {
@@ -88,7 +88,7 @@ pub fn run_reset_in_base(
 }
 
 pub fn run_test_in_workspace(
-    workspace: &Workspace,
+    workspace: &Work,
     config: &impl crate::session::Config,
     reference_duration: Option<chrono::Duration>,
 ) -> Result<crate::phase::PhaseOutcome, crate::phase::Error> {
@@ -102,7 +102,7 @@ pub fn run_test_in_workspace(
 }
 
 pub fn run_init_in_workspace(
-    workspace: &Workspace,
+    workspace: &Work,
     config: &impl crate::session::Config,
     reference_duration: Option<chrono::Duration>,
 ) -> Result<crate::phase::PhaseOutcome, crate::phase::Error> {
@@ -119,7 +119,7 @@ pub fn run_init_in_workspace(
 }
 
 pub fn run_reset_in_workspace(
-    workspace: &Workspace,
+    workspace: &Work,
     config: &impl crate::session::Config,
     reference_duration: Option<chrono::Duration>,
 ) -> Result<crate::phase::PhaseOutcome, crate::phase::Error> {

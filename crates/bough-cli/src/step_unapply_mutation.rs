@@ -3,14 +3,12 @@ use bough_typed_hash::TypedHashable;
 use crate::render::{MUTATION, RESET, Render, TITLE, WORKSPACE};
 
 pub struct StepUnapplyMutation {
-    pub workspace_id: bough_dirs::WorkspaceId,
+    pub workspace_id: bough_dirs::WorkId,
     pub mutation_hash: String,
 }
 
 impl StepUnapplyMutation {
-    pub fn run(
-        workspace: &mut bough_dirs::Workspace,
-    ) -> Result<Box<Self>, bough_dirs::Error> {
+    pub fn run(workspace: &mut bough_dirs::Work) -> Result<Box<Self>, bough_dirs::Error> {
         let mutation_hash = workspace
             .active()
             .map(|a| format!("{}", a.mutation().hash().expect("hash")))
@@ -59,7 +57,7 @@ mod tests {
 
     fn fixture() -> StepUnapplyMutation {
         StepUnapplyMutation {
-            workspace_id: bough_dirs::WorkspaceId::parse("aaaa1111").unwrap(),
+            workspace_id: bough_dirs::WorkId::parse("aaaa1111").unwrap(),
             mutation_hash: "abcdef12".to_string(),
         }
     }

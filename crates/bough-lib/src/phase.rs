@@ -95,9 +95,9 @@ impl<'a> Phase<'a, bough_dirs::Base> {
     }
 }
 
-impl<'a> Phase<'a, bough_dirs::Workspace> {
+impl<'a> Phase<'a, bough_dirs::Work> {
     pub fn new(
-        root: &'a bough_dirs::Workspace,
+        root: &'a bough_dirs::Work,
         pwd: Twig,
         env: HashMap<String, String>,
         cmd: Vec<String>,
@@ -302,7 +302,7 @@ pub fn run_phase_in_base(
 }
 
 pub fn run_phase_in_workspace(
-    root: &bough_dirs::Workspace,
+    root: &bough_dirs::Work,
     cmd: &str,
     pwd: std::path::PathBuf,
     env: HashMap<String, String>,
@@ -310,7 +310,7 @@ pub fn run_phase_in_workspace(
 ) -> Result<PhaseOutcome, Error> {
     let (twig, cmd_parts) = parse_cmd_and_pwd(cmd, pwd)?;
     let std_timeout = timeout.to_std().map_err(|_| Error::InvalidTimeout)?;
-    let phase = Phase::<bough_dirs::Workspace>::new(root, twig, env, cmd_parts, std_timeout);
+    let phase = Phase::<bough_dirs::Work>::new(root, twig, env, cmd_parts, std_timeout);
     phase.run()
 }
 

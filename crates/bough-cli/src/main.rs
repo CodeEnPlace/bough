@@ -106,7 +106,7 @@ fn main() {
                 config::Step::InitWorkspace { workspace_id } => {
                     let guard = session.lock().unwrap();
                     let wid =
-                        bough_dirs::WorkspaceId::parse(workspace_id).expect("invalid workspace id");
+                        bough_dirs::WorkId::parse(workspace_id).expect("invalid workspace id");
                     let workspace = guard.bind_workspace(&wid).expect("bind workspace");
                     step_init_workspace::StepInitWorkspace::run(&workspace, &cli.config, None)
                         .expect("init workspace")
@@ -115,7 +115,7 @@ fn main() {
                 config::Step::ResetWorkspace { workspace_id } => {
                     let guard = session.lock().unwrap();
                     let wid =
-                        bough_dirs::WorkspaceId::parse(workspace_id).expect("invalid workspace id");
+                        bough_dirs::WorkId::parse(workspace_id).expect("invalid workspace id");
                     let workspace = guard.bind_workspace(&wid).expect("bind workspace");
                     step_reset_workspace::StepResetWorkspace::run(&workspace, &cli.config, None)
                         .expect("reset workspace")
@@ -127,7 +127,7 @@ fn main() {
                 } => {
                     let guard = session.lock().unwrap();
                     let wid =
-                        bough_dirs::WorkspaceId::parse(workspace_id).expect("invalid workspace id");
+                        bough_dirs::WorkId::parse(workspace_id).expect("invalid workspace id");
                     let mutation = guard
                         .resolve_mutation(UnvalidatedHash::new(mutation_hash.to_string()))
                         .expect("resolve mutation");
@@ -142,7 +142,7 @@ fn main() {
                 } => {
                     let guard = session.lock().unwrap();
                     let wid =
-                        bough_dirs::WorkspaceId::parse(workspace_id).expect("invalid workspace id");
+                        bough_dirs::WorkId::parse(workspace_id).expect("invalid workspace id");
                     let mut workspace = guard.bind_workspace(&wid).expect("bind workspace");
                     step_unapply_mutation::StepUnapplyMutation::run(&mut workspace)
                         .expect("unapply mutation")
@@ -154,7 +154,7 @@ fn main() {
                 } => {
                     let mut guard = session.lock().unwrap();
                     let wid =
-                        bough_dirs::WorkspaceId::parse(workspace_id).expect("invalid workspace id");
+                        bough_dirs::WorkId::parse(workspace_id).expect("invalid workspace id");
                     let mutation = guard
                         .resolve_mutation(UnvalidatedHash::new(mutation_hash.to_string()))
                         .expect("resolve mutation");

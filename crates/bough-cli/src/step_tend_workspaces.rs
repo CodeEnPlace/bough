@@ -6,7 +6,7 @@ use crate::config::Config;
 use crate::render::{RESET, Render, TITLE, WORKSPACE};
 
 pub struct StepTendWorkspaces {
-    pub workspace_ids: Vec<bough_dirs::WorkspaceId>,
+    pub workspace_ids: Vec<bough_dirs::WorkId>,
 }
 
 impl StepTendWorkspaces {
@@ -65,13 +65,13 @@ impl Render for StepTendWorkspaces {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bough_dirs::WorkspaceId;
+    use bough_dirs::WorkId;
 
     fn fixture() -> StepTendWorkspaces {
         StepTendWorkspaces {
             workspace_ids: vec![
-                WorkspaceId::parse("aaaa1111").unwrap(),
-                WorkspaceId::parse("bbbb2222").unwrap(),
+                WorkId::parse("aaaa1111").unwrap(),
+                WorkId::parse("bbbb2222").unwrap(),
             ],
         }
     }
