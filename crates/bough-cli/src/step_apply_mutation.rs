@@ -3,15 +3,15 @@ use bough_typed_hash::TypedHashable;
 use crate::render::{MUTATION, RESET, Render, TITLE, WORKSPACE};
 
 pub struct StepApplyMutation {
-    pub workspace_id: bough_lib::WorkspaceId,
+    pub workspace_id: bough_dirs::WorkspaceId,
     pub mutation_hash: String,
 }
 
 impl StepApplyMutation {
     pub fn run(
-        workspace: &mut bough_lib::Workspace,
+        workspace: &mut bough_dirs::Workspace,
         mutation: &bough_core::Mutation,
-    ) -> Result<Box<Self>, bough_lib::WorkspaceError> {
+    ) -> Result<Box<Self>, bough_dirs::Error> {
         workspace.write_mutant(mutation)?;
         Ok(Box::new(Self {
             workspace_id: workspace.id().clone(),
@@ -56,7 +56,7 @@ mod tests {
 
     fn fixture() -> StepApplyMutation {
         StepApplyMutation {
-            workspace_id: bough_lib::WorkspaceId::parse("aaaa1111").unwrap(),
+            workspace_id: bough_dirs::WorkspaceId::parse("aaaa1111").unwrap(),
             mutation_hash: "abcdef12".to_string(),
         }
     }

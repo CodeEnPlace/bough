@@ -10,7 +10,6 @@ mod state;
 mod test_id;
 mod uncovered;
 
-pub use bough_dirs::{Base, Error as WorkspaceError, Workspace, WorkspaceId};
 pub use dirs_ops::{
     mutants, mutations, run_init_in_base, run_init_in_workspace, run_reset_in_base,
     run_reset_in_workspace, run_test_in_base, run_test_in_workspace,

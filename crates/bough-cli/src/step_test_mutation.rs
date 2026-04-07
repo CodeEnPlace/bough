@@ -4,7 +4,7 @@ use crate::config::Config;
 use crate::render::{MUTATION, RESET, Render, TITLE, WORKSPACE};
 
 pub struct StepTestMutation {
-    pub workspace_id: bough_lib::WorkspaceId,
+    pub workspace_id: bough_dirs::WorkspaceId,
     pub mutation_hash: String,
     pub status: &'static str,
     pub status_value: bough_lib::Status,
@@ -13,7 +13,7 @@ pub struct StepTestMutation {
 
 impl StepTestMutation {
     pub fn run(
-        workspace: &bough_lib::Workspace,
+        workspace: &bough_dirs::Workspace,
         config: &Config,
         mutation: &bough_core::Mutation,
         timeout: Option<chrono::Duration>,
@@ -85,7 +85,7 @@ mod tests {
 
     fn fixture() -> StepTestMutation {
         StepTestMutation {
-            workspace_id: bough_lib::WorkspaceId::parse("aaaa1111").unwrap(),
+            workspace_id: bough_dirs::WorkspaceId::parse("aaaa1111").unwrap(),
             mutation_hash: "abcdef12".to_string(),
             status: "caught",
             status_value: bough_lib::Status::Caught,

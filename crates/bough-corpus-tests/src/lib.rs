@@ -3,7 +3,7 @@ use bough_core::mutant::TwigMutantsIter;
 #[cfg(test)]
 use bough_core::{LanguageId, Mutation, MutationIter, Twig, TwigsIterBuilder};
 #[cfg(test)]
-use bough_lib::Base;
+use bough_dirs::Base;
 #[cfg(test)]
 use sha2::{Digest, Sha256};
 #[cfg(test)]

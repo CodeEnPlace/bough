@@ -454,6 +454,7 @@ version = "0.0.2"
 dependencies = [
  "bough-config",
  "bough-core",
+ "bough-dirs",
  "bough-lang-javascript",
  "bough-lang-typescript",
  "bough-lib",
@@ -513,6 +514,7 @@ name = "bough-corpus-tests"
 version = "0.0.2"
 dependencies = [
  "bough-core",
+ "bough-dirs",
  "bough-lib",
  "facet-json",
  "hex",

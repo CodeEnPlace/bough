@@ -2,13 +2,13 @@ use crate::config::Config;
 use crate::render::{RESET, Render, TITLE, WORKSPACE};
 
 pub struct StepResetWorkspace {
-    pub workspace_id: bough_lib::WorkspaceId,
+    pub workspace_id: bough_dirs::WorkspaceId,
     pub outcome: bough_lib::PhaseOutcome,
 }
 
 impl StepResetWorkspace {
     pub fn run(
-        workspace: &bough_lib::Workspace,
+        workspace: &bough_dirs::Workspace,
         config: &Config,
         timeout: Option<chrono::Duration>,
     ) -> Result<Box<Self>, bough_lib::PhaseError> {
@@ -57,7 +57,8 @@ impl Render for StepResetWorkspace {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bough_lib::{PhaseOutcome, WorkspaceId};
+    use bough_dirs::WorkspaceId;
+    use bough_lib::PhaseOutcome;
 
     fn fixture() -> StepResetWorkspace {
         StepResetWorkspace {

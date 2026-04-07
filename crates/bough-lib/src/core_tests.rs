@@ -10,7 +10,7 @@ mod mutant_tests {
     use bough_typed_hash::{HashInto, TypedHashable};
     use bough_fs::{Root, Twig};
     use bough_core::TwigsIterBuilder;
-    use crate::Base;
+    use bough_dirs::Base;
     use std::path::PathBuf;
 
     fn make_base() -> (tempfile::TempDir, Base) {
@@ -731,7 +731,7 @@ mod mutation_tests {
     use bough_typed_hash::{HashInto, TypedHashable};
     use bough_fs::Twig;
     use bough_core::TwigsIterBuilder;
-    use crate::Base;
+    use bough_dirs::Base;
     use std::path::PathBuf;
 
     fn make_base() -> (tempfile::TempDir, Base) {

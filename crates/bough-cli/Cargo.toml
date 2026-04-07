@@ -17,6 +17,7 @@ pprof = ["dep:pprof"]
 [dependencies]
 bough-config = { workspace = true }
 bough-core = { workspace = true }
+bough-dirs = { workspace = true }
 bough-lib = { workspace = true }
 bough-typed-hash = { workspace = true }
 facet = { version = "0.44", features = ["doc"] }
