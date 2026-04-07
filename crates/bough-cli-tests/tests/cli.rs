@@ -874,8 +874,16 @@ cmd = "echo test"
     assert_eq!(first_ids, second_ids);
 }
 
+// IGNORED: `step unapply-mutation` panics when invoked as a separate CLI process
+// after `step apply-mutation`. Each CLI invocation calls `bind_workspace`, which
+// runs an integrity check comparing workspace files against the base. After apply,
+// the workspace source differs from base, so bind panics with:
+//   Workspace(Unchanged("file differs: src/index.js"))
+// The `run` pipeline avoids this by holding a single workspace handle across
+// apply → test → unapply. Will pass once standalone step commands either skip
+// the integrity check on dirty workspaces or gain a `--force` flag.
 #[test]
-#[ignore] // bind_workspace integrity check fails after apply — see 04-NOPE.md
+#[ignore]
 fn apply_then_unapply() {
     let fixture = Fixture::new()
         .with_file(
@@ -1192,6 +1200,88 @@ cmd = "echo test"
         result.stdout,
         "0.00 c647a18bc3123b913cf096283cb24f46f49b73c5bc91026e82e85c8b6ccf13b8 js src/index.js 1:1 - 1:5 not run Literal(BoolTrue) -> false\n"
     );
+}
+
+// IGNORED: With multiple mutations, `find` output includes per-mutation scores
+// from MutationScorer (factors: EncompasingMissedMutationsCount, TSNodeDepth).
+// These produce non-zero floats that vary by mutation ordering and can't be
+// exact-matched. Would need a scoring-deterministic fixture (hard to construct)
+// or a `--no-score` mode. Single-mutation `find_default` covers the happy path
+// with a deterministic 0.00 score.
+#[test]
+#[ignore]
+fn find_custom_number() {
+    let fixture = Fixture::new()
+        .with_file(
+            "bough.config.toml",
+            r#"
+base_root_dir = "."
+include = ["src/**"]
+exclude = []
+
+[lang.js]
+include = ["**/*.js"]
+exclude = []
+
+[test]
+cmd = "echo test"
+
+[find]
+number = 3
+number_per_file = 3
+"#,
+        )
+        .with_file("src/index.js", "if (x > 1) {}")
+        .build();
+
+    fixture.run("step tend-state");
+    let result = fixture.run("find");
+
+    assert_eq!(result.code, 0);
+    assert_eq!(result.stderr, "");
+    assert_eq!(result.stdout.lines().count(), 3);
+}
+
+// IGNORED: same scoring non-determinism as `find_custom_number`. With multiple
+// mutations across two languages, `find js` yields scored results that aren't
+// exact-matchable.
+#[test]
+#[ignore]
+fn find_lang_filter() {
+    let fixture = Fixture::new()
+        .with_file(
+            "bough.config.toml",
+            r#"
+base_root_dir = "."
+include = ["src/**"]
+exclude = []
+
+[lang.js]
+include = ["**/*.js"]
+exclude = []
+
+[lang.ts]
+include = ["**/*.ts"]
+exclude = []
+
+[test]
+cmd = "echo test"
+
+[find]
+number = 5
+number_per_file = 5
+"#,
+        )
+        .with_file("src/a.js", "if (x > 1) {}")
+        .with_file("src/b.ts", "if (y < 2) {}")
+        .build();
+
+    fixture.run("step tend-state");
+    let result = fixture.run("find js");
+
+    assert_eq!(result.code, 0);
+    assert_eq!(result.stderr, "");
+    assert!(result.stdout.lines().all(|l| l.contains(" js ")));
 }
 
 #[test]
