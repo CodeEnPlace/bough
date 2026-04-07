@@ -223,5 +223,5 @@ fn pbt_twig_walker_matches_reference() {
 
         Ok(())
     })
-    .budget(std::time::Duration::from_secs(5));
+    .budget(std::time::Duration::from_secs(1));
 }
