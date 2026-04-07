@@ -12,7 +12,7 @@ impl StepInitWorkspace {
         config: &Config,
         timeout: Option<chrono::Duration>,
     ) -> Result<Box<Self>, bough_lib::PhaseError> {
-        let outcome = workspace.run_init(config, timeout)?;
+        let outcome = bough_lib::run_init_in_workspace(workspace, config, timeout)?;
         Ok(Box::new(Self {
             workspace_id: workspace.id().clone(),
             outcome,

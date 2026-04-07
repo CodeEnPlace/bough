@@ -18,7 +18,7 @@ impl StepTestMutation {
         mutation: &bough_core::Mutation,
         timeout: Option<chrono::Duration>,
     ) -> Result<Box<Self>, bough_lib::PhaseError> {
-        let outcome = workspace.run_test(config, timeout)?;
+        let outcome = bough_lib::run_test_in_workspace(workspace, config, timeout)?;
         let duration = outcome.duration();
         let (status_value, status_str) = match outcome {
             bough_lib::PhaseOutcome::TimedOut { .. } => (bough_lib::Status::Timeout, "timeout"),

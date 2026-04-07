@@ -15,9 +15,8 @@ use crate::{
     Factor, Status,
     facet_disk_store::FacetDiskStore,
     state::State,
-    workspace::{Workspace, WorkspaceId},
 };
-use bough_dirs::Base;
+use bough_dirs::{Base, Workspace, WorkspaceId};
 
 pub trait Config {
     fn get_workers_count(&self) -> u64;
@@ -56,7 +55,7 @@ pub trait Config {
 pub enum Error {
     File(bough_fs::Error),
     Io(std::io::Error),
-    Workspace(crate::workspace::Error),
+    Workspace(bough_dirs::Error),
     Phase(crate::phase::Error),
     NoCmdConfigured,
     AbsolutePwd(PathBuf),
@@ -378,8 +377,8 @@ impl From<std::io::Error> for Error {
     }
 }
 
-impl From<crate::workspace::Error> for Error {
-    fn from(e: crate::workspace::Error) -> Self {
+impl From<bough_dirs::Error> for Error {
+    fn from(e: bough_dirs::Error) -> Self {
         Error::Workspace(e)
     }
 }
@@ -975,7 +974,7 @@ mod tests {
         let mut session = Session::new(config.clone()).unwrap();
         let ids = session.tend_workspaces(1).unwrap();
         let workspace = session.bind_dirty_workspace(&ids[0]);
-        let outcome = workspace.run_test(&config, None).unwrap();
+        let outcome = crate::run_test_in_workspace(&workspace, &config, None).unwrap();
         let out = String::from_utf8_lossy(outcome.stdout());
         assert!(
             out.trim().contains(ids[0].as_str()),
@@ -993,7 +992,7 @@ mod tests {
         let mut session = Session::new(config.clone()).unwrap();
         let ids = session.tend_workspaces(1).unwrap();
         let workspace = session.bind_dirty_workspace(&ids[0]);
-        let outcome = workspace.run_test(&config, None).unwrap();
+        let outcome = crate::run_test_in_workspace(&workspace, &config, None).unwrap();
         let out = String::from_utf8_lossy(outcome.stdout());
         assert!(
             out.trim().ends_with("src"),
@@ -1014,7 +1013,7 @@ mod tests {
         let mut session = Session::new(config.clone()).unwrap();
         let ids = session.tend_workspaces(1).unwrap();
         let workspace = session.bind_workspace(&ids[0]).unwrap();
-        let outcome = workspace.run_init(&config, None).unwrap();
+        let outcome = crate::run_init_in_workspace(&workspace, &config, None).unwrap();
         assert!(matches!(
             outcome,
             crate::phase::PhaseOutcome::Completed { exit_code: 0, .. }
@@ -1033,7 +1032,7 @@ mod tests {
         let mut session = Session::new(config.clone()).unwrap();
         let ids = session.tend_workspaces(1).unwrap();
         let workspace = session.bind_workspace(&ids[0]).unwrap();
-        let result = workspace.run_init(&config, None);
+        let result = crate::run_init_in_workspace(&workspace, &config, None);
         assert!(matches!(result, Err(crate::phase::Error::NoCmdConfigured)));
     }
 
@@ -1046,7 +1045,7 @@ mod tests {
         let mut session = Session::new(config.clone()).unwrap();
         let ids = session.tend_workspaces(1).unwrap();
         let workspace = session.bind_workspace(&ids[0]).unwrap();
-        let outcome = workspace.run_reset(&config, None).unwrap();
+        let outcome = crate::run_reset_in_workspace(&workspace, &config, None).unwrap();
         assert!(matches!(
             outcome,
             crate::phase::PhaseOutcome::Completed { exit_code: 0, .. }
@@ -1065,7 +1064,7 @@ mod tests {
         let mut session = Session::new(config.clone()).unwrap();
         let ids = session.tend_workspaces(1).unwrap();
         let workspace = session.bind_workspace(&ids[0]).unwrap();
-        let result = workspace.run_reset(&config, None);
+        let result = crate::run_reset_in_workspace(&workspace, &config, None);
         assert!(matches!(result, Err(crate::phase::Error::NoCmdConfigured)));
     }
 

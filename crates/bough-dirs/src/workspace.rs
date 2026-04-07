@@ -1,4 +1,4 @@
-use bough_dirs::Base;
+use crate::base::Base;
 use bough_core::{Mutant, Mutation};
 use bough_fs::{File, Root, Twig};
 use bough_typed_hash::TypedHashable;
@@ -103,8 +103,8 @@ pub struct Workspace {
     active: Option<ActiveMutation>,
 }
 
-/// Workspace is meant for actiing in a workspace directory, and to act as a handle for it
-/// It's not for storing state or making decitions, that's [Session]'s job
+/// Workspace is meant for acting in a workspace directory, and to act as a handle for it.
+/// It's not for storing state or making decisions — that's `Session`'s job.
 impl Workspace {
     pub fn new(dir: PathBuf, base: Arc<Base>) -> Result<Self, Error> {
         let id = WorkspaceId::generate();
@@ -175,7 +175,7 @@ impl Workspace {
         }
         debug!(
             workspace = %self.id,
-            mutant = format!("{}",mutation.hash().unwrap()),
+            mutant = format!("{}", mutation.hash().unwrap()),
             "writing mutant to workspace"
         );
         let mutant = mutation.mutant();
@@ -234,56 +234,6 @@ impl Workspace {
             }
         }
         Ok(())
-    }
-}
-
-impl Workspace {
-    pub fn run_test(
-        &self,
-        config: &impl crate::session::Config,
-        reference_duration: Option<chrono::Duration>,
-    ) -> Result<crate::phase::PhaseOutcome, crate::phase::Error> {
-        crate::phase::run_phase_in_workspace(
-            self,
-            &config.get_test_cmd(),
-            config.get_test_pwd(),
-            config.get_test_env(),
-            config.get_test_timeout(reference_duration),
-        )
-    }
-
-    pub fn run_init(
-        &self,
-        config: &impl crate::session::Config,
-        reference_duration: Option<chrono::Duration>,
-    ) -> Result<crate::phase::PhaseOutcome, crate::phase::Error> {
-        let cmd = config
-            .get_init_cmd()
-            .ok_or(crate::phase::Error::NoCmdConfigured)?;
-        crate::phase::run_phase_in_workspace(
-            self,
-            &cmd,
-            config.get_init_pwd(),
-            config.get_init_env(),
-            config.get_init_timeout(reference_duration),
-        )
-    }
-
-    pub fn run_reset(
-        &self,
-        config: &impl crate::session::Config,
-        reference_duration: Option<chrono::Duration>,
-    ) -> Result<crate::phase::PhaseOutcome, crate::phase::Error> {
-        let cmd = config
-            .get_reset_cmd()
-            .ok_or(crate::phase::Error::NoCmdConfigured)?;
-        crate::phase::run_phase_in_workspace(
-            self,
-            &cmd,
-            config.get_reset_pwd(),
-            config.get_reset_env(),
-            config.get_reset_timeout(reference_duration),
-        )
     }
 }
 
@@ -456,8 +406,8 @@ mod tests {
     }
 
     use bough_core::LanguageId;
-    use bough_core::mutant::{BinaryOpMutationKind, Mutant, MutantKind, Point, Span};
     use bough_core::Mutation;
+    use bough_core::mutant::{BinaryOpMutationKind, Mutant, MutantKind, Point, Span};
     use bough_fs::Twig;
 
     fn make_js_base(content: &str) -> (tempfile::TempDir, Arc<Base>) {

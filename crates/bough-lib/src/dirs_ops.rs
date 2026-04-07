@@ -1,6 +1,6 @@
 use bough_core::mutant::TwigMutantsIter;
 use bough_core::{Mutant, Mutation, MutationIter};
-use bough_dirs::Base;
+use bough_dirs::{Base, Workspace};
 use tracing::{trace, warn};
 
 pub fn mutants(base: &Base) -> impl Iterator<Item = std::io::Result<Mutant>> + '_ {
@@ -84,5 +84,53 @@ pub fn run_reset_in_base(
         config.get_reset_pwd(),
         config.get_reset_env(),
         Some(config.get_reset_timeout(reference_duration)),
+    )
+}
+
+pub fn run_test_in_workspace(
+    workspace: &Workspace,
+    config: &impl crate::session::Config,
+    reference_duration: Option<chrono::Duration>,
+) -> Result<crate::phase::PhaseOutcome, crate::phase::Error> {
+    crate::phase::run_phase_in_workspace(
+        workspace,
+        &config.get_test_cmd(),
+        config.get_test_pwd(),
+        config.get_test_env(),
+        config.get_test_timeout(reference_duration),
+    )
+}
+
+pub fn run_init_in_workspace(
+    workspace: &Workspace,
+    config: &impl crate::session::Config,
+    reference_duration: Option<chrono::Duration>,
+) -> Result<crate::phase::PhaseOutcome, crate::phase::Error> {
+    let cmd = config
+        .get_init_cmd()
+        .ok_or(crate::phase::Error::NoCmdConfigured)?;
+    crate::phase::run_phase_in_workspace(
+        workspace,
+        &cmd,
+        config.get_init_pwd(),
+        config.get_init_env(),
+        config.get_init_timeout(reference_duration),
+    )
+}
+
+pub fn run_reset_in_workspace(
+    workspace: &Workspace,
+    config: &impl crate::session::Config,
+    reference_duration: Option<chrono::Duration>,
+) -> Result<crate::phase::PhaseOutcome, crate::phase::Error> {
+    let cmd = config
+        .get_reset_cmd()
+        .ok_or(crate::phase::Error::NoCmdConfigured)?;
+    crate::phase::run_phase_in_workspace(
+        workspace,
+        &cmd,
+        config.get_reset_pwd(),
+        config.get_reset_env(),
+        config.get_reset_timeout(reference_duration),
     )
 }
