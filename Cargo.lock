@@ -703,6 +703,7 @@ version = "0.0.2"
 dependencies = [
  "arborium-tree-sitter",
  "bough-core",
+ "bough-dirs",
  "bough-fs",
  "bough-lang-c",
  "bough-lang-cpp",

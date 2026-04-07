@@ -77,9 +77,9 @@ pub struct Phase<'a, R: Root> {
     timeout: Option<Duration>,
 }
 
-impl<'a> Phase<'a, crate::base::Base> {
+impl<'a> Phase<'a, bough_dirs::Base> {
     pub fn new(
-        root: &'a crate::base::Base,
+        root: &'a bough_dirs::Base,
         pwd: Twig,
         env: HashMap<String, String>,
         cmd: Vec<String>,
@@ -287,7 +287,7 @@ fn parse_cmd_and_pwd(cmd: &str, pwd: std::path::PathBuf) -> Result<(Twig, Vec<St
 }
 
 pub fn run_phase_in_base(
-    root: &crate::base::Base,
+    root: &bough_dirs::Base,
     cmd: &str,
     pwd: std::path::PathBuf,
     env: HashMap<String, String>,
@@ -297,7 +297,7 @@ pub fn run_phase_in_base(
     let std_timeout = timeout
         .map(|d| d.to_std().map_err(|_| Error::InvalidTimeout))
         .transpose()?;
-    let phase = Phase::<crate::base::Base>::new(root, twig, env, cmd_parts, std_timeout);
+    let phase = Phase::<bough_dirs::Base>::new(root, twig, env, cmd_parts, std_timeout);
     phase.run()
 }
 

@@ -20,8 +20,7 @@ impl ShowFileMutations {
     ) -> Box<Self> {
         session.tend_add_missing_states().expect("tend states");
         let base = session.base();
-        let mutations: Vec<_> = base
-            .mutations()
+        let mutations: Vec<_> = bough_lib::mutations(base)
             .collect::<Result<Vec<_>, _>>()
             .expect("mutation scan")
             .into_iter()

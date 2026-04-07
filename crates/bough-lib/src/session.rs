@@ -13,11 +13,11 @@ use bough_core::TwigsIterBuilder;
 
 use crate::{
     Factor, Status,
-    base::Base,
     facet_disk_store::FacetDiskStore,
     state::State,
     workspace::{Workspace, WorkspaceId},
 };
+use bough_dirs::Base;
 
 pub trait Config {
     fn get_workers_count(&self) -> u64;
@@ -121,7 +121,8 @@ impl<C: Config> Session<C> {
         &self,
         unvalidated: bough_typed_hash::UnvalidatedHash,
     ) -> Result<Mutation, Error> {
-        let mutations: Vec<Mutation> = self.base.mutations().collect::<Result<_, _>>()?;
+        let mutations: Vec<Mutation> =
+            crate::mutations(&self.base).collect::<Result<_, _>>()?;
         let hashes: Vec<MutationHash> = mutations.iter().map(|m| m.hash().expect("hash")).collect();
         let matched = unvalidated
             .validate(&hashes)
@@ -160,7 +161,7 @@ impl<C: Config> Session<C> {
 
     pub fn tend_add_missing_states(&mut self) -> Result<Vec<MutationHash>, Error> {
         let mutations_in_base: HashSet<Mutation> =
-            self.base.mutations().collect::<Result<_, _>>()?;
+            crate::mutations(&self.base).collect::<Result<_, _>>()?;
         let mut added = Vec::new();
 
         for mutation in &mutations_in_base {
@@ -181,7 +182,7 @@ impl<C: Config> Session<C> {
 
     pub fn tend_remove_stale_states(&mut self) -> Result<Vec<MutationHash>, Error> {
         let mutations_in_base: HashSet<Mutation> =
-            self.base.mutations().collect::<Result<_, _>>()?;
+            crate::mutations(&self.base).collect::<Result<_, _>>()?;
         let hashes_in_base: HashSet<MutationHash> = mutations_in_base
             .iter()
             .map(|m| m.hash().expect("hashing should not fail"))
@@ -834,7 +835,7 @@ mod tests {
 
         std::fs::remove_file(dir.path().join("src/b.js")).unwrap();
         session.base = Arc::new(
-            crate::base::Base::new(
+            bough_dirs::Base::new(
                 dir.path().to_path_buf(),
                 bough_core::TwigsIterBuilder::new().with_include_glob("src/**/*.js"),
             )
@@ -871,7 +872,7 @@ mod tests {
         let mut config = make_js_config(dir.path());
         config.test_cmd = "echo hello".to_string();
         let session = Session::new(config.clone()).unwrap();
-        let outcome = session.base().run_test(&config, None).unwrap();
+        let outcome = crate::run_test_in_base(session.base(), &config, None).unwrap();
         assert!(matches!(
             outcome,
             crate::phase::PhaseOutcome::Completed { exit_code: 0, .. }
@@ -888,7 +889,7 @@ mod tests {
         config.test_cmd = "pwd".to_string();
         config.test_pwd = PathBuf::from("src");
         let session = Session::new(config.clone()).unwrap();
-        let outcome = session.base().run_test(&config, None).unwrap();
+        let outcome = crate::run_test_in_base(session.base(), &config, None).unwrap();
         let out = String::from_utf8_lossy(outcome.stdout());
         assert!(
             out.trim().ends_with("src"),
@@ -902,7 +903,7 @@ mod tests {
         let mut config = make_js_config(dir.path());
         config.test_pwd = PathBuf::from("/absolute/path");
         let session = Session::new(config.clone()).unwrap();
-        let result = session.base().run_test(&config, None);
+        let result = crate::run_test_in_base(session.base(), &config, None);
         assert!(matches!(result, Err(crate::phase::Error::AbsolutePwd(_))));
     }
 
@@ -912,7 +913,7 @@ mod tests {
         let mut config = make_js_config(dir.path());
         config.test_cmd = "false".to_string();
         let session = Session::new(config.clone()).unwrap();
-        let outcome = session.base().run_test(&config, None).unwrap();
+        let outcome = crate::run_test_in_base(session.base(), &config, None).unwrap();
         assert!(matches!(
             outcome,
             crate::phase::PhaseOutcome::Completed { exit_code: 1, .. }
@@ -925,7 +926,7 @@ mod tests {
         let mut config = make_js_config(dir.path());
         config.init_cmd = Some("echo init".to_string());
         let session = Session::new(config.clone()).unwrap();
-        let outcome = session.base().run_init(&config, None).unwrap();
+        let outcome = crate::run_init_in_base(session.base(), &config, None).unwrap();
         assert!(matches!(
             outcome,
             crate::phase::PhaseOutcome::Completed { exit_code: 0, .. }
@@ -938,7 +939,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let config = make_js_config(dir.path());
         let session = Session::new(config.clone()).unwrap();
-        let result = session.base().run_init(&config, None);
+        let result = crate::run_init_in_base(session.base(), &config, None);
         assert!(matches!(result, Err(crate::phase::Error::NoCmdConfigured)));
     }
 
@@ -948,7 +949,7 @@ mod tests {
         let mut config = make_js_config(dir.path());
         config.reset_cmd = Some("echo reset".to_string());
         let session = Session::new(config.clone()).unwrap();
-        let outcome = session.base().run_reset(&config, None).unwrap();
+        let outcome = crate::run_reset_in_base(session.base(), &config, None).unwrap();
         assert!(matches!(
             outcome,
             crate::phase::PhaseOutcome::Completed { exit_code: 0, .. }
@@ -961,7 +962,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let config = make_js_config(dir.path());
         let session = Session::new(config.clone()).unwrap();
-        let result = session.base().run_reset(&config, None);
+        let result = crate::run_reset_in_base(session.base(), &config, None);
         assert!(matches!(result, Err(crate::phase::Error::NoCmdConfigured)));
     }
 
@@ -1074,7 +1075,7 @@ mod tests {
         let mut config = make_js_config(dir.path());
         config.test_cmd = "echo one two three".to_string();
         let session = Session::new(config.clone()).unwrap();
-        let outcome = session.base().run_test(&config, None).unwrap();
+        let outcome = crate::run_test_in_base(session.base(), &config, None).unwrap();
         assert_eq!(
             String::from_utf8_lossy(outcome.stdout()).trim(),
             "one two three"
@@ -1087,7 +1088,7 @@ mod tests {
         let mut config = make_js_config(dir.path());
         config.test_cmd = "pwd".to_string();
         let session = Session::new(config.clone()).unwrap();
-        let outcome = session.base().run_test(&config, None).unwrap();
+        let outcome = crate::run_test_in_base(session.base(), &config, None).unwrap();
         let out = String::from_utf8_lossy(outcome.stdout());
         let actual = PathBuf::from(out.trim()).canonicalize().unwrap();
         let expected = dir.path().canonicalize().unwrap();
@@ -1103,7 +1104,7 @@ mod tests {
         let mut session = Session::new(config).unwrap();
         session.tend_add_missing_states().unwrap();
 
-        let mutation: Mutation = session.base().mutations().next().unwrap().unwrap();
+        let mutation: Mutation = crate::mutations(session.base()).next().unwrap().unwrap();
         let hash = mutation.hash().unwrap();
         session
             .set_state(&mutation, crate::state::Status::Missed)
@@ -1123,7 +1124,7 @@ mod tests {
         let mut session = Session::new(config).unwrap();
         session.tend_add_missing_states().unwrap();
 
-        let mutation: Mutation = session.base().mutations().next().unwrap().unwrap();
+        let mutation: Mutation = crate::mutations(session.base()).next().unwrap().unwrap();
         let hash = mutation.hash().unwrap();
         session
             .set_state(&mutation, crate::state::Status::Caught)
@@ -1146,7 +1147,7 @@ mod tests {
         session.tend_add_missing_states().unwrap();
 
         let before = chrono::Utc::now() - chrono::Duration::seconds(1);
-        let mutation: Mutation = session.base().mutations().next().unwrap().unwrap();
+        let mutation: Mutation = crate::mutations(session.base()).next().unwrap().unwrap();
         let hash = mutation.hash().unwrap();
         session
             .set_state(&mutation, crate::state::Status::Missed)
@@ -1170,7 +1171,7 @@ mod tests {
         let mut session = Session::new(config).unwrap();
         session.tend_add_missing_states().unwrap();
 
-        let mutation: Mutation = session.base().mutations().next().unwrap().unwrap();
+        let mutation: Mutation = crate::mutations(session.base()).next().unwrap().unwrap();
         let hash = mutation.hash().unwrap();
         session
             .set_state(&mutation, crate::state::Status::Missed)
@@ -1205,7 +1206,7 @@ mod tests {
         let mut session = Session::new(config).unwrap();
         session.tend_add_missing_states().unwrap();
 
-        let mutation: Mutation = session.base().mutations().next().unwrap().unwrap();
+        let mutation: Mutation = crate::mutations(session.base()).next().unwrap().unwrap();
         let hash = mutation.hash().unwrap();
         session
             .set_state(&mutation, crate::state::Status::Missed)
@@ -1240,7 +1241,7 @@ mod tests {
         let mut session = Session::new(config).unwrap();
         session.tend_add_missing_states().unwrap();
 
-        let mutation: Mutation = session.base().mutations().next().unwrap().unwrap();
+        let mutation: Mutation = crate::mutations(session.base()).next().unwrap().unwrap();
         let hash = mutation.hash().unwrap();
         session
             .set_state(&mutation, crate::state::Status::Caught)
@@ -1344,7 +1345,7 @@ mod tests {
         session.tend_add_missing_states().unwrap();
         let total_before = session.get_count_mutation_needing_test();
 
-        let mutation: Mutation = session.base().mutations().next().unwrap().unwrap();
+        let mutation: Mutation = crate::mutations(session.base()).next().unwrap().unwrap();
         session
             .set_state(&mutation, crate::state::Status::Caught)
             .unwrap();

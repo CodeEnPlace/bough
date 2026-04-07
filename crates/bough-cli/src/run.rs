@@ -29,7 +29,7 @@ impl Run {
             let mut guard = session.lock().unwrap();
             let base = guard.base();
 
-            let init_duration = match base.run_init(&cli.config, None) {
+            let init_duration = match bough_lib::run_init_in_base(base, &cli.config, None) {
                 Ok(bough_lib::PhaseOutcome::Completed {
                     exit_code,
                     duration,
@@ -52,7 +52,7 @@ impl Run {
                 }
             };
 
-            let reset_duration = match base.run_reset(&cli.config, None) {
+            let reset_duration = match bough_lib::run_reset_in_base(base, &cli.config, None) {
                 Ok(bough_lib::PhaseOutcome::Completed {
                     exit_code,
                     duration,
@@ -75,8 +75,7 @@ impl Run {
                 }
             };
 
-            let test_outcome = base
-                .run_test(&cli.config, None)
+            let test_outcome = bough_lib::run_test_in_base(base, &cli.config, None)
                 .expect("base test execution");
             match &test_outcome {
                 bough_lib::PhaseOutcome::Completed { exit_code, .. } if *exit_code != 0 => {

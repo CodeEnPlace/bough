@@ -4,7 +4,7 @@ use facet::Facet;
 
 use crate::language::driver_for_lang;
 use bough_core::Mutation;
-use crate::base::Base;
+use bough_dirs::Base;
 
 #[derive(Facet, Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
@@ -143,7 +143,7 @@ mod tests {
 
         fn make_scorer(min: u64, max: u64) -> MutationScorer {
             let base = Arc::new(
-                crate::base::Base::new(std::env::temp_dir(), bough_core::TwigsIterBuilder::new())
+                bough_dirs::Base::new(std::env::temp_dir(), bough_core::TwigsIterBuilder::new())
                     .unwrap(),
             );
             MutationScorer {
@@ -240,11 +240,11 @@ mod tests {
         use bough_core::TwigsIterBuilder;
         use std::path::PathBuf;
 
-        fn make_js_base(content: &str) -> (tempfile::TempDir, crate::base::Base) {
+        fn make_js_base(content: &str) -> (tempfile::TempDir, bough_dirs::Base) {
             let dir = tempfile::tempdir().unwrap();
             std::fs::create_dir_all(dir.path().join("src")).unwrap();
             std::fs::write(dir.path().join("src/a.js"), content).unwrap();
-            let base = crate::base::Base::new(
+            let base = bough_dirs::Base::new(
                 dir.path().to_path_buf(),
                 TwigsIterBuilder::new().with_include_glob("src/**/*.js"),
             )
@@ -252,7 +252,7 @@ mod tests {
             (dir, base)
         }
 
-        fn score_all(base: &crate::base::Base) -> Vec<(MutantKind, u64)> {
+        fn score_all(base: &bough_dirs::Base) -> Vec<(MutantKind, u64)> {
             let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
             let mut scorer = MutationScorer::new(Arc::new(base.clone()), Factor::TSNodeDepth);
             TwigMutantsIter::new(LanguageId::Javascript, base, &twig, Box::new(bough_lang_javascript::JavascriptDriver))
@@ -339,11 +339,11 @@ mod tests {
         use bough_core::TwigsIterBuilder;
         use std::path::PathBuf;
 
-        fn make_js_base(content: &str) -> (tempfile::TempDir, crate::base::Base) {
+        fn make_js_base(content: &str) -> (tempfile::TempDir, bough_dirs::Base) {
             let dir = tempfile::tempdir().unwrap();
             std::fs::create_dir_all(dir.path().join("src")).unwrap();
             std::fs::write(dir.path().join("src/a.js"), content).unwrap();
-            let base = crate::base::Base::new(
+            let base = bough_dirs::Base::new(
                 dir.path().to_path_buf(),
                 TwigsIterBuilder::new().with_include_glob("src/**/*.js"),
             )
@@ -351,7 +351,7 @@ mod tests {
             (dir, base)
         }
 
-        fn all_mutations(base: &crate::base::Base) -> Vec<Mutation> {
+        fn all_mutations(base: &bough_dirs::Base) -> Vec<Mutation> {
             let twig = Twig::new(PathBuf::from("src/a.js")).unwrap();
             TwigMutantsIter::new(LanguageId::Javascript, base, &twig, Box::new(bough_lang_javascript::JavascriptDriver))
                 .unwrap()
@@ -379,7 +379,7 @@ mod tests {
             state
         }
 
-        fn make_scorer(base: &crate::base::Base) -> MutationScorer {
+        fn make_scorer(base: &bough_dirs::Base) -> MutationScorer {
             MutationScorer {
                 base: Arc::new(base.clone()),
                 factor: Factor::EncompasingMissedMutationsCount,

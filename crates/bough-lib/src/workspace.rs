@@ -1,4 +1,4 @@
-use crate::base::Base;
+use bough_dirs::Base;
 use bough_core::{Mutant, Mutation};
 use bough_fs::{File, Root, Twig};
 use bough_typed_hash::TypedHashable;
