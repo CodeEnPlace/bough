@@ -30,7 +30,7 @@ jobs:
       - name: Compile
         run: |
           cargo test --workspace --no-run --locked
-          cargo build -p bough-core --bin bough-test-helper --locked
+          cargo build -p bough-lib --bin bough-test-helper --locked
 
       - name: Test
         run: cargo nextest run --workspace --locked --profile ci
