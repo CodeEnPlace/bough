@@ -18,7 +18,13 @@ pub fn mutants(
     base: &Base,
     config: &impl SessionConfig,
 ) -> Vec<std::io::Result<Mutant>> {
-    let twigs: Vec<_> = base.mutant_twigs().collect();
+    let mut twigs: Vec<_> = base.mutant_twigs().collect();
+    // LPT scheduling: process largest files first so they start on fresh threads
+    // rather than ending up as stragglers that stretch wall time.
+    twigs.sort_by_cached_key(|(_, twig)| {
+        let path = bough_fs::File::new(base, twig).resolve();
+        std::cmp::Reverse(std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0))
+    });
     let num_twigs = twigs.len();
     let pool = rayon_pool(config);
     let threads = pool.current_num_threads();
@@ -29,6 +35,8 @@ pub fn mutants(
     let result: Vec<_> = pool.install(|| {
         twigs
             .par_iter()
+            .with_min_len(1)
+            .with_max_len(1)
             .flat_map(|(language_id, twig)| {
                 let t0 = Instant::now();
                 trace!(lang = ?language_id, twig = %twig.path().display(), "scanning twig for mutants");
