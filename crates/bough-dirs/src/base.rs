@@ -1,14 +1,14 @@
 use bough_core::{LanguageId, TwigsIterBuilder};
 use bough_fs::{Error, Root, Twig};
-use std::collections::HashMap;
+use std::collections::{BTreeSet, HashMap};
 use std::path::{Path, PathBuf};
 use tracing::debug;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Base {
     root: PathBuf,
-    files: TwigsIterBuilder,
-    mutant_files: HashMap<LanguageId, (TwigsIterBuilder, Vec<String>)>,
+    files: BTreeSet<Twig>,
+    mutant_files: HashMap<LanguageId, (BTreeSet<Twig>, Vec<String>)>,
 }
 
 /// Base is meant for *scanning* the base directory, and to act as a handle for it.
@@ -17,11 +17,13 @@ impl Base {
     pub fn new(root: PathBuf, files: TwigsIterBuilder) -> Result<Self, Error> {
         bough_fs::validate_root(&root)?;
         debug!(root = %root.display(), "created base");
-        Ok(Self {
+        let mut base = Self {
             root,
-            files,
+            files: BTreeSet::new(),
             mutant_files: HashMap::new(),
-        })
+        };
+        base.files = files.build(&base).collect();
+        Ok(base)
     }
 
     pub fn add_mutator(
@@ -31,21 +33,19 @@ impl Base {
         skip_queries: Vec<String>,
     ) {
         debug!(lang = ?language_id, skip_queries = ?skip_queries, "added mutator");
-        self.mutant_files.insert(language_id, (files, skip_queries));
+        let twigs: BTreeSet<Twig> = files.build(self).collect();
+        self.mutant_files.insert(language_id, (twigs, skip_queries));
     }
 
     pub fn twigs<'a>(&'a self) -> impl Iterator<Item = Twig> + 'a {
-        self.files.clone().build(self)
+        self.files.iter().cloned()
     }
 
     pub fn mutant_twigs(&self) -> impl Iterator<Item = (LanguageId, Twig)> + '_ {
         self.mutant_files
             .iter()
-            .flat_map(|(language_id, (twigs_iter_builder, _))| {
-                twigs_iter_builder
-                    .clone()
-                    .build(self)
-                    .map(|twig| (language_id.clone(), twig))
+            .flat_map(|(language_id, (twigs, _))| {
+                twigs.iter().map(move |twig| (*language_id, twig.clone()))
             })
     }
 
@@ -80,6 +80,33 @@ mod tests {
     fn base_impls_root() {
         let base = Base::new(PathBuf::from("/tmp/project"), files_for(&[])).unwrap();
         assert_eq!(base.path(), Path::new("/tmp/project"));
+    }
+
+    #[test]
+    fn twigs_are_computed_once_at_construction() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("a.txt"), "").unwrap();
+        std::fs::write(dir.path().join("b.txt"), "").unwrap();
+        let base = Base::new(dir.path().to_path_buf(), files_for(&["*.txt"])).unwrap();
+        let before: Vec<_> = base.twigs().collect();
+        std::fs::remove_file(dir.path().join("a.txt")).unwrap();
+        std::fs::remove_file(dir.path().join("b.txt")).unwrap();
+        let after: Vec<_> = base.twigs().collect();
+        assert_eq!(before, after);
+        assert_eq!(before.len(), 2);
+    }
+
+    #[test]
+    fn mutant_twigs_are_computed_once_at_add_mutator() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("a.js"), "").unwrap();
+        let mut base = Base::new(dir.path().to_path_buf(), files_for(&[])).unwrap();
+        base.add_mutator(LanguageId::Javascript, files_for(&["*.js"]), vec![]);
+        let before: Vec<_> = base.mutant_twigs().collect();
+        std::fs::remove_file(dir.path().join("a.js")).unwrap();
+        let after: Vec<_> = base.mutant_twigs().collect();
+        assert_eq!(before, after);
+        assert_eq!(before.len(), 1);
     }
 
     #[test]
