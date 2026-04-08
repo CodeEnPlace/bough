@@ -7,5 +7,5 @@ pub fn uncovered_fn(a: u32, b: u32) -> &'static str {
         return "bar";
     }
 
-    return "qux";
+    "qux"
 }

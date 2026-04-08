@@ -143,11 +143,10 @@ fn walk_dir_recursive(
         if path.is_file() {
             let matched_include = includes.iter().any(|g| g.is_match(rel));
             let matched_exclude = excludes.iter().any(|g| g.is_match(rel));
-            if matched_include && !matched_exclude {
-                if let Ok(twig) = Twig::new(rel.to_path_buf()) {
+            if matched_include && !matched_exclude
+                && let Ok(twig) = Twig::new(rel.to_path_buf()) {
                     result.insert(twig);
                 }
-            }
         } else if path.is_dir() {
             walk_dir_recursive(root, &path, includes, excludes, result);
         }

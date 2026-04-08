@@ -8,6 +8,12 @@ pub struct TwigsIterBuilder {
     exclude: Vec<String>,
 }
 
+impl Default for TwigsIterBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TwigsIterBuilder {
     pub fn new() -> Self {
         Self {

@@ -1,3 +1,5 @@
+#![allow(clippy::match_like_matches_macro)]
+
 use std::path::Path;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -121,7 +123,7 @@ fn parse_pattern_parts(s: &str) -> Result<Vec<PatternPart>, String> {
                 }
                 let branches: Result<Vec<Vec<PatternPart>>, String> = alt_str
                     .split(',')
-                    .map(|branch| parse_pattern_parts(branch))
+                    .map(parse_pattern_parts)
                     .collect();
                 parts.push(PatternPart::Alternates(branches?));
             }

@@ -73,9 +73,9 @@ impl<R: Root> TypedHashable for File<'_, R> {
     type Hash = FileHash;
 }
 
-pub fn validate_root(path: &PathBuf) -> Result<(), Error> {
+pub fn validate_root(path: &Path) -> Result<(), Error> {
     if !path.is_absolute() {
-        return Err(Error::RootMustBeAbsolute(path.clone()));
+        return Err(Error::RootMustBeAbsolute(path.to_path_buf()));
     }
     Ok(())
 }

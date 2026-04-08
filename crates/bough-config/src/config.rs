@@ -94,11 +94,9 @@ pub fn collect_vcs_ignore_globs(root: &std::path::Path) -> Vec<String> {
                 if trimmed.is_empty() || trimmed.starts_with('#') || trimmed.starts_with('!') {
                     continue;
                 }
-                let pattern = if trimmed.starts_with('/') {
-                    trimmed[1..].to_string()
-                } else if trimmed.contains('/') {
-                    trimmed.to_string()
-                } else if trimmed.starts_with("**/") {
+                let pattern = if let Some(stripped) = trimmed.strip_prefix('/') {
+                    stripped.to_string()
+                } else if trimmed.contains('/') || trimmed.starts_with("**/") {
                     trimmed.to_string()
                 } else {
                     format!("**/{trimmed}")

@@ -199,17 +199,15 @@ impl Cli {
         if self.config.test.is_none() {
             errors.push(Error::MissingTestCmd);
         }
-        if let Some(ref t) = self.config.phase_defaults.timeout {
-            if t.absolute.is_none() && t.relative.is_none() {
+        if let Some(ref t) = self.config.phase_defaults.timeout
+            && t.absolute.is_none() && t.relative.is_none() {
                 errors.push(Error::EmptyTimeout("".to_string()));
             }
-        }
         for (label, overrides) in self.config.phase_timeout_overrides() {
-            if let Some(ref t) = overrides.timeout {
-                if t.absolute.is_none() && t.relative.is_none() {
+            if let Some(ref t) = overrides.timeout
+                && t.absolute.is_none() && t.relative.is_none() {
                     errors.push(Error::EmptyTimeout(format!(" (in {label})")));
                 }
-            }
         }
         errors
     }
@@ -838,7 +836,7 @@ exclude = []
     fn config_dir_extracted_from_figue_report() {
         let dir = tempfile::tempdir().unwrap();
         let config_path = dir.path().join("bough.config.toml");
-        std::fs::write(&config_path, &config_toml_with_root(".")).unwrap();
+        std::fs::write(&config_path, config_toml_with_root(".")).unwrap();
 
         let config = builder::<Cli>()
             .expect("schema should be valid")

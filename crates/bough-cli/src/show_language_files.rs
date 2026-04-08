@@ -18,7 +18,7 @@ impl ShowLanguageFiles {
         let files = twigs
             .iter()
             .filter(|(l, _)| *l == lang)
-            .map(|(_, twig)| File::new(base, &twig))
+            .map(|(_, twig)| File::new(base, twig))
             .collect::<Vec<_>>();
         let paths = files.iter().map(|file| file.resolve()).collect();
         Box::new(Self(lang, paths))

@@ -61,7 +61,7 @@ fn typed_hash_debug() {
 #[test]
 fn typed_hash_clone_eq() {
     let h1 = TestHash::from_raw([1; 32]);
-    let h2 = h1.clone();
+    let h2 = h1;
     assert_eq!(h1, h2);
 }
 
@@ -304,8 +304,8 @@ fn hash_std_trait_impls() {
     let h1 = TestHash::from_raw([1; 32]);
     let h2 = TestHash::from_raw([2; 32]);
     let mut set = HashSet::new();
-    set.insert(h1.clone());
-    set.insert(h2.clone());
+    set.insert(h1);
+    set.insert(h2);
     assert_eq!(set.len(), 2);
     assert!(set.contains(&h1));
 }

@@ -54,10 +54,7 @@ fn kill_process_tree(child: &mut std::process::Child) {
             libc::kill(-pid, libc::SIGTERM);
         }
 
-        match child.wait_timeout(GRACEFUL_SHUTDOWN_PERIOD) {
-            Ok(Some(_)) => return,
-            _ => {}
-        }
+        if let Ok(Some(_)) = child.wait_timeout(GRACEFUL_SHUTDOWN_PERIOD) { return }
 
         unsafe {
             libc::kill(-pid, libc::SIGKILL);
@@ -281,7 +278,7 @@ fn parse_cmd_and_pwd(cmd: &str, pwd: std::path::PathBuf) -> Result<(Twig, Vec<St
     if pwd.is_absolute() {
         return Err(Error::AbsolutePwd(pwd));
     }
-    let twig = Twig::new(pwd).map_err(bough_fs::Error::from)?;
+    let twig = Twig::new(pwd)?;
     let cmd_parts: Vec<String> = cmd.split_whitespace().map(String::from).collect();
     Ok((twig, cmd_parts))
 }

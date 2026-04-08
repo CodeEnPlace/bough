@@ -91,6 +91,12 @@ pub struct Fixture {
     dir: tempfile::TempDir,
 }
 
+impl Default for FixtureBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl FixtureBuilder {
     pub fn new() -> Self {
         Self { files: Vec::new() }
@@ -118,6 +124,7 @@ impl FixtureBuilder {
 }
 
 impl Fixture {
+    #[allow(clippy::new_ret_no_self)]
     pub fn new() -> FixtureBuilder {
         FixtureBuilder::new()
     }

@@ -1,3 +1,5 @@
+#![allow(clippy::zombie_processes)]
+
 use std::io::Write;
 
 fn main() {

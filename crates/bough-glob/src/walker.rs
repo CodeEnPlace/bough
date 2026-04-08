@@ -1,3 +1,5 @@
+#![allow(clippy::match_like_matches_macro)]
+
 use crate::Glob;
 use crate::glob::MatchResult;
 use bough_fs::{Root, Twig};
@@ -97,11 +99,10 @@ impl<'a, R: Root> TwigWalker<'a, R> {
                             };
                             let inc = includes.iter().any(|g| g.is_match(rel));
                             let exc = excludes.iter().any(|g| g.is_match(rel));
-                            if inc && !exc {
-                                if let Ok(twig) = Twig::new(rel.to_path_buf()) {
+                            if inc && !exc
+                                && let Ok(twig) = Twig::new(rel.to_path_buf()) {
                                     let _ = msg_tx.send(WorkerMsg::File(twig));
                                 }
-                            }
                         }
                     }
                     let _ = msg_tx.send(WorkerMsg::Done);

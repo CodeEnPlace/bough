@@ -70,11 +70,10 @@ fn naive_walk_inner(
         if path.is_file() {
             let inc = includes.iter().any(|g| g.is_match(rel));
             let exc = excludes.iter().any(|g| g.is_match(rel));
-            if inc && !exc {
-                if let Ok(twig) = Twig::new(rel.to_path_buf()) {
+            if inc && !exc
+                && let Ok(twig) = Twig::new(rel.to_path_buf()) {
                     result.insert(twig);
                 }
-            }
         } else if path.is_dir() {
             naive_walk_inner(root, &path, includes, excludes, result);
         }
@@ -91,7 +90,7 @@ fn ignore_walk(root: &Path, overrides: &ignore::overrides::Override) -> BTreeSet
     let mut result = BTreeSet::new();
     for entry in walker {
         let Ok(entry) = entry else { continue };
-        if !entry.file_type().map_or(false, |ft| ft.is_file()) {
+        if !entry.file_type().is_some_and(|ft| ft.is_file()) {
             continue;
         }
         let rel = entry.path().strip_prefix(root).unwrap();
@@ -148,7 +147,7 @@ impl ignore::ParallelVisitor for ParVisitor {
         let Ok(entry) = entry else {
             return ignore::WalkState::Continue;
         };
-        if !entry.file_type().map_or(false, |ft| ft.is_file()) {
+        if !entry.file_type().is_some_and(|ft| ft.is_file()) {
             return ignore::WalkState::Continue;
         }
         let Some(rel) = entry.path().strip_prefix(&self.root).ok() else {

@@ -178,11 +178,10 @@ impl Run {
                         &workspace,
                         &cli.config,
                         init_duration,
-                    ) {
-                        if !interactive {
+                    )
+                        && !interactive {
                             println!("{}", init.render(&cli));
                         }
-                    }
 
                     loop {
                         if done.load(Ordering::Relaxed) {
@@ -220,14 +219,13 @@ impl Run {
                             &workspace,
                             &cli.config,
                             reset_duration,
-                        ) {
-                            if !interactive {
+                        )
+                            && !interactive {
                                 println!("{}", reset.render(&cli));
                             }
-                        }
 
                         if let Err(e) =
-                            step_apply_mutation::StepApplyMutation::run(&mut workspace, &mutation)
+                            step_apply_mutation::StepApplyMutation::run(&mut workspace, mutation)
                         {
                             error!(%workspace_id, err = %e, "failed to apply mutation");
                             continue;
@@ -235,7 +233,7 @@ impl Run {
                         let test_result = match step_test_mutation::StepTestMutation::run(
                             &workspace,
                             &cli.config,
-                            &mutation,
+                            mutation,
                             Some(test_duration),
                         ) {
                             Ok(r) => r,
@@ -257,7 +255,7 @@ impl Run {
                             error!(%workspace_id, "mutex poisoned setting state");
                             break;
                         };
-                        if let Err(e) = guard.set_state(&mutation, test_result.status_value.clone())
+                        if let Err(e) = guard.set_state(mutation, test_result.status_value.clone())
                         {
                             error!(%workspace_id, err = ?e, "failed to set state");
                         }

@@ -44,11 +44,10 @@ impl State {
     }
 
     pub fn set_outcome(&mut self, status: Status) {
-        if let Some(outcome) = &self.outcome {
-            if outcome.status == status {
+        if let Some(outcome) = &self.outcome
+            && outcome.status == status {
                 return;
             }
-        }
 
         //TODO if the status isn't changing, this shouldn't update anything
         // so we don't get `at` churn

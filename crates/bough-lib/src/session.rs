@@ -100,14 +100,12 @@ impl<C: SessionConfig> Session<C> {
         mutations_state
             .keys()
             .filter(|key| {
-                if let Some(val) = mutations_state.get(key) {
-                    if let Some(status) = val.status() {
-                        if *status == Status::Caught {
+                if let Some(val) = mutations_state.get(key)
+                    && let Some(status) = val.status()
+                        && *status == Status::Caught {
                             return false;
-                        }
-                    }
-                };
-                return true;
+                        };
+                true
             })
             .collect()
     }
@@ -130,7 +128,7 @@ impl<C: SessionConfig> Session<C> {
             if self.mutations_state.get(&hash).is_none() {
                 let state = State::new(mutation.clone());
                 self.mutations_state
-                    .set(hash.clone(), state)
+                    .set(hash, state)
                     .expect("writing state should not fail");
                 added.push(hash);
             }
@@ -224,11 +222,10 @@ impl<C: SessionConfig> Session<C> {
         status: crate::state::Status,
     ) -> Result<(), Error> {
         let hash = mutation.hash().expect("hashing should not fail");
-        if let Some(existing) = self.mutations_state.get(&hash) {
-            if existing.status() == Some(&status) {
+        if let Some(existing) = self.mutations_state.get(&hash)
+            && existing.status() == Some(&status) {
                 return Ok(());
             }
-        }
         let mut state = State::new(mutation.clone());
         state.set_outcome(status);
         self.mutations_state.set(hash, state).map_err(Error::Io)?;
@@ -249,7 +246,7 @@ impl<C: SessionConfig> Session<C> {
             .iter()
             .filter_map(|hash| {
                 let state = self.mutations_state.get(hash)?;
-                Some((hash.clone(), state))
+                Some((*hash, state))
             })
             .collect();
 

@@ -783,7 +783,7 @@ cmd = "echo test"
 
     assert_eq!(result.code, 0);
     assert_eq!(result.stderr, "");
-    let ids: Vec<&str> = result.stdout.trim().split_whitespace().collect();
+    let ids: Vec<&str> = result.stdout.split_whitespace().collect();
     assert_eq!(ids.len(), 1);
 
     let ws_dir = fixture
@@ -827,7 +827,7 @@ cmd = "echo test"
 
     assert_eq!(result.code, 0);
     assert_eq!(result.stderr, "");
-    let ids: Vec<&str> = result.stdout.trim().split_whitespace().collect();
+    let ids: Vec<&str> = result.stdout.split_whitespace().collect();
     assert_eq!(ids.len(), 2);
 
     for id in &ids {
@@ -865,11 +865,11 @@ cmd = "echo test"
         .build();
 
     let first = fixture.run("step tend-workspaces");
-    let first_ids: Vec<&str> = first.stdout.trim().split_whitespace().collect();
+    let first_ids: Vec<&str> = first.stdout.split_whitespace().collect();
 
     let second = fixture.run("step tend-workspaces");
     assert_eq!(second.code, 0);
-    let second_ids: Vec<&str> = second.stdout.trim().split_whitespace().collect();
+    let second_ids: Vec<&str> = second.stdout.split_whitespace().collect();
 
     assert_eq!(first_ids, second_ids);
 }

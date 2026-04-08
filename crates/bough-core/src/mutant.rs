@@ -708,6 +708,7 @@ impl<'a, 't, R: bough_fs::Root> TwigMutantsIter<'a, 't, R> {
     }
 }
 
+#[allow(clippy::if_same_then_else)]
 impl<'a, 't, R: bough_fs::Root> Iterator for TwigMutantsIter<'a, 't, R> {
     type Item = BasedMutant<'a, R>;
 
@@ -791,6 +792,7 @@ pub struct SourceMutant {
 /// This uses the same tree-sitter walk and `LanguageDriver::check_node` logic
 /// as `TwigMutantsIter`, but operates on a byte slice directly without
 /// requiring a `Base` or `Twig`.
+#[allow(clippy::if_same_then_else)]
 pub fn find_mutants_in_source(driver: &dyn LanguageDriver, source: &[u8]) -> Vec<SourceMutant> {
 
     let mut parser = arborium_tree_sitter::Parser::new();

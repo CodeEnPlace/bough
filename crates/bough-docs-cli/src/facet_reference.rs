@@ -108,11 +108,8 @@ fn collect_nested(shape: &'static Shape, nested: &mut Vec<&'static Shape>) {
         Def::Option(opt) => collect_nested(opt.t, nested),
         Def::List(list) => collect_nested(list.t, nested),
         Def::Map(map) => collect_nested(map.v, nested),
-        _ => match &shape.ty {
-            Type::User(UserType::Struct(_) | UserType::Enum(_)) => {
-                nested.push(shape);
-            }
-            _ => {}
+        _ => if let Type::User(UserType::Struct(_) | UserType::Enum(_)) = &shape.ty {
+            nested.push(shape);
         },
     }
 }

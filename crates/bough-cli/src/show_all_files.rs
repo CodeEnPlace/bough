@@ -17,7 +17,7 @@ impl ShowAllFiles {
         let twigs = base.twigs().collect::<Vec<_>>();
         let files = twigs
             .iter()
-            .map(|twig| File::new(base, &twig))
+            .map(|twig| File::new(base, twig))
             .collect::<Vec<_>>();
         let paths = files.iter().map(|file| file.resolve()).collect();
         Box::new(Self(paths))

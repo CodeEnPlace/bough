@@ -19,16 +19,14 @@ impl FindBestMutations {
         let filtered: Vec<_> = results
             .into_iter()
             .filter(|(_, state, _)| {
-                if let Some(l) = lang {
-                    if state.mutation().mutant().lang() != l {
+                if let Some(l) = lang
+                    && state.mutation().mutant().lang() != l {
                         return false;
                     }
-                }
-                if let Some(ref f) = file {
-                    if state.mutation().mutant().twig().path() != f.as_path() {
+                if let Some(ref f) = file
+                    && state.mutation().mutant().twig().path() != f.as_path() {
                         return false;
                     }
-                }
                 true
             })
             .collect();
