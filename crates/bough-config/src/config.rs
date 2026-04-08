@@ -14,8 +14,8 @@ pub struct Config {
     #[facet(default = 1)]
     pub workers: u64,
 
-    #[facet(default = 1)]
-    pub threads: u64,
+    #[facet(default)]
+    pub threads: Option<u32>,
 
     pub base_root_dir: String,
 
@@ -120,6 +120,15 @@ pub fn collect_vcs_dir_globs(root: &std::path::Path) -> Vec<String> {
 impl SessionConfig for Config {
     fn get_workers_count(&self) -> u64 {
         self.workers
+    }
+
+    fn threads(&self) -> u32 {
+        self.threads.unwrap_or_else(|| {
+            let cores = std::thread::available_parallelism()
+                .map(|n| n.get())
+                .unwrap_or(1) as f64;
+            (cores * 1.5).ceil() as u32
+        })
     }
 
     fn get_bough_state_dir(&self) -> PathBuf {

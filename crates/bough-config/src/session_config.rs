@@ -9,6 +9,8 @@ use crate::factor::Factor;
 pub trait SessionConfig {
     fn get_workers_count(&self) -> u64;
 
+    fn threads(&self) -> u32;
+
     fn get_bough_state_dir(&self) -> PathBuf;
     fn get_base_root_path(&self) -> PathBuf;
     fn get_base_include_globs(&self) -> impl Iterator<Item = String>;
