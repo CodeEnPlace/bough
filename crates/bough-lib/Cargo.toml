@@ -13,6 +13,7 @@ bough-config = { workspace = true }
 bough-dirs = { workspace = true }
 bough-typed-hash = { workspace = true }
 bough-fs = { workspace = true }
+rayon = "1.10"
 bough-lang-javascript = { path = "../bough-lang-javascript" }
 bough-lang-typescript = { path = "../bough-lang-typescript" }
 bough-lang-python = { path = "../bough-lang-python" }

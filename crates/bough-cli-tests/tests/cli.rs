@@ -571,7 +571,7 @@ cmd = "echo test"
     assert_eq!(result.stderr, "");
     assert_eq!(
         result.redacted_stdout(&fixture),
-        r#"{"workers":1,"threads":1,"base_root_dir":"<TMP>","include":["src/**"],"exclude":[],"lang":{"js":{"include":["**/*.js"],"exclude":[],"skip":null}},"pwd":null,"env":null,"timeout":null,"test":{"cmd":"echo test","pwd":null,"env":null,"timeout":null},"init":null,"reset":null,"find":{"number":1,"number_per_file":1,"factors":["EncompasingMissedMutationsCount","TSNodeDepth"]}}
+        r#"{"workers":1,"threads":null,"base_root_dir":"<TMP>","include":["src/**"],"exclude":[],"lang":{"js":{"include":["**/*.js"],"exclude":[],"skip":null}},"pwd":null,"env":null,"timeout":null,"test":{"cmd":"echo test","pwd":null,"env":null,"timeout":null},"init":null,"reset":null,"find":{"number":1,"number_per_file":1,"factors":["EncompasingMissedMutationsCount","TSNodeDepth"]}}
 "#
     );
 }
@@ -603,7 +603,7 @@ cmd = "echo test"
     assert_eq!(result.stderr, "");
     assert_eq!(
         result.redacted_stdout(&fixture),
-        r#"{"workers":1,"threads":1,"base_root_dir":"<TMP>","include":["src/**"],"exclude":[],"lang":{"js":{"include":["**/*.js"],"exclude":[],"skip":null}},"pwd":null,"env":null,"timeout":null,"test":{"cmd":"echo test","pwd":null,"env":null,"timeout":null},"init":null,"reset":null,"find":{"number":1,"number_per_file":1,"factors":["EncompasingMissedMutationsCount","TSNodeDepth"]}}
+        r#"{"workers":1,"threads":null,"base_root_dir":"<TMP>","include":["src/**"],"exclude":[],"lang":{"js":{"include":["**/*.js"],"exclude":[],"skip":null}},"pwd":null,"env":null,"timeout":null,"test":{"cmd":"echo test","pwd":null,"env":null,"timeout":null},"init":null,"reset":null,"find":{"number":1,"number_per_file":1,"factors":["EncompasingMissedMutationsCount","TSNodeDepth"]}}
 "#
     );
 }

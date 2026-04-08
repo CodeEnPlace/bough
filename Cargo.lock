@@ -732,6 +732,7 @@ dependencies = [
  "ignore",
  "libc",
  "rand",
+ "rayon",
  "tempfile",
  "tracing",
  "wait-timeout",

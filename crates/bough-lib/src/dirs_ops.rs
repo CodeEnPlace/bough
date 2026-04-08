@@ -1,41 +1,69 @@
+use bough_config::SessionConfig;
 use bough_core::mutant::TwigMutantsIter;
 use bough_core::{Mutant, Mutation, MutationIter};
 use bough_dirs::{Base, Work};
+use rayon::prelude::*;
 use tracing::{trace, warn};
 
-pub fn mutants(base: &Base) -> impl Iterator<Item = std::io::Result<Mutant>> + '_ {
-    base.mutant_twigs().flat_map(|(language_id, twig)| {
-        trace!(lang = ?language_id, twig = %twig.path().display(), "scanning twig for mutants");
-        match TwigMutantsIter::new(
-            language_id,
-            base,
-            &twig,
-            crate::language::driver_for_lang(language_id),
-        ) {
-            Ok(iter) => {
-                let iter = base
-                    .skip_queries_for(language_id)
-                    .iter()
-                    .fold(iter, |iter, q| iter.with_skip_query(q));
-                iter.map(|bm| Ok(bm.into_mutant())).collect::<Vec<_>>()
-            }
-            Err(e) => {
-                warn!(lang = ?language_id, twig = %twig.path().display(), error = %e, "failed to scan twig for mutants");
-                vec![Err(e)]
-            }
-        }
+fn rayon_pool(config: &impl SessionConfig) -> rayon::ThreadPool {
+    rayon::ThreadPoolBuilder::new()
+        .num_threads(config.threads().max(1) as usize)
+        .build()
+        .expect("build rayon pool")
+}
+
+pub fn mutants(
+    base: &Base,
+    config: &impl SessionConfig,
+) -> Vec<std::io::Result<Mutant>> {
+    let twigs: Vec<_> = base.mutant_twigs().collect();
+    let pool = rayon_pool(config);
+    pool.install(|| {
+        twigs
+            .par_iter()
+            .flat_map(|(language_id, twig)| {
+                trace!(lang = ?language_id, twig = %twig.path().display(), "scanning twig for mutants");
+                match TwigMutantsIter::new(
+                    *language_id,
+                    base,
+                    twig,
+                    crate::language::driver_for_lang(*language_id),
+                ) {
+                    Ok(iter) => {
+                        let iter = base
+                            .skip_queries_for(*language_id)
+                            .iter()
+                            .fold(iter, |iter, q| iter.with_skip_query(q));
+                        iter.map(|bm| Ok(bm.into_mutant())).collect::<Vec<_>>()
+                    }
+                    Err(e) => {
+                        warn!(lang = ?language_id, twig = %twig.path().display(), error = %e, "failed to scan twig for mutants");
+                        vec![Err(e)]
+                    }
+                }
+            })
+            .collect()
     })
 }
 
-pub fn mutations(base: &Base) -> impl Iterator<Item = std::io::Result<Mutation>> + '_ {
-    mutants(base).flat_map(|r| match r {
-        Ok(m) => {
-            let driver = crate::language::driver_for_lang(m.lang());
-            MutationIter::new(&m, driver.as_ref())
-                .map(Ok)
-                .collect::<Vec<_>>()
-        }
-        Err(e) => vec![Err(e)],
+pub fn mutations(
+    base: &Base,
+    config: &impl SessionConfig,
+) -> Vec<std::io::Result<Mutation>> {
+    let ms = mutants(base, config);
+    let pool = rayon_pool(config);
+    pool.install(|| {
+        ms.into_par_iter()
+            .flat_map(|r| match r {
+                Ok(m) => {
+                    let driver = crate::language::driver_for_lang(m.lang());
+                    MutationIter::new(&m, driver.as_ref())
+                        .map(Ok)
+                        .collect::<Vec<_>>()
+                }
+                Err(e) => vec![Err(e)],
+            })
+            .collect()
     })
 }
 

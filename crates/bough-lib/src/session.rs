@@ -75,6 +75,10 @@ impl<C: SessionConfig> Session<C> {
         })
     }
 
+    pub fn config(&self) -> &C {
+        &self.config
+    }
+
     pub fn base(&self) -> &Base {
         &self.base
     }
@@ -83,7 +87,7 @@ impl<C: SessionConfig> Session<C> {
         &self,
         unvalidated: bough_typed_hash::UnvalidatedHash,
     ) -> Result<Mutation, Error> {
-        let mutations: Vec<Mutation> = crate::mutations(&self.base).collect::<Result<_, _>>()?;
+        let mutations: Vec<Mutation> = crate::mutations(&self.base, &self.config).into_iter().collect::<Result<_, _>>()?;
         let hashes: Vec<MutationHash> = mutations.iter().map(|m| m.hash().expect("hash")).collect();
         let matched = unvalidated
             .validate(&hashes)
@@ -120,7 +124,7 @@ impl<C: SessionConfig> Session<C> {
 
     pub fn tend_add_missing_states(&mut self) -> Result<Vec<MutationHash>, Error> {
         let mutations_in_base: HashSet<Mutation> =
-            crate::mutations(&self.base).collect::<Result<_, _>>()?;
+            crate::mutations(&self.base, &self.config).into_iter().collect::<Result<_, _>>()?;
         let mut added = Vec::new();
 
         for mutation in &mutations_in_base {
@@ -141,7 +145,7 @@ impl<C: SessionConfig> Session<C> {
 
     pub fn tend_remove_stale_states(&mut self) -> Result<Vec<MutationHash>, Error> {
         let mutations_in_base: HashSet<Mutation> =
-            crate::mutations(&self.base).collect::<Result<_, _>>()?;
+            crate::mutations(&self.base, &self.config).into_iter().collect::<Result<_, _>>()?;
         let hashes_in_base: HashSet<MutationHash> = mutations_in_base
             .iter()
             .map(|m| m.hash().expect("hashing should not fail"))
@@ -1062,7 +1066,7 @@ mod tests {
         let mut session = Session::new(config).unwrap();
         session.tend_add_missing_states().unwrap();
 
-        let mutation: Mutation = crate::mutations(session.base()).next().unwrap().unwrap();
+        let mutation: Mutation = crate::mutations(session.base(), session.config()).into_iter().next().unwrap().unwrap();
         let hash = mutation.hash().unwrap();
         session
             .set_state(&mutation, crate::state::Status::Missed)
@@ -1082,7 +1086,7 @@ mod tests {
         let mut session = Session::new(config).unwrap();
         session.tend_add_missing_states().unwrap();
 
-        let mutation: Mutation = crate::mutations(session.base()).next().unwrap().unwrap();
+        let mutation: Mutation = crate::mutations(session.base(), session.config()).into_iter().next().unwrap().unwrap();
         let hash = mutation.hash().unwrap();
         session
             .set_state(&mutation, crate::state::Status::Caught)
@@ -1105,7 +1109,7 @@ mod tests {
         session.tend_add_missing_states().unwrap();
 
         let before = chrono::Utc::now() - chrono::Duration::seconds(1);
-        let mutation: Mutation = crate::mutations(session.base()).next().unwrap().unwrap();
+        let mutation: Mutation = crate::mutations(session.base(), session.config()).into_iter().next().unwrap().unwrap();
         let hash = mutation.hash().unwrap();
         session
             .set_state(&mutation, crate::state::Status::Missed)
@@ -1129,7 +1133,7 @@ mod tests {
         let mut session = Session::new(config).unwrap();
         session.tend_add_missing_states().unwrap();
 
-        let mutation: Mutation = crate::mutations(session.base()).next().unwrap().unwrap();
+        let mutation: Mutation = crate::mutations(session.base(), session.config()).into_iter().next().unwrap().unwrap();
         let hash = mutation.hash().unwrap();
         session
             .set_state(&mutation, crate::state::Status::Missed)
@@ -1164,7 +1168,7 @@ mod tests {
         let mut session = Session::new(config).unwrap();
         session.tend_add_missing_states().unwrap();
 
-        let mutation: Mutation = crate::mutations(session.base()).next().unwrap().unwrap();
+        let mutation: Mutation = crate::mutations(session.base(), session.config()).into_iter().next().unwrap().unwrap();
         let hash = mutation.hash().unwrap();
         session
             .set_state(&mutation, crate::state::Status::Missed)
@@ -1199,7 +1203,7 @@ mod tests {
         let mut session = Session::new(config).unwrap();
         session.tend_add_missing_states().unwrap();
 
-        let mutation: Mutation = crate::mutations(session.base()).next().unwrap().unwrap();
+        let mutation: Mutation = crate::mutations(session.base(), session.config()).into_iter().next().unwrap().unwrap();
         let hash = mutation.hash().unwrap();
         session
             .set_state(&mutation, crate::state::Status::Caught)
@@ -1303,7 +1307,7 @@ mod tests {
         session.tend_add_missing_states().unwrap();
         let total_before = session.get_count_mutation_needing_test();
 
-        let mutation: Mutation = crate::mutations(session.base()).next().unwrap().unwrap();
+        let mutation: Mutation = crate::mutations(session.base(), session.config()).into_iter().next().unwrap().unwrap();
         session
             .set_state(&mutation, crate::state::Status::Caught)
             .unwrap();
