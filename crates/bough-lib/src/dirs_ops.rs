@@ -3,9 +3,7 @@ use bough_core::mutant::TwigMutantsIter;
 use bough_core::{Mutant, Mutation, MutationIter};
 use bough_dirs::{Base, Work};
 use rayon::prelude::*;
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::time::Instant;
-use tracing::{info, trace, warn};
+use tracing::{trace, warn};
 
 fn rayon_pool(config: &impl SessionConfig) -> rayon::ThreadPool {
     rayon::ThreadPoolBuilder::new()
@@ -25,22 +23,15 @@ pub fn mutants(
         let path = bough_fs::File::new(base, twig).resolve();
         std::cmp::Reverse(std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0))
     });
-    let num_twigs = twigs.len();
     let pool = rayon_pool(config);
-    let threads = pool.current_num_threads();
-    let busy_nanos = AtomicU64::new(0);
-    let per_twig: std::sync::Mutex<Vec<(String, u64)>> =
-        std::sync::Mutex::new(Vec::with_capacity(num_twigs));
-    let wall_start = Instant::now();
-    let result: Vec<_> = pool.install(|| {
+    pool.install(|| {
         twigs
             .par_iter()
             .with_min_len(1)
             .with_max_len(1)
             .flat_map(|(language_id, twig)| {
-                let t0 = Instant::now();
                 trace!(lang = ?language_id, twig = %twig.path().display(), "scanning twig for mutants");
-                let out = match TwigMutantsIter::new(
+                match TwigMutantsIter::new(
                     *language_id,
                     base,
                     twig,
@@ -57,35 +48,10 @@ pub fn mutants(
                         warn!(lang = ?language_id, twig = %twig.path().display(), error = %e, "failed to scan twig for mutants");
                         vec![Err(e)]
                     }
-                };
-                let elapsed = t0.elapsed();
-                busy_nanos.fetch_add(elapsed.as_nanos() as u64, Ordering::Relaxed);
-                per_twig
-                    .lock()
-                    .unwrap()
-                    .push((twig.path().display().to_string(), elapsed.as_millis() as u64));
-                out
+                }
             })
             .collect()
-    });
-    let wall = wall_start.elapsed();
-    let busy = std::time::Duration::from_nanos(busy_nanos.load(Ordering::Relaxed));
-    let ideal = wall.as_secs_f64() * threads as f64;
-    let utilization = if ideal > 0.0 { busy.as_secs_f64() / ideal } else { 0.0 };
-    info!(
-        twigs = num_twigs,
-        threads,
-        wall_ms = wall.as_millis() as u64,
-        busy_ms = busy.as_millis() as u64,
-        utilization = format!("{:.1}%", utilization * 100.0),
-        "mutants parsing profile"
-    );
-    let mut timings = per_twig.into_inner().unwrap();
-    timings.sort_by_key(|(_, ms)| std::cmp::Reverse(*ms));
-    for (path, ms) in timings.iter().take(10) {
-        info!(ms, path, "slowest twig");
-    }
-    result
+    })
 }
 
 pub fn mutations(
@@ -93,42 +59,20 @@ pub fn mutations(
     config: &impl SessionConfig,
 ) -> Vec<std::io::Result<Mutation>> {
     let ms = mutants(base, config);
-    let num_mutants = ms.len();
     let pool = rayon_pool(config);
-    let threads = pool.current_num_threads();
-    let busy_nanos = AtomicU64::new(0);
-    let wall_start = Instant::now();
-    let result: Vec<_> = pool.install(|| {
+    pool.install(|| {
         ms.into_par_iter()
-            .flat_map(|r| {
-                let t0 = Instant::now();
-                let out = match r {
-                    Ok(m) => {
-                        let driver = crate::language::driver_for_lang(m.lang());
-                        MutationIter::new(&m, driver.as_ref())
-                            .map(Ok)
-                            .collect::<Vec<_>>()
-                    }
-                    Err(e) => vec![Err(e)],
-                };
-                busy_nanos.fetch_add(t0.elapsed().as_nanos() as u64, Ordering::Relaxed);
-                out
+            .flat_map(|r| match r {
+                Ok(m) => {
+                    let driver = crate::language::driver_for_lang(m.lang());
+                    MutationIter::new(&m, driver.as_ref())
+                        .map(Ok)
+                        .collect::<Vec<_>>()
+                }
+                Err(e) => vec![Err(e)],
             })
             .collect()
-    });
-    let wall = wall_start.elapsed();
-    let busy = std::time::Duration::from_nanos(busy_nanos.load(Ordering::Relaxed));
-    let ideal = wall.as_secs_f64() * threads as f64;
-    let utilization = if ideal > 0.0 { busy.as_secs_f64() / ideal } else { 0.0 };
-    info!(
-        mutants = num_mutants,
-        threads,
-        wall_ms = wall.as_millis() as u64,
-        busy_ms = busy.as_millis() as u64,
-        utilization = format!("{:.1}%", utilization * 100.0),
-        "mutations expansion profile"
-    );
-    result
+    })
 }
 
 pub fn run_test_in_base(
