@@ -23,6 +23,8 @@ pub fn mutants(
     let pool = rayon_pool(config);
     let threads = pool.current_num_threads();
     let busy_nanos = AtomicU64::new(0);
+    let per_twig: std::sync::Mutex<Vec<(String, u64)>> =
+        std::sync::Mutex::new(Vec::with_capacity(num_twigs));
     let wall_start = Instant::now();
     let result: Vec<_> = pool.install(|| {
         twigs
@@ -48,7 +50,12 @@ pub fn mutants(
                         vec![Err(e)]
                     }
                 };
-                busy_nanos.fetch_add(t0.elapsed().as_nanos() as u64, Ordering::Relaxed);
+                let elapsed = t0.elapsed();
+                busy_nanos.fetch_add(elapsed.as_nanos() as u64, Ordering::Relaxed);
+                per_twig
+                    .lock()
+                    .unwrap()
+                    .push((twig.path().display().to_string(), elapsed.as_millis() as u64));
                 out
             })
             .collect()
@@ -65,6 +72,11 @@ pub fn mutants(
         utilization = format!("{:.1}%", utilization * 100.0),
         "mutants parsing profile"
     );
+    let mut timings = per_twig.into_inner().unwrap();
+    timings.sort_by_key(|(_, ms)| std::cmp::Reverse(*ms));
+    for (path, ms) in timings.iter().take(10) {
+        info!(ms, path, "slowest twig");
+    }
     result
 }
 
