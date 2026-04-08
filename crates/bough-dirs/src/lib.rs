@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 mod base;
-mod workspace;
+mod work;
 
 pub use base::Base;
-pub use workspace::{ActiveMutation, Error, Work, WorkId};
+pub use work::{ActiveMutation, Error, Work, WorkId};
