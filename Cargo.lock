@@ -525,10 +525,13 @@ dependencies = [
 name = "bough-dirs"
 version = "0.0.2"
 dependencies = [
+ "bough-config",
  "bough-core",
  "bough-fs",
  "bough-typed-hash",
+ "chrono",
  "rand",
+ "rayon",
  "tempfile",
  "tracing",
 ]

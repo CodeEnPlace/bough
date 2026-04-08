@@ -9,11 +9,14 @@ description = "Directory handle types (Base, Workspace) for bough mutation testi
 
 [dependencies]
 bough-core = { workspace = true }
+bough-config = { workspace = true }
 bough-fs = { workspace = true }
 bough-typed-hash = { workspace = true }
 rand = "0.10.0"
+rayon = "1.10"
 tracing = "0.1"
 
 [dev-dependencies]
 bough-fs = { workspace = true, features = ["test-support"] }
+chrono = "0.4.44"
 tempfile = "3.26"

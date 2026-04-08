@@ -200,7 +200,7 @@ impl<C: SessionConfig> Session<C> {
         }
 
         while valid.len() < desired_count {
-            let ws = Work::new(workspaces_dir.clone(), self.base.clone())?;
+            let ws = Work::new(workspaces_dir.clone(), self.base.clone(), &self.config)?;
             valid.push(ws.id().clone());
         }
 
@@ -367,6 +367,7 @@ mod tests {
     }
 
     impl SessionConfig for MinimalConfig {
+        fn threads(&self) -> u32 { 1 }
         fn get_base_root_path(&self) -> PathBuf {
             self.root.clone()
         }
