@@ -3,7 +3,9 @@ use bough_core::mutant::TwigMutantsIter;
 use bough_core::{Mutant, Mutation, MutationIter};
 use bough_dirs::{Base, Work};
 use rayon::prelude::*;
-use tracing::{trace, warn};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::Instant;
+use tracing::{info, trace, warn};
 
 fn rayon_pool(config: &impl SessionConfig) -> rayon::ThreadPool {
     rayon::ThreadPoolBuilder::new()
@@ -17,13 +19,18 @@ pub fn mutants(
     config: &impl SessionConfig,
 ) -> Vec<std::io::Result<Mutant>> {
     let twigs: Vec<_> = base.mutant_twigs().collect();
+    let num_twigs = twigs.len();
     let pool = rayon_pool(config);
-    pool.install(|| {
+    let threads = pool.current_num_threads();
+    let busy_nanos = AtomicU64::new(0);
+    let wall_start = Instant::now();
+    let result: Vec<_> = pool.install(|| {
         twigs
             .par_iter()
             .flat_map(|(language_id, twig)| {
+                let t0 = Instant::now();
                 trace!(lang = ?language_id, twig = %twig.path().display(), "scanning twig for mutants");
-                match TwigMutantsIter::new(
+                let out = match TwigMutantsIter::new(
                     *language_id,
                     base,
                     twig,
@@ -40,10 +47,25 @@ pub fn mutants(
                         warn!(lang = ?language_id, twig = %twig.path().display(), error = %e, "failed to scan twig for mutants");
                         vec![Err(e)]
                     }
-                }
+                };
+                busy_nanos.fetch_add(t0.elapsed().as_nanos() as u64, Ordering::Relaxed);
+                out
             })
             .collect()
-    })
+    });
+    let wall = wall_start.elapsed();
+    let busy = std::time::Duration::from_nanos(busy_nanos.load(Ordering::Relaxed));
+    let ideal = wall.as_secs_f64() * threads as f64;
+    let utilization = if ideal > 0.0 { busy.as_secs_f64() / ideal } else { 0.0 };
+    info!(
+        twigs = num_twigs,
+        threads,
+        wall_ms = wall.as_millis() as u64,
+        busy_ms = busy.as_millis() as u64,
+        utilization = format!("{:.1}%", utilization * 100.0),
+        "mutants parsing profile"
+    );
+    result
 }
 
 pub fn mutations(
@@ -51,20 +73,42 @@ pub fn mutations(
     config: &impl SessionConfig,
 ) -> Vec<std::io::Result<Mutation>> {
     let ms = mutants(base, config);
+    let num_mutants = ms.len();
     let pool = rayon_pool(config);
-    pool.install(|| {
+    let threads = pool.current_num_threads();
+    let busy_nanos = AtomicU64::new(0);
+    let wall_start = Instant::now();
+    let result: Vec<_> = pool.install(|| {
         ms.into_par_iter()
-            .flat_map(|r| match r {
-                Ok(m) => {
-                    let driver = crate::language::driver_for_lang(m.lang());
-                    MutationIter::new(&m, driver.as_ref())
-                        .map(Ok)
-                        .collect::<Vec<_>>()
-                }
-                Err(e) => vec![Err(e)],
+            .flat_map(|r| {
+                let t0 = Instant::now();
+                let out = match r {
+                    Ok(m) => {
+                        let driver = crate::language::driver_for_lang(m.lang());
+                        MutationIter::new(&m, driver.as_ref())
+                            .map(Ok)
+                            .collect::<Vec<_>>()
+                    }
+                    Err(e) => vec![Err(e)],
+                };
+                busy_nanos.fetch_add(t0.elapsed().as_nanos() as u64, Ordering::Relaxed);
+                out
             })
             .collect()
-    })
+    });
+    let wall = wall_start.elapsed();
+    let busy = std::time::Duration::from_nanos(busy_nanos.load(Ordering::Relaxed));
+    let ideal = wall.as_secs_f64() * threads as f64;
+    let utilization = if ideal > 0.0 { busy.as_secs_f64() / ideal } else { 0.0 };
+    info!(
+        mutants = num_mutants,
+        threads,
+        wall_ms = wall.as_millis() as u64,
+        busy_ms = busy.as_millis() as u64,
+        utilization = format!("{:.1}%", utilization * 100.0),
+        "mutations expansion profile"
+    );
+    result
 }
 
 pub fn run_test_in_base(
