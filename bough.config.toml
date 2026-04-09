@@ -16,9 +16,13 @@ NEXTEST_TEST_THREADS = 1
 
 [lang.rs]
 include = [
-  "crates/bough-core/**/*.rs",
-  "crates/bough-cli/**/*.rs",
-  "crates/bough-typed-hash/**/*.rs",
+  "crates/**/*.rs",
+]
+
+exclude = [
+  "crates/bough-cli-tests/**/*",
+  "crates/bough-corpus-tests/**/*",
+  "crates/bough-typed-hash-derive/**/*",
 ]
 
 [lang.rs.skip]
