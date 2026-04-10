@@ -10,6 +10,7 @@ license.workspace = true
 repository.workspace = true
 readme.workspace = true
 description = "CLI for bough mutation testing"
+homepage = "https://bough.codeenplace.dev"
 
 [features]
 pprof = ["dep:pprof"]

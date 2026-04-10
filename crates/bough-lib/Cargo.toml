@@ -48,3 +48,6 @@ tempfile = "3.26"
 [[bin]]
 name = "bough-test-helper"
 path = "src/bin/bough-test-helper.rs"
+
+[package.metadata.dist]
+dist = false
