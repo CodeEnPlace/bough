@@ -77,6 +77,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(unix)]
     fn base_impls_root() {
         let base = Base::new(PathBuf::from("/tmp/project"), files_for(&[])).unwrap();
         assert_eq!(base.path(), Path::new("/tmp/project"));
