@@ -84,7 +84,7 @@ fn main() {
                     .unwrap()
                     .to_str()
                     .unwrap()
-                    .to_string();
+                    .replace('\\', "/");
                 Some((fn_name, case_path, lang_id.to_string(), ext.to_string()))
             })
             .collect();
