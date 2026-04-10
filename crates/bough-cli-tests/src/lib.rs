@@ -65,7 +65,9 @@ fn redact(s: &str, fixture: &Fixture) -> String {
         let redacted = line
             .replace(tmp_json.as_str(), "<TMP>")
             .replace(tmp_fwd.as_str(), "<TMP>")
-            .replace(fixture_path.as_str(), "<TMP>");
+            .replace(fixture_path.as_str(), "<TMP>")
+            .replace("<TMP>\\\\", "<TMP>/")
+            .replace("<TMP>\\", "<TMP>/");
         result.push_str(&redacted);
         result.push('\n');
     }
