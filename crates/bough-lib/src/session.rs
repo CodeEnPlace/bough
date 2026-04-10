@@ -843,6 +843,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(unix)]
     fn run_test_in_base_uses_pwd() {
         let dir = tempfile::tempdir().unwrap();
         let sub = dir.path().join("src");
@@ -860,6 +861,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(unix)]
     fn run_test_in_base_errors_on_absolute_pwd() {
         let dir = tempfile::tempdir().unwrap();
         let mut config = make_js_config(dir.path());
@@ -870,6 +872,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(unix)]
     fn run_test_in_base_nonzero_exit_is_ok() {
         let dir = tempfile::tempdir().unwrap();
         let mut config = make_js_config(dir.path());
@@ -929,6 +932,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(unix)]
     fn run_test_in_workspace_executes_in_workspace_root() {
         let dir = tempfile::tempdir().unwrap();
         let mut config = make_js_config(dir.path());
@@ -946,6 +950,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(unix)]
     fn run_test_in_workspace_uses_pwd_relative_to_workspace() {
         let dir = tempfile::tempdir().unwrap();
         let mut config = make_js_config(dir.path());
@@ -1045,6 +1050,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(unix)]
     fn run_test_in_base_default_pwd_is_root() {
         let dir = tempfile::tempdir().unwrap();
         let mut config = make_js_config(dir.path());
