@@ -36,10 +36,10 @@ ignore = "0.4"
 rand = "0.10.0"
 arborium-tree-sitter = "2.16"
 wait-timeout = "0.2"
+tracing = "0.1"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
-tracing = "0.1"
 
 [dev-dependencies]
 bough-fs = { workspace = true, features = ["test-support"] }
