@@ -1,0 +1,5 @@
+# Normalise line endings to LF for all text files
+* text=auto eol=lf
+
+# Corpus fixture files must stay LF so content hashes are consistent across platforms
+corpus/**/* text eol=lf
