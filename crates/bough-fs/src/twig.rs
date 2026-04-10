@@ -35,6 +35,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(unix)]
     fn twig_rejects_absolute_path() {
         match Twig::new(PathBuf::from("/absolute/path.rs")) {
             Err(Error::TwigMustBeRelative(_)) => {}
