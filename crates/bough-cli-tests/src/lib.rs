@@ -1,13 +1,27 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::Command;
 
-/// Strip ANSI escape sequences from a string.
+pub struct Output {
+    pub code: i32,
+    pub stdout: String,
+    pub stderr: String,
+}
+
+impl Output {
+    pub fn redacted_stderr(&self, fixture: &Fixture) -> String {
+        redact(&self.stderr, fixture)
+    }
+
+    pub fn redacted_stdout(&self, fixture: &Fixture) -> String {
+        redact(&self.stdout, fixture)
+    }
+}
+
 fn strip_ansi(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
     let mut chars = s.chars();
     while let Some(ch) = chars.next() {
         if ch == '\x1b' {
-            // skip until we hit a letter (the terminator of the escape sequence)
             for ch in chars.by_ref() {
                 if ch.is_ascii_alphabetic() {
                     break;
@@ -20,38 +34,12 @@ fn strip_ansi(s: &str) -> String {
     out
 }
 
-/// Result of running a bough command.
-pub struct Output {
-    pub code: i32,
-    pub stdout: String,
-    pub stderr: String,
-}
-
-impl Output {
-    /// Return stderr with the fixture's temp dir path replaced by `<TMP>`
-    /// and ANSI escape codes stripped.
-    pub fn redacted_stderr(&self, fixture: &Fixture) -> String {
-        redact(&self.stderr, fixture)
-    }
-
-    /// Return stdout with the fixture's temp dir path replaced by `<TMP>`
-    /// and ANSI escape codes stripped.
-    pub fn redacted_stdout(&self, fixture: &Fixture) -> String {
-        redact(&self.stdout, fixture)
-    }
-}
-
 fn redact(s: &str, fixture: &Fixture) -> String {
     let stripped = strip_ansi(s);
-    let canonical = fixture
-        .path()
-        .canonicalize()
-        .unwrap_or_else(|_| fixture.path().to_path_buf());
-    let canonical_str = canonical.to_string_lossy();
-    let tmp_base = canonical_str
-        .strip_prefix("\\\\?\\")
-        .unwrap_or(canonical_str.as_ref());
-    let tmp = std::borrow::Cow::Borrowed(tmp_base);
+    let fixture_path = fixture.path().to_string_lossy().into_owned();
+    // Generate variants to handle OS path separator differences in output
+    let tmp_json = fixture_path.replace('\\', "\\\\");
+    let tmp_fwd = fixture_path.replace('\\', "/");
     let mut result = String::with_capacity(stripped.len());
     let mut in_file_block = false;
     for line in stripped.lines() {
@@ -61,20 +49,16 @@ fn redact(s: &str, fixture: &Fixture) -> String {
             continue;
         }
         if in_file_block {
-            // The file block ends when we hit the next sibling source
-            // (lines starting with ├─ or └─ at the top level, not indented │)
             if !line.starts_with("│") {
                 in_file_block = false;
             } else {
                 continue;
             }
         }
-        let tmp_json_escaped: String = tmp.replace('\\', "\\\\");
-        let tmp_fwd_slash: String = tmp.replace('\\', "/");
         let redacted = line
-            .replace(tmp_json_escaped.as_str(), "<TMP>")
-            .replace(tmp_fwd_slash.as_str(), "<TMP>")
-            .replace(tmp.as_ref(), "<TMP>");
+            .replace(tmp_json.as_str(), "<TMP>")
+            .replace(tmp_fwd.as_str(), "<TMP>")
+            .replace(fixture_path.as_str(), "<TMP>");
         result.push_str(&redacted);
         result.push('\n');
     }
@@ -86,7 +70,7 @@ fn redact(s: &str, fixture: &Fixture) -> String {
 
 /// Pending file to be written when the fixture is built.
 struct PendingFile {
-    path: PathBuf,
+    path: std::path::PathBuf,
     content: String,
 }
 
@@ -111,7 +95,7 @@ impl FixtureBuilder {
         Self { files: Vec::new() }
     }
 
-    pub fn with_file(mut self, path: impl Into<PathBuf>, content: impl Into<String>) -> Self {
+    pub fn with_file(mut self, path: impl Into<std::path::PathBuf>, content: impl Into<String>) -> Self {
         self.files.push(PendingFile {
             path: path.into(),
             content: content.into(),
@@ -138,8 +122,6 @@ impl Fixture {
         FixtureBuilder::new()
     }
 
-    /// Run a bough command in this fixture's directory.
-    /// `args` is a string of space-separated arguments (e.g. "show config -f json").
     pub fn run(&self, args: &str) -> Output {
         let bough = env!("BOUGH_BIN");
         let args: Vec<&str> = args.split_whitespace().collect();
@@ -157,7 +139,6 @@ impl Fixture {
         }
     }
 
-    /// Return the path to the fixture's temporary directory.
     pub fn path(&self) -> &Path {
         self.dir.path()
     }
