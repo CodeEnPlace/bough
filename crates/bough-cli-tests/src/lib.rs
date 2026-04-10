@@ -36,7 +36,14 @@ fn strip_ansi(s: &str) -> String {
 
 fn redact(s: &str, fixture: &Fixture) -> String {
     let stripped = strip_ansi(s);
-    let fixture_path = fixture.path().to_string_lossy().into_owned();
+    // On macOS, /var is a symlink to /private/var — canonicalize to match bough output.
+    // On Windows, canonicalize expands 8.3 short names (RUNNER~1 → runneradmin) which
+    // diverges from what bough sees via current_dir(), so we skip it.
+    #[cfg(unix)]
+    let base = fixture.path().canonicalize().unwrap_or_else(|_| fixture.path().to_path_buf());
+    #[cfg(not(unix))]
+    let base = fixture.path().to_path_buf();
+    let fixture_path = base.to_string_lossy().into_owned();
     // Generate variants to handle OS path separator differences in output
     let tmp_json = fixture_path.replace('\\', "\\\\");
     let tmp_fwd = fixture_path.replace('\\', "/");
