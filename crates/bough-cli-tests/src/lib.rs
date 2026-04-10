@@ -65,7 +65,12 @@ fn redact(s: &str, fixture: &Fixture) -> String {
                 continue;
             }
         }
-        let redacted = line.replace(tmp.as_ref(), "<TMP>");
+        let tmp_json_escaped: String = tmp.replace('\\', "\\\\");
+        let tmp_fwd_slash: String = tmp.replace('\\', "/");
+        let redacted = line
+            .replace(tmp_json_escaped.as_str(), "<TMP>")
+            .replace(tmp_fwd_slash.as_str(), "<TMP>")
+            .replace(tmp.as_ref(), "<TMP>");
         result.push_str(&redacted);
         result.push('\n');
     }
