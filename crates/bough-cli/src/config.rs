@@ -974,12 +974,14 @@ cmd = "echo test"
     }
 
     #[test]
+    #[cfg(unix)]
     fn resolve_root_path_with_absolute_config_dir() {
         let result = resolve_root_path(std::path::Path::new("/absolute/config"), "..");
         assert_eq!(result, std::path::PathBuf::from("/absolute"));
     }
 
     #[test]
+    #[cfg(unix)]
     fn resolve_root_path_with_absolute_root() {
         let result = resolve_root_path(std::path::Path::new("relative"), "/absolute/root");
         assert_eq!(result, std::path::PathBuf::from("/absolute/root"));
