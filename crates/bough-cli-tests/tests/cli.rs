@@ -1052,6 +1052,7 @@ cmd = "echo reset-ran"
 }
 
 #[test]
+#[cfg(unix)]
 fn test_mutation_caught() {
     let fixture = Fixture::new()
         .with_file(
@@ -1128,6 +1129,7 @@ cmd = "echo pass"
 }
 
 #[test]
+#[cfg(unix)]
 fn test_mutation_writes_state() {
     let fixture = Fixture::new()
         .with_file(
