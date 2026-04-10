@@ -4,21 +4,21 @@ members = ["crates/*"]
 exclude = ["tools/facet-carat"]
 
 [workspace.package]
-version = "0.0.2"
+version = "0.0.3"
 edition = "2024"
 license = "MIT"
 repository = "https://github.com/CodeEnPlace/bough"
 readme = "README.md"
 
 [workspace.dependencies]
-bough-typed-hash-derive = { path = "crates/bough-typed-hash-derive", version = "0.0.2" }
-bough-typed-hash = { path = "crates/bough-typed-hash", version = "0.0.2" }
-bough-fs = { path = "crates/bough-fs", version = "0.0.2" }
-bough-glob = { path = "crates/bough-glob", version = "0.0.2" }
-bough-core = { path = "crates/bough-core", version = "0.0.2" }
-bough-dirs = { path = "crates/bough-dirs", version = "0.0.2" }
-bough-lib = { path = "crates/bough-lib", version = "0.0.2" }
-bough-config = { path = "crates/bough-config", version = "0.0.2" }
+bough-typed-hash-derive = { path = "crates/bough-typed-hash-derive", version = "0.0.3" }
+bough-typed-hash = { path = "crates/bough-typed-hash", version = "0.0.3" }
+bough-fs = { path = "crates/bough-fs", version = "0.0.3" }
+bough-glob = { path = "crates/bough-glob", version = "0.0.3" }
+bough-core = { path = "crates/bough-core", version = "0.0.3" }
+bough-dirs = { path = "crates/bough-dirs", version = "0.0.3" }
+bough-lib = { path = "crates/bough-lib", version = "0.0.3" }
+bough-config = { path = "crates/bough-config", version = "0.0.3" }
 
 # The profile that 'dist' will build with
 [profile.dist]
