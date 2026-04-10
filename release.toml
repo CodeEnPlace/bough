@@ -1,0 +1,17 @@
+# cargo-release workspace config
+# Docs: https://github.com/crate-ci/cargo-release/blob/master/docs/reference.md
+
+# Don't publish to crates.io — releases are binary-only via cargo-dist
+publish = false
+
+# Don't do a cargo check before release (CI handles this)
+verify = false
+
+# Allow releasing from main or detached HEAD (jj workflow)
+allow-branch = ["main", "HEAD"]
+
+# dist expects tags in the form "v0.1.0" for a unified workspace release
+tag-name = "v{{version}}"
+
+# Single commit for the workspace version bump
+consolidate-commits = true
