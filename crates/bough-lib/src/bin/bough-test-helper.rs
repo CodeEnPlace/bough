@@ -10,6 +10,7 @@ fn main() {
         Some("spawn-and-wait") => spawn_and_wait(&args[1..]),
         Some("spawn-chain") => spawn_chain(&args[1..]),
         Some("sleep") => std::thread::sleep(std::time::Duration::from_secs(1000)),
+        #[cfg(unix)]
         Some("spawn-own-pgroup") => spawn_own_pgroup(&args[1..]),
         _ => {
             eprintln!(
@@ -55,6 +56,7 @@ fn spawn_chain(args: &[String]) {
     std::thread::sleep(std::time::Duration::from_secs(1000));
 }
 
+#[cfg(unix)]
 fn spawn_own_pgroup(args: &[String]) {
     use std::os::unix::process::CommandExt;
     use std::sync::atomic::Ordering;
@@ -90,8 +92,10 @@ fn spawn_own_pgroup(args: &[String]) {
     std::thread::sleep(std::time::Duration::from_secs(1000));
 }
 
+#[cfg(unix)]
 static CHILD_PID_FOR_HANDLER: std::sync::atomic::AtomicI32 = std::sync::atomic::AtomicI32::new(0);
 
+#[cfg(unix)]
 extern "C" fn handle_sigterm(_sig: libc::c_int) {
     let child_pid = CHILD_PID_FOR_HANDLER.load(std::sync::atomic::Ordering::SeqCst);
     if child_pid > 0 {
