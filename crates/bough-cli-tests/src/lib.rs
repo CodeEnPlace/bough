@@ -47,7 +47,11 @@ fn redact(s: &str, fixture: &Fixture) -> String {
         .path()
         .canonicalize()
         .unwrap_or_else(|_| fixture.path().to_path_buf());
-    let tmp = canonical.to_string_lossy();
+    let canonical_str = canonical.to_string_lossy();
+    let tmp_base = canonical_str
+        .strip_prefix("\\\\?\\")
+        .unwrap_or(canonical_str.as_ref());
+    let tmp = std::borrow::Cow::Borrowed(tmp_base);
     let mut result = String::with_capacity(stripped.len());
     let mut in_file_block = false;
     for line in stripped.lines() {
