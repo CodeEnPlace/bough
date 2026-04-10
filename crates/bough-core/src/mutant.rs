@@ -216,11 +216,7 @@ impl<'a, R: bough_fs::Root> BasedMutant<'a, R> {
 impl HashInto for Mutant {
     fn hash_into(&self, state: &mut bough_typed_hash::ShaState) -> Result<(), std::io::Error> {
         self.lang.hash_into(state)?;
-        self.twig
-            .path()
-            .as_os_str()
-            .as_encoded_bytes()
-            .hash_into(state)?;
+        self.twig.as_str().as_bytes().hash_into(state)?;
         self.subst_span.hash_into(state)?;
         self.kind.hash_into(state)?;
         Ok(())

@@ -12,11 +12,15 @@ impl Twig {
         let s = path
             .to_str()
             .ok_or_else(|| Error::TwigNotUtf8(path.clone()))?;
-        Ok(Self(s.to_owned()))
+        Ok(Self(s.replace('\\', "/")))
     }
 
     pub fn path(&self) -> &Path {
         Path::new(&self.0)
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
     }
 }
 
