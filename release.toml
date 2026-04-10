@@ -10,6 +10,12 @@ verify = false
 # Allow releasing from main or detached HEAD (jj workflow)
 allow-branch = ["main", "HEAD"]
 
+# Don't push — jj can't push detached HEAD. After running cargo-release, do:
+#   jj bookmark set main -r 'git_head()'
+#   jj git push
+#   git push origin <tag>
+push = false
+
 # dist expects tags in the form "v0.1.0" for a unified workspace release
 tag-name = "v{{version}}"
 
