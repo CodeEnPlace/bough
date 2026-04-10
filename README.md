@@ -2,8 +2,8 @@
 
 A polyglot incremental mutation tester.
 
-> [!WARNING]
-> Pre-Alpha software, highly likely to change and no guarantee of correctness as of yet
+> [!NOTE]
+> Beta software — functional and tested on Linux, macOS, and Windows, but the CLI and config format may still change before 1.0.
 
 📖 **[Documentation](https://bough.codeenplace.dev/)**
 
@@ -18,6 +18,8 @@ A polyglot incremental mutation tester.
 ```bash
 cargo install --locked --git https://github.com/CodeEnPlace/bough --bin bough
 ```
+
+Or download a prebuilt binary from the [latest release](https://github.com/CodeEnPlace/bough/releases/latest).
 
 ## Quick Start
 
