@@ -106,6 +106,7 @@ mod tests {
     use super::TestRoot;
 
     #[test]
+    #[cfg(unix)]
     fn validate_root_accepts_absolute_path() {
         assert!(validate_root(&PathBuf::from("/tmp/project")).is_ok());
     }
@@ -119,6 +120,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(unix)]
     fn file_holds_root_and_twig() {
         let root = TestRoot::new("/tmp/project");
         let twig = Twig::new(PathBuf::from("src/main.rs")).unwrap();
@@ -128,6 +130,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(unix)]
     fn file_resolve_joins_root_and_twig() {
         let root = TestRoot::new("/tmp/project");
         let twig = Twig::new(PathBuf::from("src/main.rs")).unwrap();
@@ -150,6 +153,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(unix)]
     fn file_hash_fails_for_missing_file() {
         let root = TestRoot::new("/tmp/nonexistent_dir_abc123");
         let twig = Twig::new(PathBuf::from("missing.txt")).unwrap();
@@ -160,6 +164,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(unix)]
     fn transplant_replaces_root() {
         let root_a = TestRoot::new("/project/a");
         let root_b = TestRoot::new("/project/b");

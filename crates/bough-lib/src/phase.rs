@@ -334,6 +334,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(unix)]
     fn phase_holds_root() {
         let root = TestRoot(PathBuf::from("/tmp/project"));
         let phase = make_phase(&root);
@@ -341,6 +342,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(unix)]
     fn phase_holds_pwd_twig() {
         let root = TestRoot(PathBuf::from("/tmp/project"));
         let pwd = bough_fs::Twig::new(PathBuf::from("src/test")).unwrap();
@@ -352,6 +354,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(unix)]
     fn phase_holds_env_vars() {
         let root = TestRoot(PathBuf::from("/tmp/project"));
         let env = HashMap::from([("NODE_ENV".into(), "test".into())]);
@@ -363,6 +366,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(unix)]
     fn phase_holds_cmd() {
         let root = TestRoot(PathBuf::from("/tmp/project"));
         let cmd = vec!["npx".into(), "vitest".into(), "run".into()];
@@ -374,6 +378,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(unix)]
     fn phase_holds_timeout() {
         let root = TestRoot(PathBuf::from("/tmp/project"));
         let phase = Phase {
